@@ -436,7 +436,8 @@ apiRouter.put("/admin/settings", (req, res) => {
     "rss_feed_url", "studio_video_url", "app_name", "logo_url", "app_tagline", 
     "app_title", "font_sans", "font_display", "is_on_air", "primary_color", 
     "secondary_color", "feat_chat", "feat_shoutouts", "feat_cinematic", 
-    "feat_pwa", "feat_bookings", "feat_live_tools", "feat_stream_quality"
+    "feat_pwa", "feat_bookings", "feat_live_tools", "feat_stream_quality",
+    "logo_dark", "logo_light"
   ];
   
   for (const key of allowedKeys) {

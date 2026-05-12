@@ -110,11 +110,15 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
     <>
       <nav className="flex items-center justify-between p-4 md:p-8 max-w-[100rem] mx-auto w-full relative z-30 gap-4">
         <Link to="/" className="flex items-center space-x-3 md:space-x-4 z-40 shrink-0" onClick={() => setIsMobileMenuOpen(false)}>
-          <div className="w-11 h-11 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-white text-dark-bg flex items-center justify-center shadow-[0_10px_30px_rgba(255,255,255,0.15)] overflow-hidden shrink-0">
+          <div className={`w-11 h-11 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center overflow-hidden shrink-0 transition-all ${
+            isLightMode 
+              ? 'bg-white shadow-[0_10px_30px_rgba(0,0,0,0.1)]' 
+              : 'bg-dark-bg border border-white/5 shadow-[0_10px_30px_rgba(255,255,255,0.05)]'
+          }`}>
             {logoUrl ? (
               <img src={logoUrl} alt={appName} className="w-full h-full object-contain" />
             ) : (
-              <Headphones className="w-7 h-7" />
+              <Headphones className={`w-7 h-7 ${isLightMode ? 'text-dark-bg' : 'text-white'}`} />
             )}
           </div>
           <div className="hidden sm:flex flex-col">
