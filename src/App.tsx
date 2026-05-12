@@ -81,6 +81,9 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
     ? (settings?.logo_light || settings?.logo_url || "")
     : (settings?.logo_dark || settings?.logo_url || "");
 
+  // Detect if we are using a single logo for both modes
+  const isSingleLogo = !!settings?.logo_url && !settings?.logo_light && !settings?.logo_dark;
+
   const isOnAir = settings?.is_on_air === '1';
 
   const featLiveTools = settings?.feat_live_tools !== '0';
@@ -112,13 +115,13 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
         <Link to="/" className="flex items-center space-x-3 md:space-x-4 z-40 shrink-0" onClick={() => setIsMobileMenuOpen(false)}>
           <div className={`w-11 h-11 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center overflow-hidden shrink-0 transition-all ${
             isLightMode 
-              ? 'bg-white shadow-[0_10px_30px_rgba(0,0,0,0.1)]' 
-              : 'bg-dark-bg border border-white/5 shadow-[0_10px_30px_rgba(255,255,255,0.05)]'
+              ? (isSingleLogo ? 'bg-neutral-900 shadow-xl' : 'bg-white shadow-[0_10px_30px_rgba(0,0,0,0.1)]') 
+              : (isSingleLogo ? 'bg-white shadow-xl' : 'bg-dark-bg border border-white/5 shadow-[0_10px_30px_rgba(255,255,255,0.05)]')
           }`}>
             {logoUrl ? (
-              <img src={logoUrl} alt={appName} className="w-full h-full object-contain" />
+              <img src={logoUrl} alt={appName} className="w-full h-full object-contain p-1" />
             ) : (
-              <Headphones className={`w-7 h-7 ${isLightMode ? 'text-dark-bg' : 'text-white'}`} />
+              <Headphones className={`w-7 h-7 ${isLightMode && !isSingleLogo ? 'text-dark-bg' : (isLightMode && isSingleLogo ? 'text-white' : (isLightMode ? 'text-dark-bg' : 'text-white'))}`} />
             )}
           </div>
           <div className="hidden sm:flex flex-col">
