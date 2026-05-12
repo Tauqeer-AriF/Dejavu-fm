@@ -191,8 +191,8 @@ export default function Schedule() {
                 {dayShows.map(show => {
                   const isCrossMidnight = show.local_start > show.local_end;
                   const isTimeMatch = isCrossMidnight 
-                    ? (currentTime >= show.local_start || currentTime <= show.local_end)
-                    : (show.local_start <= currentTime && show.local_end >= currentTime);
+                    ? (currentTime >= show.local_start || currentTime < show.local_end)
+                    : (show.local_start <= currentTime && show.local_end > currentTime);
                   
                   const isLive = isToday && isTimeMatch;
 

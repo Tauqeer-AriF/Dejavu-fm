@@ -15,29 +15,18 @@ interface DJ {
 }
 
 export default function DJs() {
-  const [djs, setDjs] = useState<DJ[]>([]);
-  const [loading, setLoading] = useState(true);
-
   const { data: settings } = useQuery({
     queryKey: ['settings'],
     queryFn: () => fetch('/api/public/settings').then(res => res.json()),
     refetchInterval: 3000,
   });
 
-  const appName = settings?.app_name || "DejavuFM";
+  const { data: djs, isLoading } = useQuery<DJ[]>({
+    queryKey: ['djs'],
+    queryFn: () => fetch('/api/public/djs').then(res => res.json())
+  });
 
-  useEffect(() => {
-    fetch('/api/public/djs')
-      .then(res => res.json())
-      .then(data => {
-        setDjs(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setLoading(false);
-      });
-  }, []);
+  const appName = settings?.app_name || "DejavuFM";
 
   return (
     <motion.div 
@@ -62,14 +51,14 @@ export default function DJs() {
         </p>
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <div className="flex flex-col items-center justify-center py-40 space-y-6">
           <div className="w-16 h-16 border-4 border-white/10 border-t-neon-purple rounded-full animate-spin"></div>
           <p className="text-white/30 uppercase tracking-[0.3em] text-[10px] font-black">Summoning Artists...</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 md:gap-10">
-          {djs.map((dj, index) => (
+          {djs?.map((dj, index) => (
             <motion.div
               key={dj.id}
               initial={{ opacity: 0, y: 30 }}

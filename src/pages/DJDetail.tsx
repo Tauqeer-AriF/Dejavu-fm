@@ -2,13 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Instagram, Music, Radio, Calendar, Send, X, CheckCircle } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 
 export default function DJDetail() {
   const { id } = useParams();
-  const [dj, setDj] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [bookingStatus, setBookingStatus] = useState<'idle' | 'sending' | 'success'>('idle');
+
+  const { data: settings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: () => fetch('/api/public/settings').then(res => res.json()),
+  });
+
+  const { data: djs, isLoading } = useQuery<any[]>({
+    queryKey: ['djs'],
+    queryFn: () => fetch('/api/public/djs').then(res => res.json())
+  });
 
   const [bookingForm, setBookingForm] = useState({
     client_name: '',
@@ -17,22 +26,8 @@ export default function DJDetail() {
     message: ''
   });
 
-  const [featBookings, setFeatBookings] = useState(true);
-
-  useEffect(() => {
-    fetch('/api/public/settings').then(r=>r.json()).then(s => {
-      setFeatBookings(s.feat_bookings !== '0');
-    });
-
-    fetch('/api/public/djs')
-      .then(res => res.json())
-      .then(djs => {
-        const found = djs.find((d: any) => d.id === id);
-        setDj(found);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [id]);
+  const dj = djs?.find(d => d.id === id);
+  const featBookings = settings?.feat_bookings !== '0';
 
   const handleBooking = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,7 +51,7 @@ export default function DJDetail() {
     }
   };
 
-  if (loading) return <div className="py-20 md:py-40 text-center text-white/30">Loading artist profile...</div>;
+  if (isLoading) return <div className="py-20 md:py-40 text-center text-white/30">Loading artist profile...</div>;
   if (!dj) return <div className="py-20 md:py-40 text-center text-white/30">Artist not found.</div>;
 
   return (

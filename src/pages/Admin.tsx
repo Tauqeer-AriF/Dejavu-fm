@@ -749,7 +749,12 @@ function AdminDJs() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const { showConfirm, showAlert } = useModal();
   
-  const load = () => fetch("/api/public/djs").then(r=>r.json()).then(setDJs);
+  const queryClient = useQueryClient();
+  const load = () => {
+    fetch("/api/public/djs").then(r=>r.json()).then(setDJs);
+    queryClient.invalidateQueries({ queryKey: ['schedule'] });
+    queryClient.invalidateQueries({ queryKey: ['djs'] });
+  };
   useEffect(() => { load(); }, []);
 
   const handleDelete = async (id: number) => {
@@ -798,6 +803,7 @@ function AdminDJs() {
 }
 
 function EditDJForm({dj, onSave, onCancel}: {dj: any, onSave: ()=>void, onCancel: ()=>void}) {
+  const queryClient = useQueryClient();
   const [name, setName] = useState(dj.name);
   const [bio, setBio] = useState(dj.bio || "");
   const [image, setImage] = useState(dj.image_url || "");
@@ -814,6 +820,8 @@ function EditDJForm({dj, onSave, onCancel}: {dj: any, onSave: ()=>void, onCancel
     });
     if (res.ok) {
       showAlert({ title: "Success", message: `${name} updated successfully!`, style: "success" });
+      queryClient.invalidateQueries({ queryKey: ['schedule'] });
+      queryClient.invalidateQueries({ queryKey: ['djs'] });
       onSave();
     } else {
       showAlert({ title: "Error", message: "Failed to update DJ", style: "danger" });
@@ -859,6 +867,7 @@ function EditDJForm({dj, onSave, onCancel}: {dj: any, onSave: ()=>void, onCancel
 }
 
 function AddDJForm({onAdd}: {onAdd:()=>void}) {
+  const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [bio, setBio] = useState("");
   const [image, setImage] = useState("");
@@ -875,6 +884,7 @@ function AddDJForm({onAdd}: {onAdd:()=>void}) {
     });
     if (res.ok) {
       showAlert({ title: "Success", message: `${name} added to the roster!`, style: "success" });
+      queryClient.invalidateQueries({ queryKey: ['djs'] });
       setName(""); setBio(""); setImage(""); setInstagram(""); setSoundcloud(""); setMixcloud("");
       onAdd();
     } else {
@@ -919,6 +929,7 @@ function AddDJForm({onAdd}: {onAdd:()=>void}) {
 }
 
 function AdminSchedule() {
+  const queryClient = useQueryClient();
   const [schedule, setSchedule] = useState<any[]>([]);
   const [djs, setDJs] = useState<any[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -927,6 +938,7 @@ function AdminSchedule() {
   const load = () => {
     fetch("/api/public/schedule").then(r=>r.json()).then(setSchedule);
     fetch("/api/public/djs").then(r=>r.json()).then(setDJs);
+    queryClient.invalidateQueries({ queryKey: ['schedule'] });
   };
   useEffect(() => { load(); }, []);
 
@@ -980,6 +992,7 @@ function AdminSchedule() {
 }
 
 function EditScheduleForm({schedule, djs, onSave, onCancel}: {schedule: any, djs: any[], onSave: ()=>void, onCancel: ()=>void}) {
+  const queryClient = useQueryClient();
   const [djId, setDjId] = useState(schedule.dj_id.toString());
   const [day, setDay] = useState(schedule.day_of_week.toString());
   const [start, setStart] = useState(schedule.start_time);
@@ -995,6 +1008,7 @@ function EditScheduleForm({schedule, djs, onSave, onCancel}: {schedule: any, djs
     });
     if (res.ok) {
       showAlert({ title: "Success", message: "Schedule entry updated!", style: "success" });
+      queryClient.invalidateQueries({ queryKey: ['schedule'] });
       onSave();
     } else {
       showAlert({ title: "Error", message: "Failed to update schedule", style: "danger" });
@@ -1039,6 +1053,7 @@ function EditScheduleForm({schedule, djs, onSave, onCancel}: {schedule: any, djs
 }
 
 function AddScheduleForm({djs, onAdd}: {djs: any[], onAdd: ()=>void}) {
+  const queryClient = useQueryClient();
   const [djId, setDjId] = useState("");
   const [day, setDay] = useState("0");
   const [start, setStart] = useState("");
@@ -1054,6 +1069,7 @@ function AddScheduleForm({djs, onAdd}: {djs: any[], onAdd: ()=>void}) {
     });
     if (res.ok) {
       showAlert({ title: "Success", message: "Show added to the schedule!", style: "success" });
+      queryClient.invalidateQueries({ queryKey: ['schedule'] });
       setDjId(""); setDay("0"); setStart(""); setEnd(""); setShow("");
       onAdd();
     } else {

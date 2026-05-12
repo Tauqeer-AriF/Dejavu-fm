@@ -329,11 +329,12 @@ function MainLayout() {
         
         if (start.dayOfWeek !== currentDay) return false;
         
-        if (start.timeStr <= end.timeStr) {
-          return start.timeStr <= currentTime && end.timeStr >= currentTime;
+        // Handle normal and cross-midnight shows
+        const isCrossMidnight = start.timeStr > end.timeStr;
+        if (!isCrossMidnight) {
+          return start.timeStr <= currentTime && end.timeStr > currentTime;
         } else {
-          // Cross-midnight show
-          return currentTime >= start.timeStr || currentTime <= end.timeStr;
+          return currentTime >= start.timeStr || currentTime < end.timeStr;
         }
       });
 
@@ -350,15 +351,15 @@ function MainLayout() {
         setCurrentTrack(`${onAir.dj_name} - ${onAir.show_name}`);
       } else {
         setOnAirInfo(null);
-        setCurrentTrack("Dejavu FM Auto-Mix");
+        setCurrentTrack(`${appName} Auto-Mix`);
       }
     };
 
     updateOnAir();
-    const interval = setInterval(updateOnAir, 10000); // Re-calculate every 10 seconds
+    const interval = setInterval(updateOnAir, 1000); // Check every second for exact real-time transition
     
     return () => clearInterval(interval);
-  }, [scheduleData, setOnAirInfo, setCurrentTrack]);
+  }, [scheduleData, setOnAirInfo, setCurrentTrack, appName]);
 
   useEffect(() => {
     if (settings) {
