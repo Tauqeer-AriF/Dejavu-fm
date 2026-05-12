@@ -5,6 +5,7 @@ import { PlayerBar } from './components/PlayerBar';
 import { ChatSidebar } from './components/ChatSidebar';
 import { ShoutoutWidget } from './components/ShoutoutWidget';
 import { NotificationManager } from './components/NotificationManager';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { AudioProvider, useAudio } from './context/AudioContext';
 import { ModalProvider } from './context/ModalContext';
 import { useState, useEffect, useRef } from 'react';
@@ -33,7 +34,7 @@ import Contact from './pages/Contact';
 import Admin from './pages/Admin';
 import WatchLive from './pages/WatchLive';
 
-function Navigation({ onOpenChat }: { onOpenChat: () => void }) {
+function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat: boolean }) {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -73,8 +74,16 @@ function Navigation({ onOpenChat }: { onOpenChat: () => void }) {
 
   const appName = settings?.app_name || "DejavuFM";
   const appTagline = settings?.app_tagline || "Underground Gold Since 2005";
-  const logoUrl = settings?.logo_url || "";
+  
+  // Logic for dual logo selection
+  const logoUrl = isLightMode 
+    ? (settings?.logo_light || settings?.logo_url || "")
+    : (settings?.logo_dark || settings?.logo_url || "");
+
   const isOnAir = settings?.is_on_air === '1';
+
+  const featLiveTools = settings?.feat_live_tools !== '0';
+  // Removed internal featChat definition since it's now a prop
 
   useEffect(() => {
     if (settings) {
@@ -130,22 +139,26 @@ function Navigation({ onOpenChat }: { onOpenChat: () => void }) {
         
         <div className="hidden xl:flex items-center bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2rem] px-2 py-2 shadow-2xl">
           <NavLink to="/" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>Live</NavLink>
-          <NavLink to="/watch" className={({isActive}) => `px-4 xl:px-8 py-3 flex items-center gap-2 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-neon-purple text-white shadow-[0_0_25px_rgba(176,38,255,0.4)]' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>
-            <Video className="w-4 h-4 hidden xl:block" /> Studio
-          </NavLink>
+          {featLiveTools && (
+            <NavLink to="/watch" className={({isActive}) => `px-4 xl:px-8 py-3 flex items-center gap-2 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-neon-purple text-white shadow-[0_0_25px_rgba(176,38,255,0.4)]' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>
+              <Video className="w-4 h-4 hidden xl:block" /> Studio
+            </NavLink>
+          )}
           <NavLink to="/schedule" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>Schedule</NavLink>
           <NavLink to="/djs" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>DJs</NavLink>
           <NavLink to="/podcasts" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive || location.pathname.startsWith('/podcasts/') ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>Podcasts</NavLink>
         </div>
 
         <div className="flex items-center space-x-2 md:space-x-4 xl:space-x-6 z-40">
-           <button 
-            onClick={onOpenChat}
-            className="flex items-center space-x-2 xl:space-x-3 px-4 xl:px-6 py-3 rounded-2xl bg-white/5 hover:bg-neon-purple/20 border border-white/10 hover:border-neon-purple/50 transition-all group whitespace-nowrap shrink-0"
-          >
-            <MessageSquare className="w-5 h-5 text-neon-purple group-hover:animate-bounce" />
-            <span className="text-[10px] font-black uppercase tracking-widest hidden sm:block">Chat Room</span>
-          </button>
+           {featChat !== false && (
+             <button 
+              onClick={onOpenChat}
+              className="flex items-center space-x-2 xl:space-x-3 px-4 xl:px-6 py-3 rounded-2xl bg-white/5 hover:bg-neon-purple/20 border border-white/10 hover:border-neon-purple/50 transition-all group whitespace-nowrap shrink-0"
+            >
+              <MessageSquare className="w-5 h-5 text-neon-purple group-hover:animate-bounce" />
+              <span className="text-[10px] font-black uppercase tracking-widest hidden sm:block">Chat Room</span>
+            </button>
+           )}
 
           <Link to="/admin" className="hidden xl:block text-white/20 hover:text-white transition-colors shrink-0">
             <AdminIcon className="w-6 h-6" />
@@ -177,11 +190,11 @@ function Navigation({ onOpenChat }: { onOpenChat: () => void }) {
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
             className="fixed inset-0 z-20 bg-dark-bg/90 xl:hidden pt-24 pb-8 overflow-y-auto"
           >
-            <div className="flex flex-col min-h-full px-8 pb-8 max-w-md mx-auto">
+            <div className="flex flex-col min-h-full px-8 pb-32 max-w-md mx-auto">
               <div className="flex flex-col space-y-2 mt-auto mb-auto">
                 {[
                   { path: '/', label: 'Live', exact: true },
-                  { path: '/watch', label: 'Studio Cam', icon: <Video className="w-5 h-5" />, color: 'text-neon-purple' },
+                  ...(featLiveTools ? [{ path: '/watch', label: 'Studio Cam', icon: <Video className="w-5 h-5" />, color: 'text-neon-purple' }] : []),
                   { path: '/schedule', label: 'Schedule' },
                   { path: '/djs', label: 'DJs' },
                   { path: '/podcasts', label: 'Podcasts', matchPrefix: true },
@@ -303,28 +316,39 @@ function MainLayout() {
   }, []);
 
   useEffect(() => {
-    const schedule = Array.isArray(scheduleData) ? scheduleData : [];
-    const now = new Date();
-    const currentDay = now.getDay();
-    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    const updateOnAir = () => {
+      const schedule = Array.isArray(scheduleData) ? scheduleData : [];
+      const now = new Date();
+      const currentDay = now.getDay();
+      const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
-    const onAir = schedule.find((s: any) => 
-      s.day_of_week === currentDay &&
-      s.start_time <= currentTime &&
-      s.end_time >= currentTime
-    );
-
-    if (onAir) {
-      setOnAirInfo({
-        djName: onAir.dj_name,
-        showName: onAir.show_name,
-        djPhoto: onAir.dj_photo
+      const onAir = schedule.find((s: any) => {
+        if (s.day_of_week !== currentDay) return false;
+        if (s.start_time <= s.end_time) {
+          return s.start_time <= currentTime && s.end_time >= currentTime;
+        } else {
+          // Cross-midnight show on the same starting day
+          return currentTime >= s.start_time || currentTime <= s.end_time;
+        }
       });
-      setCurrentTrack(`${onAir.dj_name} - ${onAir.show_name}`);
-    } else {
-      setOnAirInfo(null);
-      setCurrentTrack("Dejavu FM Auto-Mix");
-    }
+
+      if (onAir) {
+        setOnAirInfo({
+          djName: onAir.dj_name,
+          showName: onAir.show_name,
+          djPhoto: onAir.dj_photo
+        });
+        setCurrentTrack(`${onAir.dj_name} - ${onAir.show_name}`);
+      } else {
+        setOnAirInfo(null);
+        setCurrentTrack("Dejavu FM Auto-Mix");
+      }
+    };
+
+    updateOnAir();
+    const interval = setInterval(updateOnAir, 10000); // Re-calculate every 10 seconds
+    
+    return () => clearInterval(interval);
   }, [scheduleData, setOnAirInfo, setCurrentTrack]);
 
   useEffect(() => {
@@ -364,6 +388,13 @@ function MainLayout() {
     }
   }, [settings, setStreamUrl, setQualityUrls]);
 
+  const featChat = settings?.feat_chat !== '0';
+  const featShoutouts = settings?.feat_shoutouts !== '0';
+  const featCinematic = settings?.feat_cinematic !== '0';
+  const featPWA = settings?.feat_pwa !== '0';
+  const featBookings = settings?.feat_bookings !== '0';
+  const featLiveTools = settings?.feat_live_tools !== '0';
+
   return (
     <div className="min-h-screen pb-32 flex flex-col relative overflow-hidden bg-dark-bg selection:bg-neon-purple selection:text-white">
       {/* Premium Moving Mesh Background */}
@@ -373,10 +404,10 @@ function MainLayout() {
         <div className="absolute top-[40%] right-[20%] w-[30%] h-[30%] bg-white/5 rounded-full blur-[100px] animate-[pulse_15s_ease-in-out_infinite_4s]"></div>
       </div>
       
-      <Navigation onOpenChat={() => setIsChatOpen(true)} />
+      <Navigation onOpenChat={() => setIsChatOpen(true)} featChat={featChat} />
       <NotificationManager />
-      <ChatSidebar isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
-      <ShoutoutWidget />
+      {featChat && <ChatSidebar isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />}
+      {featShoutouts && <ShoutoutWidget />}
       
       <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 relative z-10">
         <ErrorBoundary key={location.pathname}>
@@ -397,7 +428,8 @@ function MainLayout() {
       </footer>
       
       <PlayerBar />
-      <CinematicVisualizer isOpen={isCinematicOpen} onClose={toggleCinematic} />
+      {featCinematic && <CinematicVisualizer isOpen={isCinematicOpen} onClose={toggleCinematic} />}
+      {featPWA && <PWAInstallPrompt />}
     </div>
   );
 }

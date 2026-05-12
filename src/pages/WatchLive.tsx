@@ -43,7 +43,7 @@ function getEmbedUrl(url: string | null) {
         ];
         
         // Also extract any parents already provided in the input URL
-        const existingParents = parsedUrl.searchParams.getAll('parent');
+        const existingParents = parsedUrl.searchParams.getAll('parent').map(p => p.replace(/\/+$/, ''));
         
         // Remove duplicates and empty strings
         const uniqueParents = Array.from(new Set([...parents, ...existingParents].filter(Boolean)));
@@ -109,6 +109,7 @@ export default function WatchLive() {
   });
 
   const studioVideoUrl = settings?.studio_video_url || studioVideoUrlState;
+  const featChat = settings?.feat_chat !== '0';
 
   useEffect(() => {
     // Check initial auth state
@@ -319,6 +320,7 @@ export default function WatchLive() {
           </div>
         </div>
 
+        {featChat && (
         <div className="glass-panel rounded-3xl overflow-hidden flex flex-col shadow-2xl border border-white/5 flex-1 min-h-[450px] lg:min-h-0 lg:max-h-full">
         <div className="p-4 bg-white/5 border-b border-white/10 flex justify-between items-center">
           <h3 className="font-bold flex items-center gap-2">
@@ -454,6 +456,7 @@ export default function WatchLive() {
           )}
         </div>
         </div>
+        )}
       </div>
     </motion.div>
   );

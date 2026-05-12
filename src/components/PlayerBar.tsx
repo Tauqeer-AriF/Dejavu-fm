@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { Play, Pause, Volume2, Radio, Sliders, Monitor, Mic2, Minimize2, ChevronUp } from 'lucide-react';
 import { useAudio, AudioQuality } from '../context/AudioContext';
 import { motion, AnimatePresence } from 'motion/react';
+import { useQuery } from '@tanstack/react-query';
 
 function Visualizer({ isPlaying, volume }: { isPlaying: boolean; volume: number }) {
   const numBars = 16;
@@ -83,8 +84,15 @@ function Visualizer({ isPlaying, volume }: { isPlaying: boolean; volume: number 
 }
 
 function QualitySelector() {
+  const { data: settings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: () => fetch('/api/public/settings').then(res => res.json()),
+  });
+
   const { quality, setQuality, qualityUrls } = useAudio();
   const [isOpen, setIsOpen] = useState(false);
+
+  if (settings?.feat_stream_quality === '0') return null;
 
   const availableQualities = (Object.keys(qualityUrls) as AudioQuality[])
     .filter(k => !!qualityUrls[k]);

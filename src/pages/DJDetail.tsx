@@ -17,7 +17,13 @@ export default function DJDetail() {
     message: ''
   });
 
+  const [featBookings, setFeatBookings] = useState(true);
+
   useEffect(() => {
+    fetch('/api/public/settings').then(r=>r.json()).then(s => {
+      setFeatBookings(s.feat_bookings !== '0');
+    });
+
     fetch('/api/public/djs')
       .then(res => res.json())
       .then(djs => {
@@ -88,13 +94,15 @@ export default function DJDetail() {
             <p className="text-white/70 text-lg leading-relaxed font-light">{dj.bio || "Crafting sonic journeys through the deepest layers of electronica and bass culture."}</p>
 
             <div className="flex flex-wrap gap-4 pt-4">
-              <button 
-                onClick={() => setIsBookingOpen(true)}
-                className="flex items-center space-x-2 px-8 py-3 bg-white text-dark-bg hover:bg-neon-purple hover:text-white rounded-2xl transition-all shadow-xl font-black uppercase tracking-widest text-xs"
-              >
-                <Calendar className="w-5 h-5" />
-                <span>Book Artist</span>
-              </button>
+              {featBookings && (
+                <button 
+                  onClick={() => setIsBookingOpen(true)}
+                  className="flex items-center space-x-2 px-8 py-3 bg-white text-dark-bg hover:bg-neon-purple hover:text-white rounded-2xl transition-all shadow-xl font-black uppercase tracking-widest text-xs"
+                >
+                  <Calendar className="w-5 h-5" />
+                  <span>Book Artist</span>
+                </button>
+              )}
               
               <Link 
                 to={`/podcasts?s=${encodeURIComponent(dj.name)}`}

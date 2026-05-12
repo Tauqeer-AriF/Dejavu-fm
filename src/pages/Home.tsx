@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAudio } from "../context/AudioContext";
 import { Play, Pause, Mic2, Tv } from "lucide-react";
@@ -222,17 +223,18 @@ export default function Home() {
             </p>
             
             {settings?.studio_video_url && (
-              <motion.a
-                href={settings.studio_video_url}
-                target="_blank"
-                rel="noopener noreferrer"
+              <motion.div
                 whileHover={{ scale: 1.05 }}
-                className="flex items-center space-x-4 px-8 py-5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all font-black uppercase tracking-[0.2em] text-[10px] md:text-xs text-neon-blue shadow-[0_20px_40px_rgba(0,0,0,0.3)]"
               >
-                <Tv className="w-5 h-5" />
-                <span>Live Studio Cam</span>
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-              </motion.a>
+                <Link
+                  to="/watch"
+                  className="flex items-center space-x-4 px-8 py-5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all font-black uppercase tracking-[0.2em] text-[10px] md:text-xs text-neon-blue shadow-[0_20px_40px_rgba(0,0,0,0.3)]"
+                >
+                  <Tv className="w-5 h-5" />
+                  <span>Live Studio Cam</span>
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                </Link>
+              </motion.div>
             )}
           </motion.div>
         </div>

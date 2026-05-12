@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Routes, Route, Link, useLocation } from "react-router-dom";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost } from "lucide-react";
 import { useModal } from "../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
@@ -76,6 +77,7 @@ export default function Admin() {
               <Route path="/" element={<AdminAnalytics />} />
               <Route path="/live-tools" element={<AdminLiveTools />} />
               <Route path="/settings" element={<AdminSettings />} />
+              <Route path="/advanced" element={<AdminAdvanced />} />
               <Route path="/djs" element={<AdminDJs />} />
               <Route path="/shoutouts" element={<AdminShoutouts />} />
               <Route path="/bookings" element={<AdminBookings />} />
@@ -150,10 +152,17 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
 function AdminSidebar({ onLogout }: { onLogout: () => void }) {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  const navs = [
+
+  const { data: features = {} } = useQuery({
+    queryKey: ['settings'],
+    queryFn: () => fetch('/api/public/settings').then(res => res.json()),
+  });
+
+  let navs = [
     { name: "Analytics", path: "/admin", icon: BarChart3 },
     { name: "Live Tools", path: "/admin/live-tools", icon: Radio },
     { name: "Settings", path: "/admin/settings", icon: Settings },
+    { name: "Advanced", path: "/admin/advanced", icon: Ghost },
     { name: "My Profile", path: "/admin/profile", icon: User },
     { name: "Interaction", path: "/admin/shoutouts", icon: MessageSquare },
     { name: "Agency", path: "/admin/bookings", icon: Calendar },
@@ -163,6 +172,11 @@ function AdminSidebar({ onLogout }: { onLogout: () => void }) {
     { name: "Admin Users", path: "/admin/users", icon: UserCog },
     { name: "Chat Users", path: "/admin/chat-users", icon: MessageSquare },
   ];
+
+  if (features.feat_live_tools === '0') navs = navs.filter(n => n.name !== 'Live Tools');
+  if (features.feat_shoutouts === '0') navs = navs.filter(n => n.name !== 'Interaction');
+  if (features.feat_bookings === '0') navs = navs.filter(n => n.name !== 'Agency');
+  if (features.feat_chat === '0') navs = navs.filter(n => n.name !== 'Chat Users');
 
   return (
     <>
@@ -174,7 +188,7 @@ function AdminSidebar({ onLogout }: { onLogout: () => void }) {
         </button>
       </div>
 
-      <div className={`${isOpen ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-64 bg-dark-bg/95 md:bg-dark-bg/50 border-b md:border-b-0 md:border-r border-white/10 p-4 absolute md:relative z-20 top-[73px] md:top-0 left-0 h-[calc(100%-73px)] md:h-auto`}>
+      <div className={`${isOpen ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-64 bg-dark-bg/95 md:bg-dark-bg/50 border-b md:border-b-0 md:border-r border-white/10 p-4 absolute md:relative z-20 top-[73px] md:top-0 left-0 h-[calc(100%-73px)] md:h-auto overflow-y-auto`}>
         <div className="flex-1 space-y-2 mt-4">
           {navs.map(n => {
             const active = location.pathname === n.path;
@@ -201,11 +215,115 @@ function AdminSidebar({ onLogout }: { onLogout: () => void }) {
   );
 }
 
+function AdminAdvanced() {
+  const queryClient = useQueryClient();
+  const { data: serverSettings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: () => fetch('/api/public/settings').then(res => res.json()),
+  });
+
+  const [features, setFeatures] = useState<Record<string, boolean>>({
+    feat_chat: true,
+    feat_shoutouts: true,
+    feat_cinematic: true,
+    feat_pwa: true,
+    feat_bookings: true,
+    feat_live_tools: true,
+    feat_stream_quality: true,
+  });
+  const { showAlert } = useModal();
+
+  useEffect(() => {
+    if (serverSettings) {
+      setFeatures({
+        feat_chat: serverSettings.feat_chat !== '0',
+        feat_shoutouts: serverSettings.feat_shoutouts !== '0',
+        feat_cinematic: serverSettings.feat_cinematic !== '0',
+        feat_pwa: serverSettings.feat_pwa !== '0',
+        feat_bookings: serverSettings.feat_bookings !== '0',
+        feat_live_tools: serverSettings.feat_live_tools !== '0',
+        feat_stream_quality: serverSettings.feat_stream_quality !== '0',
+      });
+    }
+  }, [serverSettings]);
+
+  const handleToggle = (key: string, checked: boolean) => {
+    setFeatures(prev => ({ ...prev, [key]: checked }));
+  };
+
+  const handleSave = async (e: any) => {
+    e.preventDefault();
+    
+    // Save all features
+    const settingsToSave = Object.fromEntries(
+      Object.entries(features).map(([k, v]) => [k, v ? '1' : '0'])
+    );
+
+    const res = await fetchAdmin("/api/admin/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(settingsToSave)
+    });
+    
+    if (res.ok) {
+      showAlert({ title: "Success", message: "Advanced features saved!", style: "success" });
+      queryClient.invalidateQueries({ queryKey: ['settings'] });
+    } else {
+      showAlert({ title: "Error", message: "Failed to save settings", style: "danger" });
+    }
+  };
+
+  const toggleItems = [
+    { id: 'feat_chat', title: 'Chat Room', description: 'Enable real-time chat functionality.' },
+    { id: 'feat_shoutouts', title: 'Shoutout Widget', description: 'Enable direct interaction (fire, hearts, messages).' },
+    { id: 'feat_cinematic', title: 'Cinematic Visualizer', description: 'Enable the immersive audio visualizer mode.' },
+    { id: 'feat_pwa', title: 'PWA Install Prompt', description: 'Prompt users to install the web app to their home screen.' },
+    { id: 'feat_bookings', title: 'DJ Bookings (Agency)', description: 'Enable the DJ inquiry and booking system.' },
+    { id: 'feat_live_tools', title: 'Live Tools / Studio Cam', description: 'Enable the studio camera watch live tools.' },
+    { id: 'feat_stream_quality', title: 'Stream Quality Toggle', description: 'Show or hide the stream quality selector in the playbar.' },
+  ];
+
+  return (
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <h2 className="text-3xl font-display font-black uppercase text-neon-purple tracking-wider flex items-center">
+        <Ghost className="w-8 h-8 mr-3" /> Advanced Features
+      </h2>
+
+      <div className="bg-dark-bg/50 border border-white/10 rounded-2xl p-6">
+        <form onSubmit={handleSave} className="space-y-6">
+          <div className="grid gap-4">
+            {toggleItems.map(item => (
+              <div key={item.id} className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl">
+                <div>
+                  <h3 className="text-xl font-bold mb-1">{item.title}</h3>
+                  <p className="text-sm text-white/50">{item.description}</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer" 
+                    checked={features[item.id] || false} 
+                    onChange={e => handleToggle(item.id, e.target.checked)} 
+                  />
+                  <div className="w-14 h-7 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-neon-purple shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)]"></div>
+                </label>
+              </div>
+            ))}
+          </div>
+          <button type="submit" className="bg-neon-purple text-white font-bold py-3 px-8 rounded hover:bg-neon-blue transition-all">Save Changes</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function AdminBranding() {
   const [appName, setAppName] = useState("");
   const [appTitle, setAppTitle] = useState("");
   const [appTagline, setAppTagline] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
+  const [logoDark, setLogoDark] = useState("");
+  const [logoLight, setLogoLight] = useState("");
   const [primaryColor, setPrimaryColor] = useState("#b026ff");
   const [secondaryColor, setSecondaryColor] = useState("#00d2ff");
   const [fontSans, setFontSans] = useState("Inter");
@@ -217,6 +335,8 @@ function AdminBranding() {
     appTitle: "DEJAVU FM | THE SOUND OF LONDON",
     appTagline: "The Underground Worldwide",
     logo_url: "",
+    logo_dark: "",
+    logo_light: "",
     primary_color: "#b026ff",
     secondary_color: "#00d2ff",
     font_sans: "Inter",
@@ -240,6 +360,8 @@ function AdminBranding() {
       setAppTitle(d.app_title || DEFAULTS.appTitle);
       setAppTagline(d.app_tagline || DEFAULTS.appTagline);
       setLogoUrl(d.logo_url || DEFAULTS.logo_url);
+      setLogoDark(d.logo_dark || DEFAULTS.logo_dark);
+      setLogoLight(d.logo_light || DEFAULTS.logo_light);
       setPrimaryColor(d.primary_color || DEFAULTS.primary_color);
       setSecondaryColor(d.secondary_color || DEFAULTS.secondary_color);
       setFontSans(d.font_sans || DEFAULTS.font_sans);
@@ -265,6 +387,8 @@ function AdminBranding() {
           app_title: DEFAULTS.appTitle,
           app_tagline: DEFAULTS.appTagline,
           logo_url: DEFAULTS.logo_url,
+          logo_dark: DEFAULTS.logo_dark,
+          logo_light: DEFAULTS.logo_light,
           primary_color: DEFAULTS.primary_color,
           secondary_color: DEFAULTS.secondary_color,
           font_sans: DEFAULTS.font_sans,
@@ -277,6 +401,8 @@ function AdminBranding() {
         setAppTitle(DEFAULTS.appTitle);
         setAppTagline(DEFAULTS.appTagline);
         setLogoUrl(DEFAULTS.logo_url);
+        setLogoDark(DEFAULTS.logo_dark);
+        setLogoLight(DEFAULTS.logo_light);
         setPrimaryColor(DEFAULTS.primary_color);
         setSecondaryColor(DEFAULTS.secondary_color);
         setFontSans(DEFAULTS.font_sans);
@@ -299,6 +425,8 @@ function AdminBranding() {
           app_title: appTitle,
           app_tagline: appTagline,
           logo_url: logoUrl,
+          logo_dark: logoDark,
+          logo_light: logoLight,
           primary_color: primaryColor,
           secondary_color: secondaryColor,
           font_sans: fontSans,
@@ -319,17 +447,32 @@ function AdminBranding() {
       <h3 className="text-2xl font-bold border-b border-white/10 pb-4">Branding Settings</h3>
       
       <div className="bg-dark-bg/30 p-6 rounded-2xl border border-white/5 space-y-6">
-        <div className="flex items-center space-x-6">
-          <div className="w-20 h-20 bg-dark-bg border border-white/10 rounded-2xl flex items-center justify-center overflow-hidden">
-            {logoUrl ? (
-              <img src={logoUrl} alt="App Logo" className="max-w-full max-h-full object-contain" />
-            ) : (
-              <HomeIcon className="w-8 h-8 text-white/20" />
-            )}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-6 pb-6 border-b border-white/5">
+          <div className="flex items-center space-x-4">
+            <div className="flex flex-col items-center">
+              <div className="w-16 h-16 bg-white border border-black/10 rounded-xl flex items-center justify-center overflow-hidden shadow-sm">
+                {(logoLight || logoUrl) ? (
+                  <img src={logoLight || logoUrl} alt="Light Mode" className="max-w-full max-h-full object-contain p-2" />
+                ) : (
+                  <HomeIcon className="w-6 h-6 text-black/20" />
+                )}
+              </div>
+              <span className="text-[9px] font-black uppercase text-white/40 mt-2 tracking-widest">Light Mode</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="w-16 h-16 bg-dark-bg border border-white/10 rounded-xl flex items-center justify-center overflow-hidden">
+                {(logoDark || logoUrl) ? (
+                  <img src={logoDark || logoUrl} alt="Dark Mode" className="max-w-full max-h-full object-contain p-2" />
+                ) : (
+                  <HomeIcon className="w-6 h-6 text-white/10" />
+                )}
+              </div>
+              <span className="text-[9px] font-black uppercase text-white/40 mt-2 tracking-widest">Dark Mode</span>
+            </div>
           </div>
-          <div>
+          <div className="flex-1">
             <h4 className="text-xl font-bold uppercase tracking-tight" style={{ color: primaryColor, fontFamily: fontDisplay }}>{appName || "Your App Name"}</h4>
-            <p className="text-white/40 text-xs uppercase tracking-widest font-bold mt-1" style={{ fontFamily: fontSans }}>Live Radio Preview</p>
+            <p className="text-white/40 text-[10px] uppercase tracking-[0.3em] font-black mt-1" style={{ fontFamily: fontSans }}>{appTagline || "Live Radio Preview"}</p>
           </div>
         </div>
 
@@ -390,15 +533,40 @@ function AdminBranding() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs uppercase mb-1 text-white/50 font-bold">Logo URL (SVG or PNG preferred)</label>
-            <input 
-              value={logoUrl} 
-              onChange={e=>setLogoUrl(e.target.value)} 
-              className="w-full bg-dark-bg border border-white/10 rounded px-4 py-2 focus:border-neon-purple outline-none" 
-              placeholder="https://your-domain.com/logo.svg"
-            />
-            <p className="text-[10px] text-white/30 mt-1 italic">Leave empty to use text logo based on Application Name.</p>
+          <div className="space-y-4 pt-4 border-t border-white/5">
+            <div>
+              <label className="block text-xs uppercase mb-1 text-white/50 font-bold">Logo URL (Global / Fallback)</label>
+              <input 
+                value={logoUrl} 
+                onChange={e=>setLogoUrl(e.target.value)} 
+                className="w-full bg-dark-bg border border-white/10 rounded px-4 py-2 focus:border-neon-purple outline-none" 
+                placeholder="https://your-domain.com/logo.svg"
+              />
+              <p className="text-[10px] text-white/30 mt-1 italic">Base logo used if specific theme logos are missing.</p>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs uppercase mb-1 text-white/50 font-bold">Dark Mode Logo</label>
+                <input 
+                  value={logoDark} 
+                  onChange={e=>setLogoDark(e.target.value)} 
+                  className="w-full bg-dark-bg border border-white/10 rounded px-4 py-2 focus:border-neon-purple outline-none" 
+                  placeholder="https://your-domain.com/logo-dark.svg"
+                />
+                <p className="text-[10px] text-white/30 mt-1 italic">Optimized for dark backgrounds.</p>
+              </div>
+              <div>
+                <label className="block text-xs uppercase mb-1 text-white/50 font-bold">Light Mode Logo</label>
+                <input 
+                  value={logoLight} 
+                  onChange={e=>setLogoLight(e.target.value)} 
+                  className="w-full bg-dark-bg border border-white/10 rounded px-4 py-2 focus:border-neon-purple outline-none" 
+                  placeholder="https://your-domain.com/logo-light.svg"
+                />
+                <p className="text-[10px] text-white/30 mt-1 italic">Optimized for light backgrounds.</p>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
@@ -556,7 +724,19 @@ function AdminSettings() {
         </div>
         <div>
           <label className="block text-sm mb-1 text-white/70">Podomatic RSS Feed URL</label>
-          <input value={rss} onChange={e=>setRss(e.target.value)} className="w-full bg-dark-bg border border-white/10 rounded px-4 py-2" />
+          <div className="flex gap-2">
+            <input value={rss} onChange={e=>setRss(e.target.value)} className="flex-1 bg-dark-bg border border-white/10 rounded px-4 py-2" />
+            <button 
+              type="button" 
+              onClick={async () => {
+                const res = await fetchAdmin("/api/admin/podcasts/refresh", { method: "POST" });
+                if (res.ok) showAlert({ title: "Success", message: "Podcast cache cleared. It will re-import on next load.", style: "success" });
+              }}
+              className="px-4 py-2 bg-white/5 border border-white/10 rounded text-xs font-bold hover:bg-white/10 transition-colors"
+            >
+              Force Refresh
+            </button>
+          </div>
         </div>
         <button onClick={saveNode} className="bg-neon-purple px-6 py-2 rounded font-bold hover:bg-neon-blue transition-colors">Save Settings</button>
       </div>
@@ -1673,31 +1853,31 @@ function AdminShoutouts() {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between border-b border-white/10 pb-6">
-        <div>
-          <h3 className="text-4xl font-display font-black uppercase tracking-tighter italic">Station <span className="text-neon-purple not-italic">Interactions</span></h3>
-          <p className="text-white/40 text-sm mt-1 uppercase tracking-widest font-black">Live Listener Pulse</p>
+    <div className="space-y-6 sm:space-y-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/10 pb-6 gap-6 sm:gap-0">
+        <div className="text-center sm:text-left">
+          <h3 className="text-2xl sm:text-3xl md:text-4xl font-display font-black uppercase tracking-tighter italic leading-none">Station <span className="text-neon-purple not-italic">Interactions</span></h3>
+          <p className="text-white/40 text-[10px] sm:text-xs mt-2 uppercase tracking-[0.2em] font-black">Live Listener Pulse</p>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3 sm:gap-4 mt-2 sm:mt-0">
           <button 
             onClick={() => {
               if (confirm("Clear ALL interactions? This cannot be undone.")) {
                 fetchAdmin("/api/admin/shoutouts/all", { method: 'DELETE' }).then(() => load());
               }
             }}
-            className="px-4 py-2 bg-white/5 hover:bg-red-500/20 border border-white/10 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all"
+            className="flex-1 sm:flex-none px-4 py-2.5 bg-white/5 hover:bg-red-500/20 border border-white/10 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap"
           >
             Purge Deck
           </button>
-          <div className="flex items-center space-x-2 px-4 py-2 bg-neon-purple/20 border border-neon-purple/30 rounded-xl">
+          <div className="flex items-center space-x-2 px-4 py-2.5 bg-neon-purple/20 border border-neon-purple/30 rounded-xl flex-shrink-0">
             <div className="w-2 h-2 bg-neon-purple rounded-full animate-pulse"></div>
-            <span className="text-[10px] font-black uppercase text-neon-purple">Streaming Live</span>
+            <span className="text-[10px] font-black uppercase text-neon-purple tracking-widest whitespace-nowrap">Streaming Live</span>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {shoutouts.length === 0 && !loading && (
           <div className="col-span-full py-20 text-center glass-panel rounded-3xl border-dashed">
             <Ghost className="w-12 h-12 text-white/10 mx-auto mb-4" />
@@ -1712,7 +1892,7 @@ function AdminShoutouts() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9, x: 20 }}
-              className="glass-panel p-6 rounded-3xl border border-white/5 transition-all relative group overflow-hidden hover:border-neon-purple/30"
+              className="glass-panel p-4 sm:p-6 rounded-[2rem] border border-white/5 transition-all relative group overflow-hidden hover:border-neon-purple/30"
             >
               <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-[40px] pointer-events-none ${s.type === 'reaction' ? 'bg-neon-blue/10' : 'bg-neon-purple/10'}`}></div>
               
@@ -1804,73 +1984,82 @@ function AdminBookings() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h3 className="text-4xl font-display font-black uppercase tracking-tighter italic">Agency <span className="text-neon-blue not-italic">Desk</span></h3>
-        <p className="text-white/40 text-sm mt-1 uppercase tracking-widest font-black">Professional Inquiries & Bookings</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/10 pb-6 gap-6 sm:gap-0">
+        <div className="text-center sm:text-left">
+          <h3 className="text-2xl sm:text-3xl md:text-4xl font-display font-black uppercase tracking-tighter italic leading-none">Agency <span className="text-neon-blue not-italic">Desk</span></h3>
+          <p className="text-white/40 text-[10px] sm:text-xs mt-2 uppercase tracking-[0.2em] font-black">Professional Inquiries & Bookings</p>
+        </div>
+        <div className="flex items-center justify-center sm:justify-end">
+          <div className="flex items-center space-x-2 px-4 py-2.5 bg-neon-blue/20 border border-neon-blue/30 rounded-xl">
+            <div className="w-2 h-2 bg-neon-blue rounded-full animate-pulse"></div>
+            <span className="text-[10px] font-black uppercase text-neon-blue tracking-widest whitespace-nowrap">Agent Active</span>
+          </div>
+        </div>
       </div>
 
-      <div className="overflow-hidden rounded-3xl border border-white/5 bg-white/5">
+      {/* Desktop Table View */}
+      <div className="hidden md:block overflow-hidden rounded-[2rem] border border-white/5 bg-white/5">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[800px]">
+          <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-white/10 bg-white/5">
-                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-white/40">Artist</th>
-                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-white/40">Client</th>
-                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-white/40">Event Date</th>
-                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-white/40">Status</th>
-                <th className="p-4 text-[10px] font-black uppercase tracking-widest text-white/40 text-right">Actions</th>
+                <th className="p-6 text-[10px] font-black uppercase tracking-widest text-white/40">Artist</th>
+                <th className="p-6 text-[10px] font-black uppercase tracking-widest text-white/40">Client</th>
+                <th className="p-6 text-[10px] font-black uppercase tracking-widest text-white/40">Event Date</th>
+                <th className="p-6 text-[10px] font-black uppercase tracking-widest text-white/40">Status</th>
+                <th className="p-6 text-[10px] font-black uppercase tracking-widest text-white/40 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {bookings.map(b => (
                 <tr key={b.id} className="hover:bg-white/5 transition-colors group">
-                  <td className="p-4">
-                    <span className="font-bold text-neon-purple uppercase text-xs">{b.dj_name}</span>
+                  <td className="p-6">
+                    <span className="font-black text-neon-purple uppercase text-xs tracking-wider">{b.dj_name}</span>
                   </td>
-                  <td className="p-4">
+                  <td className="p-6">
                     <div className="flex flex-col">
-                      <span className="text-sm font-bold">{b.client_name}</span>
-                      <span className="text-[10px] text-white/40">{b.client_email}</span>
+                      <span className="text-sm font-bold tracking-tight">{b.client_name}</span>
+                      <span className="text-[10px] text-white/40 font-mono italic">{b.client_email}</span>
                     </div>
                   </td>
-                  <td className="p-4">
-                    <span className="text-xs font-mono">{b.event_date || 'TBD'}</span>
+                  <td className="p-6">
+                    <span className="text-xs font-mono text-white/60">{b.event_date || 'TBD'}</span>
                   </td>
-                  <td className="p-4">
-                    <span className={`text-[10px] font-black uppercase px-2 py-1 rounded inline-block ${
-                      b.status === 'confirmed' ? 'bg-green-500/20 text-green-400' :
-                      b.status === 'rejected' ? 'bg-red-500/20 text-red-400' :
-                      'bg-neon-blue/20 text-neon-blue animate-pulse'
+                  <td className="p-6">
+                    <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border ${
+                      b.status === 'confirmed' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                      b.status === 'rejected' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                      'bg-neon-blue/10 text-neon-blue border-neon-blue/20 animate-pulse'
                     }`}>
                       {b.status}
                     </span>
                   </td>
-                  <td className="p-4">
+                  <td className="p-6">
                     <div className="flex items-center justify-end space-x-2">
                       <button 
                         onClick={() => setSelectedBooking(b)} 
-                        className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/60 hover:text-white transition-all"
+                        className="p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/60 hover:text-white transition-all transform hover:scale-105"
                         title="View Details"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
                       <button 
                         onClick={() => updateStatus(b.id, 'confirmed')} 
-                        className="p-2 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 rounded-lg text-green-400/60 hover:text-green-400 transition-all"
+                        className="p-2.5 bg-green-500/5 hover:bg-green-500/10 border border-green-500/10 rounded-xl text-green-400/60 hover:text-green-400 transition-all transform hover:scale-105"
                         title="Confirm Booking"
                       >
                         <MessageSquare className="w-4 h-4" />
                       </button>
                       <button 
                         onClick={() => updateStatus(b.id, 'rejected')} 
-                        className="p-2 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20 rounded-lg text-yellow-500/60 hover:text-yellow-500 transition-all"
+                        className="p-2.5 bg-yellow-500/5 hover:bg-yellow-500/10 border border-yellow-500/10 rounded-xl text-yellow-500/60 hover:text-yellow-500 transition-all transform hover:scale-105"
                         title="Reject Booking"
                       >
                         <LogOut className="w-4 h-4 rotate-90" />
                       </button>
                       <button 
                         onClick={() => handleDelete(b.id, b.client_name)} 
-                        className="p-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-red-500/60 hover:text-red-500 transition-all"
+                        className="p-2.5 bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 rounded-xl text-red-500/60 hover:text-red-500 transition-all transform hover:scale-105"
                         title="Delete Booking"
                       >
                         <X className="w-4 h-4" />
@@ -1882,13 +2071,76 @@ function AdminBookings() {
             </tbody>
           </table>
         </div>
-        {bookings.length === 0 && (
-          <div className="py-20 text-center">
-            <Ghost className="w-12 h-12 text-white/5 mx-auto mb-4" />
-            <p className="text-white/20 uppercase font-black tracking-widest text-xs">Awaiting new opportunities...</p>
-          </div>
-        )}
       </div>
+
+      {/* Mobile Card View */}
+      <div className="md:hidden grid grid-cols-1 gap-4">
+        {bookings.map(b => (
+          <motion.div 
+            key={b.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass-panel p-5 rounded-[2rem] border border-white/5 space-y-4"
+          >
+            <div className="flex justify-between items-start">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-neon-purple block mb-1">Artist</span>
+                <p className="font-black text-lg text-white tracking-tighter italic">{b.dj_name}</p>
+              </div>
+              <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
+                b.status === 'confirmed' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                b.status === 'rejected' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                'bg-neon-blue/10 text-neon-blue border-neon-blue/20 animate-pulse'
+              }`}>
+                {b.status}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-white/30 block mb-1">Client</span>
+                <p className="text-xs font-bold truncate">{b.client_name}</p>
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-white/30 block mb-1">Date</span>
+                <p className="text-xs font-mono text-white/60">{b.event_date || 'TBD'}</p>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button 
+                onClick={() => setSelectedBooking(b)}
+                className="flex-1 py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center space-x-2"
+              >
+                <Eye className="w-3 h-3" />
+                <span>Details</span>
+              </button>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => updateStatus(b.id, 'confirmed')}
+                  className="p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-green-400 outline-none"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => handleDelete(b.id, b.client_name)}
+                  className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 outline-none"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {bookings.length === 0 && (
+        <div className="py-20 text-center glass-panel rounded-[3rem] border-dashed border-white/5">
+          <Ghost className="w-12 h-12 text-white/5 mx-auto mb-4" />
+          <p className="text-white/20 uppercase font-black tracking-widest text-xs">Awaiting new opportunities...</p>
+        </div>
+      )}
+
 
       {/* Booking Details Modal */}
       <AnimatePresence>
@@ -1921,54 +2173,56 @@ function AdminBookings() {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                   <div className="space-y-1">
                     <p className="text-[10px] font-black uppercase text-white/30 tracking-widest">Client Name</p>
-                    <p className="font-bold">{selectedBooking.client_name}</p>
+                    <p className="font-bold text-sm sm:text-base">{selectedBooking.client_name}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-[10px] font-black uppercase text-white/30 tracking-widest">Email Address</p>
-                    <p className="font-mono text-sm break-all">{selectedBooking.client_email}</p>
+                    <p className="font-mono text-xs sm:text-sm break-all">{selectedBooking.client_email}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-[10px] font-black uppercase text-white/30 tracking-widest">Event Date</p>
-                    <p className="font-mono text-sm">{selectedBooking.event_date || 'TBD'}</p>
+                    <p className="font-mono text-xs sm:text-sm">{selectedBooking.event_date || 'TBD'}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-[10px] font-black uppercase text-white/30 tracking-widest">Booking Status</p>
-                    <span className={`text-[10px] font-black uppercase px-2 py-1 rounded inline-block ${
-                      selectedBooking.status === 'confirmed' ? 'bg-green-500/20 text-green-400' :
-                      selectedBooking.status === 'rejected' ? 'bg-red-500/20 text-red-400' :
-                      'bg-neon-blue/20 text-neon-blue'
-                    }`}>
-                      {selectedBooking.status}
-                    </span>
+                    <div>
+                      <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded inline-block border ${
+                        selectedBooking.status === 'confirmed' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                        selectedBooking.status === 'rejected' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                        'bg-neon-blue/10 text-neon-blue border-neon-blue/20'
+                      }`}>
+                        {selectedBooking.status}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
                 <div className="pt-6 border-t border-white/5">
                   <p className="text-[10px] font-black uppercase text-white/30 tracking-widest mb-3">Inquiry Message</p>
-                  <div className="bg-white/5 p-4 rounded-2xl text-sm text-white/70 leading-relaxed italic border border-white/5">
+                  <div className="bg-white/5 p-4 rounded-2xl text-xs sm:text-sm text-white/70 leading-relaxed italic border border-white/5 overflow-y-auto max-h-[200px]">
                     "{selectedBooking.message || 'No additional message provided.'}"
                   </div>
                 </div>
 
-                <div className="flex space-x-3 pt-4">
+                <div className="flex flex-col sm:flex-row gap-3 pt-4">
                   <button 
                     onClick={() => { updateStatus(selectedBooking.id, 'confirmed'); setSelectedBooking(null); }}
-                    className="flex-1 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 py-3 rounded-xl text-green-400 text-xs font-black uppercase tracking-widest transition-all"
+                    className="flex-1 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 py-3 rounded-xl text-green-400 text-[10px] font-black uppercase tracking-widest transition-all"
                   >
                     Confirm
                   </button>
                   <button 
                     onClick={() => { updateStatus(selectedBooking.id, 'rejected'); setSelectedBooking(null); }}
-                    className="flex-1 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20 py-3 rounded-xl text-yellow-500 text-xs font-black uppercase tracking-widest transition-all"
+                    className="flex-1 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20 py-3 rounded-xl text-yellow-500 text-[10px] font-black uppercase tracking-widest transition-all"
                   >
                     Reject
                   </button>
                   <button 
                     onClick={() => { handleDelete(selectedBooking.id, selectedBooking.client_name); setSelectedBooking(null); }}
-                    className="flex-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 py-3 rounded-xl text-red-500 text-xs font-black uppercase tracking-widest transition-all"
+                    className="flex-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 py-3 rounded-xl text-red-500 text-[10px] font-black uppercase tracking-widest transition-all"
                   >
                     Delete
                   </button>

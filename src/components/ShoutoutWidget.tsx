@@ -94,23 +94,25 @@ export function ShoutoutWidget() {
         ))}
       </AnimatePresence>
 
-      <div className="pointer-events-auto flex items-center space-x-2">
-        <button 
-          onClick={() => sendReaction('🔥')}
-          className="w-12 h-12 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full flex items-center justify-center transition-all group active:scale-95"
-        >
-          <Flame className="w-5 h-5 text-orange-500 group-hover:scale-125 transition-transform" />
-        </button>
-        <button 
-          onClick={() => sendReaction('❤️')}
-          className="w-12 h-12 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full flex items-center justify-center transition-all group active:scale-95"
-        >
-          <Heart className="w-5 h-5 text-red-500 group-hover:scale-125 transition-transform" />
-        </button>
+      <div className="pointer-events-auto flex items-center group">
+        <div className="flex items-center space-x-2 overflow-hidden max-w-0 opacity-0 px-0 group-hover:max-w-[150px] group-hover:opacity-100 group-hover:px-2 group-hover:mr-2 transition-all duration-500 ease-out origin-right">
+          <button 
+            onClick={() => sendReaction('🔥')}
+            className="w-12 h-12 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full flex items-center justify-center shrink-0 transition-all hover:scale-110 active:scale-95"
+          >
+            <Flame className="w-5 h-5 text-orange-500 transition-transform" />
+          </button>
+          <button 
+            onClick={() => sendReaction('❤️')}
+            className="w-12 h-12 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full flex items-center justify-center shrink-0 transition-all hover:scale-110 active:scale-95"
+          >
+            <Heart className="w-5 h-5 text-red-500 transition-transform" />
+          </button>
+        </div>
         
         <button 
           onClick={() => setIsOpen(true)}
-          className="bg-white text-dark-bg p-4 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all group ring-8 ring-white/5"
+          className="bg-white text-dark-bg p-4 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all ring-8 ring-white/5 z-10 relative"
         >
           <MessageSquare className="w-6 h-6" />
         </button>

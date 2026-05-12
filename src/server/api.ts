@@ -428,29 +428,34 @@ apiRouter.delete("/admin/shoutouts/all", (req, res) => {
 });
 
 apiRouter.put("/admin/settings", (req, res) => {
-  const { stream_url, stream_url_low, stream_url_medium, stream_url_high, rss_feed_url, studio_video_url, app_name, logo_url, app_tagline, app_title, font_sans, font_display, is_on_air } = req.body;
   const updateStmt = db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value");
   
-  if (stream_url !== undefined) updateStmt.run("stream_url", stream_url);
-  if (stream_url_low !== undefined) updateStmt.run("stream_url_low", stream_url_low);
-  if (stream_url_medium !== undefined) updateStmt.run("stream_url_medium", stream_url_medium);
-  if (stream_url_high !== undefined) updateStmt.run("stream_url_high", stream_url_high);
-  if (is_on_air !== undefined) updateStmt.run("is_on_air", is_on_air ? '1' : '0');
+  const allowedKeys = [
+    "stream_url", "stream_url_low", "stream_url_medium", "stream_url_high", 
+    "rss_feed_url", "studio_video_url", "app_name", "logo_url", "app_tagline", 
+    "app_title", "font_sans", "font_display", "is_on_air", "primary_color", 
+    "secondary_color", "feat_chat", "feat_shoutouts", "feat_cinematic", 
+    "feat_pwa", "feat_bookings", "feat_live_tools", "feat_stream_quality"
+  ];
   
-  if (rss_feed_url !== undefined) {
-    updateStmt.run("rss_feed_url", rss_feed_url);
-    // Clear podcast cache when URL changes
-    clearPodcastCache();
+  for (const key of allowedKeys) {
+    if (req.body[key] !== undefined) {
+      if (key === 'is_on_air') {
+        updateStmt.run(key, req.body[key] ? '1' : '0');
+      } else {
+        updateStmt.run(key, req.body[key].toString());
+      }
+      if (key === 'rss_feed_url') {
+        clearPodcastCache();
+      }
+    }
   }
-  if (studio_video_url !== undefined) updateStmt.run("studio_video_url", studio_video_url);
-  if (app_name !== undefined) updateStmt.run("app_name", app_name);
-  if (app_tagline !== undefined) updateStmt.run("app_tagline", app_tagline);
-  if (app_title !== undefined) updateStmt.run("app_title", app_title);
-  if (font_sans !== undefined) updateStmt.run("font_sans", font_sans);
-  if (font_display !== undefined) updateStmt.run("font_display", font_display);
-  if (logo_url !== undefined) updateStmt.run("logo_url", logo_url);
-  if (req.body.primary_color !== undefined) updateStmt.run("primary_color", req.body.primary_color);
-  if (req.body.secondary_color !== undefined) updateStmt.run("secondary_color", req.body.secondary_color);
+
+  res.json({ success: true });
+});
+
+apiRouter.post("/admin/podcasts/refresh", (req, res) => {
+  clearPodcastCache();
   res.json({ success: true });
 });
 

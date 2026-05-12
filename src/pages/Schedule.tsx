@@ -77,9 +77,27 @@ export default function Schedule() {
     });
   }, [scheduleData]);
 
-  const now = new Date();
-  const currentDay = now.getDay();
-  const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+  const [timeCtx, setTimeCtx] = useState(() => {
+    const now = new Date();
+    return {
+      day: now.getDay(),
+      time: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+    };
+  });
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      setTimeCtx({
+        day: now.getDay(),
+        time: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+      });
+    }, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const currentDay = timeCtx.day;
+  const currentTime = timeCtx.time;
 
   return (
     <motion.div 
@@ -171,7 +189,12 @@ export default function Schedule() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {dayShows.map(show => {
-                  const isLive = isToday && show.local_start <= currentTime && show.local_end >= currentTime;
+                  const isCrossMidnight = show.local_start > show.local_end;
+                  const isTimeMatch = isCrossMidnight 
+                    ? (currentTime >= show.local_start || currentTime <= show.local_end)
+                    : (show.local_start <= currentTime && show.local_end >= currentTime);
+                  
+                  const isLive = isToday && isTimeMatch;
 
                   return (
                     <motion.div 

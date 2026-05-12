@@ -221,7 +221,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                     <button
                       type="submit"
                       disabled={authLoading}
-                      className="w-full bg-[#00c853] hover:bg-[#00e676] transition-all duration-500 text-white font-black uppercase tracking-[0.2em] py-4 rounded-2xl text-[11px] flex items-center justify-center disabled:opacity-50 shadow-[0_10px_20px_rgba(0,200,83,0.2)] hover:shadow-[0_10px_20px_rgba(0,230,118,0.3)] border-b-4 border-green-700 active:border-b-0 active:translate-y-1"
+                      className="w-full bg-gradient-to-r from-neon-purple to-neon-blue transition-all duration-500 text-white font-black uppercase tracking-[0.2em] py-4 rounded-2xl text-[11px] flex items-center justify-center disabled:opacity-50 shadow-[0_5px_20px_rgba(182,36,255,0.3)] hover:shadow-[0_10px_25px_rgba(182,36,255,0.5)] border-b-4 border-purple-900 active:border-b-0 active:translate-y-1"
                     >
                       {authLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (authMode === 'login' ? 'Enter Radio' : 'Register Now')}
                     </button>

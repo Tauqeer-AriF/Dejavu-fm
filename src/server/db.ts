@@ -99,6 +99,13 @@ export function initDb() {
       is_read INTEGER DEFAULT 0,
       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS podcast_cache (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      feed_json TEXT NOT NULL,
+      url TEXT NOT NULL,
+      timestamp INTEGER NOT NULL
+    );
   `);
   
   // Initialize hours
@@ -139,11 +146,20 @@ export function initDb() {
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('app_title', 'DEJAVU FM | THE SOUND OF LONDON');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('app_tagline', 'The Underground Worldwide');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('font_sans', 'Inter');
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('font_display', 'Inter');
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('logo_url', '');
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('primary_color', '#b026ff');
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('secondary_color', '#00d2ff');
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('is_on_air', '0');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('font_display', 'Inter');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('logo_url', '');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('logo_dark', '');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('logo_light', '');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('primary_color', '#b026ff');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('secondary_color', '#00d2ff');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('is_on_air', '0');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_chat', '1');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_shoutouts', '1');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_cinematic', '1');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_pwa', '1');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_bookings', '1');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_live_tools', '1');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_stream_quality', '1');
   }
 
   const countDjs = db.prepare('SELECT COUNT(*) as count FROM djs').get() as {count: number};
