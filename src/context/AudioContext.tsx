@@ -25,6 +25,10 @@ interface AudioStore {
     djName: string;
     showName: string;
     djPhoto?: string;
+    djBio?: string;
+    instagram?: string;
+    soundcloud?: string;
+    mixcloud?: string;
   } | null;
   isCinematicOpen: boolean;
   
@@ -34,7 +38,15 @@ interface AudioStore {
   setStreamUrl: (val: string) => void;
   setQuality: (quality: AudioQuality) => void;
   setQualityUrls: (urls: Record<AudioQuality, string>) => void;
-  setOnAirInfo: (info: { djName: string; showName: string; djPhoto?: string; } | null) => void;
+  setOnAirInfo: (info: { 
+    djName: string; 
+    showName: string; 
+    djPhoto?: string;
+    djBio?: string;
+    instagram?: string;
+    soundcloud?: string;
+    mixcloud?: string;
+  } | null) => void;
   toggleCinematic: () => void;
   getAnalyser: () => AnalyserNode | null;
 }

@@ -14,6 +14,7 @@ import { Toaster } from 'sonner';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
+import { convertToLocalTime } from './lib/timeUtils';
 
 const queryClient = new QueryClient();
 
@@ -323,12 +324,16 @@ function MainLayout() {
       const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
       const onAir = schedule.find((s: any) => {
-        if (s.day_of_week !== currentDay) return false;
-        if (s.start_time <= s.end_time) {
-          return s.start_time <= currentTime && s.end_time >= currentTime;
+        const start = convertToLocalTime(s.day_of_week, s.start_time);
+        const end = convertToLocalTime(s.day_of_week, s.end_time);
+        
+        if (start.dayOfWeek !== currentDay) return false;
+        
+        if (start.timeStr <= end.timeStr) {
+          return start.timeStr <= currentTime && end.timeStr >= currentTime;
         } else {
-          // Cross-midnight show on the same starting day
-          return currentTime >= s.start_time || currentTime <= s.end_time;
+          // Cross-midnight show
+          return currentTime >= start.timeStr || currentTime <= end.timeStr;
         }
       });
 
@@ -336,7 +341,11 @@ function MainLayout() {
         setOnAirInfo({
           djName: onAir.dj_name,
           showName: onAir.show_name,
-          djPhoto: onAir.dj_photo
+          djPhoto: onAir.dj_photo,
+          djBio: onAir.dj_bio,
+          instagram: onAir.instagram,
+          soundcloud: onAir.soundcloud,
+          mixcloud: onAir.mixcloud
         });
         setCurrentTrack(`${onAir.dj_name} - ${onAir.show_name}`);
       } else {

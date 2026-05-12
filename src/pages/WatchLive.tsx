@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { io, Socket } from 'socket.io-client';
-import { Send, User, LogOut, Loader2 } from 'lucide-react';
+import { Send, User, LogOut, Loader2, Instagram, Music2, Globe, Radio } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
+import { useAudio } from '../context/AudioContext';
 
 interface ChatMessage {
   id: string;
@@ -107,6 +108,8 @@ export default function WatchLive() {
     queryFn: () => fetch('/api/public/settings').then(res => res.json()),
     refetchInterval: 3000,
   });
+
+  const { onAirInfo } = useAudio();
 
   const studioVideoUrl = settings?.studio_video_url || studioVideoUrlState;
   const featChat = settings?.feat_chat !== '0';
@@ -266,11 +269,47 @@ export default function WatchLive() {
             )}
           </AnimatePresence>
         </div>
-        <div className="p-4 md:p-6 bg-dark-bg/80 border-t border-white/5 flex items-center justify-between">
-           <div>
-             <h2 className="text-xl md:text-2xl font-bold">Dejavu FM</h2>
-             <p className="text-white/50 text-xs md:text-sm mt-1">Watch the DJs at work from our London HQ</p>
+        <div className="p-4 md:p-6 bg-dark-bg/80 border-t border-white/5 flex flex-col md:flex-row items-center gap-6">
+           {onAirInfo?.djPhoto && (
+             <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl overflow-hidden shadow-2xl border-2 border-neon-purple/30 shrink-0">
+               <img src={onAirInfo.djPhoto} alt={onAirInfo.djName} className="w-full h-full object-cover" />
+             </div>
+           )}
+           <div className="flex-1 text-center md:text-left">
+             <div className="flex items-center justify-center md:justify-start gap-3 mb-1">
+               <h2 className="text-xl md:text-3xl font-black uppercase tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue italic">
+                 {onAirInfo?.djName || "DEJAVU FM"}
+               </h2>
+               <div className="px-2 py-0.5 bg-red-500 rounded flex items-center space-x-1 shadow-[0_0_15px_rgba(239,68,68,0.3)] shrink-0">
+                  <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
+                  <span className="text-[8px] font-black uppercase text-white tracking-widest leading-none">Live</span>
+               </div>
+             </div>
+             <h3 className="text-white/90 font-bold text-sm md:text-lg mb-2">{onAirInfo?.showName || "Global Underground Stream"}</h3>
+             {onAirInfo?.djBio && (
+               <p className="text-white/50 text-xs md:text-sm line-clamp-2 md:line-clamp-none max-w-2xl">{onAirInfo.djBio}</p>
+             )}
            </div>
+           
+           {(onAirInfo?.instagram || onAirInfo?.soundcloud || onAirInfo?.mixcloud) && (
+             <div className="flex gap-4 shrink-0">
+               {onAirInfo.instagram && (
+                 <a href={`https://instagram.com/${onAirInfo.instagram}`} target="_blank" rel="noopener noreferrer" className="p-2.5 rounded-xl bg-white/5 hover:bg-neon-purple/20 border border-white/5 hover:border-neon-purple/50 transition-all text-white/50 hover:text-white">
+                   <Instagram className="w-5 h-5" />
+                 </a>
+               )}
+               {onAirInfo.soundcloud && (
+                 <a href={`https://soundcloud.com/${onAirInfo.soundcloud}`} target="_blank" rel="noopener noreferrer" className="p-2.5 rounded-xl bg-white/5 hover:bg-neon-blue/20 border border-white/5 hover:border-neon-blue/50 transition-all text-white/50 hover:text-white">
+                   <Music2 className="w-5 h-5" />
+                 </a>
+               )}
+               {onAirInfo.mixcloud && (
+                 <a href={`https://mixcloud.com/${onAirInfo.mixcloud}`} target="_blank" rel="noopener noreferrer" className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/30 transition-all text-white/50 hover:text-white">
+                   <Globe className="w-5 h-5" />
+                 </a>
+               )}
+             </div>
+           )}
         </div>
       </div>
 

@@ -43,7 +43,8 @@ apiRouter.get("/public/djs", (req, res) => {
 
 apiRouter.get("/public/schedule", (req, res) => {
   const schedule = db.prepare(`
-    SELECT s.*, d.name as dj_name, d.image_url as dj_photo 
+    SELECT s.*, d.name as dj_name, d.image_url as dj_photo, d.bio as dj_bio,
+           d.instagram, d.soundcloud, d.mixcloud
     FROM schedule s
     JOIN djs d ON s.dj_id = d.id
     ORDER BY s.day_of_week, s.start_time
