@@ -1,7 +1,17 @@
 import Database from 'better-sqlite3';
 import bcrypt from 'bcryptjs';
+import path from 'path';
+import fs from 'fs';
 
-export const db = new Database('dejavufm.db', { verbose: console.log });
+const dbPath = process.env.DATABASE_PATH || 'dejavufm.db';
+
+// Ensure the directory exists if a path is provided
+const dbDir = path.dirname(dbPath);
+if (dbDir !== '.' && !fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+
+export const db = new Database(dbPath, { verbose: console.log });
 db.pragma('journal_mode = WAL');
 db.pragma('busy_timeout = 5000');
 db.pragma('synchronous = NORMAL');
