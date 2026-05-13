@@ -24,7 +24,8 @@ export default function DJs() {
 
   const { data: djs, isLoading } = useQuery<DJ[]>({
     queryKey: ['djs'],
-    queryFn: () => fetch('/api/public/djs').then(res => res.json())
+    queryFn: () => fetch('/api/public/djs').then(res => res.json()),
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   const { logoUrl, isLightMode, resolveDjImage } = useLogo();

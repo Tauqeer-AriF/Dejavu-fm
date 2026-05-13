@@ -30,7 +30,8 @@ export default function PodcastsPage() {
 
   const { data: feed, isLoading: loading } = useQuery({
     queryKey: ['podcasts'],
-    queryFn: () => fetch("/api/public/podcasts").then(res => res.json())
+    queryFn: () => fetch("/api/public/podcasts").then(res => res.json()),
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   const handleAiSearch = async (e: React.FormEvent) => {

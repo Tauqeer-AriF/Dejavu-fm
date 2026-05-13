@@ -286,6 +286,23 @@ function MainLayout() {
     refetchInterval: 3000,
   });
 
+  // Prefetch critical data for faster navigation
+  useEffect(() => {
+    // Prefetch podcasts
+    queryClient.prefetchQuery({
+      queryKey: ['podcasts'],
+      queryFn: () => fetch("/api/public/podcasts").then(res => res.json()),
+      staleTime: 1000 * 60 * 5, // 5 minutes
+    });
+    
+    // Prefetch DJs
+    queryClient.prefetchQuery({
+      queryKey: ['djs'],
+      queryFn: () => fetch("/api/public/djs").then(res => res.json()),
+      staleTime: 1000 * 60 * 5, // 5 minutes
+    });
+  }, []);
+
   const appName = settings?.app_name || "DejavuFM";
 
   const hasTracked = useRef(false);

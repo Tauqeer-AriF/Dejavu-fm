@@ -14,7 +14,8 @@ export default function DJDetail() {
 
   const { data: djs, isLoading } = useQuery<any[]>({
     queryKey: ['djs'],
-    queryFn: () => fetch('/api/public/djs').then(res => res.json())
+    queryFn: () => fetch('/api/public/djs').then(res => res.json()),
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   const [bookingForm, setBookingForm] = useState({

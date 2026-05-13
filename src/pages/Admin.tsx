@@ -61,34 +61,52 @@ export default function Admin() {
   };
 
   return (
-    <div className="glass-panel min-h-[80vh] rounded-3xl flex flex-col md:flex-row overflow-hidden shadow-2xl relative z-10">
-      <AdminSidebar onLogout={handleLogout} />
-      <div className="flex-1 p-4 md:p-8 lg:p-12 overflow-y-auto">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className="min-h-full"
-          >
-            <Routes location={location}>
-              <Route path="/" element={<AdminAnalytics />} />
-              <Route path="/live-tools" element={<AdminLiveTools />} />
-              <Route path="/settings" element={<AdminSettings />} />
-              <Route path="/advanced" element={<AdminAdvanced />} />
-              <Route path="/djs" element={<AdminDJs />} />
-              <Route path="/shoutouts" element={<AdminShoutouts />} />
-              <Route path="/bookings" element={<AdminBookings />} />
-              <Route path="/schedule" element={<AdminSchedule />} />
-              <Route path="/branding" element={<AdminBranding />} />
-              <Route path="/users" element={<AdminUsers />} />
-              <Route path="/chat-users" element={<AdminChatUsers />} />
-              <Route path="/profile" element={<AdminProfile />} />
-            </Routes>
-          </motion.div>
-        </AnimatePresence>
+    <div className="max-w-7xl mx-auto px-4 py-8 md:py-16">
+      <div className="mb-10 md:mb-16">
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <h1 className="text-5xl md:text-7xl lg:text-8xl font-display font-black uppercase tracking-tighter text-white leading-none">
+            Creator <span className="text-neon-purple">Dashboard</span>
+          </h1>
+          <div className="flex items-center space-x-4 mt-4">
+            <div className="h-px w-12 bg-neon-purple"></div>
+            <p className="text-white/40 text-xs md:text-sm font-mono uppercase tracking-[0.3em]">Control center for DejavuFM station</p>
+          </div>
+        </motion.div>
+      </div>
+
+      <div className="glass-panel min-h-[80vh] rounded-3xl flex flex-col md:flex-row overflow-hidden shadow-2xl relative z-10">
+        <AdminSidebar onLogout={handleLogout} />
+        <div className="flex-1 p-4 md:p-8 lg:p-12 overflow-y-auto">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="min-h-full"
+            >
+              <Routes location={location}>
+                <Route path="/" element={<AdminAnalytics />} />
+                <Route path="/live-tools" element={<AdminLiveTools />} />
+                <Route path="/settings" element={<AdminSettings />} />
+                <Route path="/advanced" element={<AdminAdvanced />} />
+                <Route path="/djs" element={<AdminDJs />} />
+                <Route path="/shoutouts" element={<AdminShoutouts />} />
+                <Route path="/bookings" element={<AdminBookings />} />
+                <Route path="/schedule" element={<AdminSchedule />} />
+                <Route path="/branding" element={<AdminBranding />} />
+                <Route path="/users" element={<AdminUsers />} />
+                <Route path="/chat-users" element={<AdminChatUsers />} />
+                <Route path="/profile" element={<AdminProfile />} />
+              </Routes>
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );
