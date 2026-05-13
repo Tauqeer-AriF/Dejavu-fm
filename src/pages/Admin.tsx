@@ -1152,8 +1152,8 @@ function AdminUsers() {
 
   const load = () => {
     fetchAdmin("/api/admin/users").then(r=>r.json()).then(setUsers);
-    fetch("/api/public/settings").then(r=>r.json()).then(d => {
-      setAdminSecret(d.admin_secret || "Admin");
+    fetchAdmin("/api/admin/settings/secret").then(r=>r.json()).then(d => {
+      setAdminSecret(d.secret || "Admin");
     });
   };
 

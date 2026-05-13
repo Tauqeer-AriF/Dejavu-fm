@@ -39,6 +39,11 @@ apiRouter.post("/public/admin-challenge/verify", (req, res) => {
 });
 
 // Admin only update
+apiRouter.get("/admin/settings/secret", authMiddleware, (req, res) => {
+  const secretRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_secret') as any;
+  res.json({ secret: secretRow?.value || "Admin" });
+});
+
 apiRouter.post("/admin/settings/secret", authMiddleware, (req, res) => {
   const { secret } = req.body;
   if (!secret) return res.status(400).json({ error: "Secret required" });

@@ -174,18 +174,24 @@ export function initDb() {
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_stream_quality', '1');
   }
 
-  // Ensure admin secret exists - forcing to 'Admin' if not set or if user is having trouble
+  // Ensure admin secret exists - prioritizing ENV var if set
+  const envSecret = process.env.ADMIN_SECRET;
   try {
     const currentSecret = db.prepare("SELECT value FROM settings WHERE key = ?").get('admin_secret') as any;
-    if (!currentSecret || !currentSecret.value || currentSecret.value === "") {
-      console.log("[DB] Initializing admin_secret to 'Admin'");
+    
+    if (envSecret) {
+      console.log(`[DB] Enforcing ADMIN_SECRET from environment: "${envSecret}"`);
+      db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run('admin_secret', envSecret);
+    } else if (!currentSecret || !currentSecret.value || currentSecret.value.toString().trim() === "") {
+      console.log("[DB] No admin_secret found, initializing to 'Admin'");
       db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run('admin_secret', 'Admin');
     } else {
-      console.log(`[DB] Current secret door answer: "${currentSecret.value}"`);
+      console.log(`[DB] Current secret door answer active in database.`);
     }
   } catch (err) {
-    console.error("[DB] Failed to check admin_secret", err);
-    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run('admin_secret', 'Admin');
+    const fallback = envSecret || 'Admin';
+    console.error("[DB] Failed to check admin_secret, falling back to:", fallback, err);
+    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run('admin_secret', fallback);
   }
 
   const countDjs = db.prepare('SELECT COUNT(*) as count FROM djs').get() as {count: number};
