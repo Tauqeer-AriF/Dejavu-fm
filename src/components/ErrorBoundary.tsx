@@ -45,7 +45,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
       );
     }
 
-    // @ts-ignore
-    return this.props.children;
+    // Explicitly return null if no children to avoid React 19 render issues
+    return this.props.children || null;
   }
 }

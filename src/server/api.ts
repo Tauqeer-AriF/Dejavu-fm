@@ -9,6 +9,12 @@ import rateLimit from "express-rate-limit";
 
 export const apiRouter = Router();
 
+// Simple request logger to help diagnose if the server is alive
+apiRouter.use((req, res, next) => {
+  console.log(`[API] ${req.method} ${req.url} - IP: ${req.ip}`);
+  next();
+});
+
 apiRouter.get("/public/admin-challenge", (req, res) => {
   const secret = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_secret') as any;
   // We don't send the secret, we just check it via POST. 
@@ -18,10 +24,16 @@ apiRouter.get("/public/admin-challenge", (req, res) => {
 
 apiRouter.post("/public/admin-challenge/verify", (req, res) => {
   const { answer } = req.body;
-  const secret = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_secret') as any;
-  console.log(`[Admin Challenge] Verifying: "${answer}" against stored: "${secret?.value}"`);
+  const secretRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_secret') as any;
+  const storedSecret = secretRow?.value || "";
   
-  if (secret && answer && answer.toLowerCase().trim() === secret.value.toLowerCase().trim()) {
+  const normalizedAnswer = (answer || "").toLowerCase().trim();
+  const normalizedSecret = storedSecret.toLowerCase().trim();
+  const isMatch = normalizedAnswer === normalizedSecret;
+  
+  console.log(`[Admin Challenge] REQ: "${answer}" | STORED: "${storedSecret}" | MATCH: ${isMatch}`);
+  
+  if (isMatch) {
     res.json({ success: true });
   } else {
     res.status(401).json({ error: "Incorrect answer" });
@@ -46,7 +58,9 @@ const ACTUAL_SECRET = JWT_SECRET || "dev_only_secret_123456789";
 
 // Check Auth Middleware
 function authMiddleware(req: any, res: any, next: any) {
-  const token = req.cookies.admin_token;
+  const authHeader = req.headers.authorization;
+  const token = req.cookies.admin_token || (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null);
+  
   if (!token) return res.status(401).json({ error: "Unauthorized" });
 
   try {
@@ -59,11 +73,14 @@ function authMiddleware(req: any, res: any, next: any) {
 }
 
 // Specific Limiters for high-value targets
+const authLimiter = (req: Request, res: Response, next: NextFunction) => next(); // Disabled for diagnostics
+/*
 const authLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 20, // Limit to 20 attempts per hour
   message: { error: "Too many login attempts. Please try again in an hour." }
 });
+*/
 
 const shoutoutLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
@@ -191,24 +208,34 @@ async function trackGeo(req: any) {
     const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
     
     if (ip && ip !== '::1' && ip !== '127.0.0.1') {
-      const resp = await fetch(`http://ip-api.com/json/${ip}`);
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data.status === 'success') {
-          // Legacy counters
-          db.prepare(`
-            INSERT INTO geo_stats (country_code, country_name, count)
-            VALUES (?, ?, 1)
-            ON CONFLICT(country_code) DO UPDATE SET count = geo_stats.count + 1
-          `).run(data.countryCode, data.country);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout for geo lookup
+      
+      try {
+        const resp = await fetch(`http://ip-api.com/json/${ip}`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.status === 'success') {
+            // Legacy counters
+            db.prepare(`
+              INSERT INTO geo_stats (country_code, country_name, count)
+              VALUES (?, ?, 1)
+              ON CONFLICT(country_code) DO UPDATE SET count = geo_stats.count + 1
+            `).run(data.countryCode, data.country);
 
-          // New event log
-          db.prepare("INSERT INTO analytics_events (category, event_key) VALUES (?, ?)").run('geo_view', data.country);
+            // New event log
+            db.prepare("INSERT INTO analytics_events (category, event_key) VALUES (?, ?)").run('geo_view', data.country);
+          }
         }
+      } catch (innerErr) {
+        clearTimeout(timeoutId);
+        console.warn(`[Geo] Lookup failed for ${ip}: ${innerErr instanceof Error ? innerErr.message : 'timeout'}`);
       }
     }
   } catch (e) {
-    console.error("Geo tracking failed:", e);
+    console.error("Geo tracking wrapper failed:", e);
   }
 }
 
@@ -267,33 +294,42 @@ apiRouter.post("/public/analytics/podcast-play", (req: any, res: any) => {
 
 apiRouter.post("/admin/login", authLimiter, (req, res) => {
   const { username, password } = req.body;
-  console.log(`[Admin Login] Attempt for user: "${username}"`);
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  console.log(`[Admin Login] ATTEMPT | User: "${username}" | IP: ${ip}`);
   
   if (!username || !password) {
+    console.warn(`[Admin Login] FAILED | Missing credentials | IP: ${ip}`);
     return res.status(400).json({ error: "Username and password are required" });
   }
-
+  
   const admin = db.prepare("SELECT * FROM admins WHERE username = ?").get(username) as any;
   
   if (admin) {
     const isMatched = bcrypt.compareSync(password, admin.password_hash);
+    console.log(`[Admin Login] INFO | User found | Password Match: ${isMatched}`);
+    
     if (isMatched) {
-      console.log(`[Admin Login] Success for user: ${username}`);
+      console.log(`[Admin Login] SUCCESS | User: ${username} | IP: ${ip}`);
       const token = jwt.sign({ username: admin.username }, ACTUAL_SECRET, { expiresIn: "1d" });
-      res.cookie("admin_token", token, { httpOnly: true, secure: true, sameSite: "none" });
-      return res.json({ success: true });
+      res.cookie("admin_token", token, { 
+        httpOnly: true, 
+        secure: true, 
+        sameSite: "none",
+        path: '/' 
+      });
+      return res.json({ success: true, token });
     } else {
-      console.warn(`[Admin Login] Failed: Invalid password for user: ${username}`);
+      console.warn(`[Admin Login] FAILED | Invalid password | User: ${username} | IP: ${ip}`);
     }
   } else {
-    console.warn(`[Admin Login] Failed: User not found: ${username}`);
+    console.warn(`[Admin Login] FAILED | User not found | User: "${username}" | IP: ${ip}`);
   }
   
   res.status(401).json({ error: "Invalid credentials" });
 });
 
 apiRouter.post("/admin/logout", (req, res) => {
-  res.clearCookie("admin_token", { sameSite: "none", secure: true });
+  res.clearCookie("admin_token", { sameSite: "none", secure: true, path: '/' });
   res.json({ success: true });
 });
 

@@ -3,8 +3,8 @@ import { createServer as createViteServer } from "vite";
 import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
-import { apiRouter } from "./src/server/api.js";
-import { initDb, db } from "./src/server/db.js";
+import { apiRouter } from "./src/server/api.ts";
+import { initDb, db } from "./src/server/db.ts";
 import http from "http";
 import { Server as SocketIOServer } from "socket.io";
 import crypto from "crypto";
@@ -24,48 +24,50 @@ try {
 }
 
 import fs from "fs";
-import { getPodcastFeed } from "./src/server/utils.js";
+import { getPodcastFeed } from "./src/server/utils.ts";
 
 async function startServer() {
   const app = express();
   
-  // Necessary for rate limiting behind the proxy in this environment
-  app.set('trust proxy', 1);
+  // High-level request logging for diagnostics
+  app.use((req, res, next) => {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] ${req.method} ${req.url} - IP: ${req.ip} - UA: ${req.headers['user-agent']?.substring(0, 50)}`);
+    next();
+  });
 
-  const PORT = Number(process.env.PORT) || 3000;
+  // Trust all proxies for dynamic environments
+  app.set('trust proxy', true);
+
+  const PORT = 3000;
   const server = http.createServer(app);
   
   // Security Headers
   app.use(helmet({
-    contentSecurityPolicy: false, // Disabled for dev flexibility, can be tightened for prod
+    contentSecurityPolicy: false, 
     crossOriginEmbedderPolicy: false,
   }));
 
-  // General Rate Limiting
-  const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per windowMs
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: "Too many requests, please try again later." }
-  });
-  
-  // Apply the rate limiter to all requests
-  app.use("/api/", limiter);
-
   const io = new SocketIOServer(server, {
     cors: { 
-      origin: process.env.NODE_ENV === 'production' ? false : '*', // Strict in prod
-      methods: ["GET", "POST"]
+      origin: true, // Allow same origin and common proxy setups
+      methods: ["GET", "POST"],
+      credentials: true
     }
   });
   app.set('io', io);
 
   // Helper for meta tag injection
   async function getDynamicHtml(reqPath: string) {
-    const indexPath = process.env.NODE_ENV === "production" 
+    const isProduction = process.env.NODE_ENV === "production" || fs.existsSync(path.join(process.cwd(), "dist", "index.html"));
+    const indexPath = isProduction
       ? path.join(process.cwd(), "dist", "index.html")
       : path.join(process.cwd(), "index.html");
+    
+    if (!fs.existsSync(indexPath)) {
+      console.warn(`[getDynamicHtml] Index file not found at ${indexPath}`);
+      return "<html><body>App loading... Please refresh.</body></html>";
+    }
     
     let html = fs.readFileSync(indexPath, "utf8");
     
@@ -160,9 +162,15 @@ async function startServer() {
 
   // Periodically broadcast counts to ensure all clients are synced
   setInterval(() => {
-    const count = io.sockets.sockets.size;
-    io.emit('onlineCount', count);
-    io.emit('stats_update', { realtimeListeners: count });
+    if (io) {
+      try {
+        const count = io.sockets.sockets.size;
+        io.emit('onlineCount', count);
+        io.emit('stats_update', { realtimeListeners: count });
+      } catch (e) {
+        console.error("[Socket.IO Interval Error]", e);
+      }
+    }
   }, 30000);
 
   // Initialize DB
@@ -216,7 +224,9 @@ async function startServer() {
   };
 
   // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+  const isProduction = process.env.NODE_ENV === "production" || fs.existsSync(path.join(process.cwd(), "dist", "index.html"));
+
+  if (!isProduction) {
     // In dev, only serve dynamic HTML to bots to avoid breaking Vite client
     app.get(dynamicPreviewRoutes, async (req, res, next) => {
       const ua = req.headers["user-agent"] || "";
@@ -250,15 +260,35 @@ async function startServer() {
     // Production static serving
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath, { index: false })); // don't serve index.html automatically
+    
     app.get("*", async (req, res) => {
+      // If the request looks like an asset (has a dot) and was not served by express.static
+      // We check if it is explicitly in src/ to handle cases where it leaked
+      if (req.path.startsWith('/src/') || (req.path.includes('.') && !req.path.endsWith('.html'))) {
+        console.warn(`[404] Resource not found: ${req.path}`);
+        return res.status(404).json({ error: "Not Found", path: req.path });
+      }
+
       try {
         const html = await getDynamicHtml(req.path);
         res.send(html);
       } catch (e) {
-        res.sendFile(path.join(distPath, "index.html"));
+        if (fs.existsSync(path.join(distPath, "index.html"))) {
+          res.sendFile(path.join(distPath, "index.html"));
+        } else {
+          res.status(500).send("App not built correctly");
+        }
       }
     });
   }
+
+  // Global Error Handler for final catch
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error(`[CRITICAL ERROR] ${req.method} ${req.url}:`, err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Internal Server Error", message: err.message });
+    }
+  });
 
   server.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);

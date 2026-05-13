@@ -207,7 +207,7 @@ export default function DJDetail() {
                     className="w-full bg-neon-purple hover:bg-neon-purple/80 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl shadow-neon-purple/20 flex items-center justify-center space-x-3 transition-all disabled:opacity-50"
                   >
                     {bookingStatus === 'sending' ? (
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <div className="w-5 h-5 border-2 border-white rounded-full animate-spin"></div>
                     ) : (
                       <>
                         <Send className="w-5 h-5" />

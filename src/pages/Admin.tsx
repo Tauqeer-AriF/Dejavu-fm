@@ -22,7 +22,12 @@ import {
 } from 'recharts';
 
 const fetchAdmin = (url: string, options: RequestInit = {}) => {
-  return fetch(url, { ...options, credentials: "include" });
+  const token = localStorage.getItem('admin_token');
+  const headers = { 
+    ...options.headers, 
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}) 
+  };
+  return fetch(url, { ...options, headers, credentials: "include" });
 };
 
 export default function Admin() {
@@ -45,7 +50,7 @@ export default function Admin() {
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="w-8 h-8 border-4 border-neon-purple border-t-transparent rounded-full animate-spin"></div>
+      <div className="w-8 h-8 border-4 border-neon-purple rounded-full animate-spin shadow-[0_0_15px_rgba(176,38,255,0.5)]"></div>
     </div>
   );
 
@@ -55,6 +60,7 @@ export default function Admin() {
 
   const handleLogout = () => {
     fetchAdmin("/api/admin/logout", { method: 'POST' }).then(() => {
+      localStorage.removeItem('admin_token');
       setIsLogged(false);
       navigate("/admin");
     });
@@ -127,6 +133,10 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
       body: JSON.stringify({ username: user, password: pass })
     });
     if (res.ok) {
+      const data = await res.json();
+      if (data.token) {
+        localStorage.setItem('admin_token', data.token);
+      }
       setSuccess(true);
       setTimeout(() => onLogin(), 1500);
     } else {

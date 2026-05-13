@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, FormEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Shield, ArrowRight, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -21,7 +21,7 @@ export function SecretAdminPrompt({ isOpen, onClose }: SecretAdminPromptProps) {
     }
   }, [isOpen]);
 
-  const handleSubmit = async (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: FormEvent) => {
     e?.preventDefault();
     if (!answer.trim()) return;
 

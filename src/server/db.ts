@@ -11,7 +11,7 @@ if (dbDir !== '.' && !fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
 }
 
-export const db = new Database(dbPath, { verbose: console.log });
+export const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('busy_timeout = 5000');
 db.pragma('synchronous = NORMAL');
@@ -89,6 +89,8 @@ export function initDb() {
     );
     CREATE INDEX IF NOT EXISTS idx_analytics_timestamp ON analytics_events(timestamp);
     CREATE INDEX IF NOT EXISTS idx_analytics_category ON analytics_events(category);
+    CREATE INDEX IF NOT EXISTS idx_analytics_cat_time ON analytics_events(category, timestamp);
+    CREATE INDEX IF NOT EXISTS idx_analytics_key_time ON analytics_events(category, event_key, timestamp);
 
     CREATE TABLE IF NOT EXISTS bookings (
       id TEXT PRIMARY KEY,
@@ -172,8 +174,19 @@ export function initDb() {
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_stream_quality', '1');
   }
 
-  // Ensure admin secret exists
-  db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING").run('admin_secret', 'Admin');
+  // Ensure admin secret exists - forcing to 'Admin' if not set or if user is having trouble
+  try {
+    const currentSecret = db.prepare("SELECT value FROM settings WHERE key = ?").get('admin_secret') as any;
+    if (!currentSecret || !currentSecret.value || currentSecret.value === "") {
+      console.log("[DB] Initializing admin_secret to 'Admin'");
+      db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run('admin_secret', 'Admin');
+    } else {
+      console.log(`[DB] Current secret door answer: "${currentSecret.value}"`);
+    }
+  } catch (err) {
+    console.error("[DB] Failed to check admin_secret", err);
+    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run('admin_secret', 'Admin');
+  }
 
   const countDjs = db.prepare('SELECT COUNT(*) as count FROM djs').get() as {count: number};
   if (countDjs.count === 0) {
@@ -193,16 +206,13 @@ export function initDb() {
     }
   }
 
-  // Ensure default admin exists and has the correct password as requested
-  const defaultHash = bcrypt.hashSync('password', 10);
-  const admin = db.prepare('SELECT * FROM admins WHERE username = ?').get('admin');
-  
-  if (!admin) {
-    console.log("Seeding default admin user...");
+  // Ensure default admin exists
+  const countAdmins = db.prepare('SELECT COUNT(*) as count FROM admins').get() as {count: number};
+  if (countAdmins.count === 0) {
+    const defaultHash = bcrypt.hashSync('password', 10);
+    console.log("[DB] Seeding default admin user (admin/password)");
     db.prepare('INSERT INTO admins (username, password_hash) VALUES (?, ?)').run('admin', defaultHash);
   } else {
-    // Force reset to 'password' for the 'admin' user to fix the login issue
-    db.prepare('UPDATE admins SET password_hash = ? WHERE username = ?').run(defaultHash, 'admin');
-    console.log("Admin password reset to 'password'");
+    console.log(`[DB] Already have ${countAdmins.count} admin user(s).`);
   }
 }
