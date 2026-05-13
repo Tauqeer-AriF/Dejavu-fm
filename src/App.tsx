@@ -40,48 +40,23 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isLightMode, setIsLightMode] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('theme') === 'light' || document.documentElement.classList.contains('light');
-    }
-    return false;
-  });
+  const { logoUrl, isLightMode, settings } = useLogo();
 
   const toggleTheme = () => {
-    setIsLightMode(prev => {
-      const next = !prev;
-      if (next) {
-        document.documentElement.classList.add('light');
-        localStorage.setItem('theme', 'light');
-      } else {
-        document.documentElement.classList.remove('light');
-        localStorage.setItem('theme', 'dark');
-      }
-      return next;
-    });
-  };
-
-  useEffect(() => {
-    if (localStorage.getItem('theme') === 'light') {
+    const next = !isLightMode;
+    if (next) {
       document.documentElement.classList.add('light');
-      setIsLightMode(true);
+      localStorage.setItem('theme', 'light');
+    } else {
+      document.documentElement.classList.remove('light');
+      localStorage.setItem('theme', 'dark');
     }
-  }, []);
-  
-  const { data: settings } = useQuery({
-    queryKey: ['settings'],
-    queryFn: () => fetch('/api/public/settings').then(res => res.json()),
-    refetchInterval: 3000,
-  });
+    // Note: useLogo will update automatically via MutationObserver
+  };
 
   const appName = settings?.app_name || "DejavuFM";
   const appTagline = settings?.app_tagline || "Underground Gold Since 2005";
   
-  // Logic for dual logo selection
-  const logoUrl = isLightMode 
-    ? (settings?.logo_light || settings?.logo_url || "")
-    : (settings?.logo_dark || settings?.logo_url || "");
-
   // Detect if we are using a single logo for both modes
   const isSingleLogo = !!settings?.logo_url && !settings?.logo_light && !settings?.logo_dark;
 

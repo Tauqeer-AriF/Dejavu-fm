@@ -452,7 +452,7 @@ function AdminBranding() {
             <div className="flex flex-col items-center">
               <div className="w-16 h-16 bg-white border border-black/10 rounded-xl flex items-center justify-center overflow-hidden shadow-sm">
                 {(logoLight || logoUrl) ? (
-                  <img src={logoLight || logoUrl} alt="Light Mode" className="max-w-full max-h-full object-contain p-2" />
+                  <img src={logoLight || logoUrl || undefined} alt="Light Mode" className="max-w-full max-h-full object-contain p-2" />
                 ) : (
                   <HomeIcon className="w-6 h-6 text-black/20" />
                 )}
@@ -462,7 +462,7 @@ function AdminBranding() {
             <div className="flex flex-col items-center">
               <div className="w-16 h-16 bg-dark-bg border border-white/10 rounded-xl flex items-center justify-center overflow-hidden">
                 {(logoDark || logoUrl) ? (
-                  <img src={logoDark || logoUrl} alt="Dark Mode" className="max-w-full max-h-full object-contain p-2" />
+                  <img src={logoDark || logoUrl || undefined} alt="Dark Mode" className="max-w-full max-h-full object-contain p-2" />
                 ) : (
                   <HomeIcon className="w-6 h-6 text-white/10" />
                 )}

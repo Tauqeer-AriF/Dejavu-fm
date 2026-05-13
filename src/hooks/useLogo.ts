@@ -27,8 +27,8 @@ export function useLogo() {
   }, []);
 
   const logoUrl = isLightMode 
-    ? (settings?.logo_light || settings?.logo_url || "")
-    : (settings?.logo_dark || settings?.logo_url || "");
+    ? (settings?.logo_light || settings?.logo_url || undefined)
+    : (settings?.logo_dark || settings?.logo_url || undefined);
 
   const resolveDjImage = (djPhoto: string | null | undefined) => {
     if (!djPhoto) return logoUrl;
