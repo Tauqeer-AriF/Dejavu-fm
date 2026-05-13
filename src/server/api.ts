@@ -16,22 +16,20 @@ apiRouter.use((req, res, next) => {
 });
 
 apiRouter.get("/public/admin-challenge", (req, res) => {
-  const secret = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_secret') as any;
   // We don't send the secret, we just check it via POST. 
-  // But let's provide a way to check if the feature is enabled if needed.
   res.json({ enabled: true });
 });
 
 apiRouter.post("/public/admin-challenge/verify", (req, res) => {
   const { answer } = req.body;
   const secretRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_secret') as any;
-  const storedSecret = secretRow?.value || "";
+  const storedSecret = (secretRow?.value || "Admin").toString();
   
   const normalizedAnswer = (answer || "").toLowerCase().trim();
   const normalizedSecret = storedSecret.toLowerCase().trim();
   const isMatch = normalizedAnswer === normalizedSecret;
   
-  console.log(`[Admin Challenge] REQ: "${answer}" | STORED: "${storedSecret}" | MATCH: ${isMatch}`);
+  console.log(`[Admin Challenge] AUTH ATTEMPT | Input: "${answer}" | Expected: "${storedSecret}" | Match: ${isMatch}`);
   
   if (isMatch) {
     res.json({ success: true });
