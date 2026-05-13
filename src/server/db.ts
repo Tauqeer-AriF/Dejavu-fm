@@ -172,6 +172,9 @@ export function initDb() {
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_stream_quality', '1');
   }
 
+  // Ensure admin secret exists
+  db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING").run('admin_secret', 'Admin');
+
   const countDjs = db.prepare('SELECT COUNT(*) as count FROM djs').get() as {count: number};
   if (countDjs.count === 0) {
     const djs = [
@@ -191,8 +194,7 @@ export function initDb() {
   }
 
   // Ensure default admin exists and has the correct password as requested
-  const salt = bcrypt.genSaltSync(10);
-  const defaultHash = bcrypt.hashSync('password', salt);
+  const defaultHash = bcrypt.hashSync('password', 10);
   const admin = db.prepare('SELECT * FROM admins WHERE username = ?').get('admin');
   
   if (!admin) {

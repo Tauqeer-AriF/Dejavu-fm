@@ -18,6 +18,8 @@ const itemVariants = {
   show: { opacity: 1, y: 0, transition: { ease: "easeOut", duration: 0.5 } }
 };
 
+import { SkeletonPodcast } from "../components/Skeleton";
+
 export default function PodcastsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get("s") || "";
@@ -33,6 +35,22 @@ export default function PodcastsPage() {
     queryFn: () => fetch("/api/public/podcasts").then(res => res.json()),
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen pt-32 pb-20 px-4">
+        <div className="max-w-7xl mx-auto space-y-12">
+           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+              <div className="h-12 w-48 bg-white/5 rounded-xl animate-pulse" />
+              <div className="h-12 w-64 bg-white/5 rounded-xl animate-pulse" />
+           </div>
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[...Array(6)].map((_, i) => <SkeletonPodcast key={i} />)}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleAiSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -276,23 +294,23 @@ export default function PodcastsPage() {
                   className="group relative"
                 >
                   <Link to={`/podcasts/${podcastId}`} className="block h-full">
-                    <div className="glass-panel h-full rounded-2xl flex flex-col hover:bg-white/5 transition-all duration-300 relative overflow-hidden border border-white/10 hover:border-neon-purple/50">
+                    <div className="glass-panel h-full rounded-2xl flex flex-col hover:bg-white/5 transition-all duration-300 relative overflow-hidden border border-white/10 hover:border-white/20">
                       <div className="absolute top-0 right-0 w-32 h-32 bg-neon-purple/5 rounded-full blur-[50px] group-hover:bg-neon-blue/10 transition-colors pointer-events-none"></div>
                       
                       <div className="aspect-[16/9] overflow-hidden relative border-b border-white/5">
-                        <img src={imageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-dark-bg/80 to-transparent"></div>
-                        <div className="absolute bottom-3 left-3 right-3 flex justify-between items-end">
-                          <span className="px-2 py-1 bg-black/60 backdrop-blur-md rounded text-[10px] font-bold text-neon-blue uppercase tracking-wider border border-white/10">Catchup</span>
-                          <div className="w-10 h-10 rounded-full bg-neon-purple text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300 shadow-[0_0_15px_rgba(176,38,255,0.6)]">
-                            <Play className="w-4 h-4 ml-0.5 fill-current" />
+                        <img src={imageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-dark-bg/90 via-dark-bg/20 to-transparent"></div>
+                        <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
+                          <span className="px-3 py-1 bg-black/60 backdrop-blur-md rounded-full text-[9px] font-black text-neon-blue uppercase tracking-widest border border-white/10">Archive</span>
+                          <div className="w-12 h-12 rounded-full bg-white text-dark-bg flex items-center justify-center opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500 shadow-2xl">
+                            <Play className="w-5 h-5 ml-1 fill-current" />
                           </div>
                         </div>
                       </div>
                       
-                      <div className="p-5 flex-1 flex flex-col relative z-10">
-                        <p className="text-[11px] text-white/50 uppercase mt-1 mb-2 font-semibold tracking-widest flex items-center">
-                          <span className="w-1.5 h-1.5 rounded-full bg-neon-purple mr-2 glow-box"></span>
+                      <div className="p-6 flex-1 flex flex-col relative z-10 bg-gradient-to-b from-transparent to-black/20">
+                        <p className="text-[10px] text-white/40 uppercase mt-1 mb-3 font-bold tracking-[0.2em] flex items-center">
+                          <span className="w-1 h-4 bg-neon-purple mr-3 rounded-full"></span>
                           {(item.pubDate || item.isoDate) ? new Date(item.pubDate || item.isoDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'Recent'}
                         </p>
                         <h3 className="text-lg font-display font-bold group-hover:text-neon-blue transition-colors leading-snug line-clamp-2 mb-3">

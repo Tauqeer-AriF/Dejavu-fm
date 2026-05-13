@@ -5,9 +5,44 @@ import jwt from "jsonwebtoken";
 import Parser from "rss-parser";
 import crypto from "crypto";
 import path from "path";
+import rateLimit from "express-rate-limit";
 
 export const apiRouter = Router();
-const JWT_SECRET = process.env.JWT_SECRET || "default_super_secret_for_demo";
+
+apiRouter.get("/public/admin-challenge", (req, res) => {
+  const secret = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_secret') as any;
+  // We don't send the secret, we just check it via POST. 
+  // But let's provide a way to check if the feature is enabled if needed.
+  res.json({ enabled: true });
+});
+
+apiRouter.post("/public/admin-challenge/verify", (req, res) => {
+  const { answer } = req.body;
+  const secret = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_secret') as any;
+  console.log(`[Admin Challenge] Verifying: "${answer}" against stored: "${secret?.value}"`);
+  
+  if (secret && answer && answer.toLowerCase().trim() === secret.value.toLowerCase().trim()) {
+    res.json({ success: true });
+  } else {
+    res.status(401).json({ error: "Incorrect answer" });
+  }
+});
+
+// Admin only update
+apiRouter.post("/admin/settings/secret", authMiddleware, (req, res) => {
+  const { secret } = req.body;
+  if (!secret) return res.status(400).json({ error: "Secret required" });
+  db.prepare('UPDATE settings SET value = ? WHERE key = ?').run(secret, 'admin_secret');
+  res.json({ success: true });
+});
+
+// Fallback secret only for development
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET && process.env.NODE_ENV === "production") {
+  console.error("FATAL: JWT_SECRET environment variable is not set in production!");
+  process.exit(1);
+}
+const ACTUAL_SECRET = JWT_SECRET || "dev_only_secret_123456789";
 
 // Check Auth Middleware
 function authMiddleware(req: any, res: any, next: any) {
@@ -15,13 +50,26 @@ function authMiddleware(req: any, res: any, next: any) {
   if (!token) return res.status(401).json({ error: "Unauthorized" });
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = jwt.verify(token, ACTUAL_SECRET) as any;
     req.user = decoded;
     next();
   } catch (err) {
     res.status(401).json({ error: "Invalid token" });
   }
 }
+
+// Specific Limiters for high-value targets
+const authLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 20, // Limit to 20 attempts per hour
+  message: { error: "Too many login attempts. Please try again in an hour." }
+});
+
+const shoutoutLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 3, // Limit each IP to 3 shoutouts per minute
+  message: { error: "Whoa there! Too many shoutouts. Take a breather." }
+});
 
 // Global error handler wrapper for async routes
 const asyncHandler = (fn: Function) => (req: Request, res: Response, next: NextFunction) => {
@@ -75,7 +123,7 @@ apiRouter.post("/public/book-artist", (req, res) => {
   res.json({ success: true, id });
 });
 
-apiRouter.post("/public/shoutout", (req, res) => {
+apiRouter.post("/public/shoutout", shoutoutLimiter, (req, res) => {
   const { listener_name, message, type } = req.body;
   if (!listener_name || !message) {
     return res.status(400).json({ error: "Name and message required" });
@@ -100,7 +148,7 @@ apiRouter.post("/public/auth/register", (req, res) => {
   const hash = bcrypt.hashSync(password, 10);
   try {
     const info = db.prepare("INSERT INTO users (username, password_hash) VALUES (?, ?)").run(username, hash);
-    const token = jwt.sign({ userId: info.lastInsertRowid, username }, JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign({ userId: info.lastInsertRowid, username }, ACTUAL_SECRET, { expiresIn: "7d" });
     res.cookie("user_token", token, { httpOnly: true, secure: true, sameSite: "none" });
     res.json({ success: true, username });
   } catch (err) {
@@ -108,12 +156,12 @@ apiRouter.post("/public/auth/register", (req, res) => {
   }
 });
 
-apiRouter.post("/public/auth/login", (req, res) => {
+apiRouter.post("/public/auth/login", authLimiter, (req, res) => {
   const { username, password } = req.body;
   const user = db.prepare("SELECT * FROM users WHERE username = ?").get(username) as any;
   
   if (user && bcrypt.compareSync(password, user.password_hash)) {
-    const token = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign({ userId: user.id, username: user.username }, ACTUAL_SECRET, { expiresIn: "7d" });
     res.cookie("user_token", token, { httpOnly: true, secure: true, sameSite: "none" });
     res.json({ success: true, username: user.username });
   } else {
@@ -130,7 +178,7 @@ apiRouter.get("/public/auth/check", (req, res) => {
   const token = req.cookies.user_token;
   if (!token) return res.json({ loggedIn: false });
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = jwt.verify(token, ACTUAL_SECRET) as any;
     res.json({ loggedIn: true, username: decoded.username });
   } catch(e) {
     res.json({ loggedIn: false });
@@ -217,20 +265,31 @@ apiRouter.post("/public/analytics/podcast-play", (req: any, res: any) => {
 
 // ------ ADMIN AUTH ROUTES ------
 
-apiRouter.post("/admin/login", (req, res) => {
+apiRouter.post("/admin/login", authLimiter, (req, res) => {
   const { username, password } = req.body;
-  console.log(`[Admin Login] Attempt for user: ${username}`);
+  console.log(`[Admin Login] Attempt for user: "${username}"`);
+  
+  if (!username || !password) {
+    return res.status(400).json({ error: "Username and password are required" });
+  }
+
   const admin = db.prepare("SELECT * FROM admins WHERE username = ?").get(username) as any;
   
-  if (admin && bcrypt.compareSync(password, admin.password_hash)) {
-    console.log(`[Admin Login] Success for user: ${username}`);
-    const token = jwt.sign({ username: admin.username }, JWT_SECRET, { expiresIn: "1d" });
-    res.cookie("admin_token", token, { httpOnly: true, secure: true, sameSite: "none" });
-    res.json({ success: true });
+  if (admin) {
+    const isMatched = bcrypt.compareSync(password, admin.password_hash);
+    if (isMatched) {
+      console.log(`[Admin Login] Success for user: ${username}`);
+      const token = jwt.sign({ username: admin.username }, ACTUAL_SECRET, { expiresIn: "1d" });
+      res.cookie("admin_token", token, { httpOnly: true, secure: true, sameSite: "none" });
+      return res.json({ success: true });
+    } else {
+      console.warn(`[Admin Login] Failed: Invalid password for user: ${username}`);
+    }
   } else {
-    console.warn(`[Admin Login] Failed for user: ${username} - ${!admin ? 'User not found' : 'Invalid password'}`);
-    res.status(401).json({ error: "Invalid credentials" });
+    console.warn(`[Admin Login] Failed: User not found: ${username}`);
   }
+  
+  res.status(401).json({ error: "Invalid credentials" });
 });
 
 apiRouter.post("/admin/logout", (req, res) => {

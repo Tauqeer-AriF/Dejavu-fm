@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Routes, Route, Link, useLocation } from "react-router-dom";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost } from "lucide-react";
+import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield } from "lucide-react";
 import { useModal } from "../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -130,7 +130,8 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
       setSuccess(true);
       setTimeout(() => onLogin(), 1500);
     } else {
-      setErr("Invalid login");
+      const data = await res.json().catch(() => ({ error: "Invalid login" }));
+      setErr(data.error || "Invalid login");
     }
   };
 
@@ -1136,10 +1137,31 @@ function AdminUsers() {
   const [newPassword, setNewPassword] = useState("");
   const [changePasswordUser, setChangePasswordUser] = useState("");
   const [changePasswordVal, setChangePasswordVal] = useState("");
+  const [adminSecret, setAdminSecret] = useState("");
   const { showConfirm, showAlert } = useModal();
 
-  const load = () => fetchAdmin("/api/admin/users").then(r=>r.json()).then(setUsers);
+  const load = () => {
+    fetchAdmin("/api/admin/users").then(r=>r.json()).then(setUsers);
+    fetch("/api/public/settings").then(r=>r.json()).then(d => {
+      setAdminSecret(d.admin_secret || "Admin");
+    });
+  };
+
   useEffect(() => { load(); }, []);
+
+  const handleUpdateSecret = async (e: any) => {
+    e.preventDefault();
+    const res = await fetchAdmin("/api/admin/settings/secret", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ secret: adminSecret })
+    });
+    if (res.ok) {
+      showAlert({ title: "Success", message: "Secret door answer updated!", style: "success" });
+    } else {
+      showAlert({ title: "Error", message: "Failed to update secret", style: "danger" });
+    }
+  };
 
   const handleAddUser = async (e: any) => {
     e.preventDefault();
@@ -1192,7 +1214,41 @@ function AdminUsers() {
 
   return (
     <div className="space-y-8">
-      <h3 className="text-2xl font-bold border-b border-white/10 pb-4">Manage Users</h3>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-4">
+        <h3 className="text-2xl font-bold">Manage Users</h3>
+        <div className="bg-neon-purple/10 border border-neon-purple/20 px-4 py-2 rounded-xl flex items-center space-x-3">
+          <Shield className="w-4 h-4 text-neon-purple" />
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black uppercase tracking-tighter text-neon-purple">Security Door</span>
+            <span className="text-[10px] text-white/50 uppercase tracking-widest font-bold">Active Shield</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-dark-bg/50 border border-white/10 rounded-2xl p-6 space-y-6">
+        <div className="space-y-2">
+          <h4 className="text-lg font-bold flex items-center space-x-2">
+            <Ghost className="w-5 h-5 text-neon-purple" />
+            <span>Secret Door Challenge</span>
+          </h4>
+          <p className="text-sm text-white/40">This sets the required answer to the question "What's your name?" when clicking the settings icon in the header.</p>
+        </div>
+        
+        <form onSubmit={handleUpdateSecret} className="flex flex-col sm:flex-row gap-4 items-end">
+          <div className="flex-1 w-full">
+            <label className="block text-[10px] uppercase font-black tracking-widest text-white/30 mb-2 ml-1">Answer Key</label>
+            <input 
+              value={adminSecret} 
+              onChange={e => setAdminSecret(e.target.value)} 
+              className="w-full bg-panel-bg border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-neon-purple text-white font-medium" 
+              placeholder="e.g. Admin or your name"
+            />
+          </div>
+          <button className="bg-white text-dark-bg px-8 py-3 rounded-xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-transform shrink-0">
+            Update Secret
+          </button>
+        </form>
+      </div>
 
       <div className="space-y-4">
         {users.map(u => (

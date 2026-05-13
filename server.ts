@@ -8,6 +8,8 @@ import { initDb, db } from "./src/server/db.js";
 import http from "http";
 import { Server as SocketIOServer } from "socket.io";
 import crypto from "crypto";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 
 let __filename = "";
 let __dirname = "";
@@ -26,11 +28,36 @@ import { getPodcastFeed } from "./src/server/utils.js";
 
 async function startServer() {
   const app = express();
+  
+  // Necessary for rate limiting behind the proxy in this environment
+  app.set('trust proxy', 1);
+
   const PORT = Number(process.env.PORT) || 3000;
   const server = http.createServer(app);
   
+  // Security Headers
+  app.use(helmet({
+    contentSecurityPolicy: false, // Disabled for dev flexibility, can be tightened for prod
+    crossOriginEmbedderPolicy: false,
+  }));
+
+  // General Rate Limiting
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests, please try again later." }
+  });
+  
+  // Apply the rate limiter to all requests
+  app.use("/api/", limiter);
+
   const io = new SocketIOServer(server, {
-    cors: { origin: '*' }
+    cors: { 
+      origin: process.env.NODE_ENV === 'production' ? false : '*', // Strict in prod
+      methods: ["GET", "POST"]
+    }
   });
   app.set('io', io);
 

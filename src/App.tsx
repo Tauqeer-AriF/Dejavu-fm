@@ -16,6 +16,7 @@ import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-quer
 import { io } from 'socket.io-client';
 import { convertToLocalTime } from './lib/timeUtils';
 import { useLogo } from './hooks/useLogo';
+import { SecretAdminPrompt } from './components/SecretAdminPrompt';
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,7 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showSecretPrompt, setShowSecretPrompt] = useState(false);
   const { logoUrl, isLightMode, settings } = useLogo();
 
   const toggleTheme = () => {
@@ -144,9 +146,12 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
             </button>
            )}
 
-          <Link to="/admin" className="hidden xl:block text-white/20 hover:text-white transition-colors shrink-0">
+          <button 
+            onClick={() => setShowSecretPrompt(true)} 
+            className="hidden xl:block text-white/20 hover:text-white transition-colors shrink-0"
+          >
             <AdminIcon className="w-6 h-6" />
-          </Link>
+          </button>
           
           <button
             onClick={toggleTheme}
@@ -229,17 +234,62 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
                 className="mt-8"
               >
                 <div className="py-6 border-t border-white/10 w-full flex justify-center">
-                  <Link to="/admin" onClick={() => setIsMobileMenuOpen(false)} className="px-6 py-3 rounded-full bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all flex items-center space-x-2">
+                  <button 
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      setShowSecretPrompt(true);
+                    }} 
+                    className="px-6 py-3 rounded-full bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all flex items-center space-x-2"
+                  >
                     <AdminIcon className="w-4 h-4" />
                     <span className="font-semibold uppercase tracking-widest text-[10px]">Admin Area</span>
-                  </Link>
+                  </button>
                 </div>
               </motion.div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      <SecretAdminPrompt 
+        isOpen={showSecretPrompt} 
+        onClose={() => setShowSecretPrompt(false)} 
+      />
     </>
+  );
+}
+
+function MobileBottomBar({ featLiveTools }: { featLiveTools: boolean }) {
+  const location = useLocation();
+  const isOnPodcasts = location.pathname.startsWith('/podcasts/');
+  const isOnDJs = location.pathname.startsWith('/djs/');
+
+  return (
+    <div className="xl:hidden fixed bottom-6 left-6 right-6 z-50">
+      <div className="glass-panel rounded-3xl p-2 flex items-center justify-around shadow-2xl border border-white/10 relative overflow-hidden backdrop-blur-3xl">
+        <div className="absolute inset-0 bg-gradient-to-t from-neon-purple/5 to-transparent pointer-events-none"></div>
+        
+        <NavLink to="/" className={({isActive}) => `flex flex-col items-center p-3 rounded-2xl transition-all duration-300 ${isActive ? 'text-neon-purple scale-110' : 'text-white/40'}`}>
+          <Radio className="w-6 h-6" />
+          <span className="text-[8px] font-black uppercase tracking-widest mt-1">Live</span>
+        </NavLink>
+
+        <NavLink to="/schedule" className={({isActive}) => `flex flex-col items-center p-3 rounded-2xl transition-all duration-300 ${isActive ? 'text-neon-purple scale-110' : 'text-white/40'}`}>
+          <Calendar className="w-6 h-6" />
+          <span className="text-[8px] font-black uppercase tracking-widest mt-1">Shows</span>
+        </NavLink>
+
+        <NavLink to="/djs" className={({isActive}) => `flex flex-col items-center p-3 rounded-2xl transition-all duration-300 ${(isActive || isOnDJs) ? 'text-neon-purple scale-110' : 'text-white/40'}`}>
+          <Headphones className="w-6 h-6" />
+          <span className="text-[8px] font-black uppercase tracking-widest mt-1">DJs</span>
+        </NavLink>
+
+        <NavLink to="/podcasts" className={({isActive}) => `flex flex-col items-center p-3 rounded-2xl transition-all duration-300 ${(isActive || isOnPodcasts) ? 'text-neon-purple scale-110' : 'text-white/40'}`}>
+          <Podcast className="w-6 h-6" />
+          <span className="text-[8px] font-black uppercase tracking-widest mt-1">Archive</span>
+        </NavLink>
+      </div>
+    </div>
   );
 }
 
@@ -247,7 +297,13 @@ function AnimatedRoutes() {
   const location = useLocation();
   return (
     <AnimatePresence mode="wait">
-      <div key={location.pathname.startsWith('/admin') ? '/admin' : location.pathname}>
+      <motion.div 
+        key={location.pathname.startsWith('/admin') ? '/admin' : location.pathname}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+      >
         <Routes location={location}>
           <Route path="/" element={<Home />} />
           <Route path="/watch" element={<WatchLive />} />
@@ -260,18 +316,20 @@ function AnimatedRoutes() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/admin/*" element={<Admin />} />
         </Routes>
-      </div>
+      </motion.div>
     </AnimatePresence>
   );
 }
 
 import { CinematicVisualizer } from './components/CinematicVisualizer';
+import { PremiumLoader } from './components/PremiumLoader';
 
 function MainLayout() {
   const { setStreamUrl, setQualityUrls, setOnAirInfo, setCurrentTrack, isCinematicOpen, toggleCinematic } = useAudio();
   const location = useLocation();
   const [appNameState, setAppNameState] = useState("DejavuFM"); // kept for backward compatibility if needed, but not necessary
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isAppLoading, setIsAppLoading] = useState(true);
   const { logoUrl } = useLogo();
 
   const { data: scheduleData } = useQuery({
@@ -407,7 +465,12 @@ function MainLayout() {
   const featLiveTools = settings?.feat_live_tools !== '0';
 
   return (
-    <div className="min-h-screen pb-32 flex flex-col relative overflow-hidden bg-dark-bg selection:bg-neon-purple selection:text-white">
+    <>
+      <AnimatePresence>
+        {isAppLoading && <PremiumLoader onComplete={() => setIsAppLoading(false)} />}
+      </AnimatePresence>
+      
+      <div className={`min-h-screen pb-40 md:pb-32 flex flex-col relative overflow-hidden bg-dark-bg selection:bg-neon-purple selection:text-white transition-opacity duration-1000 ${isAppLoading ? 'opacity-0' : 'opacity-100'}`}>
       {/* Premium Moving Mesh Background */}
       <div className="fixed inset-0 z-0 pointer-events-none opacity-40">
         <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-neon-purple/20 rounded-full blur-[120px] animate-[pulse_10s_ease-in-out_infinite]"></div>
@@ -426,7 +489,7 @@ function MainLayout() {
         </ErrorBoundary>
       </main>
 
-      <footer className="w-full max-w-7xl mx-auto p-4 md:p-8 pt-24 border-t border-white/5 relative z-10 flex flex-col md:flex-row items-center justify-between gap-10 text-white/40 text-sm mb-24 md:mb-32">
+      <footer className="w-full max-w-7xl mx-auto p-4 md:p-8 pt-24 border-t border-white/5 relative z-10 flex flex-col md:flex-row items-center justify-between gap-10 text-white/40 text-sm mb-40 md:mb-32">
         <div className="flex flex-wrap justify-center md:justify-start items-center gap-x-8 gap-y-6">
           <Link to="/about" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">About</Link>
           <Link to="/contact" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">Advertising</Link>
@@ -438,10 +501,12 @@ function MainLayout() {
         </div>
       </footer>
       
+      {!location.pathname.startsWith('/admin') && <MobileBottomBar featLiveTools={featLiveTools} />}
       <PlayerBar />
       {featCinematic && <CinematicVisualizer isOpen={isCinematicOpen} onClose={toggleCinematic} />}
       {featPWA && <PWAInstallPrompt />}
     </div>
+    </>
   );
 }
 

@@ -15,6 +15,8 @@ interface DJ {
   mixcloud: string;
 }
 
+import { SkeletonCard } from '../components/Skeleton';
+
 export default function DJs() {
   const { data: settings } = useQuery({
     queryKey: ['settings'],
@@ -29,6 +31,22 @@ export default function DJs() {
   });
 
   const { logoUrl, isLightMode, resolveDjImage } = useLogo();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen pt-32 pb-20 px-4">
+        <div className="max-w-7xl mx-auto space-y-16">
+          <div className="text-center space-y-4">
+            <div className="h-16 w-64 bg-white/5 rounded-2xl mx-auto animate-pulse" />
+            <div className="h-4 w-48 bg-white/5 rounded mx-auto animate-pulse" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12">
+            {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const appName = settings?.app_name || "DejavuFM";
 
@@ -68,14 +86,16 @@ export default function DJs() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-              className="group relative overflow-hidden rounded-[2.5rem] bg-white/5 border border-white/10 hover:border-white/20 transition-all duration-700 shadow-2xl"
+              className="group relative overflow-hidden rounded-[2.5rem] bg-[#0A0A0A]/80 backdrop-blur-xl border border-white/5 hover:border-neon-blue/30 transition-all duration-700 shadow-2xl hover:shadow-neon-blue/10"
             >
+              <div className="absolute inset-0 bg-gradient-to-br from-neon-purple/5 to-neon-blue/5 opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
+              
               <div className="aspect-[3/4] relative overflow-hidden">
-                <div className={`w-full h-full ${resolveDjImage(dj.image_url) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''}`}>
+                <div className={`w-full h-full transition-transform duration-1000 group-hover:scale-105 ${resolveDjImage(dj.image_url) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''}`}>
                   <img 
                     src={resolveDjImage(dj.image_url)} 
                     alt={dj.name}
-                    className={`w-full h-full transition-transform duration-1000 group-hover:scale-110 grayscale group-hover:grayscale-0 contrast-125 ${resolveDjImage(dj.image_url) === logoUrl && logoUrl ? 'object-contain p-12' : 'object-cover'}`}
+                    className={`w-full h-full transition-all duration-1000 grayscale group-hover:grayscale-0 contrast-110 group-hover:contrast-100 ${resolveDjImage(dj.image_url) === logoUrl && logoUrl ? 'object-contain p-12' : 'object-cover'}`}
                   />
                 </div>
                 
@@ -84,13 +104,13 @@ export default function DJs() {
                 <div className="absolute inset-0 bg-gradient-to-t from-dark-bg via-dark-bg/20 to-transparent opacity-90 group-hover:opacity-100 transition-opacity duration-500"></div>
                 
                 <div className="absolute inset-x-0 bottom-0 p-6 md:p-10 space-y-4 md:space-y-6 translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
-                  <div className="space-y-2">
-                    <h3 className="text-3xl md:text-5xl font-display font-black uppercase tracking-tighter leading-none group-hover:text-neon-blue transition-colors">
+                  <div className="space-y-3">
+                    <h3 className="text-4xl md:text-5xl font-display font-black uppercase tracking-tighter leading-[0.9] group-hover:text-neon-blue transition-colors duration-500">
                       {dj.name}
                     </h3>
                     <div className="flex space-x-2">
-                      <span className="px-3 py-1 rounded-full bg-neon-purple/20 text-neon-purple text-[10px] font-black uppercase tracking-widest border border-neon-purple/30">Resident</span>
-                      <span className="px-3 py-1 rounded-full bg-white/5 text-white/40 text-[10px] font-black uppercase tracking-widest border border-white/10">Underground</span>
+                      <span className="px-3 py-1 rounded-full bg-neon-purple/20 text-neon-purple text-[10px] font-black uppercase tracking-widest border border-neon-purple/20">Resident</span>
+                      <span className="px-3 py-1 rounded-full bg-white/5 text-white/30 text-[10px] font-black uppercase tracking-widest border border-white/5">Underground</span>
                     </div>
                   </div>
 
