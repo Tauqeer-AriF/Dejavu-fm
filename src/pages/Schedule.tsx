@@ -4,6 +4,7 @@ import { Bell, BellOff, Globe } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { convertToLocalTime, getUserTimezone } from "../lib/timeUtils";
+import { useLogo } from "../hooks/useLogo";
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -28,6 +29,8 @@ export default function Schedule() {
     queryKey: ['schedule'],
     queryFn: () => fetch("/api/public/schedule").then(res => res.json())
   });
+
+  const { logoUrl, isLightMode, settings, resolveDjImage } = useLogo();
 
   useEffect(() => {
     const saved = localStorage.getItem('dejavu_reminders');
@@ -204,9 +207,13 @@ export default function Schedule() {
                       className={`glass-panel rounded-2xl p-5 flex gap-5 transition-all duration-300 group ${isLive ? 'border-neon-purple glow-box bg-white/5' : 'hover:bg-white/5'}`}
                     >
                       <div className="relative">
-                        <img src={show.dj_photo} alt={show.dj_name} className="w-24 h-24 rounded-xl object-cover filter grayscale group-hover:grayscale-0 transition-all duration-500" />
+                        <div className={`w-24 h-24 rounded-xl overflow-hidden shrink-0 border border-white/5 ${
+                          resolveDjImage(show.dj_photo) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''
+                        }`}>
+                          <img src={resolveDjImage(show.dj_photo)} alt={show.dj_name} className={`w-full h-full filter grayscale group-hover:grayscale-0 transition-all duration-500 ${resolveDjImage(show.dj_photo) === logoUrl && logoUrl ? 'object-contain p-2' : 'object-cover'}`} />
+                        </div>
                         {isLive && (
-                          <div className="absolute inset-0 border-2 border-neon-purple rounded-xl scale-105 animate-pulse"></div>
+                          <div className="absolute inset-0 border-2 border-neon-purple rounded-xl scale-105 animate-pulse pointer-events-none"></div>
                         )}
                       </div>
                       <div className="flex flex-col justify-center flex-1">

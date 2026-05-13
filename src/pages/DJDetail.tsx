@@ -3,16 +3,14 @@ import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Instagram, Music, Radio, Calendar, Send, X, CheckCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { useLogo } from '../hooks/useLogo';
 
 export default function DJDetail() {
   const { id } = useParams();
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [bookingStatus, setBookingStatus] = useState<'idle' | 'sending' | 'success'>('idle');
 
-  const { data: settings } = useQuery({
-    queryKey: ['settings'],
-    queryFn: () => fetch('/api/public/settings').then(res => res.json()),
-  });
+  const { logoUrl, isLightMode, settings, resolveDjImage } = useLogo();
 
   const { data: djs, isLoading } = useQuery<any[]>({
     queryKey: ['djs'],
@@ -70,8 +68,8 @@ export default function DJDetail() {
         
         <div className="flex flex-col md:flex-row gap-8 p-8 md:p-12 relative z-10">
           <div className="w-full md:w-1/3 shrink-0">
-            <div className="aspect-[3/4] rounded-2xl overflow-hidden border border-white/10 shadow-2xl relative group">
-              <img src={dj.image_url} alt={dj.name} className="w-full h-full object-cover" />
+            <div className={`aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl relative group border border-white/10 ${resolveDjImage(dj.image_url) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''}`}>
+              <img src={resolveDjImage(dj.image_url)} alt={dj.name} className={`w-full h-full ${resolveDjImage(dj.image_url) === logoUrl && logoUrl ? 'object-contain p-10' : 'object-cover'}`} />
               <div className="absolute inset-0 bg-gradient-to-t from-dark-bg/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
                 <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Artist ID: {dj.id}</p>
               </div>

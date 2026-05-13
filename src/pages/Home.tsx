@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAudio } from "../context/AudioContext";
-import { Play, Pause, Mic2, Tv } from "lucide-react";
+import { useLogo } from "../hooks/useLogo";
+import { Play, Pause, Mic2, Tv, Clock } from "lucide-react";
 import { motion } from "motion/react";
 import { io } from "socket.io-client";
+import { convertToLocalTime } from "../lib/timeUtils";
 
 function HeroVisualizer({ isPlaying }: { isPlaying: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -137,17 +139,63 @@ export default function Home() {
     };
   }, []);
 
-  const { data: settings } = useQuery({
-    queryKey: ['settings'],
-    queryFn: () => fetch('/api/public/settings').then(r => r.json()),
-    refetchInterval: 3000,
-  });
-
-  const { isLoading } = useQuery({
+  const { data: scheduleData, isLoading } = useQuery({
     queryKey: ['schedule'],
     queryFn: () => fetch("/api/public/schedule").then(res => res.json()),
     refetchInterval: 10000,
   });
+
+  const { logoUrl, isLightMode, settings, resolveDjImage } = useLogo();
+
+
+  const [timeCtx, setTimeCtx] = useState(() => {
+    const now = new Date();
+    return {
+      day: now.getDay(),
+      time: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+    };
+  });
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      setTimeCtx({
+        day: now.getDay(),
+        time: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+      });
+    }, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const nextShow = useMemo(() => {
+    if (!Array.isArray(scheduleData) || scheduleData.length === 0) return null;
+
+    let nearestShow = null;
+    let minDiff = Infinity;
+
+    scheduleData.forEach(show => {
+      const start = convertToLocalTime(show.day_of_week, show.start_time);
+      
+      let dayDiff = start.dayOfWeek - timeCtx.day;
+      if (dayDiff < 0) dayDiff += 7;
+      
+      let startMins = parseInt(start.timeStr.split(':')[0]) * 60 + parseInt(start.timeStr.split(':')[1]);
+      let currMins = parseInt(timeCtx.time.split(':')[0]) * 60 + parseInt(timeCtx.time.split(':')[1]);
+      
+      let minuteDiff = (dayDiff * 24 * 60) + startMins - currMins;
+      
+      if (minuteDiff < 0) {
+        minuteDiff += 7 * 24 * 60;
+      }
+      
+      if (minuteDiff > 0 && minuteDiff < minDiff) {
+        minDiff = minuteDiff;
+        nearestShow = { ...show, local_start: start.timeStr, local_day: start.dayOfWeek };
+      }
+    });
+
+    return nearestShow;
+  }, [scheduleData, timeCtx]);
 
   if (isLoading) {
     return (
@@ -171,7 +219,7 @@ export default function Home() {
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       className="flex flex-col space-y-8 md:space-y-12 pb-24"
     >
-      <div className="flex flex-col lg:flex-row items-center justify-between min-h-[70vh] lg:min-h-[80vh] gap-12 lg:gap-16 relative">
+      <div className="flex flex-col lg:flex-row items-center justify-between min-h-[50vh] lg:min-h-[60vh] gap-12 lg:gap-16 relative mt-6 lg:mt-12">
         <div className="flex-1 space-y-8 md:space-y-12 z-10 w-full text-center lg:text-left pt-12 lg:pt-0">
           <div className="space-y-4 md:space-y-6">
             <motion.div 
@@ -247,11 +295,13 @@ export default function Home() {
         >
           <HeroVisualizer isPlaying={isPlaying} />
           
-          <div className="relative w-64 h-64 sm:w-96 sm:h-96 md:w-[500px] md:h-[500px] lg:w-[540px] lg:h-[540px] rounded-[30px] md:rounded-[40px] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.8)] border border-white/10 group-hover:border-white/20 transition-all duration-700">
+          <div className={`relative w-64 h-64 sm:w-96 sm:h-96 md:w-[500px] md:h-[500px] lg:w-[540px] lg:h-[540px] rounded-[30px] md:rounded-[40px] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.8)] border border-white/10 group-hover:border-white/20 transition-all duration-700 ${
+            (resolveDjImage(onAirInfo?.djPhoto) === logoUrl) && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''
+          }`}>
             <img 
-              src={onAirInfo?.djPhoto || "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=1200&q=80"}
+              src={resolveDjImage(onAirInfo?.djPhoto)}
               alt="Current DJ"
-              className={`w-full h-full object-cover transition-all duration-1000 ${isPlaying ? 'scale-110 contrast-125' : 'scale-100 grayscale brightness-75'}`}
+              className={`w-full h-full transition-all duration-1000 ${isPlaying ? 'scale-110 contrast-125' : 'scale-100 grayscale brightness-75'} ${(resolveDjImage(onAirInfo?.djPhoto) === logoUrl && logoUrl) ? 'object-contain p-8' : 'object-cover'}`}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-dark-bg via-transparent to-transparent opacity-80"></div>
             
@@ -283,6 +333,52 @@ export default function Home() {
           </button>
         </motion.div>
       </div>
+
+      {nextShow && (
+        <div className="w-full px-6 xl:px-12 pb-8 !mt-4 md:!-mt-12 relative z-20">
+          <div className="max-w-[1400px] mx-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.7 }}
+              className="glass-panel p-6 md:p-8 rounded-[2rem] border border-white/10 relative overflow-hidden group w-full flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-[0_20px_50px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-500"
+            >
+              {/* Subtle ambient light from left and right */}
+              <div className="absolute top-1/2 -left-32 w-64 h-64 bg-neon-purple/10 blur-[80px] -translate-y-1/2 rounded-full pointer-events-none transition-all duration-700 group-hover:bg-neon-pink/20 group-hover:scale-150"></div>
+              <div className="absolute top-1/2 -right-32 w-64 h-64 bg-neon-blue/10 blur-[80px] -translate-y-1/2 rounded-full pointer-events-none transition-all duration-700 group-hover:bg-neon-blue/20 group-hover:scale-150"></div>
+              
+              <div className="flex flex-col md:flex-row items-start md:items-center gap-6 relative z-10 w-full md:w-auto">
+                <div className={`w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden shrink-0 border border-white/10 relative group-hover:border-neon-purple/40 transition-colors duration-500 shadow-2xl ${
+                  resolveDjImage(nextShow.dj_photo) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''
+                }`}>
+                  <img src={resolveDjImage(nextShow.dj_photo)} alt={nextShow.dj_name} className={`w-full h-full filter grayscale group-hover:grayscale-0 transition-all duration-700 scale-100 group-hover:scale-110 ${resolveDjImage(nextShow.dj_photo) === logoUrl && logoUrl ? 'object-contain p-2' : 'object-cover'}`} />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                </div>
+                
+                <div className="flex flex-col justify-center">
+                  <h4 className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] flex items-center space-x-2 text-white/50 mb-1.5 md:mb-2">
+                    <Clock className="w-3.5 h-3.5 text-neon-blue" />
+                    <span>Next Up in Schedule</span>
+                  </h4>
+                  <h3 className="font-display font-black text-2xl sm:text-3xl leading-tight text-white group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-white/70 transition-all duration-500 truncate uppercase tracking-tight">
+                    {nextShow.dj_name}
+                  </h3>
+                  <p className="text-[13px] sm:text-sm text-neon-blue/80 truncate mt-1 font-mono uppercase tracking-widest font-bold">
+                    {nextShow.show_name}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="relative z-10 w-full md:w-auto flex justify-start md:justify-end shrink-0 mt-2 md:mt-0">
+                <div className="inline-flex items-center space-x-3 bg-black/40 border border-white/10 rounded-xl px-5 py-3 shadow-inner backdrop-blur-md group-hover:border-white/20 transition-colors duration-300">
+                   <div className="w-2 h-2 rounded-full bg-neon-blue animate-pulse shadow-[0_0_10px_rgba(0,210,255,0.8)]"></div>
+                   <span className="text-sm sm:text-base font-bold text-white font-mono tracking-widest">{nextShow.local_start}</span>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      )}
 
       {/* Global Activity Marquee */}
       <div className="w-full py-6 md:py-8 border-y border-white/5 overflow-hidden relative group bg-white/[0.02]">

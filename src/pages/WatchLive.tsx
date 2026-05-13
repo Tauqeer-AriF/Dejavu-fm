@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { io, Socket } from 'socket.io-client';
-import { Send, User, LogOut, Loader2, Instagram, Music2, Globe, Radio } from 'lucide-react';
+import { Send, User, LogOut, Loader2, Instagram, Music2, Globe, Radio, Sparkles, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { useAudio } from '../context/AudioContext';
+import { useLogo } from '../hooks/useLogo';
+import { convertToLocalTime } from '../lib/timeUtils';
 
 interface ChatMessage {
   id: string;
@@ -86,6 +88,7 @@ function getEmbedUrl(url: string | null) {
 export default function WatchLive() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
+  const { logoUrl, resolveDjImage } = useLogo();
   
   // Auth State
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
@@ -217,6 +220,11 @@ export default function WatchLive() {
     setInputText('');
   };
 
+  const { data: scheduleData } = useQuery({
+    queryKey: ['schedule'],
+    queryFn: () => fetch('/api/public/schedule').then(res => res.json())
+  });
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -270,9 +278,9 @@ export default function WatchLive() {
           </AnimatePresence>
         </div>
         <div className="p-4 md:p-6 bg-dark-bg/80 border-t border-white/5 flex flex-col md:flex-row items-center gap-6">
-           {onAirInfo?.djPhoto && (
-             <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl overflow-hidden shadow-2xl border-2 border-neon-purple/30 shrink-0">
-               <img src={onAirInfo.djPhoto} alt={onAirInfo.djName} className="w-full h-full object-cover" />
+           {resolveDjImage(onAirInfo?.djPhoto) && (
+             <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl overflow-hidden shadow-2xl border-2 border-neon-purple/30 shrink-0 bg-white/5">
+               <img src={resolveDjImage(onAirInfo?.djPhoto)} alt={onAirInfo?.djName || "DJ"} className={`w-full h-full ${resolveDjImage(onAirInfo?.djPhoto) === logoUrl && logoUrl ? 'object-contain p-2' : 'object-cover'}`} />
              </div>
            )}
            <div className="flex-1 text-center md:text-left">

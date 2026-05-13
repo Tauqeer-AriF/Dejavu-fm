@@ -1,12 +1,15 @@
 import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { convertToLocalTime } from '../lib/timeUtils';
+import { useLogo } from '../hooks/useLogo';
 
 export function NotificationManager() {
   const { data: scheduleData } = useQuery({
     queryKey: ['schedule'],
     queryFn: () => fetch("/api/public/schedule").then(res => res.json())
   });
+
+  const { logoUrl, resolveDjImage } = useLogo();
 
   const lastNotifiedRef = useRef<Set<string>>(new Set());
 
@@ -41,8 +44,8 @@ export function NotificationManager() {
               const title = 'Dejavu FM Reminder';
               const options = {
                 body: `Don't miss ${show.dj_name}'s show starting in 10 minutes!`,
-                icon: show.dj_photo || '/icon.svg',
-                badge: '/icon.svg',
+                icon: resolveDjImage(show.dj_photo) || '/icon.svg',
+                badge: logoUrl || '/icon.svg',
                 vibrate: [200, 100, 200],
                 data: { url: '/schedule' }
               };

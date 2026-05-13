@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { Instagram, Music, Radio, ExternalLink } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { useLogo } from '../hooks/useLogo';
 
 interface DJ {
   id: string;
@@ -25,6 +26,8 @@ export default function DJs() {
     queryKey: ['djs'],
     queryFn: () => fetch('/api/public/djs').then(res => res.json())
   });
+
+  const { logoUrl, isLightMode, resolveDjImage } = useLogo();
 
   const appName = settings?.app_name || "DejavuFM";
 
@@ -67,11 +70,13 @@ export default function DJs() {
               className="group relative overflow-hidden rounded-[2.5rem] bg-white/5 border border-white/10 hover:border-white/20 transition-all duration-700 shadow-2xl"
             >
               <div className="aspect-[3/4] relative overflow-hidden">
-                <img 
-                  src={dj.image_url || `https://images.unsplash.com/photo-1571266028243-e4733b0f0bb1?q=80&w=800&auto=format&fit=crop`} 
-                  alt={dj.name}
-                  className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 grayscale group-hover:grayscale-0 contrast-125"
-                />
+                <div className={`w-full h-full ${resolveDjImage(dj.image_url) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''}`}>
+                  <img 
+                    src={resolveDjImage(dj.image_url)} 
+                    alt={dj.name}
+                    className={`w-full h-full transition-transform duration-1000 group-hover:scale-110 grayscale group-hover:grayscale-0 contrast-125 ${resolveDjImage(dj.image_url) === logoUrl && logoUrl ? 'object-contain p-12' : 'object-cover'}`}
+                  />
+                </div>
                 
                 <Link to={`/djs/${dj.id}`} className="absolute inset-0 z-20"></Link>
                 {/* Overlay with details */}

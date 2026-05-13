@@ -15,6 +15,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
 import { convertToLocalTime } from './lib/timeUtils';
+import { useLogo } from './hooks/useLogo';
 
 const queryClient = new QueryClient();
 
@@ -296,6 +297,7 @@ function MainLayout() {
   const location = useLocation();
   const [appNameState, setAppNameState] = useState("DejavuFM"); // kept for backward compatibility if needed, but not necessary
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const { logoUrl } = useLogo();
 
   const { data: scheduleData } = useQuery({
     queryKey: ['schedule'],
@@ -349,7 +351,7 @@ function MainLayout() {
         setOnAirInfo({
           djName: onAir.dj_name,
           showName: onAir.show_name,
-          djPhoto: onAir.dj_photo,
+          djPhoto: onAir.dj_photo || logoUrl,
           djBio: onAir.dj_bio,
           instagram: onAir.instagram,
           soundcloud: onAir.soundcloud,
@@ -366,7 +368,7 @@ function MainLayout() {
     const interval = setInterval(updateOnAir, 1000); // Check every second for exact real-time transition
     
     return () => clearInterval(interval);
-  }, [scheduleData, setOnAirInfo, setCurrentTrack, appName]);
+  }, [scheduleData, setOnAirInfo, setCurrentTrack, appName, logoUrl]);
 
   useEffect(() => {
     if (settings) {

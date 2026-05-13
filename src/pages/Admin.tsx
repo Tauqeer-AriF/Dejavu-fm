@@ -1685,7 +1685,7 @@ function AdminAnalytics() {
             <Users className="w-6 h-6 text-neon-purple" />
           </div>
           <p className="text-white/40 text-xs uppercase tracking-widest font-bold">Total Site Visits</p>
-          <p className="text-3xl font-black mt-1">{stats.monthlyListeners.toLocaleString()}</p>
+          <p className="text-3xl font-black mt-1">{(stats.monthlyListeners || 0).toLocaleString()}</p>
         </div>
         <div className="bg-white/5 border border-white/10 p-6 rounded-3xl group hover:border-neon-blue/50 transition-colors shadow-xl">
           <div className="p-3 bg-neon-blue/10 rounded-2xl w-fit mb-4">
@@ -1699,7 +1699,7 @@ function AdminAnalytics() {
             <PlayCircle className="w-6 h-6 text-yellow-400" />
           </div>
           <p className="text-white/40 text-xs uppercase tracking-widest font-bold">Total Podcast Plays</p>
-          <p className="text-3xl font-black mt-1">{stats.totalPodcastPlays.toLocaleString()}</p>
+          <p className="text-3xl font-black mt-1">{(stats.totalPodcastPlays || 0).toLocaleString()}</p>
         </div>
       </div>
 

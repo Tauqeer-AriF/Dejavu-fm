@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Play, Pause, Volume2, Radio, Sliders, Monitor, Mic2, Minimize2, ChevronUp } from 'lucide-react';
 import { useAudio, AudioQuality } from '../context/AudioContext';
+import { useLogo } from '../hooks/useLogo';
 import { motion, AnimatePresence } from 'motion/react';
 import { useQuery } from '@tanstack/react-query';
 
@@ -141,6 +142,7 @@ function QualitySelector() {
 
 export function PlayerBar() {
   const { isPlaying, togglePlay, volume, setVolume, onAirInfo, toggleCinematic } = useAudio();
+  const { logoUrl, isLightMode, settings, resolveDjImage } = useLogo();
   
   const [listeners, setListeners] = useState(0);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -172,7 +174,7 @@ export function PlayerBar() {
           transition={{ type: 'spring', damping: 25, stiffness: 200 }}
           className="fixed bottom-4 sm:bottom-6 left-0 right-0 z-50 px-3 sm:px-6 pointer-events-none"
         >
-          <div className="max-w-6xl mx-auto glass-panel rounded-2xl md:rounded-3xl h-20 md:h-28 flex items-center px-4 md:px-10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 relative group pointer-events-auto overflow-hidden">
+          <div className="max-w-6xl mx-auto bg-dark-bg/95 backdrop-blur-3xl rounded-2xl md:rounded-3xl h-20 md:h-28 flex items-center px-4 md:px-10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 relative group pointer-events-auto overflow-hidden">
             {/* Progress bar background (always 100% since it's a live stream) */}
             <div className="absolute top-0 left-0 h-1 bg-gradient-to-r from-neon-purple/50 via-neon-blue/50 to-neon-purple/50 w-full opacity-30"></div>
             
@@ -187,9 +189,11 @@ export function PlayerBar() {
 
             <div className="flex-1 flex items-center space-x-3 md:space-x-6 overflow-hidden">
               <div className="relative shrink-0">
-                <div className={`w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-white text-dark-bg flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.2)] overflow-hidden transition-all duration-500 ${isPlaying ? 'scale-100' : 'scale-95 grayscale'}`}>
-                  {onAirInfo?.djPhoto ? (
-                    <img src={onAirInfo.djPhoto} alt={onAirInfo.djName} className="w-full h-full object-cover" />
+                <div className={`w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl text-dark-bg flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.2)] overflow-hidden transition-all duration-500 ${isPlaying ? 'scale-100' : 'scale-95 grayscale'} ${
+                  resolveDjImage(onAirInfo?.djPhoto) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : 'bg-white'
+                }`}>
+                  {resolveDjImage(onAirInfo?.djPhoto) ? (
+                    <img src={resolveDjImage(onAirInfo?.djPhoto)} alt={onAirInfo?.djName || "DJ"} className={`w-full h-full ${resolveDjImage(onAirInfo?.djPhoto) === logoUrl && logoUrl ? 'object-contain p-2' : 'object-cover'}`} />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center text-white">
                       <Mic2 className="w-6 h-6 md:w-8 md:h-8" />
@@ -288,7 +292,7 @@ export function PlayerBar() {
           exit={{ scale: 0, opacity: 0, x: 50 }}
           className="fixed bottom-8 right-8 z-50 flex items-center space-x-3"
         >
-          <div className="bg-dark-bg/90 backdrop-blur-xl border border-white/10 rounded-2xl p-2 flex items-center shadow-2xl">
+          <div className="bg-dark-bg/95 backdrop-blur-3xl border border-white/10 rounded-2xl p-2 flex items-center shadow-2xl">
              <button 
               onClick={() => setIsMinimized(false)}
               className="p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-xl transition-all mr-1"
