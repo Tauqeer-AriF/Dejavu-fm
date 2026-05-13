@@ -8,6 +8,7 @@ import path from "path";
 import rateLimit from "express-rate-limit";
 
 export const apiRouter = Router();
+console.log("[API] apiRouter initialized and loaded");
 
 // Simple request logger to help diagnose if the server is alive
 apiRouter.use((req, res, next) => {
@@ -23,13 +24,11 @@ apiRouter.get("/public/admin-challenge", (req, res) => {
 apiRouter.post("/public/admin-challenge/verify", (req, res) => {
   const { answer } = req.body;
   const secretRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_secret') as any;
-  const storedSecret = (secretRow?.value || "Admin").toString();
+  const storedSecret = (secretRow?.value || "waynee").toString();
   
   const normalizedAnswer = (answer || "").toLowerCase().trim();
   const normalizedSecret = storedSecret.toLowerCase().trim();
   const isMatch = normalizedAnswer === normalizedSecret;
-  
-  console.log(`[Admin Challenge] AUTH ATTEMPT | Input: "${answer}" | Expected: "${storedSecret}" | Match: ${isMatch}`);
   
   if (isMatch) {
     res.json({ success: true });
@@ -41,7 +40,7 @@ apiRouter.post("/public/admin-challenge/verify", (req, res) => {
 // Admin only update
 apiRouter.get("/admin/settings/secret", authMiddleware, (req, res) => {
   const secretRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_secret') as any;
-  res.json({ secret: secretRow?.value || "Admin" });
+  res.json({ secret: secretRow?.value || "waynee" });
 });
 
 apiRouter.post("/admin/settings/secret", authMiddleware, (req, res) => {

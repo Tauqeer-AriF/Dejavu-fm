@@ -35,6 +35,7 @@ export function SecretAdminPrompt({ isOpen, onClose }: SecretAdminPromptProps) {
 
       if (res.ok) {
         toast.success("Identity confirmed.");
+        sessionStorage.setItem('admin_secret_passed', 'true');
         onClose();
         navigate("/admin");
       } else {
@@ -88,7 +89,7 @@ export function SecretAdminPrompt({ isOpen, onClose }: SecretAdminPromptProps) {
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] uppercase font-black tracking-widest text-white/30 ml-4">What's your name?</label>
+                  <label className="text-[10px] uppercase font-black tracking-widest text-white/30 ml-4">Secret Access Answer</label>
                   <div className="relative">
                     <input
                       ref={inputRef}

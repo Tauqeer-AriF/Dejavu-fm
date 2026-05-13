@@ -174,22 +174,23 @@ export function initDb() {
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_stream_quality', '1');
   }
 
-  // Ensure admin secret exists - prioritizing ENV var if set
+  // Ensure admin secret exists
   const envSecret = process.env.ADMIN_SECRET;
   try {
-    const currentSecret = db.prepare("SELECT value FROM settings WHERE key = ?").get('admin_secret') as any;
+    const currentSecretRow = db.prepare("SELECT value FROM settings WHERE key = ?").get('admin_secret') as any;
+    const currentSecret = currentSecretRow?.value;
     
-    if (envSecret) {
-      console.log(`[DB] Enforcing ADMIN_SECRET from environment: "${envSecret}"`);
-      db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run('admin_secret', envSecret);
-    } else if (!currentSecret || !currentSecret.value || currentSecret.value.toString().trim() === "") {
-      console.log("[DB] No admin_secret found, initializing to 'Admin'");
-      db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run('admin_secret', 'Admin');
+    // We only enforce/initialize if it's missing or set to the old generic 'Admin' or a system-generated long string
+    const IS_SYSTEM_GENERATED = currentSecret && currentSecret.length > 50; 
+    
+    if (!currentSecret || currentSecret === "" || currentSecret === "Admin" || IS_SYSTEM_GENERATED) {
+      const target = (envSecret && envSecret.length < 50) ? envSecret : 'waynee';
+      db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run('admin_secret', target);
     } else {
-      console.log(`[DB] Current secret door answer active in database.`);
+      console.log(`[DB] admin_secret is already set in database. Preserving existing value.`);
     }
   } catch (err) {
-    const fallback = envSecret || 'Admin';
+    const fallback = envSecret || 'waynee';
     console.error("[DB] Failed to check admin_secret, falling back to:", fallback, err);
     db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run('admin_secret', fallback);
   }
