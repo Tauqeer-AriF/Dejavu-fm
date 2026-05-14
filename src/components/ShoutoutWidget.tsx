@@ -73,7 +73,7 @@ export function ShoutoutWidget() {
   };
 
   return (
-    <div className="fixed bottom-32 right-8 z-[60] flex flex-col items-end gap-4 pointer-events-none">
+    <div className="fixed bottom-[170px] sm:bottom-[180px] xl:bottom-32 right-6 xl:right-8 z-[60] flex flex-col items-end gap-4 pointer-events-none">
       <AnimatePresence>
         {recentShoutouts.map((s, i) => (
           <motion.div
@@ -81,14 +81,14 @@ export function ShoutoutWidget() {
             initial={{ opacity: 0, x: 50, scale: 0.8 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 20, scale: 0.5 }}
-            className="bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl shadow-2xl flex items-center space-x-3 pointer-events-auto"
+            className="bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl shadow-2xl flex items-center space-x-3 pointer-events-auto max-w-[280px]"
           >
              <div className="w-8 h-8 bg-neon-purple/20 rounded-lg flex items-center justify-center shrink-0">
                 <User className="w-4 h-4 text-neon-purple" />
              </div>
-             <div>
-                <p className="text-[10px] font-black uppercase text-neon-purple">{s.listener_name}</p>
-                <p className="text-xs text-white/80">{s.message}</p>
+             <div className="min-w-0">
+                <p className="text-[10px] font-black uppercase text-neon-purple truncate">{s.listener_name}</p>
+                <p className="text-xs text-white/80 line-clamp-2">{s.message}</p>
              </div>
           </motion.div>
         ))}
@@ -98,23 +98,23 @@ export function ShoutoutWidget() {
         <div className="flex items-center space-x-2 overflow-hidden max-w-0 opacity-0 px-0 group-hover:max-w-[150px] group-hover:opacity-100 group-hover:px-2 group-hover:mr-2 transition-all duration-500 ease-out origin-right">
           <button 
             onClick={() => sendReaction('🔥')}
-            className="w-12 h-12 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full flex items-center justify-center shrink-0 transition-all hover:scale-110 active:scale-95"
+            className="w-10 h-10 md:w-12 md:h-12 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full flex items-center justify-center shrink-0 transition-all hover:scale-110 active:scale-95"
           >
-            <Flame className="w-5 h-5 text-orange-500 transition-transform" />
+            <Flame className="w-4 h-4 md:w-5 md:h-5 text-orange-500 transition-transform" />
           </button>
           <button 
             onClick={() => sendReaction('❤️')}
-            className="w-12 h-12 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full flex items-center justify-center shrink-0 transition-all hover:scale-110 active:scale-95"
+            className="w-10 h-10 md:w-12 md:h-12 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full flex items-center justify-center shrink-0 transition-all hover:scale-110 active:scale-95"
           >
-            <Heart className="w-5 h-5 text-red-500 transition-transform" />
+            <Heart className="w-4 h-4 md:w-5 md:h-5 text-red-500 transition-transform" />
           </button>
         </div>
         
         <button 
           onClick={() => setIsOpen(true)}
-          className="bg-white text-dark-bg p-4 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all ring-8 ring-white/5 z-10 relative"
+          className="bg-white text-dark-bg p-3.5 md:p-4 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all ring-4 md:ring-8 ring-white/5 z-10 relative"
         >
-          <MessageSquare className="w-6 h-6" />
+          <MessageSquare className="w-5 h-5 md:w-6 md:h-6" />
         </button>
       </div>
 
@@ -124,7 +124,7 @@ export function ShoutoutWidget() {
             initial={{ opacity: 0, y: 20, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="absolute bottom-20 right-0 w-80 bg-white/10 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-6 shadow-2xl pointer-events-auto"
+            className="absolute bottom-16 md:bottom-20 right-0 w-[calc(100vw-3rem)] sm:w-80 max-w-[320px] bg-white/10 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-5 md:p-6 shadow-2xl pointer-events-auto"
           >
              <div className="flex justify-between items-center mb-6">
                 <h3 className="text-sm font-black uppercase tracking-widest text-white">Direct Shoutout</h3>

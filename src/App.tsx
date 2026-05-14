@@ -265,29 +265,54 @@ function MobileBottomBar({ featLiveTools }: { featLiveTools: boolean }) {
   const isOnDJs = location.pathname.startsWith('/djs/');
 
   return (
-    <div className="xl:hidden fixed bottom-6 left-6 right-6 z-50">
-      <div className="glass-panel rounded-3xl p-2 flex items-center justify-around shadow-2xl border border-white/10 relative overflow-hidden backdrop-blur-3xl">
-        <div className="absolute inset-0 bg-gradient-to-t from-neon-purple/5 to-transparent pointer-events-none"></div>
-        
-        <NavLink to="/" className={({isActive}) => `flex flex-col items-center p-3 rounded-2xl transition-all duration-300 ${isActive ? 'text-neon-purple scale-110' : 'text-white/40'}`}>
-          <Radio className="w-6 h-6" />
-          <span className="text-[8px] font-black uppercase tracking-widest mt-1">Live</span>
-        </NavLink>
-
-        <NavLink to="/schedule" className={({isActive}) => `flex flex-col items-center p-3 rounded-2xl transition-all duration-300 ${isActive ? 'text-neon-purple scale-110' : 'text-white/40'}`}>
-          <Calendar className="w-6 h-6" />
-          <span className="text-[8px] font-black uppercase tracking-widest mt-1">Shows</span>
-        </NavLink>
-
-        <NavLink to="/djs" className={({isActive}) => `flex flex-col items-center p-3 rounded-2xl transition-all duration-300 ${(isActive || isOnDJs) ? 'text-neon-purple scale-110' : 'text-white/40'}`}>
-          <Headphones className="w-6 h-6" />
-          <span className="text-[8px] font-black uppercase tracking-widest mt-1">DJs</span>
-        </NavLink>
-
-        <NavLink to="/podcasts" className={({isActive}) => `flex flex-col items-center p-3 rounded-2xl transition-all duration-300 ${(isActive || isOnPodcasts) ? 'text-neon-purple scale-110' : 'text-white/40'}`}>
-          <Podcast className="w-6 h-6" />
-          <span className="text-[8px] font-black uppercase tracking-widest mt-1">Archive</span>
-        </NavLink>
+    <div className="xl:hidden fixed bottom-6 sm:bottom-8 left-0 right-0 z-50 px-4 pointer-events-none flex justify-center">
+      <div className="w-full max-w-[340px] sm:max-w-[400px] pointer-events-auto">
+        <div className="bg-dark-bg/50 backdrop-blur-3xl rounded-[2rem] py-2 px-1 flex items-center justify-around shadow-[0_30px_60px_rgba(0,0,0,0.7)] border border-white/10 relative overflow-hidden group">
+          <div className="absolute inset-0 bg-gradient-to-t from-neon-purple/10 to-transparent pointer-events-none"></div>
+          
+          {[
+            { to: "/", icon: Radio, label: "Live", active: location.pathname === "/" },
+            { to: "/schedule", icon: Calendar, label: "Shows" },
+            { to: "/djs", icon: Headphones, label: "DJs", active: location.pathname === "/djs" || isOnDJs },
+            { to: "/podcasts", icon: Podcast, label: "Archive", active: location.pathname === "/podcasts" || isOnPodcasts },
+          ].map((item) => (
+            <NavLink 
+              key={item.to}
+              to={item.to} 
+              className={({isActive}) => {
+                const isMatch = item.active !== undefined ? item.active : isActive;
+                return `relative flex flex-col items-center justify-center p-2 rounded-[1.5rem] transition-all duration-500 w-[70px] sm:w-[80px] h-[60px] ${isMatch ? 'text-neon-purple active-bottom-glow' : 'text-white/40 hover:text-white/60'}`
+              }}
+            >
+              {({isActive}) => {
+                const isMatch = item.active !== undefined ? item.active : isActive;
+                return (
+                  <>
+                    <motion.div
+                      animate={{ y: isMatch ? -4 : 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="z-10"
+                    >
+                      <item.icon className="w-[1.375rem] h-[1.375rem]" />
+                    </motion.div>
+                    
+                    <span className={`text-[8.5px] font-black uppercase tracking-[0.2em] transform transition-all duration-300 z-10 absolute bottom-1.5 ${isMatch ? 'opacity-100 translate-y-0 text-white' : 'opacity-0 translate-y-2'}`}>
+                      {item.label}
+                    </span>
+                    
+                    {isMatch && (
+                      <motion.div 
+                        layoutId="bottom-glow"
+                        className="absolute inset-0 bg-white/5 rounded-[1.5rem] -z-0 border border-white/10"
+                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                      />
+                    )}
+                  </>
+                )
+              }}
+            </NavLink>
+          ))}
+        </div>
       </div>
     </div>
   );

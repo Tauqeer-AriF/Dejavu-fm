@@ -17,8 +17,17 @@ function HeroVisualizer({ isPlaying }: { isPlaying: boolean }) {
   useEffect(() => {
     const handleResize = () => {
       if (containerRef.current && canvasRef.current) {
-        canvasRef.current.width = containerRef.current.clientWidth;
-        canvasRef.current.height = containerRef.current.clientHeight;
+        const dpr = window.devicePixelRatio || 1;
+        const width = containerRef.current.clientWidth;
+        const height = containerRef.current.clientHeight;
+        
+        canvasRef.current.width = width * dpr;
+        canvasRef.current.height = height * dpr;
+        canvasRef.current.style.width = `${width}px`;
+        canvasRef.current.style.height = `${height}px`;
+        
+        const ctx = canvasRef.current.getContext('2d');
+        if (ctx) ctx.scale(dpr, dpr);
       }
     };
     handleResize();
@@ -219,17 +228,17 @@ export default function Home() {
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       className="flex flex-col space-y-8 md:space-y-12 pb-24"
     >
-      <div className="flex flex-col lg:flex-row items-center justify-between min-h-[50vh] lg:min-h-[60vh] gap-12 lg:gap-16 relative mt-6 lg:mt-12">
-        <div className="flex-1 space-y-8 md:space-y-12 z-10 w-full text-center lg:text-left pt-12 lg:pt-0">
-          <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col lg:flex-row items-center justify-between min-h-[70vh] gap-10 md:gap-12 lg:gap-16 relative mt-6 md:mt-8 lg:mt-12">
+        <div className="flex-1 space-y-8 md:space-y-10 lg:space-y-12 z-10 w-full flex flex-col items-center lg:items-start pt-6 md:pt-12 lg:pt-0">
+          <div className="space-y-5 md:space-y-6 flex flex-col items-center lg:items-start text-center lg:text-left">
             <motion.div 
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="inline-flex items-center space-x-3 px-5 py-2.5 rounded-2xl glass-panel border border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.3)] group"
+              className="inline-flex items-center space-x-2.5 md:space-x-3 px-5 py-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.3)] group mx-auto lg:mx-0"
             >
               <div className="relative">
-                <span className={`block w-2.5 h-2.5 rounded-full ${isPlaying ? 'bg-neon-blue animate-pulse shadow-[0_0_10px_rgba(0,210,255,1)]' : 'bg-white/20'}`}></span>
+                <span className={`block w-2 md:w-2.5 h-2 md:h-2.5 rounded-full ${isPlaying ? 'bg-neon-blue animate-pulse shadow-[0_0_12px_rgba(0,210,255,1)]' : 'bg-white/20'}`}></span>
               </div>
               <span className="text-[10px] md:text-xs uppercase tracking-[0.3em] font-black text-white/90">
                 {onAirInfo ? 'Live Broadcast' : 'Continuity Mix'}
@@ -240,20 +249,22 @@ export default function Home() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 1, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="text-5xl sm:text-7xl md:text-9xl xl:text-[11rem] leading-[0.85] font-black font-display uppercase tracking-[-0.05em] flex flex-col"
+              className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl xl:text-[11rem] leading-[0.9] md:leading-[0.85] font-black font-display uppercase tracking-[-0.04em] md:tracking-[-0.05em] flex flex-col items-center lg:items-start w-full"
             >
               {onAirInfo ? (
                 <>
                   <span className="text-white drop-shadow-2xl">{onAirInfo.djName.split(' ')[0]}</span>
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple via-neon-blue to-neon-purple bg-[length:200%_auto] animate-[gradient_4s_linear_infinite] italic tracking-tighter -mt-1 md:-mt-4">
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple via-neon-blue to-neon-purple bg-[length:200%_auto] animate-[gradient_4s_linear_infinite] italic tracking-tighter -mt-1 md:-mt-2 lg:-mt-4 relative">
                     {onAirInfo.djName.split(' ').slice(1).join(' ') || 'LIVE'}
+                    <div className="absolute inset-0 bg-gradient-to-r from-neon-purple/20 via-neon-blue/20 to-neon-purple/20 blur-2xl -z-10"></div>
                   </span>
                 </>
               ) : (
                 <>
                   <span className="text-white drop-shadow-2xl">{settings?.app_name?.split(' ')[0] || "DEJAVU"}</span>
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple via-neon-blue to-neon-purple bg-[length:200%_auto] animate-[gradient_4s_linear_infinite] italic tracking-tighter -mt-1 md:-mt-4">
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple via-neon-blue to-neon-purple bg-[length:200%_auto] animate-[gradient_4s_linear_infinite] italic tracking-tighter -mt-1 md:-mt-2 lg:-mt-4 relative">
                     {settings?.app_name?.split(' ').slice(1).join(' ') || "FM RADIO"}
+                    <div className="absolute inset-0 bg-gradient-to-r from-neon-purple/20 via-neon-blue/20 to-neon-purple/20 blur-2xl -z-10"></div>
                   </span>
                 </>
               )}
@@ -264,23 +275,25 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
-            className="flex flex-col md:flex-row items-center lg:items-center gap-8 lg:gap-10 justify-center lg:justify-start"
+            className="flex flex-col md:flex-row items-center lg:items-center gap-6 md:gap-8 lg:gap-10 justify-center lg:justify-start w-full"
           >
-            <p className="text-lg md:text-2xl text-white/40 font-light max-w-lg lg:border-l-2 border-neon-blue/30 lg:pl-6 py-1">
+            <p className="text-[17px] sm:text-lg md:text-2xl text-white/50 font-light max-w-[300px] sm:max-w-md md:max-w-lg lg:border-l-2 border-neon-blue/40 lg:pl-6 py-1 text-center lg:text-left leading-relaxed">
               {onAirInfo ? onAirInfo.showName : settings?.app_tagline || "Broadcasting 24/7. The heartbeat of underground music since 2005."}
             </p>
             
             {settings?.studio_video_url && (
               <motion.div
                 whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="w-full sm:w-auto"
               >
                 <Link
                   to="/watch"
-                  className="flex items-center space-x-4 px-8 py-5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all font-black uppercase tracking-[0.2em] text-[10px] md:text-xs text-neon-blue shadow-[0_20px_40px_rgba(0,0,0,0.3)]"
+                  className="flex items-center justify-center space-x-4 px-8 md:px-8 py-4 md:py-5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all font-black uppercase tracking-[0.2em] text-[11px] md:text-xs text-neon-blue shadow-[0_20px_40px_rgba(0,0,0,0.3)] w-full sm:w-auto"
                 >
-                  <Tv className="w-5 h-5" />
+                  <Tv className="w-5 md:w-5 h-5 md:h-5" />
                   <span>Live Studio Cam</span>
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                  <span className="w-2 md:w-2 h-2 md:h-2 rounded-full bg-red-500 animate-[pulse_1.5s_ease-in-out_infinite] shadow-[0_0_10px_rgba(239,68,68,0.6)]"></span>
                 </Link>
               </motion.div>
             )}
@@ -291,31 +304,34 @@ export default function Home() {
           initial={{ opacity: 0, scale: 0.85 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.2, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className="relative group w-full lg:w-1/2 flex justify-center py-6 lg:py-12"
+          className="relative group w-full lg:w-1/2 flex justify-center py-4 md:py-6 lg:py-12"
         >
           <HeroVisualizer isPlaying={isPlaying} />
           
-          <div className={`relative w-64 h-64 sm:w-96 sm:h-96 md:w-[500px] md:h-[500px] lg:w-[540px] lg:h-[540px] rounded-[30px] md:rounded-[40px] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.8)] border border-white/10 group-hover:border-white/20 transition-all duration-700 ${
+          <div className={`relative w-full aspect-square max-w-[300px] sm:max-w-[360px] md:max-w-[450px] lg:max-w-[540px] rounded-[2.5rem] md:rounded-[3rem] overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.6)] border border-white/5 group-hover:border-white/20 transition-all duration-700 ${
             (resolveDjImage(onAirInfo?.djPhoto) === logoUrl) && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''
           }`}>
             <img 
               src={resolveDjImage(onAirInfo?.djPhoto)}
               alt="Current DJ"
-              className={`w-full h-full transition-all duration-1000 ${isPlaying ? 'scale-110 contrast-125' : 'scale-100 grayscale brightness-75'} ${(resolveDjImage(onAirInfo?.djPhoto) === logoUrl && logoUrl) ? 'object-contain p-8' : 'object-cover'}`}
+              className={`w-full h-full transition-all duration-1000 ${isPlaying ? 'scale-110 contrast-125' : 'scale-100 grayscale brightness-75'} ${(resolveDjImage(onAirInfo?.djPhoto) === logoUrl && logoUrl) ? 'object-contain p-6 md:p-8' : 'object-cover'}`}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-dark-bg via-transparent to-transparent opacity-80"></div>
+            <div className={`absolute inset-0 bg-gradient-to-t ${isPlaying ? 'from-neon-purple/40 via-dark-bg/60' : 'from-dark-bg via-dark-bg/40'} to-transparent opacity-90 transition-colors duration-1000`}></div>
             
             {/* CDJ Style Now Playing Overlay */}
-            <div className="absolute bottom-4 left-4 right-4 md:bottom-10 md:left-10 md:right-10 p-4 md:p-6 glass-panel rounded-2xl md:rounded-3xl border border-white/5 flex flex-col space-y-1.5 md:space-y-2 translate-y-0 group-hover:-translate-y-1 transition-transform duration-500">
-              <div className="flex justify-between items-center text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] text-white/40">
-                <span>HD Audio Feed</span>
-                <span className="text-neon-blue">LIVE / 320K</span>
+            <div className="absolute bottom-4 left-4 right-4 md:bottom-10 md:left-10 md:right-10 p-4 md:p-6 glass-panel rounded-2xl md:rounded-3xl border border-white/10 flex flex-col space-y-1.5 md:space-y-2 translate-y-0 group-hover:-translate-y-2 transition-transform duration-500 shadow-2xl backdrop-blur-xl bg-black/40">
+              <div className="flex justify-between items-center text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] text-white/50">
+                <span className="flex items-center space-x-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-white/40"></div>
+                  <span>HD Feed</span>
+                </span>
+                <span className="text-neon-blue drop-shadow-[0_0_5px_rgba(0,210,255,0.5)]">LIVE / 320K</span>
               </div>
-              <div className="h-[1px] w-full bg-white/5 my-1 md:my-2"></div>
-              <div className="text-xs md:text-xl font-bold uppercase tracking-tight truncate">
+              <div className="h-[1px] w-full bg-white/10 my-2"></div>
+              <div className="text-[15px] sm:text-lg md:text-xl font-bold uppercase tracking-tight truncate text-white">
                 {onAirInfo?.showName || "DEJAVU AUTO-MIX"}
               </div>
-              <div className="text-[9px] md:text-xs text-neon-purple font-black tracking-widest uppercase">
+              <div className="text-[9px] md:text-xs text-neon-purple font-black tracking-[0.25em] uppercase drop-shadow-[0_0_8px_rgba(176,38,255,0.4)]">
                 {onAirInfo?.djName || "STREAMS ACTIVE"}
               </div>
             </div>
@@ -323,56 +339,55 @@ export default function Home() {
           
           <button 
             onClick={togglePlay}
-            className="absolute top-[40%] sm:top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-20 h-20 sm:w-32 sm:h-32 bg-white text-dark-bg rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-500 shadow-[0_20px_60px_rgba(255,255,255,0.4)] group/btn"
+            className="absolute top-[45%] sm:top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-[4.5rem] h-[4.5rem] sm:w-24 sm:h-24 md:w-32 md:h-32 bg-white text-dark-bg rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-500 shadow-[0_20px_60px_rgba(255,255,255,0.4)] hover:shadow-[0_20px_80px_rgba(255,255,255,0.6)] border-4 border-white/20 bg-clip-padding group/btn"
           >
             {isPlaying ? (
-              <Pause className="w-8 h-8 sm:w-12 sm:h-12 fill-current" />
+              <Pause className="w-7 h-7 sm:w-10 sm:h-10 md:w-12 md:h-12 fill-current text-black group-hover/btn:text-neon-purple transition-colors duration-300" />
             ) : (
-              <Play className="w-8 h-8 sm:w-12 sm:h-12 ml-1 sm:ml-2 fill-current" />
+              <Play className="w-7 h-7 sm:w-10 sm:h-10 md:w-12 md:h-12 ml-1 md:ml-2 fill-current text-black group-hover/btn:text-neon-blue transition-colors duration-300" />
             )}
           </button>
         </motion.div>
       </div>
 
       {nextShow && (
-        <div className="w-full px-6 xl:px-12 pb-8 !mt-4 md:!-mt-12 relative z-20">
+        <div className="w-full px-4 sm:px-6 xl:px-12 pb-8 !mt-2 md:!-mt-12 relative z-20">
           <div className="max-w-[1400px] mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.7 }}
-              className="glass-panel p-6 md:p-8 rounded-[2rem] border border-white/10 relative overflow-hidden group w-full flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-[0_20px_50px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-500"
+              className="glass-panel p-5 md:p-8 rounded-[2rem] border border-white/10 relative overflow-hidden group w-full flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:border-white/20 transition-all duration-500"
             >
-              {/* Subtle ambient light from left and right */}
-              <div className="absolute top-1/2 -left-32 w-64 h-64 bg-neon-purple/10 blur-[80px] -translate-y-1/2 rounded-full pointer-events-none transition-all duration-700 group-hover:bg-neon-pink/20 group-hover:scale-150"></div>
-              <div className="absolute top-1/2 -right-32 w-64 h-64 bg-neon-blue/10 blur-[80px] -translate-y-1/2 rounded-full pointer-events-none transition-all duration-700 group-hover:bg-neon-blue/20 group-hover:scale-150"></div>
+              {/* Subtle ambient light */}
+              <div className="absolute top-1/2 -left-32 w-64 h-64 bg-neon-purple/10 blur-[80px] -translate-y-1/2 rounded-full pointer-events-none transition-all duration-700 group-hover:opacity-100 group-hover:scale-150"></div>
               
-              <div className="flex flex-col md:flex-row items-start md:items-center gap-6 relative z-10 w-full md:w-auto">
-                <div className={`w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden shrink-0 border border-white/10 relative group-hover:border-neon-purple/40 transition-colors duration-500 shadow-2xl ${
+              <div className="flex flex-row items-center gap-4 md:gap-6 relative z-10 w-full md:w-auto">
+                <div className={`w-16 h-16 md:w-24 md:h-24 rounded-2xl overflow-hidden shrink-0 border border-white/10 relative group-hover:border-neon-purple/40 transition-all duration-500 shadow-2xl ${
                   resolveDjImage(nextShow.dj_photo) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''
                 }`}>
                   <img src={resolveDjImage(nextShow.dj_photo)} alt={nextShow.dj_name} className={`w-full h-full filter grayscale group-hover:grayscale-0 transition-all duration-700 scale-100 group-hover:scale-110 ${resolveDjImage(nextShow.dj_photo) === logoUrl && logoUrl ? 'object-contain p-2' : 'object-cover'}`} />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                 </div>
                 
-                <div className="flex flex-col justify-center">
-                  <h4 className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] flex items-center space-x-2 text-white/50 mb-1.5 md:mb-2">
-                    <Clock className="w-3.5 h-3.5 text-neon-blue" />
-                    <span>Next Up in Schedule</span>
+                <div className="flex flex-col justify-center min-w-0">
+                  <h4 className="text-[9px] sm:text-[11px] font-black uppercase tracking-[0.2em] flex items-center space-x-2 text-white/40 mb-1 md:mb-2">
+                    <Clock className="w-3 h-3 md:w-3.5 md:h-3.5 text-neon-blue" />
+                    <span>Next Up</span>
                   </h4>
-                  <h3 className="font-display font-black text-2xl sm:text-3xl leading-tight text-white group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-white/70 transition-all duration-500 truncate uppercase tracking-tight">
+                  <h3 className="font-display font-black text-xl sm:text-3xl leading-tight text-white group-hover:text-neon-blue transition-colors duration-500 truncate uppercase tracking-tight">
                     {nextShow.dj_name}
                   </h3>
-                  <p className="text-[13px] sm:text-sm text-neon-blue/80 truncate mt-1 font-mono uppercase tracking-widest font-bold">
+                  <p className="text-[11px] sm:text-sm text-white/60 truncate mt-0.5 font-mono uppercase tracking-widest font-bold">
                     {nextShow.show_name}
                   </p>
                 </div>
               </div>
               
-              <div className="relative z-10 w-full md:w-auto flex justify-start md:justify-end shrink-0 mt-2 md:mt-0">
-                <div className="inline-flex items-center space-x-3 bg-black/40 border border-white/10 rounded-xl px-5 py-3 shadow-inner backdrop-blur-md group-hover:border-white/20 transition-colors duration-300">
-                   <div className="w-2 h-2 rounded-full bg-neon-blue animate-pulse shadow-[0_0_10px_rgba(0,210,255,0.8)]"></div>
-                   <span className="text-sm sm:text-base font-bold text-white font-mono tracking-widest">{nextShow.local_start}</span>
+              <div className="relative z-10 w-full md:w-auto flex justify-start md:justify-end shrink-0 mt-0 md:mt-0">
+                <div className="inline-flex items-center space-x-3 bg-white/5 border border-white/10 rounded-xl px-4 md:px-5 py-2.5 md:py-3 shadow-inner backdrop-blur-md group-hover:border-white/20 transition-colors duration-300 w-full sm:w-auto justify-center sm:justify-start">
+                   <div className="w-1.5 h-1.5 rounded-full bg-neon-blue animate-pulse"></div>
+                   <span className="text-sm md:text-base font-bold text-white font-mono tracking-widest uppercase">{nextShow.local_start}</span>
                 </div>
               </div>
             </motion.div>
@@ -381,31 +396,25 @@ export default function Home() {
       )}
 
       {/* Global Activity Marquee */}
-      <div className="w-full py-6 md:py-8 border-y border-white/5 overflow-hidden relative group bg-white/[0.02]">
-        <div className="flex whitespace-nowrap animate-[marquee_120s_linear_infinite] group-hover:[animation-play-state:paused] space-x-20 w-max">
+      <div className="w-full py-5 md:py-8 border-y border-white/5 overflow-hidden relative group bg-white/[0.01]">
+        <div className="flex whitespace-nowrap animate-[marquee_180s_linear_infinite] group-hover:[animation-play-state:paused] space-x-12 md:space-x-24 w-max">
           {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="flex items-center space-x-12 shrink-0">
-              <div className="flex items-center space-x-4">
-                <span className="w-2 h-2 bg-neon-purple rounded-full animate-pulse shadow-[0_0_10px_rgba(176,38,255,0.5)]"></span>
-                <span className="text-[11px] font-black uppercase tracking-[0.4em] text-white/40">Broadcasting Live</span>
+            <div key={i} className="flex items-center space-x-12 md:space-x-16 shrink-0">
+              <div className="flex items-center space-x-3">
+                <span className="w-1.5 h-1.5 bg-neon-purple rounded-full animate-pulse"></span>
+                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30">Live on {settings?.app_name || "DEJAVU FM"}</span>
               </div>
               <div className="flex items-center space-x-3">
-                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white">Total Listeners:</span>
-                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-neon-blue">{listeners} Connected</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">{listeners} Global Listeners</span>
               </div>
               <div className="flex items-center space-x-3">
-                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/40">Status:</span>
-                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-green-500">Signal Optimal</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/40">Network:</span>
-                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-neon-purple">Global Gateway Active</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neon-blue">Digital Signal Optimal</span>
               </div>
             </div>
           ))}
         </div>
-        <div className="absolute inset-y-0 left-0 w-24 md:w-48 bg-gradient-to-r from-dark-bg to-transparent z-10"></div>
-        <div className="absolute inset-y-0 right-0 w-24 md:w-48 bg-gradient-to-l from-dark-bg to-transparent z-10"></div>
+        <div className="absolute inset-y-0 left-0 w-24 md:w-64 bg-gradient-to-r from-dark-bg to-transparent z-10"></div>
+        <div className="absolute inset-y-0 right-0 w-24 md:w-64 bg-gradient-to-l from-dark-bg to-transparent z-10"></div>
       </div>
     </motion.div>
   );

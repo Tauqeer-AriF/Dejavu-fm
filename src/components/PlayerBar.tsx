@@ -145,7 +145,12 @@ export function PlayerBar() {
   const { logoUrl, isLightMode, settings, resolveDjImage } = useLogo();
   
   const [listeners, setListeners] = useState(0);
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 1280;
+    }
+    return false;
+  });
   const socketRef = useRef<any>(null);
 
   useEffect(() => {
@@ -172,7 +177,7 @@ export function PlayerBar() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          className="fixed bottom-4 sm:bottom-6 left-0 right-0 z-50 px-3 sm:px-6 pointer-events-none"
+          className="fixed bottom-[104px] sm:bottom-[112px] xl:bottom-8 left-0 right-0 z-50 px-3 sm:px-6 pointer-events-none"
         >
           <div className="max-w-6xl mx-auto bg-dark-bg/95 backdrop-blur-3xl rounded-2xl md:rounded-3xl h-20 md:h-28 flex items-center px-4 md:px-10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 relative group pointer-events-auto overflow-hidden">
             {/* Progress bar background (always 100% since it's a live stream) */}
@@ -206,8 +211,8 @@ export function PlayerBar() {
               </div>
               
               <div className="flex-1 min-w-0 pr-2">
-                <div className="flex items-center space-x-2 md:space-x-3 mb-0.5 md:mb-1.5 flex-wrap gap-y-1">
-                  <p className="text-white/60 text-[8px] md:text-xs uppercase tracking-[0.2em] font-black flex items-center truncate">
+                <div className="flex items-center space-x-2 md:space-x-3 mb-1 flex-wrap gap-y-1">
+                  <p className="text-white/60 text-[8px] md:text-xs uppercase tracking-[0.2em] font-black flex items-center shrink-0">
                     <span className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full mr-2 glow-box shrink-0 ${isPlaying ? 'bg-neon-blue animate-pulse' : 'bg-white/20'}`}></span>
                     <span className="truncate">{onAirInfo ? 'Broadcasting Live' : 'Auto-Mix Mode'}</span>
                   </p>
@@ -216,28 +221,28 @@ export function PlayerBar() {
                     <Monitor className="w-3 h-3 mr-1.5" />
                     {listeners} Listeners
                   </p>
-                  <div className="lg:hidden flex items-center pl-2">
-                    <QualitySelector />
-                  </div>
                 </div>
                 
-                <h4 className="text-white font-display font-bold text-sm md:text-2xl truncate tracking-tight leading-tight">
+                <h4 className="text-white font-display font-bold text-sm md:text-2xl truncate tracking-tight leading-tight mb-1">
                   {onAirInfo ? (
                     <div className="flex items-center truncate">
-                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue font-black uppercase italic tracking-tighter mr-2 md:mr-3 shrink-0">{onAirInfo.djName}</span>
+                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue font-black uppercase italic tracking-tighter mr-2 shrink-0">{onAirInfo.djName}</span>
                       <span className="text-white opacity-80 font-medium truncate">{onAirInfo.showName}</span>
                     </div>
                   ) : (
                     <span className="opacity-80">Dejavu FM Global Stream</span>
                   )}
                 </h4>
+                <div className="lg:hidden flex items-center">
+                  <QualitySelector />
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-center mx-2 md:mx-10 relative">
+            <div className="flex items-center justify-center shrink-0 mx-2 md:mx-6 relative">
               <button 
                 onClick={togglePlay}
-                className="w-14 h-14 md:w-20 md:h-20 rounded-full bg-white text-dark-bg flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_40px_rgba(255,255,255,0.3)] relative group/play z-10"
+                className="w-12 h-12 md:w-20 md:h-20 rounded-full bg-white text-dark-bg flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_40px_rgba(255,255,255,0.3)] relative group/play z-10"
               >
                 {isPlaying ? (
                   <Pause className="w-6 h-6 md:w-10 md:h-10 fill-current" />
@@ -290,19 +295,19 @@ export function PlayerBar() {
           initial={{ scale: 0, opacity: 0, x: 50 }}
           animate={{ scale: 1, opacity: 1, x: 0 }}
           exit={{ scale: 0, opacity: 0, x: 50 }}
-          className="fixed bottom-8 right-8 z-50 flex items-center space-x-3"
+          className="fixed bottom-[104px] sm:bottom-[112px] xl:bottom-8 right-4 sm:right-8 z-50 flex items-center space-x-3"
         >
-          <div className="bg-dark-bg/95 backdrop-blur-3xl border border-white/10 rounded-2xl p-2 flex items-center shadow-2xl">
+          <div className="bg-dark-bg/80 backdrop-blur-3xl border border-white/10 rounded-full p-1.5 flex items-center shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
              <button 
               onClick={() => setIsMinimized(false)}
-              className="p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-xl transition-all mr-1"
+              className="p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-all mr-1"
               title="Expand Player"
             >
               <ChevronUp className="w-5 h-5" />
             </button>
             <button 
               onClick={togglePlay}
-              className="w-12 h-12 rounded-xl bg-white text-dark-bg flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl"
+              className="w-12 h-12 rounded-full bg-white text-dark-bg flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_10px_30px_rgba(255,255,255,0.3)]"
             >
               {isPlaying ? (
                 <Pause className="w-5 h-5 fill-current" />

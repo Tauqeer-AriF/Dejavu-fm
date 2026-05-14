@@ -1,8 +1,9 @@
-import React, { Component, ErrorInfo, ReactNode } from "react";
+import React, { ErrorInfo, ReactNode } from "react";
 import { AlertTriangle, RefreshCcw } from "lucide-react";
 
 interface Props {
   children?: ReactNode;
+  key?: React.Key;
 }
 
 interface State {
@@ -10,10 +11,8 @@ interface State {
   error?: Error;
 }
 
-export class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-  }
+export class ErrorBoundary extends React.Component<Props, State> {
+  public props!: Props;
   public state: State = {
     hasError: false
   };
@@ -48,7 +47,7 @@ export class ErrorBoundary extends Component<Props, State> {
       );
     }
 
-    // Explicitly return null if no children to avoid React 19 render issues
     return this.props.children || null;
   }
 }
+
