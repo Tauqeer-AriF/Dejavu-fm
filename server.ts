@@ -39,7 +39,8 @@ async function startServer() {
   // Trust all proxies for dynamic environments
   app.set('trust proxy', true);
 
-  const PORT = 3000;
+  const requestedPort = Number(process.env.PORT || 3000);
+  const hasExplicitPort = Boolean(process.env.PORT);
   const server = http.createServer(app);
   
   // Security Headers
@@ -58,18 +59,24 @@ async function startServer() {
   app.set('io', io);
 
   // Helper for meta tag injection
+  let indexHtmlCache: string | null = null;
+
   async function getDynamicHtml(reqPath: string) {
     const isProduction = process.env.NODE_ENV === "production" || fs.existsSync(path.join(process.cwd(), "dist", "index.html"));
     const indexPath = isProduction
       ? path.join(process.cwd(), "dist", "index.html")
       : path.join(process.cwd(), "index.html");
     
-    if (!fs.existsSync(indexPath)) {
+    if (!indexHtmlCache && !fs.existsSync(indexPath)) {
       console.warn(`[getDynamicHtml] Index file not found at ${indexPath}`);
       return "<html><body>App loading... Please refresh.</body></html>";
     }
     
-    let html = fs.readFileSync(indexPath, "utf8");
+    if (!indexHtmlCache || !isProduction) {
+      indexHtmlCache = fs.readFileSync(indexPath, "utf8");
+    }
+    
+    let html = indexHtmlCache;
     
     // Default meta tags
     let title = "Dejavu FM | The Sound of London";
@@ -215,7 +222,7 @@ async function startServer() {
   });
 
   // Dynamic preview routes for social sharing (mostly for production or crawlers)
-  const dynamicPreviewRoutes = ["/", "/podcasts/:id", "/djs/:id"];
+  const dynamicPreviewRoutes = ["/", "/podcasts/:id", "/djs/:id", "/blog/:slug"];
   
   const isBot = (ua: string) => {
     if (!ua) return false;
@@ -290,9 +297,28 @@ async function startServer() {
     }
   });
 
-  server.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://0.0.0.0:${PORT}`);
-  });
+  const listen = (port: number) => {
+    server.once("error", (err: NodeJS.ErrnoException) => {
+      if (err.code === "EADDRINUSE" && !hasExplicitPort && port < requestedPort + 10) {
+        console.warn(`Port ${port} is already in use. Trying ${port + 1}...`);
+        listen(port + 1);
+        return;
+      }
+
+      if (err.code === "EADDRINUSE") {
+        console.error(`Port ${port} is already in use. Stop the existing dev server or run with a different port, for example: $env:PORT=${port + 1}; npm run dev`);
+        process.exit(1);
+      }
+
+      throw err;
+    });
+
+    server.listen(port, "0.0.0.0", () => {
+      console.log(`Server running on http://0.0.0.0:${port}`);
+    });
+  };
+
+  listen(requestedPort);
 }
 
 startServer();

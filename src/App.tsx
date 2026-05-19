@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { NavLink } from 'react-router-dom';
-import { Radio, Calendar, Podcast, Settings as AdminIcon, Headphones, Menu, X, Video, MessageSquare, Sun, Moon } from 'lucide-react';
+import { Radio, Calendar, Podcast, Settings as AdminIcon, Headphones, Menu, X, Video, MessageSquare, Sun, Moon, FileText } from 'lucide-react';
 import { PlayerBar } from './components/PlayerBar';
 import { ChatSidebar } from './components/ChatSidebar';
 import { ShoutoutWidget } from './components/ShoutoutWidget';
@@ -36,6 +36,8 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import Admin from './pages/Admin';
 import WatchLive from './pages/WatchLive';
+import Blog from './pages/Blog';
+import BlogDetail from './pages/BlogDetail';
 
 function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat: boolean }) {
   const location = useLocation();
@@ -133,6 +135,7 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
           <NavLink to="/schedule" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>Schedule</NavLink>
           <NavLink to="/djs" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>DJs</NavLink>
           <NavLink to="/podcasts" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive || location.pathname.startsWith('/podcasts/') ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>Podcasts</NavLink>
+          <NavLink to="/blog" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive || location.pathname.startsWith('/blog/') ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>Blog</NavLink>
         </div>
 
         <div className="flex items-center space-x-2 md:space-x-4 xl:space-x-6 z-40">
@@ -187,6 +190,7 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
                   { path: '/schedule', label: 'Schedule' },
                   { path: '/djs', label: 'DJs' },
                   { path: '/podcasts', label: 'Podcasts', matchPrefix: true },
+                  { path: '/blog', label: 'Blog', matchPrefix: true, icon: <FileText className="w-5 h-5" /> },
                   { path: '/about', label: 'About' },
                   { path: '/contact', label: 'Contact' },
                 ].map((item, index) => (
@@ -337,6 +341,8 @@ function AnimatedRoutes() {
           <Route path="/djs/:id" element={<DJDetail />} />
           <Route path="/podcasts" element={<PodcastsPage />} />
           <Route path="/podcasts/:id" element={<PodcastDetail />} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/blog/:slug" element={<BlogDetail />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/admin/*" element={<Admin />} />
@@ -383,6 +389,12 @@ function MainLayout() {
       queryKey: ['djs'],
       queryFn: () => fetch("/api/public/djs").then(res => res.json()),
       staleTime: 1000 * 60 * 5, // 5 minutes
+    });
+
+    queryClient.prefetchQuery({
+      queryKey: ['blogs'],
+      queryFn: () => fetch("/api/public/blogs").then(res => res.json()),
+      staleTime: 1000 * 60 * 5,
     });
   }, []);
 
@@ -519,6 +531,7 @@ function MainLayout() {
           <Link to="/about" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">About</Link>
           <Link to="/contact" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">Advertising</Link>
           <Link to="/schedule" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">Schedule</Link>
+          <Link to="/blog" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">Blog</Link>
         </div>
         <div className="flex flex-col items-center md:items-end space-y-2 text-center md:text-right">
           <p className="font-black uppercase tracking-[0.2em] text-[10px]">© {new Date().getFullYear()} {appName}. All rights reserved.</p>

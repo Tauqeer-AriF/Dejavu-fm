@@ -20,6 +20,11 @@ db.pragma('foreign_keys = ON');
 
 export function initDb() {
   db.exec(`
+    CREATE TABLE IF NOT EXISTS migrations (
+      id TEXT PRIMARY KEY,
+      applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT
@@ -118,6 +123,19 @@ export function initDb() {
       url TEXT NOT NULL,
       timestamp INTEGER NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS blogs (
+      id TEXT PRIMARY KEY,
+      slug TEXT UNIQUE NOT NULL,
+      title TEXT NOT NULL,
+      excerpt TEXT,
+      image_url TEXT,
+      content TEXT NOT NULL,
+      is_published INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_blogs_published_created ON blogs(is_published, created_at);
   `);
   
   // Initialize hours
@@ -131,14 +149,21 @@ export function initDb() {
   const insertStat = db.prepare('INSERT OR IGNORE INTO site_stats (category, count) VALUES (?, 0)');
   statsKeys.forEach(key => insertStat.run(key));
 
-  try { db.exec("ALTER TABLE admins ADD COLUMN bio TEXT"); } catch (e) {}
-  try { db.exec("ALTER TABLE admins ADD COLUMN photo_url TEXT"); } catch (e) {}
-  
-  // DJ Table Column Migrations
-  try { db.exec("ALTER TABLE djs ADD COLUMN image_url TEXT"); } catch (e) {}
-  try { db.exec("ALTER TABLE djs ADD COLUMN instagram TEXT"); } catch (e) {}
-  try { db.exec("ALTER TABLE djs ADD COLUMN soundcloud TEXT"); } catch (e) {}
-  try { db.exec("ALTER TABLE djs ADD COLUMN mixcloud TEXT"); } catch (e) {}
+  const runMigration = (id: string, sql: string) => {
+    const exists = db.prepare("SELECT 1 FROM migrations WHERE id = ?").get(id);
+    if (!exists) {
+      try {
+        db.exec(sql);
+        db.prepare("INSERT INTO migrations (id) VALUES (?)").run(id);
+      } catch (e) {
+        // Fallback for cases where columns might already exist
+        db.prepare("INSERT INTO migrations (id) VALUES (?)").run(id);
+      }
+    }
+  };
+
+  runMigration('admin_profile_fields', "ALTER TABLE admins ADD COLUMN bio TEXT; ALTER TABLE admins ADD COLUMN photo_url TEXT;");
+  runMigration('dj_social_fields', "ALTER TABLE djs ADD COLUMN image_url TEXT; ALTER TABLE djs ADD COLUMN instagram TEXT; ALTER TABLE djs ADD COLUMN soundcloud TEXT; ALTER TABLE djs ADD COLUMN mixcloud TEXT;");
   
   // If photo_url exists but image_url is null, migrate it
   try {

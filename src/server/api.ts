@@ -95,6 +95,39 @@ const asyncHandler = (fn: Function) => (req: Request, res: Response, next: NextF
   Promise.resolve(fn(req, res, next)).catch(next);
 };
 
+const toSlug = (value: string) => {
+  const slug = value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return slug || `post-${Date.now()}`;
+};
+
+const uniqueBlogSlug = (title: string, currentId?: string) => {
+  const baseSlug = toSlug(title);
+  let slug = baseSlug;
+  let suffix = 2;
+
+  while (true) {
+    const existing = db.prepare("SELECT id FROM blogs WHERE slug = ?").get(slug) as { id: string } | undefined;
+    if (!existing || existing.id === currentId) return slug;
+    slug = `${baseSlug}-${suffix}`;
+    suffix += 1;
+  }
+};
+
+const cleanBlogInput = (body: any) => {
+  const title = (body.title || "").toString().trim();
+  const content = (body.content || "").toString().trim();
+  const excerpt = (body.excerpt || "").toString().trim();
+  const image_url = (body.image_url || "").toString().trim();
+  const is_published = body.is_published === false || body.is_published === 0 || body.is_published === "0" ? 0 : 1;
+
+  return { title, content, excerpt, image_url, is_published };
+};
+
 // ------ PUBLIC ROUTES ------
 
 apiRouter.get("/public/settings", (req, res) => {
@@ -125,6 +158,27 @@ apiRouter.get("/public/podcasts", asyncHandler(async (req: Request, res: Respons
   const feed = await getPodcastFeed();
   res.json(feed);
 }));
+
+apiRouter.get("/public/blogs", (req, res) => {
+  const blogs = db.prepare(`
+    SELECT id, slug, title, excerpt, image_url, content, created_at, updated_at
+    FROM blogs
+    WHERE is_published = 1
+    ORDER BY datetime(created_at) DESC
+  `).all();
+  res.json(blogs);
+});
+
+apiRouter.get("/public/blogs/:slug", (req, res) => {
+  const blog = db.prepare(`
+    SELECT id, slug, title, excerpt, image_url, content, created_at, updated_at
+    FROM blogs
+    WHERE slug = ? AND is_published = 1
+  `).get(req.params.slug);
+
+  if (!blog) return res.status(404).json({ error: "Blog post not found" });
+  res.json(blog);
+});
 
 apiRouter.get("/public/status", (req, res) => {
   const row = db.prepare("SELECT value FROM settings WHERE key = ?").get("is_on_air") as {value: string};
@@ -486,6 +540,57 @@ apiRouter.delete("/admin/djs/:id", (req, res) => {
   // First clear schedule entries
   try { db.prepare("DELETE FROM schedule WHERE dj_id = ?").run(req.params.id); } catch(e) {}
   db.prepare("DELETE FROM djs WHERE id = ?").run(req.params.id);
+  res.json({ success: true });
+});
+
+apiRouter.get("/admin/blogs", (req, res) => {
+  const blogs = db.prepare(`
+    SELECT *
+    FROM blogs
+    ORDER BY datetime(created_at) DESC
+  `).all();
+  res.json(blogs);
+});
+
+apiRouter.post("/admin/blogs", (req, res) => {
+  const { title, content, excerpt, image_url, is_published } = cleanBlogInput(req.body);
+
+  if (!title || !content) {
+    return res.status(400).json({ error: "Title and post text are required" });
+  }
+
+  const id = crypto.randomUUID();
+  const slug = uniqueBlogSlug(title);
+
+  db.prepare(`
+    INSERT INTO blogs (id, slug, title, excerpt, image_url, content, is_published)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(id, slug, title, excerpt, image_url, content, is_published);
+
+  res.json({ success: true, id, slug });
+});
+
+apiRouter.put("/admin/blogs/:id", (req, res) => {
+  const existing = db.prepare("SELECT id FROM blogs WHERE id = ?").get(req.params.id);
+  if (!existing) return res.status(404).json({ error: "Blog post not found" });
+
+  const { title, content, excerpt, image_url, is_published } = cleanBlogInput(req.body);
+  if (!title || !content) {
+    return res.status(400).json({ error: "Title and post text are required" });
+  }
+
+  const slug = uniqueBlogSlug(title, req.params.id);
+  db.prepare(`
+    UPDATE blogs
+    SET slug = ?, title = ?, excerpt = ?, image_url = ?, content = ?, is_published = ?, updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(slug, title, excerpt, image_url, content, is_published, req.params.id);
+
+  res.json({ success: true, slug });
+});
+
+apiRouter.delete("/admin/blogs/:id", (req, res) => {
+  db.prepare("DELETE FROM blogs WHERE id = ?").run(req.params.id);
   res.json({ success: true });
 });
 
