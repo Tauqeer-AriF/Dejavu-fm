@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Send, Heart, Flame, MessageSquare, X, Ghost, User, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
@@ -10,6 +10,8 @@ export function ShoutoutWidget() {
   const [type, setType] = useState<'text' | 'reaction'>('text');
   const [isSending, setIsSending] = useState(false);
   const [recentShoutouts, setRecentShoutouts] = useState<any[]>([]);
+  const [showBoothClear, setShowBoothClear] = useState(false);
+  const prevCountRef = useRef(0);
 
   useEffect(() => {
     const socket = (window as any).socket;
@@ -34,6 +36,38 @@ export function ShoutoutWidget() {
       };
     }
   }, []);
+
+  // Auto-hide shoutouts with dynamic duration based on screen size
+  useEffect(() => {
+    if (recentShoutouts.length === 0) return;
+
+    // Check for small screens (Tailwind's sm breakpoint is 640px)
+    const isSmallScreen = window.innerWidth < 640;
+    const duration = isSmallScreen ? 4000 : 8000; 
+
+    const timer = setTimeout(() => {
+      setRecentShoutouts(prev => prev.slice(0, -1)); // Remove the oldest entry
+    }, duration);
+
+    return () => clearTimeout(timer);
+  }, [recentShoutouts]);
+
+  // Handle "Booth Clear" temporary visibility logic
+  useEffect(() => {
+    // If shoutouts just went from active to empty
+    if (prevCountRef.current > 0 && recentShoutouts.length === 0) {
+      setShowBoothClear(true);
+      const timer = setTimeout(() => setShowBoothClear(false), 5000);
+      return () => clearTimeout(timer);
+    }
+    
+    // If a new shoutout arrives, hide the "Clear" message immediately
+    if (recentShoutouts.length > 0) {
+      setShowBoothClear(false);
+    }
+    
+    prevCountRef.current = recentShoutouts.length;
+  }, [recentShoutouts]);
 
   const sendShoutout = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -73,27 +107,27 @@ export function ShoutoutWidget() {
   };
 
   return (
-    <div className="fixed bottom-[170px] sm:bottom-[180px] xl:bottom-32 right-6 xl:right-8 z-[60] flex flex-col items-end gap-4 pointer-events-none">
+    <div className="fixed bottom-28 sm:bottom-[180px] xl:bottom-32 right-6 xl:right-8 z-[60] flex flex-col items-end gap-4 pointer-events-none">
       <AnimatePresence>
-        {recentShoutouts.length > 0 ? (
-          recentShoutouts.map((s, i) => (
-            <motion.div
-              key={s.id || i}
-              initial={{ opacity: 0, x: 50, scale: 0.8 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 20, scale: 0.5 }}
-              className="bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl shadow-2xl flex items-center space-x-3 pointer-events-auto max-w-[280px]"
-            >
-               <div className="w-8 h-8 bg-neon-purple/20 rounded-lg flex items-center justify-center shrink-0">
-                  <User className="w-4 h-4 text-neon-purple" />
-               </div>
-               <div className="min-w-0">
-                  <p className="text-[10px] font-black text-neon-purple truncate tracking-tight">{s.listener_name}</p>
-                  <p className="text-xs text-white/80 line-clamp-2">{s.message}</p>
-               </div>
-            </motion.div>
-          ))
-        ) : (
+        {recentShoutouts.map((s, i) => (
+          <motion.div
+            key={s.id || `shoutout-${i}`}
+            initial={{ opacity: 0, x: 50, scale: 0.8 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 20, scale: 0.5 }}
+            className="bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl shadow-2xl flex items-center space-x-3 pointer-events-auto max-w-[280px]"
+          >
+             <div className="w-8 h-8 bg-neon-purple/20 rounded-lg flex items-center justify-center shrink-0">
+                <User className="w-4 h-4 text-neon-purple" />
+             </div>
+             <div className="min-w-0">
+                <p className="text-[10px] font-black text-neon-purple truncate tracking-tight">{s.listener_name}</p>
+                <p className="text-xs text-white/80 line-clamp-2">{s.message}</p>
+             </div>
+          </motion.div>
+        ))}
+
+        {showBoothClear && recentShoutouts.length === 0 && (
           <motion.div
             key="empty-shoutouts"
             initial={{ opacity: 0, y: 10 }}

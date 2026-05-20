@@ -43,6 +43,9 @@ async function startServer() {
   const hasExplicitPort = Boolean(process.env.PORT);
   const server = http.createServer(app);
   
+  // Explicitly serve public folder for manifest.json and icons
+  app.use(express.static(path.join(process.cwd(), "public")));
+
   // Security Headers
   app.use(helmet({
     contentSecurityPolicy: false, 
@@ -269,8 +272,8 @@ async function startServer() {
     app.use(express.static(distPath, { index: false })); // don't serve index.html automatically
     
     app.get("*", async (req, res) => {
-      // If the request looks like an asset (has a dot) and was not served by express.static
-      // We check if it is explicitly in src/ to handle cases where it leaked
+      // Ensure that requests for assets/files (containing a dot) that were not served
+      // by static middleware return a proper 404 instead of the SPA's HTML index.
       if (req.path.startsWith('/src/') || (req.path.includes('.') && !req.path.endsWith('.html'))) {
         console.warn(`[404] Resource not found: ${req.path}`);
         return res.status(404).json({ error: "Not Found", path: req.path });

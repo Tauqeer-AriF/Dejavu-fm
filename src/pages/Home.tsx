@@ -277,7 +277,7 @@ export default function Home() {
             transition={{ duration: 0.8, delay: 0.6 }}
             className="flex flex-col md:flex-row items-center lg:items-center gap-6 md:gap-8 lg:gap-10 justify-center lg:justify-start w-full"
           >
-            <p className="text-[17px] sm:text-lg md:text-2xl text-white/50 font-light max-w-[300px] sm:max-w-md md:max-w-lg lg:border-l-2 border-neon-blue/40 lg:pl-6 py-1 text-center lg:text-left leading-relaxed">
+            <p className="hidden sm:block text-[17px] sm:text-lg md:text-2xl text-white/50 font-light max-w-[300px] sm:max-w-md md:max-w-lg lg:border-l-2 border-neon-blue/40 lg:pl-6 py-1 text-center lg:text-left leading-relaxed">
               {onAirInfo ? onAirInfo.showName : settings?.app_tagline || "Broadcasting 24/7. The heartbeat of underground music since 2005."}
             </p>
             
@@ -285,7 +285,7 @@ export default function Home() {
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="w-full sm:w-auto"
+                className="hidden sm:block w-full sm:w-auto"
               >
                 <Link
                   to="/watch"
