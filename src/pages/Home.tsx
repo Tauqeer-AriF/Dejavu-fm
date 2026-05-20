@@ -228,8 +228,8 @@ export default function Home() {
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       className="flex flex-col space-y-8 md:space-y-12 pb-24"
     >
-      <div className="flex flex-col lg:flex-row items-center justify-between min-h-[70vh] gap-10 md:gap-12 lg:gap-16 relative mt-6 md:mt-8 lg:mt-12">
-        <div className="flex-1 space-y-8 md:space-y-10 lg:space-y-12 z-10 w-full flex flex-col items-center lg:items-start pt-6 md:pt-12 lg:pt-0">
+      <div className="flex flex-col lg:flex-row items-center justify-center lg:justify-between min-h-[70vh] gap-6 md:gap-12 lg:gap-16 relative mt-6 md:mt-8 lg:mt-12">
+        <div className="flex-1 space-y-8 md:space-y-10 lg:space-y-12 z-10 w-full flex flex-col items-center lg:items-start pt-2 md:pt-12 lg:pt-0">
           <div className="space-y-5 md:space-y-6 flex flex-col items-center lg:items-start text-center lg:text-left">
             <motion.div 
               initial={{ opacity: 0, scale: 0.8 }}
@@ -304,7 +304,7 @@ export default function Home() {
           initial={{ opacity: 0, scale: 0.85 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.2, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className="relative group w-full lg:w-1/2 flex justify-center py-4 md:py-6 lg:py-12"
+        className="relative group w-full lg:w-1/2 flex justify-center py-2 md:py-6 lg:py-12"
         >
           <HeroVisualizer isPlaying={isPlaying} />
           
