@@ -6,6 +6,7 @@ import Parser from "rss-parser";
 import crypto from "crypto";
 import path from "path";
 import rateLimit from "express-rate-limit";
+import { z } from "zod";
 
 export const apiRouter = Router();
 console.log("[API] apiRouter initialized and loaded");
@@ -127,6 +128,14 @@ const cleanBlogInput = (body: any) => {
 
   return { title, content, excerpt, image_url, is_published };
 };
+
+const BlogSchema = z.object({
+  title: z.string().min(1),
+  content: z.string().min(1),
+  excerpt: z.string().optional(),
+  image_url: z.string().url().optional().or(z.literal("")),
+  is_published: z.union([z.boolean(), z.number()]).transform(v => !!v)
+});
 
 // ------ PUBLIC ROUTES ------
 

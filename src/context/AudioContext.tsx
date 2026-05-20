@@ -295,13 +295,16 @@ if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
 if (typeof window !== 'undefined' && audio) {
   let recoveryTimeout: ReturnType<typeof setTimeout> | null = null;
   let isRecovering = false;
+  let retryCount = 0;
+  const MAX_RETRIES = 5;
 
   const attemptRecovery = () => {
     const store = useAudioStore.getState();
-    if (!store.isPlaying || !audio || isRecovering) return;
+    if (!store.isPlaying || !audio || isRecovering || retryCount >= MAX_RETRIES) return;
     
     isRecovering = true;
-    console.log("Audio stream interrupted. Attempting recovery...");
+    retryCount++;
+    console.log(`Audio stream interrupted. Attempting recovery ${retryCount}/${MAX_RETRIES}...`);
     
     // Slight delay to handle brief network switching (e.g., WiFi to Cellular)
     if (recoveryTimeout) clearTimeout(recoveryTimeout);

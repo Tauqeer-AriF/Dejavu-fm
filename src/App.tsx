@@ -126,10 +126,10 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
         </Link>
         
         <div className="hidden xl:flex items-center bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2rem] px-2 py-2 shadow-2xl">
-          <NavLink to="/" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>Live</NavLink>
+          <NavLink to="/" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>Listen</NavLink>
           {featLiveTools && (
             <NavLink to="/watch" className={({isActive}) => `px-4 xl:px-8 py-3 flex items-center gap-2 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-neon-purple text-white shadow-[0_0_25px_rgba(176,38,255,0.4)]' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>
-              <Video className="w-4 h-4 hidden xl:block" /> Studio
+              <Video className="w-4 h-4 hidden xl:block" /> Watch
             </NavLink>
           )}
           <NavLink to="/schedule" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>Schedule</NavLink>
@@ -185,8 +185,8 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
             <div className="flex flex-col min-h-full px-8 pb-32 max-w-md mx-auto">
               <div className="flex flex-col space-y-2 mt-auto mb-auto">
                 {[
-                  { path: '/', label: 'Live', exact: true },
-                  ...(featLiveTools ? [{ path: '/watch', label: 'Studio Cam', icon: <Video className="w-5 h-5" />, color: 'text-neon-purple' }] : []),
+                  { path: '/', label: 'Listen', exact: true },
+                  ...(featLiveTools ? [{ path: '/watch', label: 'Watch', icon: <Video className="w-5 h-5" />, color: 'text-neon-purple' }] : []),
                   { path: '/schedule', label: 'Schedule' },
                   { path: '/djs', label: 'DJs' },
                   { path: '/podcasts', label: 'Podcasts', matchPrefix: true },
@@ -275,7 +275,7 @@ function MobileBottomBar({ featLiveTools }: { featLiveTools: boolean }) {
           <div className="absolute inset-0 bg-gradient-to-t from-neon-purple/10 to-transparent pointer-events-none"></div>
           
           {[
-            { to: "/", icon: Radio, label: "Live", active: location.pathname === "/" },
+            { to: "/", icon: Radio, label: "Listen", active: location.pathname === "/" },
             { to: "/schedule", icon: Calendar, label: "Shows" },
             { to: "/djs", icon: Headphones, label: "DJs", active: location.pathname === "/djs" || isOnDJs },
             { to: "/podcasts", icon: Podcast, label: "Archive", active: location.pathname === "/podcasts" || isOnPodcasts },
