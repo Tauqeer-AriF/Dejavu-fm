@@ -96,7 +96,7 @@ export default function WatchLive() {
   const [trackOverlay, setTrackOverlay] = useState<{artist: string, title: string} | null>(null);
   const overlayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-  const [authUsername, setAuthUsername] = useState('');
+  const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [listeners, setListeners] = useState(0);
@@ -178,7 +178,7 @@ export default function WatchLive() {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!authUsername || !authPassword) return;
+    if (!authEmail || !authPassword) return;
     setAuthLoading(true);
     
     try {
@@ -186,14 +186,14 @@ export default function WatchLive() {
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: authUsername, password: authPassword })
+        body: JSON.stringify({ email: authEmail, password: authPassword })
       });
       const data = await res.json();
       
       if (res.ok) {
         setLoggedInUser(data.username);
         toast.success(`Welcome to the chat, ${data.username}!`);
-        setAuthUsername('');
+        setAuthEmail('');
         setAuthPassword('');
       } else {
         toast.error(data.error || 'Authentication failed');
@@ -415,14 +415,14 @@ export default function WatchLive() {
           ) : !loggedInUser ? (
             <form onSubmit={handleAuth} className="space-y-3">
               <div className="text-sm text-center mb-2 font-medium text-white/80">
-                {authMode === 'login' ? 'Login to chat' : 'Register to chat'}
+                {authMode === 'login' ? 'Login with Email' : 'Register with Email'}
               </div>
               <input
-                type="text"
+                type="email"
                 required
-                value={authUsername}
-                onChange={e => setAuthUsername(e.target.value)}
-                placeholder="Username"
+                value={authEmail}
+                onChange={e => setAuthEmail(e.target.value)}
+                placeholder="Email Address"
                 className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-neon-purple/50 text-white placeholder-white/30"
               />
               <input

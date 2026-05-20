@@ -60,6 +60,8 @@ export function initDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
+      source TEXT DEFAULT 'register',
+      is_banned INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -164,6 +166,8 @@ export function initDb() {
 
   runMigration('admin_profile_fields', "ALTER TABLE admins ADD COLUMN bio TEXT; ALTER TABLE admins ADD COLUMN photo_url TEXT;");
   runMigration('dj_social_fields', "ALTER TABLE djs ADD COLUMN image_url TEXT; ALTER TABLE djs ADD COLUMN instagram TEXT; ALTER TABLE djs ADD COLUMN soundcloud TEXT; ALTER TABLE djs ADD COLUMN mixcloud TEXT;");
+  runMigration('user_source_field', "ALTER TABLE users ADD COLUMN source TEXT DEFAULT 'register';");
+  runMigration('user_ban_field', "ALTER TABLE users ADD COLUMN is_banned INTEGER DEFAULT 0;");
   
   // If photo_url exists but image_url is null, migrate it
   try {

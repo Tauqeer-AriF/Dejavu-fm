@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { io, Socket } from 'socket.io-client';
-import { Send, User, LogOut, Loader2, X, MessageSquare, Users } from 'lucide-react';
+import { Send, User, LogOut, Loader2, X, MessageSquare, Users, Ban, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ChatMessage {
@@ -17,11 +17,19 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
   const [inputText, setInputText] = useState('');
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [loggedInUser, setLoggedInUser] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-  const [authUsername, setAuthUsername] = useState('');
+  const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [listeners, setListeners] = useState(0);
+  const [blockedUsers, setBlockedUsers] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('dejavu_blocked_users') || '[]');
+    } catch {
+      return [];
+    }
+  });
 
   const socketRef = useRef<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -36,6 +44,15 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
         setIsCheckingAuth(false);
       })
       .catch(() => setIsCheckingAuth(false));
+
+    // Check for station admin status
+    const adminToken = localStorage.getItem('admin_token');
+    if (adminToken) {
+      fetch('/api/admin/check', {
+        headers: { 'Authorization': `Bearer ${adminToken}` }
+      }).then(r => { if (r.ok) setIsAdmin(true); })
+        .catch(() => setIsAdmin(false));
+    }
 
     const socket = (window as any).socket;
     if (!socket) return;
@@ -57,10 +74,19 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
       setListeners(count);
     });
 
+    socket.on('user_banned', ({ email }: { email: string }) => {
+      setMessages(prev => prev.filter(m => m.user !== email));
+      if (loggedInUser === email) {
+        handleLogout();
+        toast.error("Your session has been terminated by an administrator.");
+      }
+    });
+
     return () => {
       socket.off('chatHistory');
       socket.off('chatMessage');
       socket.off('onlineCount');
+      socket.off('user_banned');
     };
   }, [isOpen]);
 
@@ -72,7 +98,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!authUsername || !authPassword) return;
+    if (!authEmail || !authPassword) return;
     setAuthLoading(true);
     
     try {
@@ -80,14 +106,14 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: authUsername, password: authPassword })
+        body: JSON.stringify({ email: authEmail, password: authPassword })
       });
       const data = await res.json();
       
       if (res.ok) {
         setLoggedInUser(data.username);
         toast.success(`Welcome, ${data.username}!`);
-        setAuthUsername('');
+        setAuthEmail('');
         setAuthPassword('');
       } else {
         toast.error(data.error || 'Authentication failed');
@@ -114,6 +140,44 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     setInputText('');
   };
 
+  const handleBlockUser = (username: string) => {
+    if (username === loggedInUser || username === 'SYSTEM') return;
+    const newBlocked = [...new Set([...blockedUsers, username])];
+    setBlockedUsers(newBlocked);
+    localStorage.setItem('dejavu_blocked_users', JSON.stringify(newBlocked));
+    toast.success(`User blocked. You will no longer see messages from ${username}.`);
+  };
+
+  const handleBanUser = async (email: string) => {
+    const confirmed = window.confirm(`GLOBAL BAN: Permanently suspend ${email} and remove their messages?`);
+    if (!confirmed) return;
+
+    const adminToken = localStorage.getItem('admin_token');
+    try {
+      const res = await fetch('/api/admin/chat_users/ban', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`
+        },
+        body: JSON.stringify({ email })
+      });
+      if (res.ok) toast.success(`User ${email} has been globally banned.`);
+    } catch (err) {
+      toast.error('Failed to ban user.');
+    }
+  };
+
+  const handleUnblockAll = () => {
+    setBlockedUsers([]);
+    localStorage.removeItem('dejavu_blocked_users');
+    toast.success('Block list cleared');
+  };
+
+  const visibleMessages = useMemo(() => 
+    messages.filter(msg => !blockedUsers.includes(msg.user)),
+  [messages, blockedUsers]);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -139,9 +203,20 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                 </div>
                 <div>
                   <h3 className="font-bold text-lg leading-tight uppercase tracking-widest">Community Hub</h3>
-                  <div className="flex items-center text-[10px] text-white/40 uppercase tracking-widest font-black">
-                    <span className="w-1.5 h-1.5 rounded-full bg-neon-blue mr-2 animate-pulse"></span>
-                    {listeners} Online now
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center text-[10px] text-white/40 uppercase tracking-widest font-black">
+                      <span className="w-1.5 h-1.5 rounded-full bg-neon-blue mr-2 animate-pulse"></span>
+                      {listeners} Online now
+                    </div>
+                    {blockedUsers.length > 0 && (
+                      <button 
+                        onClick={handleUnblockAll}
+                        className="text-[9px] text-red-500/50 hover:text-red-500 uppercase font-black tracking-widest transition-colors flex items-center gap-1"
+                      >
+                        <Ban className="w-2.5 h-2.5" />
+                        Unblock All ({blockedUsers.length})
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -154,13 +229,13 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin" ref={scrollRef}>
-              {messages.length === 0 ? (
+              {visibleMessages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full opacity-20 text-center space-y-4">
                   <Users className="w-16 h-16" />
-                  <p className="text-sm font-bold uppercase tracking-widest">The airwaves are quiet... say something!</p>
+                  <p className="text-sm font-bold uppercase tracking-widest">{messages.length > 0 ? 'Messages are filtered' : 'The airwaves are quiet... say something!'}</p>
                 </div>
               ) : (
-                messages.map((msg) => (
+                visibleMessages.map((msg) => (
                   <motion.div 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -169,7 +244,28 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                   >
                     {!msg.isSystem && (
                       <div className="flex items-baseline justify-between mb-1">
-                        <span className="font-black text-neon-blue text-xs uppercase tracking-widest">{msg.user}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-black text-neon-blue text-xs uppercase tracking-widest">{msg.user}</span>
+                          {loggedInUser && msg.user !== loggedInUser && (
+                            <button 
+                              onClick={() => handleBlockUser(msg.user)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-[8px] bg-red-500/10 text-red-500/60 hover:text-red-500 px-1.5 py-0.5 rounded border border-red-500/20 font-black uppercase tracking-tighter"
+                              title="Block User"
+                            >
+                              Block
+                            </button>
+                          )}
+                          {isAdmin && msg.user !== loggedInUser && (
+                            <button 
+                              onClick={() => handleBanUser(msg.user)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-[8px] bg-red-600 text-white hover:bg-red-500 px-1.5 py-0.5 rounded font-black uppercase tracking-tighter flex items-center gap-1"
+                              title="Global Ban"
+                            >
+                              <ShieldAlert className="w-2 h-2" />
+                              Ban
+                            </button>
+                          )}
+                        </div>
                         <span className="text-[9px] text-white/20 font-bold uppercase">
                           {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
@@ -203,11 +299,11 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                   </div>
                   <form onSubmit={handleAuth} className="space-y-3">
                     <input
-                      type="text"
+                      type="email"
                       required
-                      value={authUsername}
-                      onChange={e => setAuthUsername(e.target.value)}
-                      placeholder="Username"
+                      value={authEmail}
+                      onChange={e => setAuthEmail(e.target.value)}
+                      placeholder="Email Address"
                       className="w-full bg-black/50 border border-white/10 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-neon-purple/50 transition-all"
                     />
                     <input

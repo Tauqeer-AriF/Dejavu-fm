@@ -1843,9 +1843,43 @@ function AdminChatUsers() {
     }
   };
 
+  const exportChatUsersToCSV = () => {
+    if (users.length === 0) {
+      showAlert({ title: "No Data", message: "There are no chat users to export.", style: "danger" });
+      return;
+    }
+
+    const headers = ["ID", "Email", "Source", "Joined At"];
+    const rows = users.map(u => [
+      u.id,
+      `"${(u.username || "").replace(/"/g, '""')}"`,
+      u.source || 'register',
+      new Date(u.created_at).toISOString()
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `dejavu_chat_users_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showAlert({ title: "Exported", message: "Chat users list generated.", style: "success" });
+  };
+
   return (
     <div className="space-y-6 max-w-2xl">
-      <h3 className="text-2xl font-bold border-b border-white/10 pb-4">Chat Users</h3>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/10 pb-4 gap-4">
+        <h3 className="text-2xl font-bold">Chat Users</h3>
+        <button 
+          onClick={exportChatUsersToCSV}
+          className="px-4 py-2 bg-white/5 hover:bg-neon-blue/20 border border-white/10 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap text-neon-blue"
+        >
+          Export CSV
+        </button>
+      </div>
       
       <AddChatUserForm onAdd={load} />
 
@@ -1855,9 +1889,17 @@ function AdminChatUsers() {
             {editingId === u.id ? (
               <EditChatUserForm user={u} onSave={() => { setEditingId(null); load(); }} onCancel={() => setEditingId(null)} />
             ) : (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <span className="font-bold text-lg block">{u.username}</span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 min-w-0">
+                <div className="min-w-0">
+                  <span className="text-[10px] text-white/30 uppercase font-black tracking-widest block mb-0.5">Email</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-bold text-lg block truncate">{u.username}</span>
+                    <span className={`text-[8px] px-1.5 py-0.5 rounded border font-black uppercase tracking-tighter ${
+                      u.source === 'shoutout' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
+                      u.source === 'admin' ? 'bg-neon-blue/10 text-neon-blue border-neon-blue/20' :
+                      'bg-neon-purple/10 text-neon-purple border-neon-purple/20'
+                    }`}>{u.source || 'register'}</span>
+                  </div>
                   <span className="text-xs text-white/50 mt-1 block">Joined: {new Date(u.created_at).toLocaleDateString()}</span>
                 </div>
                 <div className="flex space-x-4">
@@ -1877,22 +1919,22 @@ function AdminChatUsers() {
 }
 
 function AddChatUserForm({onAdd}: {onAdd: ()=>void}) {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { showAlert } = useModal();
 
   const handleAdd = async (e: any) => {
     e.preventDefault();
-    if (!username || !password) return;
+    if (!email || !password) return;
     const res = await fetchAdmin("/api/admin/chat_users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({ email, password })
     });
     const data = await res.json();
     if (res.ok) {
-      showAlert({ title: "Success", message: `New chat user '${username}' created!`, style: "success" });
-      setUsername("");
+      showAlert({ title: "Success", message: `New chat user '${email}' created!`, style: "success" });
+      setEmail("");
       setPassword("");
       onAdd();
     } else {
@@ -1902,13 +1944,14 @@ function AddChatUserForm({onAdd}: {onAdd: ()=>void}) {
 
   return (
     <form onSubmit={handleAdd} className="bg-dark-bg border border-white/10 p-4 rounded-xl space-y-4">
-      <h4 className="font-bold text-lg">Add New Chat User</h4>
+      <h4 className="font-bold text-lg">Add New Chat Member</h4>
       <div className="flex flex-col sm:flex-row gap-4">
         <input 
           required 
-          value={username} 
-          onChange={e=>setUsername(e.target.value)} 
-          placeholder="New User Name" 
+          type="email"
+          value={email} 
+          onChange={e=>setEmail(e.target.value)} 
+          placeholder="Member Email Address" 
           className="flex-1 bg-panel-bg border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:border-neon-purple text-white" 
         />
         <input 
@@ -1926,7 +1969,7 @@ function AddChatUserForm({onAdd}: {onAdd: ()=>void}) {
 }
 
 function EditChatUserForm({user, onSave, onCancel}: {user: any, onSave: ()=>void, onCancel: ()=>void}) {
-  const [username, setUsername] = useState(user.username);
+  const [email, setEmail] = useState(user.username);
   const [password, setPassword] = useState("");
   const { showAlert } = useModal();
 
@@ -1935,11 +1978,11 @@ function EditChatUserForm({user, onSave, onCancel}: {user: any, onSave: ()=>void
     const res = await fetchAdmin(`/api/admin/chat_users/${user.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({ email, password })
     });
     const data = await res.json();
     if (res.ok) {
-      showAlert({ title: "Success", message: `Chat user '${username}' updated!`, style: "success" });
+      showAlert({ title: "Success", message: `User '${email}' updated!`, style: "success" });
       onSave();
     } else {
       showAlert({ title: "Error", message: data.error || "Failed to update chat user", style: "danger" });
@@ -1950,11 +1993,12 @@ function EditChatUserForm({user, onSave, onCancel}: {user: any, onSave: ()=>void
     <form onSubmit={handleSave} className="space-y-4 w-full">
       <div className="flex flex-col space-y-3">
         <div>
-          <label className="block text-xs uppercase mb-1">Username</label>
+          <label className="block text-xs uppercase mb-1">Email Address</label>
           <input 
             required 
-            value={username} 
-            onChange={e=>setUsername(e.target.value)} 
+            type="email"
+            value={email} 
+            onChange={e=>setEmail(e.target.value)} 
             className="w-full bg-panel-bg border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:border-neon-purple text-white" 
           />
         </div>
@@ -2282,7 +2326,7 @@ function AdminAnalytics() {
 function AdminShoutouts() {
   const [shoutouts, setShoutouts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const { showConfirm, showAlert } = useModal();
   const load = () => {
     fetchAdmin("/api/admin/shoutouts").then(r => r.json()).then(data => {
       setShoutouts(Array.isArray(data) ? data : []);
@@ -2326,6 +2370,33 @@ function AdminShoutouts() {
     }
   };
 
+  const exportToCSV = () => {
+    if (shoutouts.length === 0) {
+      showAlert({ title: "No Data", message: "There are no interactions to export.", style: "danger" });
+      return;
+    }
+
+    const headers = ["ID", "Timestamp", "Email", "Message", "Type"];
+    const rows = shoutouts.map(s => [
+      s.id,
+      new Date(s.timestamp).toISOString(),
+      `"${(s.listener_name || "").replace(/"/g, '""')}"`,
+      `"${(s.message || "").replace(/"/g, '""')}"`,
+      s.type
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `dejavu_interactions_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showAlert({ title: "Exported", message: "CSV file has been generated.", style: "success" });
+  };
+
   return (
     <div className="space-y-6 sm:space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/10 pb-6 gap-6 sm:gap-0">
@@ -2335,11 +2406,27 @@ function AdminShoutouts() {
         </div>
         <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3 sm:gap-4 mt-2 sm:mt-0">
           <button 
-            onClick={() => {
-              if (confirm("Clear ALL interactions? This cannot be undone.")) {
-                fetchAdmin("/api/admin/shoutouts/all", { method: 'DELETE' }).then(() => load());
+            onClick={exportToCSV}
+            className="flex-1 sm:flex-none px-4 py-2.5 bg-white/5 hover:bg-neon-blue/20 border border-white/10 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap text-neon-blue"
+          >
+            Export CSV
+          </button>
+          <button 
+            onClick={async () => {
+              const confirmed = await showConfirm({
+                title: "Purge All Interactions",
+                message: "Are you sure you want to PERMANENTLY delete ALL shoutouts? This action cannot be undone.",
+                style: "danger",
+                confirmText: "Purge Everything"
+              });
+
+              if (confirmed) {
+                setShoutouts([]); // Optimistic update: Clear the list immediately
+                await fetchAdmin("/api/admin/shoutouts/all", { method: 'DELETE' });
+                showAlert({ title: "Purged", message: "All interactions have been cleared.", style: "success" });
+                load();
               }
-            }}
+            }} // Changed to use custom modal
             className="flex-1 sm:flex-none px-4 py-2.5 bg-white/5 hover:bg-red-500/20 border border-white/10 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap"
           >
             Purge Deck
@@ -2370,13 +2457,13 @@ function AdminShoutouts() {
             >
               <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-[40px] pointer-events-none ${s.type === 'reaction' ? 'bg-neon-blue/10' : 'bg-neon-purple/10'}`}></div>
               
-              <div className="flex justify-between items-start mb-4 relative z-10">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center">
+              <div className="flex justify-between items-start mb-4 relative z-10 gap-3">
+                <div className="flex items-center space-x-3 min-w-0">
+                  <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center shrink-0">
                     <User className="w-5 h-5 text-white/40" />
                   </div>
-                  <div>
-                    <h4 className="font-black uppercase tracking-widest text-xs text-white">{s.listener_name}</h4>
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-xs text-white truncate tracking-tight">{s.listener_name}</h4>
                     <p className="text-[10px] text-white/30">{new Date(s.timestamp).toLocaleTimeString()}</p>
                   </div>
                 </div>

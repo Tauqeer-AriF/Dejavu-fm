@@ -206,15 +206,31 @@ apiRouter.post("/public/book-artist", (req, res) => {
 });
 
 apiRouter.post("/public/shoutout", shoutoutLimiter, (req, res) => {
-  const { listener_name, message, type } = req.body;
-  if (!listener_name || !message) {
-    return res.status(400).json({ error: "Name and message required" });
+  const { email, message, type } = req.body;
+  if (!email || !message) {
+    return res.status(400).json({ error: "Email and message required" });
   }
-  const info = db.prepare("INSERT INTO shoutouts (listener_name, message, type) VALUES (?, ?, ?)").run(listener_name, message, type || 'text');
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    return res.status(400).json({ error: "Invalid email address" });
+  }
+
+  // Automatically save shoutout users as chat users if they don't exist
+  const existingUser = db.prepare("SELECT id FROM users WHERE username = ?").get(email);
+  if (!existingUser) {
+    try {
+      const placeholderPass = crypto.randomBytes(16).toString('hex');
+      const hash = bcrypt.hashSync(placeholderPass, 10);
+      db.prepare("INSERT INTO users (username, password_hash, source) VALUES (?, ?, ?)").run(email, hash, 'shoutout');
+    } catch (err) {
+      // Silently ignore unique constraint race conditions
+    }
+  }
+
+  const info = db.prepare("INSERT INTO shoutouts (listener_name, message, type) VALUES (?, ?, ?)").run(email, message, type || 'text');
   
   const io = req.app.get('io');
   if (io) {
-    io.emit('new_shoutout', { id: info.lastInsertRowid, listener_name, message, type });
+    io.emit('new_shoutout', { id: info.lastInsertRowid, listener_name: email, message, type });
   }
   
   res.json({ success: true });
@@ -223,25 +239,29 @@ apiRouter.post("/public/shoutout", shoutoutLimiter, (req, res) => {
 // ------ PUBLIC AUTH ROUTES ------
 
 apiRouter.post("/public/auth/register", (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: "Username and password required" });
-  if (username.length < 3) return res.status(400).json({ error: "Username must be at least 3 characters" });
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: "Email and password required" });
+  if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: "Invalid email address" });
   
   const hash = bcrypt.hashSync(password, 10);
   try {
-    const info = db.prepare("INSERT INTO users (username, password_hash) VALUES (?, ?)").run(username, hash);
-    const token = jwt.sign({ userId: info.lastInsertRowid, username }, ACTUAL_SECRET, { expiresIn: "7d" });
+    const info = db.prepare("INSERT INTO users (username, password_hash, source) VALUES (?, ?, ?)").run(email, hash, 'register');
+    const token = jwt.sign({ userId: info.lastInsertRowid, username: email }, ACTUAL_SECRET, { expiresIn: "7d" });
     res.cookie("user_token", token, { httpOnly: true, secure: true, sameSite: "none" });
-    res.json({ success: true, username });
+    res.json({ success: true, username: email });
   } catch (err) {
-    res.status(400).json({ error: "Username already exists" });
+    res.status(400).json({ error: "Email already exists" });
   }
 });
 
 apiRouter.post("/public/auth/login", authLimiter, (req, res) => {
-  const { username, password } = req.body;
-  const user = db.prepare("SELECT * FROM users WHERE username = ?").get(username) as any;
+  const { email, password } = req.body;
+  const user = db.prepare("SELECT * FROM users WHERE username = ?").get(email) as any;
   
+  if (user && user.is_banned) {
+    return res.status(403).json({ error: "This account has been suspended." });
+  }
+
   if (user && bcrypt.compareSync(password, user.password_hash)) {
     const token = jwt.sign({ userId: user.id, username: user.username }, ACTUAL_SECRET, { expiresIn: "7d" });
     res.cookie("user_token", token, { httpOnly: true, secure: true, sameSite: "none" });
@@ -629,13 +649,20 @@ apiRouter.get("/admin/shoutouts", (req, res) => {
   res.json(shoutouts);
 });
 
-apiRouter.delete("/admin/shoutouts/:id", (req, res) => {
-  db.prepare("DELETE FROM shoutouts WHERE id = ?").run(req.params.id);
+apiRouter.delete("/admin/shoutouts/all", (req, res) => {
+  db.prepare("DELETE FROM shoutouts").run();
+
+  // Notify all connected clients in real-time that interactions are gone
+  const io = req.app.get('io');
+  if (io) {
+    io.emit('shoutouts_cleared');
+  }
+
   res.json({ success: true });
 });
 
-apiRouter.delete("/admin/shoutouts/all", (req, res) => {
-  db.prepare("DELETE FROM shoutouts").run();
+apiRouter.delete("/admin/shoutouts/:id", (req, res) => {
+  db.prepare("DELETE FROM shoutouts WHERE id = ?").run(req.params.id);
   res.json({ success: true });
 });
 
@@ -751,37 +778,51 @@ apiRouter.delete("/admin/users/:username", (req, res) => {
 });
 
 apiRouter.get("/admin/chat_users", (req, res) => {
-  const users = db.prepare("SELECT id, username, created_at FROM users").all();
+  const users = db.prepare("SELECT id, username, source, created_at FROM users").all();
   res.json(users);
 });
 
 apiRouter.post("/admin/chat_users", (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: "Username and password required" });
-  if (username.length < 3) return res.status(400).json({ error: "Username must be at least 3 characters" });
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: "Email and password required" });
+  if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: "Invalid email format" });
   
   const hash = bcrypt.hashSync(password, 10);
   try {
-    const info = db.prepare("INSERT INTO users (username, password_hash) VALUES (?, ?)").run(username, hash);
-    res.json({ success: true, id: info.lastInsertRowid, username });
+    const info = db.prepare("INSERT INTO users (username, password_hash, source) VALUES (?, ?, ?)").run(email, hash, 'admin');
+    res.json({ success: true, id: info.lastInsertRowid, username: email });
   } catch (err) {
-    res.status(400).json({ error: "Username already exists" });
+    res.status(400).json({ error: "User with this email already exists" });
   }
 });
 
+apiRouter.post("/admin/chat_users/ban", (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: "Email required" });
+
+  db.prepare("UPDATE users SET is_banned = 1 WHERE username = ?").run(email);
+
+  const io = req.app.get('io');
+  if (io) {
+    io.emit('user_banned', { email });
+  }
+
+  res.json({ success: true });
+});
+
 apiRouter.put("/admin/chat_users/:id", (req, res) => {
-  const { username, password } = req.body;
+  const { email, password } = req.body;
   
   try {
     if (password) {
       const hash = bcrypt.hashSync(password, 10);
-      db.prepare("UPDATE users SET username=?, password_hash=? WHERE id=?").run(username, hash, req.params.id);
+      db.prepare("UPDATE users SET username=?, password_hash=? WHERE id=?").run(email, hash, req.params.id);
     } else {
-      db.prepare("UPDATE users SET username=? WHERE id=?").run(username, req.params.id);
+      db.prepare("UPDATE users SET username=? WHERE id=?").run(email, req.params.id);
     }
     res.json({ success: true });
   } catch (err) {
-    res.status(400).json({ error: "Update failed, username might already exist." });
+    res.status(400).json({ error: "Update failed, email might already be in use." });
   }
 });
 

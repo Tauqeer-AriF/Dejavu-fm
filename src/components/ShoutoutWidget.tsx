@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Send, Heart, Flame, MessageSquare, X, Ghost, User } from 'lucide-react';
+import { Send, Heart, Flame, MessageSquare, X, Ghost, User, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function ShoutoutWidget() {
   const [isOpen, setIsOpen] = useState(false);
-  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [type, setType] = useState<'text' | 'reaction'>('text');
   const [isSending, setIsSending] = useState(false);
@@ -37,14 +37,14 @@ export function ShoutoutWidget() {
 
   const sendShoutout = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!name.trim() || !message.trim()) return;
+    if (!email.trim() || !message.trim()) return;
 
     setIsSending(true);
     try {
       const res = await fetch('/api/public/shoutout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ listener_name: name, message, type })
+        body: JSON.stringify({ email, message, type })
       });
       if (res.ok) {
         toast.success('Shoutout sent to studio!');
@@ -59,15 +59,15 @@ export function ShoutoutWidget() {
   };
 
   const sendReaction = (emoji: string) => {
-    if (!name.trim()) {
-      toast.error('Enter your name first!');
+    if (!email.trim()) {
+      toast.error('Enter your email first!');
       setIsOpen(true);
       return;
     }
     fetch('/api/public/shoutout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ listener_name: name, message: emoji, type: 'reaction' })
+      body: JSON.stringify({ email, message: emoji, type: 'reaction' })
     });
     toast.success(`${emoji} Sent!`);
   };
@@ -75,23 +75,36 @@ export function ShoutoutWidget() {
   return (
     <div className="fixed bottom-[170px] sm:bottom-[180px] xl:bottom-32 right-6 xl:right-8 z-[60] flex flex-col items-end gap-4 pointer-events-none">
       <AnimatePresence>
-        {recentShoutouts.map((s, i) => (
+        {recentShoutouts.length > 0 ? (
+          recentShoutouts.map((s, i) => (
+            <motion.div
+              key={s.id || i}
+              initial={{ opacity: 0, x: 50, scale: 0.8 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 20, scale: 0.5 }}
+              className="bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl shadow-2xl flex items-center space-x-3 pointer-events-auto max-w-[280px]"
+            >
+               <div className="w-8 h-8 bg-neon-purple/20 rounded-lg flex items-center justify-center shrink-0">
+                  <User className="w-4 h-4 text-neon-purple" />
+               </div>
+               <div className="min-w-0">
+                  <p className="text-[10px] font-black text-neon-purple truncate tracking-tight">{s.listener_name}</p>
+                  <p className="text-xs text-white/80 line-clamp-2">{s.message}</p>
+               </div>
+            </motion.div>
+          ))
+        ) : (
           <motion.div
-            key={i}
-            initial={{ opacity: 0, x: 50, scale: 0.8 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 20, scale: 0.5 }}
-            className="bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl shadow-2xl flex items-center space-x-3 pointer-events-auto max-w-[280px]"
+            key="empty-shoutouts"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="bg-white/5 backdrop-blur-md border border-white/10 px-4 py-2 rounded-2xl flex items-center space-x-2 pointer-events-auto shadow-lg"
           >
-             <div className="w-8 h-8 bg-neon-purple/20 rounded-lg flex items-center justify-center shrink-0">
-                <User className="w-4 h-4 text-neon-purple" />
-             </div>
-             <div className="min-w-0">
-                <p className="text-[10px] font-black uppercase text-neon-purple truncate">{s.listener_name}</p>
-                <p className="text-xs text-white/80 line-clamp-2">{s.message}</p>
-             </div>
+            <Sparkles className="w-3 h-3 text-white/20" />
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20">Booth Clear</span>
           </motion.div>
-        ))}
+        )}
       </AnimatePresence>
 
       <div className="pointer-events-auto flex items-center group">
@@ -133,11 +146,13 @@ export function ShoutoutWidget() {
 
              <form onSubmit={sendShoutout} className="space-y-4">
                 <div className="space-y-1">
-                   <label className="text-[10px] font-black uppercase text-white/40 ml-2">Your Handle</label>
+                   <label className="text-[10px] font-black uppercase text-white/40 ml-2">Your Email</label>
                    <input 
-                     value={name}
-                     onChange={e => setName(e.target.value)}
-                     placeholder="DJ_FAN_99"
+                     type="email"
+                     required
+                     value={email}
+                     onChange={e => setEmail(e.target.value)}
+                     placeholder="email@example.com"
                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs focus:outline-none focus:border-neon-purple transition-all"
                    />
                 </div>
