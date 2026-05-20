@@ -1,7 +1,7 @@
-import React, { useRef, useState, useEffect } from "react";
-import { useNavigate, Routes, Route, Link, useLocation } from "react-router-dom";
+import React, { useRef, useState, useEffect, useMemo } from "react";
+import { useNavigate, Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus } from "lucide-react";
+import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search } from "lucide-react";
 import { useModal } from "../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -33,6 +33,7 @@ const fetchAdmin = (url: string, options: RequestInit = {}) => {
 export default function Admin() {
   const [isLogged, setIsLogged] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isAdminUser, setIsAdminUser] = useState(false); // New state for admin role
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -40,6 +41,11 @@ export default function Admin() {
     fetchAdmin("/api/admin/check")
       .then(res => {
         if (res.ok) setIsLogged(true);
+        return res.json();
+      })
+      .then(data => {
+        // Check if the logged-in user has the 'admin' role
+        if (data.user && data.user.role === 'admin') setIsAdminUser(true);
         setLoading(false);
       })
       .catch(err => {
@@ -85,7 +91,7 @@ export default function Admin() {
       </div>
 
       <div className="glass-panel min-h-[80vh] rounded-3xl flex flex-col md:flex-row overflow-hidden shadow-2xl relative z-10">
-        <AdminSidebar onLogout={handleLogout} />
+        <AdminSidebar onLogout={handleLogout} isAdminUser={isAdminUser} />
         <div className="flex-1 p-4 md:p-8 lg:p-12 overflow-y-auto">
           <AnimatePresence mode="wait">
             <motion.div
@@ -97,19 +103,24 @@ export default function Admin() {
               className="min-h-full"
             >
               <Routes location={location}>
-                <Route path="/" element={<AdminAnalytics />} />
+                <Route path="/" element={<AdminAnalytics isAdminUser={isAdminUser} />} />
                 <Route path="/live-tools" element={<AdminLiveTools />} />
-                <Route path="/settings" element={<AdminSettings />} />
-                <Route path="/advanced" element={<AdminAdvanced />} />
                 <Route path="/djs" element={<AdminDJs />} />
                 <Route path="/blogs" element={<AdminBlogs />} />
-                <Route path="/shoutouts" element={<AdminShoutouts />} />
+                <Route path="/shoutouts" element={<AdminShoutouts isAdminUser={isAdminUser} />} />
                 <Route path="/bookings" element={<AdminBookings />} />
                 <Route path="/schedule" element={<AdminSchedule />} />
-                <Route path="/branding" element={<AdminBranding />} />
-                <Route path="/users" element={<AdminUsers />} />
-                <Route path="/chat-users" element={<AdminChatUsers />} />
                 <Route path="/profile" element={<AdminProfile />} />
+
+                {/* Admin Only Protected Routes */}
+                <Route path="/settings" element={isAdminUser ? <AdminSettings /> : <Navigate to="/admin" replace />} />
+                <Route path="/advanced" element={isAdminUser ? <AdminAdvanced /> : <Navigate to="/admin" replace />} />
+                <Route path="/branding" element={isAdminUser ? <AdminBranding /> : <Navigate to="/admin" replace />} />
+                <Route path="/users" element={isAdminUser ? <AdminUsers isAdminUser={isAdminUser} /> : <Navigate to="/admin" replace />} />
+                <Route path="/chat-users" element={isAdminUser ? <AdminChatUsers isAdminUser={isAdminUser} /> : <Navigate to="/admin" replace />} />
+                <Route path="/audit-logs" element={isAdminUser ? <AdminAuditLogs /> : <Navigate to="/admin" replace />} />
+                
+                <Route path="*" element={<Navigate to="/admin" replace />} />
               </Routes>
             </motion.div>
           </AnimatePresence>
@@ -258,7 +269,7 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
   );
 }
 
-function AdminSidebar({ onLogout }: { onLogout: () => void }) {
+function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; isAdminUser: boolean }) {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -281,12 +292,26 @@ function AdminSidebar({ onLogout }: { onLogout: () => void }) {
     { name: "Schedule", path: "/admin/schedule", icon: Calendar },
     { name: "Admin Users", path: "/admin/users", icon: UserCog },
     { name: "Chat Users", path: "/admin/chat-users", icon: MessageSquare },
+    { name: "Audit Logs", path: "/admin/audit-logs", icon: Shield },
   ];
 
-  if (features.feat_live_tools === '0') navs = navs.filter(n => n.name !== 'Live Tools');
-  if (features.feat_shoutouts === '0') navs = navs.filter(n => n.name !== 'Interaction');
-  if (features.feat_bookings === '0') navs = navs.filter(n => n.name !== 'Agency');
-  if (features.feat_chat === '0') navs = navs.filter(n => n.name !== 'Chat Users');
+  if (!isAdminUser) {
+    // 1. Filter out tabs that strictly require the 'admin' role
+    navs = navs.filter(n =>
+      n.name !== "Settings" &&
+      n.name !== "Advanced" &&
+      n.name !== "Branding" &&
+      n.name !== "Admin Users" &&
+      n.name !== "Chat Users" &&
+      n.name !== "Audit Logs"
+    );
+
+    // 2. Apply dynamic feature flags only for non-admins to ensure admins have full control
+    if (features.feat_live_tools === '0') navs = navs.filter(n => n.name !== 'Live Tools');
+    if (features.feat_shoutouts === '0') navs = navs.filter(n => n.name !== 'Interaction');
+    if (features.feat_bookings === '0') navs = navs.filter(n => n.name !== 'Agency');
+    if (features.feat_chat === '0') navs = navs.filter(n => n.name !== 'Chat Users');
+  }
 
   return (
     <>
@@ -1515,10 +1540,11 @@ function AddScheduleForm({djs, onAdd}: {djs: any[], onAdd: ()=>void}) {
   )
 }
 
-function AdminUsers() {
+function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
   const [users, setUsers] = useState<any[]>([]);
   const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [newUserRole, setNewUserRole] = useState("dj"); // Default to 'dj'
   const [changePasswordUser, setChangePasswordUser] = useState("");
   const [changePasswordVal, setChangePasswordVal] = useState("");
   const [adminSecret, setAdminSecret] = useState("");
@@ -1550,8 +1576,8 @@ function AdminUsers() {
   const handleAddUser = async (e: any) => {
     e.preventDefault();
     const res = await fetchAdmin("/api/admin/users", {
-      method: "POST", headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({username: newUsername, password: newPassword})
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: newUsername, password: newPassword, role: newUserRole })
     });
     if (res.ok) {
       showAlert({ title: "Success", message: `Admin user '${newUsername}' created!`, style: "success" });
@@ -1638,7 +1664,10 @@ function AdminUsers() {
         {users.map(u => (
           <div key={u.username} className="bg-dark-bg border border-white/10 p-4 rounded-xl flex flex-col space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <span className="font-bold text-lg">{u.username}</span>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-lg">{u.username}</span>
+                <span className="text-[10px] uppercase font-black tracking-widest px-2 py-1 rounded-full bg-white/5 border border-white/10 text-white/50">{u.role}</span>
+              </div>
               <div className="flex space-x-4">
                 <button onClick={() => setChangePasswordUser(changePasswordUser === u.username ? "" : u.username)} className="text-neon-blue hover:text-white transition-colors text-sm px-2 py-1">Change Password</button>
                 {u.username !== "admin" && (
@@ -1656,25 +1685,46 @@ function AdminUsers() {
         ))}
       </div>
 
-      <form onSubmit={handleAddUser} className="bg-dark-bg/50 p-6 rounded-xl border border-white/5 space-y-4 max-w-xl">
-        <h4 className="font-bold">Add New User</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs uppercase mb-1">Username</label>
-            <input required value={newUsername} onChange={e=>setNewUsername(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5 focus:outline-none focus:border-neon-purple" />
+      {isAdminUser && ( // Only show this form if the logged-in user is an 'admin'
+        <form onSubmit={handleAddUser} className="bg-dark-bg/50 p-6 rounded-xl border border-white/5 space-y-4 max-w-xl">
+          <h4 className="font-bold">Add New Admin User</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs uppercase mb-1">Username</label>
+              <input required value={newUsername} onChange={e => setNewUsername(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5 focus:outline-none focus:border-neon-purple" />
+            </div>
+            <div>
+              <label className="block text-xs uppercase mb-1">Password</label>
+              <input required type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5 focus:outline-none focus:border-neon-purple" />
+            </div>
+            <div className="col-span-full">
+              <label className="block text-xs uppercase mb-1">Role</label>
+              <select
+                required
+                value={newUserRole}
+                onChange={e => setNewUserRole(e.target.value)}
+                className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5 focus:outline-none focus:border-neon-purple"
+              >
+                <option value="dj">DJ</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <label className="block text-xs uppercase mb-1">Password</label>
-            <input required type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5 focus:outline-none focus:border-neon-purple" />
-          </div>
+          <button className="bg-neon-blue text-dark-bg px-4 py-2 font-bold rounded mt-4">Add User</button>
+        </form>
+      )}
+      {!isAdminUser && (
+        <div className="py-16 text-center bg-dark-bg/50 border border-white/10 rounded-2xl">
+          <Shield className="w-12 h-12 text-white/10 mx-auto mb-4" />
+          <p className="text-white/30 uppercase tracking-widest text-xs font-black">Only 'admin' role users can manage admin accounts.</p>
         </div>
-        <button className="bg-neon-blue text-dark-bg px-4 py-2 font-bold rounded mt-4">Add User</button>
-      </form>
+      )}
     </div>
   );
 }
 
 function AdminProfile() {
+  // This component should ideally fetch its own user's role to display it, but not for editing.
   const [profile, setProfile] = useState<any>(null);
   const [bio, setBio] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
@@ -1822,7 +1872,7 @@ function AdminLiveTools() {
   );
 }
 
-function AdminChatUsers() {
+function AdminChatUsers({ isAdminUser }: { isAdminUser: boolean }) {
   const [users, setUsers] = useState<any[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const { showConfirm, showAlert } = useModal();
@@ -1881,7 +1931,9 @@ function AdminChatUsers() {
         </button>
       </div>
       
-      <AddChatUserForm onAdd={load} />
+      {isAdminUser && ( // Only show this form if the logged-in user is an 'admin'
+        <AddChatUserForm onAdd={load} />
+      )}
 
       <div className="space-y-2">
         {users.map(u => (
@@ -1904,7 +1956,9 @@ function AdminChatUsers() {
                 </div>
                 <div className="flex space-x-4">
                   <button onClick={() => setEditingId(u.id)} className="text-neon-blue hover:text-white transition-colors px-2 py-1.5 text-sm">Edit</button>
-                  <button onClick={() => handleDeleteUser(u.id, u.username)} className="text-red-500 hover:text-red-400 text-sm bg-red-500/10 px-3 py-1.5 rounded transition-colors">Remove</button>
+                  {isAdminUser && ( // Only allow 'admin' role to delete chat users
+                    <button onClick={() => handleDeleteUser(u.id, u.username)} className="text-red-500 hover:text-red-400 text-sm bg-red-500/10 px-3 py-1.5 rounded transition-colors">Remove</button>
+                  )}
                 </div>
               </div>
             )}
@@ -2021,7 +2075,144 @@ function EditChatUserForm({user, onSave, onCancel}: {user: any, onSave: ()=>void
   )
 }
 
-function AdminAnalytics() {
+function AdminAuditLogs() {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const { showConfirm, showAlert } = useModal();
+
+  const load = () => {
+    fetchAdmin("/api/admin/audit-logs")
+      .then(r => r.json())
+      .then(data => {
+        setLogs(Array.isArray(data) ? data : []);
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const filteredLogs = useMemo(() => {
+    const term = searchTerm.toLowerCase().trim();
+    if (!term) return logs;
+    return logs.filter(log => 
+      (log.username || "").toLowerCase().includes(term) || 
+      (log.action || "").toLowerCase().includes(term)
+    );
+  }, [logs, searchTerm]);
+
+  const handleClearLogs = async () => {
+    const confirmed = await showConfirm({
+      title: "Clear Audit Logs",
+      message: "Are you sure you want to permanently delete all activity logs? This action cannot be undone.",
+      style: "danger",
+      confirmText: "Clear All"
+    });
+
+    if (confirmed) {
+      const res = await fetchAdmin("/api/admin/audit-logs", { method: "DELETE" });
+      if (res.ok) {
+        showAlert({ title: "Success", message: "Audit logs have been cleared.", style: "success" });
+        setSearchTerm("");
+        load();
+      }
+    }
+  };
+
+  const exportAuditLogsToCSV = () => {
+    if (filteredLogs.length === 0) {
+      showAlert({ title: "No Data", message: "There are no logs to export.", style: "danger" });
+      return;
+    }
+
+    const headers = ["ID", "Timestamp", "User", "Role", "Action", "Resource", "Details"];
+    const rows = filteredLogs.map(log => [
+      log.id,
+      new Date(log.timestamp).toISOString(),
+      `"${(log.username || "").replace(/"/g, '""')}"`,
+      `"${(log.role || "").replace(/"/g, '""')}"`,
+      `"${(log.action || "").replace(/"/g, '""')}"`,
+      `"${(log.resource || "").replace(/"/g, '""')}${log.resource_id ? `:${log.resource_id}` : ''}"`,
+      `"${(log.details || "").replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `dejavu_audit_logs_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showAlert({ title: "Exported", message: "Audit logs CSV generated.", style: "success" });
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-white/10 pb-4 gap-4">
+        <h3 className="text-2xl font-bold">Audit Logs</h3>
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+            <input 
+              type="text"
+              placeholder="Filter by user or action..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-xs focus:outline-none focus:border-neon-purple/50 transition-all placeholder:text-white/20"
+            />
+          </div>
+          <button 
+            onClick={exportAuditLogsToCSV}
+            className="px-4 py-2.5 bg-white/5 hover:bg-neon-blue/20 border border-white/10 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap text-neon-blue"
+          >
+            Export CSV
+          </button>
+          <button 
+            onClick={handleClearLogs}
+            className="px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-[10px] font-black uppercase text-red-500 tracking-widest rounded-xl transition-all whitespace-nowrap"
+          >
+            Clear Logs
+          </button>
+        </div>
+      </div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="border-b border-white/10 bg-white/5 text-white/40 text-[10px] uppercase font-black tracking-widest">
+              <th className="p-4">Time</th>
+              <th className="p-4">User</th>
+              <th className="p-4">Action</th>
+              <th className="p-4">Resource</th>
+              <th className="p-4">Details</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 bg-dark-bg/20">
+            {filteredLogs.map(log => (
+              <tr key={log.id} className="text-xs hover:bg-white/5 transition-colors">
+                <td className="p-4 text-white/50 font-mono">{new Date(log.timestamp).toLocaleString()}</td>
+                <td className="p-4">
+                  <div className="flex flex-col">
+                    <span className="font-bold">{log.username}</span>
+                    <span className="text-[10px] text-white/30 uppercase tracking-tighter">{log.role}</span>
+                  </div>
+                </td>
+                <td className="p-4"><span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] uppercase font-black">{log.action}</span></td>
+                <td className="p-4 text-neon-blue font-bold">{log.resource}{log.resource_id ? `:${log.resource_id}` : ''}</td>
+                <td className="p-4 text-white/40 truncate max-w-xs">{log.details}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState("all");
@@ -2147,13 +2338,15 @@ function AdminAnalytics() {
           <p className="text-white/40 text-sm mt-1 font-mono">Performance and listener insights.</p>
         </div>
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
-          <button 
-            onClick={purgeAnalytics}
-            className="flex items-center space-x-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-[10px] font-black uppercase text-red-500 tracking-widest rounded-full transition-all shrink-0"
-          >
-            <X className="w-3 h-3" />
-            <span>Purge History</span>
-          </button>
+          {isAdminUser && (
+            <button 
+              onClick={purgeAnalytics}
+              className="flex items-center space-x-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-[10px] font-black uppercase text-red-500 tracking-widest rounded-full transition-all shrink-0"
+            >
+              <X className="w-3 h-3" />
+              <span>Purge History</span>
+            </button>
+          )}
           
           <div className="flex bg-white/5 border border-white/10 rounded-full p-1 h-fit shrink-0">
             {ranges.map((r) => (
@@ -2323,7 +2516,7 @@ function AdminAnalytics() {
   );
 }
 
-function AdminShoutouts() {
+function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
   const [shoutouts, setShoutouts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { showConfirm, showAlert } = useModal();
@@ -2411,26 +2604,28 @@ function AdminShoutouts() {
           >
             Export CSV
           </button>
-          <button 
-            onClick={async () => {
-              const confirmed = await showConfirm({
-                title: "Purge All Interactions",
-                message: "Are you sure you want to PERMANENTLY delete ALL shoutouts? This action cannot be undone.",
-                style: "danger",
-                confirmText: "Purge Everything"
-              });
+          {isAdminUser && (
+            <button 
+              onClick={async () => {
+                const confirmed = await showConfirm({
+                  title: "Purge All Interactions",
+                  message: "Are you sure you want to PERMANENTLY delete ALL shoutouts? This action cannot be undone.",
+                  style: "danger",
+                  confirmText: "Purge Everything"
+                });
 
-              if (confirmed) {
-                setShoutouts([]); // Optimistic update: Clear the list immediately
-                await fetchAdmin("/api/admin/shoutouts/all", { method: 'DELETE' });
-                showAlert({ title: "Purged", message: "All interactions have been cleared.", style: "success" });
-                load();
-              }
-            }} // Changed to use custom modal
-            className="flex-1 sm:flex-none px-4 py-2.5 bg-white/5 hover:bg-red-500/20 border border-white/10 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap"
-          >
-            Purge Deck
-          </button>
+                if (confirmed) {
+                  setShoutouts([]); // Optimistic update: Clear the list immediately
+                  await fetchAdmin("/api/admin/shoutouts/all", { method: 'DELETE' });
+                  showAlert({ title: "Purged", message: "All interactions have been cleared.", style: "success" });
+                  load();
+                }
+              }} // Changed to use custom modal
+              className="flex-1 sm:flex-none px-4 py-2.5 bg-white/5 hover:bg-red-500/20 border border-white/10 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap"
+            >
+              Purge Deck
+            </button>
+          )}
           <div className="flex items-center space-x-2 px-4 py-2.5 bg-neon-purple/20 border border-neon-purple/30 rounded-xl flex-shrink-0">
             <div className="w-2 h-2 bg-neon-purple rounded-full animate-pulse"></div>
             <span className="text-[10px] font-black uppercase text-neon-purple tracking-widest whitespace-nowrap">Streaming Live</span>

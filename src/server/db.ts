@@ -54,7 +54,8 @@ export function initDb() {
       username TEXT PRIMARY KEY,
       password_hash TEXT NOT NULL,
       bio TEXT,
-      photo_url TEXT
+      photo_url TEXT,
+      role TEXT DEFAULT 'admin' -- New column for user roles
     );
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -137,6 +138,17 @@ export function initDb() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT NOT NULL,
+      role TEXT NOT NULL,
+      action TEXT NOT NULL,
+      resource TEXT NOT NULL,
+      resource_id TEXT,
+      details TEXT,
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
     CREATE INDEX IF NOT EXISTS idx_blogs_published_created ON blogs(is_published, created_at);
   `);
   
@@ -167,7 +179,9 @@ export function initDb() {
   runMigration('admin_profile_fields', "ALTER TABLE admins ADD COLUMN bio TEXT; ALTER TABLE admins ADD COLUMN photo_url TEXT;");
   runMigration('dj_social_fields', "ALTER TABLE djs ADD COLUMN image_url TEXT; ALTER TABLE djs ADD COLUMN instagram TEXT; ALTER TABLE djs ADD COLUMN soundcloud TEXT; ALTER TABLE djs ADD COLUMN mixcloud TEXT;");
   runMigration('user_source_field', "ALTER TABLE users ADD COLUMN source TEXT DEFAULT 'register';");
+  runMigration('admin_role_field', "ALTER TABLE admins ADD COLUMN role TEXT DEFAULT 'admin';"); // Add role column
   runMigration('user_ban_field', "ALTER TABLE users ADD COLUMN is_banned INTEGER DEFAULT 0;");
+  runMigration('audit_logs_table', "CREATE TABLE IF NOT EXISTS audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL, role TEXT NOT NULL, action TEXT NOT NULL, resource TEXT NOT NULL, resource_id TEXT, details TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);");
   
   // If photo_url exists but image_url is null, migrate it
   try {
@@ -247,7 +261,7 @@ export function initDb() {
   if (countAdmins.count === 0) {
     const defaultHash = bcrypt.hashSync('password', 10);
     console.log("[DB] Seeding default admin user (admin/password)");
-    db.prepare('INSERT INTO admins (username, password_hash) VALUES (?, ?)').run('admin', defaultHash);
+    db.prepare('INSERT INTO admins (username, password_hash, role) VALUES (?, ?, ?)').run('admin', defaultHash, 'admin');
   } else {
     console.log(`[DB] Already have ${countAdmins.count} admin user(s).`);
   }

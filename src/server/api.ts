@@ -39,15 +39,16 @@ apiRouter.post("/public/admin-challenge/verify", (req, res) => {
 });
 
 // Admin only update
-apiRouter.get("/admin/settings/secret", authMiddleware, (req, res) => {
+apiRouter.get("/admin/settings/secret", authMiddleware, authorizeRole('admin'), (req, res) => {
   const secretRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_secret') as any;
   res.json({ secret: secretRow?.value || "waynee" });
 });
 
-apiRouter.post("/admin/settings/secret", authMiddleware, (req, res) => {
+apiRouter.post("/admin/settings/secret", authMiddleware, authorizeRole('admin'), (req, res) => {
   const { secret } = req.body;
   if (!secret) return res.status(400).json({ error: "Secret required" });
   db.prepare('UPDATE settings SET value = ? WHERE key = ?').run(secret, 'admin_secret');
+  logAction(req, 'UPDATE', 'admin_secret');
   res.json({ success: true });
 });
 
@@ -72,6 +73,33 @@ function authMiddleware(req: any, res: any, next: any) {
     next();
   } catch (err) {
     res.status(401).json({ error: "Invalid token" });
+  }
+}
+
+// Role Authorization Middleware
+function authorizeRole(role: string) {
+  return (req: any, res: any, next: any) => {
+    if (req.user && req.user.role === role) {
+      next();
+    } else {
+      res.status(403).json({ error: "Forbidden: You do not have permission to perform this action." });
+    }
+  };
+}
+
+// Audit Logging Helper
+function logAction(req: any, action: string, resource: string, resource_id?: string | number | bigint, details?: any) {
+  try {
+    const username = req.user?.username || 'unknown';
+    const role = req.user?.role || 'unknown';
+    const detailsStr = details ? JSON.stringify(details) : null;
+    
+    db.prepare(`
+      INSERT INTO audit_logs (username, role, action, resource, resource_id, details)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(username, role, action, resource, resource_id?.toString() || null, detailsStr);
+  } catch (err) {
+    console.error("[AuditLog] Failed to record log:", err);
   }
 }
 
@@ -395,7 +423,7 @@ apiRouter.post("/admin/login", authLimiter, (req, res) => {
     
     if (isMatched) {
       console.log(`[Admin Login] SUCCESS | User: ${username} | IP: ${ip}`);
-      const token = jwt.sign({ username: admin.username }, ACTUAL_SECRET, { expiresIn: "1d" });
+      const token = jwt.sign({ username: admin.username, role: admin.role }, ACTUAL_SECRET, { expiresIn: "1d" });
       res.cookie("admin_token", token, { 
         httpOnly: true, 
         secure: true, 
@@ -523,7 +551,8 @@ apiRouter.get("/admin/analytics", (req: any, res: any) => {
   }
 });
 
-apiRouter.delete("/admin/analytics/purge", (req: any, res: any) => {
+apiRouter.delete("/admin/analytics/purge", authorizeRole('admin'), (req: any, res: any) => {
+  logAction(req, 'PURGE', 'analytics');
   db.prepare("DELETE FROM analytics_events").run();
   db.prepare("DELETE FROM geo_stats").run();
   db.prepare("DELETE FROM podcast_analytics").run();
@@ -555,6 +584,7 @@ apiRouter.post("/admin/djs", (req, res) => {
   const id = crypto.randomUUID();
   db.prepare("INSERT INTO djs (id, name, bio, image_url, instagram, soundcloud, mixcloud) VALUES (?, ?, ?, ?, ?, ?, ?)")
     .run(id, name, bio, image_url, instagram, soundcloud, mixcloud);
+  logAction(req, 'CREATE', 'dj', id, { name });
   res.json({ success: true, id });
 });
 
@@ -562,6 +592,7 @@ apiRouter.put("/admin/djs/:id", (req, res) => {
   const { name, bio, image_url, instagram, soundcloud, mixcloud } = req.body;
   db.prepare("UPDATE djs SET name = ?, bio = ?, image_url = ?, instagram = ?, soundcloud = ?, mixcloud = ? WHERE id = ?")
     .run(name, bio, image_url, instagram, soundcloud, mixcloud, req.params.id);
+  logAction(req, 'UPDATE', 'dj', req.params.id, { name });
   res.json({ success: true });
 });
 
@@ -569,6 +600,7 @@ apiRouter.delete("/admin/djs/:id", (req, res) => {
   // First clear schedule entries
   try { db.prepare("DELETE FROM schedule WHERE dj_id = ?").run(req.params.id); } catch(e) {}
   db.prepare("DELETE FROM djs WHERE id = ?").run(req.params.id);
+  logAction(req, 'DELETE', 'dj', req.params.id);
   res.json({ success: true });
 });
 
@@ -595,6 +627,7 @@ apiRouter.post("/admin/blogs", (req, res) => {
     INSERT INTO blogs (id, slug, title, excerpt, image_url, content, is_published)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(id, slug, title, excerpt, image_url, content, is_published);
+  logAction(req, 'CREATE', 'blog', id, { title });
 
   res.json({ success: true, id, slug });
 });
@@ -614,12 +647,14 @@ apiRouter.put("/admin/blogs/:id", (req, res) => {
     SET slug = ?, title = ?, excerpt = ?, image_url = ?, content = ?, is_published = ?, updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
   `).run(slug, title, excerpt, image_url, content, is_published, req.params.id);
+  logAction(req, 'UPDATE', 'blog', req.params.id, { title });
 
   res.json({ success: true, slug });
 });
 
 apiRouter.delete("/admin/blogs/:id", (req, res) => {
   db.prepare("DELETE FROM blogs WHERE id = ?").run(req.params.id);
+  logAction(req, 'DELETE', 'blog', req.params.id);
   res.json({ success: true });
 });
 
@@ -649,7 +684,7 @@ apiRouter.get("/admin/shoutouts", (req, res) => {
   res.json(shoutouts);
 });
 
-apiRouter.delete("/admin/shoutouts/all", (req, res) => {
+apiRouter.delete("/admin/shoutouts/all", authorizeRole('admin'), (req, res) => {
   db.prepare("DELETE FROM shoutouts").run();
 
   // Notify all connected clients in real-time that interactions are gone
@@ -658,15 +693,17 @@ apiRouter.delete("/admin/shoutouts/all", (req, res) => {
     io.emit('shoutouts_cleared');
   }
 
+  logAction(req, 'PURGE', 'shoutouts');
   res.json({ success: true });
 });
 
 apiRouter.delete("/admin/shoutouts/:id", (req, res) => {
   db.prepare("DELETE FROM shoutouts WHERE id = ?").run(req.params.id);
+  logAction(req, 'DELETE', 'shoutout', req.params.id);
   res.json({ success: true });
 });
 
-apiRouter.put("/admin/settings", (req, res) => {
+apiRouter.put("/admin/settings", authorizeRole('admin'), (req, res) => {
   const updateStmt = db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value");
   
   const allowedKeys = [
@@ -691,6 +728,7 @@ apiRouter.put("/admin/settings", (req, res) => {
     }
   }
 
+  logAction(req, 'UPDATE', 'settings', null, req.body);
   res.json({ success: true });
 });
 
@@ -704,6 +742,7 @@ apiRouter.post("/admin/schedule", (req, res) => {
   const info = db.prepare("INSERT INTO schedule (dj_id, day_of_week, start_time, end_time, show_name) VALUES (?, ?, ?, ?, ?)").run(
     dj_id, day_of_week, start_time, end_time, show_name
   );
+  logAction(req, 'CREATE', 'schedule', info.lastInsertRowid, { show_name });
   res.json({ id: info.lastInsertRowid });
 });
 
@@ -712,11 +751,13 @@ apiRouter.put("/admin/schedule/:id", (req, res) => {
   db.prepare("UPDATE schedule SET dj_id=?, day_of_week=?, start_time=?, end_time=?, show_name=? WHERE id=?").run(
     dj_id, day_of_week, start_time, end_time, show_name, req.params.id
   );
+  logAction(req, 'UPDATE', 'schedule', req.params.id, { show_name });
   res.json({ success: true });
 });
 
 apiRouter.delete("/admin/schedule/:id", (req, res) => {
   db.prepare("DELETE FROM schedule WHERE id=?").run(req.params.id);
+  logAction(req, 'DELETE', 'schedule', req.params.id);
   res.json({ success: true });
 });
 
@@ -743,46 +784,50 @@ apiRouter.post("/admin/push-track", (req, res) => {
   res.json({ success: true, artist, title });
 });
 
-apiRouter.get("/admin/users", (req, res) => {
-  const users = db.prepare("SELECT username FROM admins").all();
+apiRouter.get("/admin/users", authMiddleware, authorizeRole('admin'), (req, res) => {
+  const users = db.prepare("SELECT username, role FROM admins").all();
   res.json(users);
 });
 
-apiRouter.post("/admin/users", (req, res) => {
-  const { username, password } = req.body;
+apiRouter.post("/admin/users", authMiddleware, authorizeRole('admin'), (req: Request, res: Response) => {
+  const { username, password, role } = req.body;
   if (!username || !password) return res.status(400).json({ error: "Username and password required" });
+  if (!['admin', 'dj'].includes(role)) return res.status(400).json({ error: "Invalid role specified" });
   const hash = bcrypt.hashSync(password, 10);
   try {
-    db.prepare("INSERT INTO admins (username, password_hash) VALUES (?, ?)").run(username, hash);
+    db.prepare("INSERT INTO admins (username, password_hash, role) VALUES (?, ?, ?)").run(username, hash, role);
+    logAction(req, 'CREATE', 'admin_user', username, { role });
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ error: "Username might already exist" });
   }
 });
 
-apiRouter.put("/admin/users/:username", (req, res) => {
-  const { password } = req.body;
+apiRouter.put("/admin/users/:username", authorizeRole('admin'), (req, res) => {
+  const { password } = req.body; // Role changes are not requested here, only password
   if (!password) return res.status(400).json({ error: "Password required" });
   const hash = bcrypt.hashSync(password, 10);
   db.prepare("UPDATE admins SET password_hash = ? WHERE username = ?").run(hash, req.params.username);
+  logAction(req, 'UPDATE_PASSWORD', 'admin_user', req.params.username);
   res.json({ success: true });
 });
 
-apiRouter.delete("/admin/users/:username", (req, res) => {
-  // Prevent deleting oneself might be good, but at least protect 'admin'
+apiRouter.delete("/admin/users/:username", authorizeRole('admin'), (req, res) => {
+  // Protect 'admin' user from being deleted
   if (req.params.username === 'admin') {
     return res.status(400).json({ error: "Cannot delete the default admin" });
   }
   db.prepare("DELETE FROM admins WHERE username = ?").run(req.params.username);
+  logAction(req, 'DELETE', 'admin_user', req.params.username);
   res.json({ success: true });
 });
 
-apiRouter.get("/admin/chat_users", (req, res) => {
+apiRouter.get("/admin/chat_users", authorizeRole('admin'), (req, res) => {
   const users = db.prepare("SELECT id, username, source, created_at FROM users").all();
   res.json(users);
 });
 
-apiRouter.post("/admin/chat_users", (req, res) => {
+apiRouter.post("/admin/chat_users", authorizeRole('admin'), (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: "Email and password required" });
   if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: "Invalid email format" });
@@ -790,13 +835,14 @@ apiRouter.post("/admin/chat_users", (req, res) => {
   const hash = bcrypt.hashSync(password, 10);
   try {
     const info = db.prepare("INSERT INTO users (username, password_hash, source) VALUES (?, ?, ?)").run(email, hash, 'admin');
+    logAction(req, 'CREATE', 'chat_user', email);
     res.json({ success: true, id: info.lastInsertRowid, username: email });
   } catch (err) {
     res.status(400).json({ error: "User with this email already exists" });
   }
 });
 
-apiRouter.post("/admin/chat_users/ban", (req, res) => {
+apiRouter.post("/admin/chat_users/ban", authorizeRole('admin'), (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: "Email required" });
 
@@ -807,10 +853,11 @@ apiRouter.post("/admin/chat_users/ban", (req, res) => {
     io.emit('user_banned', { email });
   }
 
+  logAction(req, 'BAN', 'chat_user', email);
   res.json({ success: true });
 });
 
-apiRouter.put("/admin/chat_users/:id", (req, res) => {
+apiRouter.put("/admin/chat_users/:id", authorizeRole('admin'), (req, res) => {
   const { email, password } = req.body;
   
   try {
@@ -820,14 +867,27 @@ apiRouter.put("/admin/chat_users/:id", (req, res) => {
     } else {
       db.prepare("UPDATE users SET username=? WHERE id=?").run(email, req.params.id);
     }
+    logAction(req, 'UPDATE', 'chat_user', req.params.id, { email });
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ error: "Update failed, email might already be in use." });
   }
 });
 
-apiRouter.delete("/admin/chat_users/:id", (req, res) => {
+apiRouter.delete("/admin/chat_users/:id", authorizeRole('admin'), (req, res) => {
   db.prepare("DELETE FROM users WHERE id=?").run(req.params.id);
+  logAction(req, 'DELETE', 'chat_user', req.params.id);
+  res.json({ success: true });
+});
+
+apiRouter.get("/admin/audit-logs", authorizeRole('admin'), (req, res) => {
+  const logs = db.prepare("SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 200").all();
+  res.json(logs);
+});
+
+apiRouter.delete("/admin/audit-logs", authorizeRole('admin'), (req, res) => {
+  db.prepare("DELETE FROM audit_logs").run();
+  logAction(req, 'PURGE', 'audit_logs');
   res.json({ success: true });
 });
 
