@@ -36,48 +36,32 @@ export default function PodcastsPage() {
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  if (loading) {
-    return (
-      <div className="min-h-screen pt-32 pb-20 px-4">
-        <div className="max-w-7xl mx-auto space-y-12">
-           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-              <div className="h-12 w-48 bg-white/5 rounded-xl animate-pulse" />
-              <div className="h-12 w-64 bg-white/5 rounded-xl animate-pulse" />
-           </div>
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[...Array(6)].map((_, i) => <SkeletonPodcast key={i} />)}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const handleAiSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!aiPrompt.trim() || !feed?.items) return;
-    
+
     setAiProcessing(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: (process.env as any).GEMINI_API_KEY });
-      
-      const podcastList = feed.items.slice(0, 40).map((item: any) => ({
+      const genAI = new GoogleGenAI({ apiKey: (import.meta as any).env.VITE_GEMINI_API_KEY || "" });
+
+      const podcastList = feed.items.map((item: any) => ({
         id: btoa(item.guid || item.link || "").replace(/=/g, ''),
         title: item.title,
-        description: (item.contentSnippet || item.content || "").substring(0, 150).replace(/<[^>]*>/g, '')
+        desc: item.contentSnippet?.substring(0, 100)
       }));
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: `Analysing underground radio archives. A listener wants this vibe: "${aiPrompt}".
+      const result = await genAI.models.generateContent({
+        model: "gemini-1.5-flash",
+        contents: [{ role: 'user', parts: [{ text: `Analysing underground radio archives. A listener wants this vibe: "${aiPrompt}".
         Pick the top 4 most relevant podcasts from this list. Return ONLY a JSON array of IDs.
         
-        List: ${JSON.stringify(podcastList)}`,
+        List: ${JSON.stringify(podcastList)}` }] }],
         config: {
           responseMimeType: "application/json"
         }
       });
 
-      const matchedIds = JSON.parse(response.text || "[]");
+      const matchedIds = JSON.parse(result.text || "[]");
       const matchedPodcasts = feed.items.filter((item: any) => {
         const id = btoa(item.guid || item.link || "").replace(/=/g, '');
         return matchedIds.includes(id);
@@ -105,6 +89,22 @@ export default function PodcastsPage() {
       item.content?.toLowerCase().includes(lowerQuery)
     );
   }, [feed, query, aiResult]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen pt-32 pb-20 px-4">
+        <div className="max-w-7xl mx-auto space-y-12">
+           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+              <div className="h-12 w-48 bg-white/5 rounded-xl animate-pulse" />
+              <div className="h-12 w-64 bg-white/5 rounded-xl animate-pulse" />
+           </div>
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[...Array(6)].map((_, i) => <SkeletonPodcast key={i} />)}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const totalItems = filteredItems.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
