@@ -8,7 +8,7 @@ import { motion } from "motion/react";
 import { io } from "socket.io-client";
 import { convertToLocalTime } from "../lib/timeUtils";
 
-function HeroVisualizer({ isPlaying }: { isPlaying: boolean }) {
+function HeroVisualizer({ isPlaying, isLightMode }: { isPlaying: boolean; isLightMode: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { getAnalyser } = useAudio();
@@ -68,7 +68,7 @@ function HeroVisualizer({ isPlaying }: { isPlaying: boolean }) {
 
       ctx.beginPath();
       ctx.lineWidth = 3;
-      ctx.strokeStyle = `rgba(${isPlaying ? '176, 38, 255' : '255, 255, 255'}, 0.6)`;
+      ctx.strokeStyle = `rgba(${isPlaying ? '176, 38, 255' : isLightMode ? '0, 0, 0' : '255, 255, 255'}, 0.6)`;
       
       for (let i = 0; i < dataArray.length; i += 4) {
         const value = dataArray[i];
@@ -306,7 +306,7 @@ export default function Home() {
           transition={{ duration: 1.2, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
         className="relative group w-full lg:w-1/2 flex justify-center py-2 md:py-6 lg:py-12"
         >
-          <HeroVisualizer isPlaying={isPlaying} />
+          <HeroVisualizer isPlaying={isPlaying} isLightMode={isLightMode} />
           
           <div className={`relative w-full aspect-square max-w-[300px] sm:max-w-[360px] md:max-w-[450px] lg:max-w-[540px] rounded-[2.5rem] md:rounded-[3rem] overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.6)] border border-white/5 group-hover:border-white/20 transition-all duration-700 ${
             (resolveDjImage(onAirInfo?.djPhoto) === logoUrl) && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''
@@ -339,12 +339,16 @@ export default function Home() {
           
           <button 
             onClick={togglePlay}
-            className="absolute top-[45%] sm:top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-[4.5rem] h-[4.5rem] sm:w-24 sm:h-24 md:w-32 md:h-32 bg-white text-dark-bg rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-500 shadow-[0_20px_60px_rgba(255,255,255,0.4)] hover:shadow-[0_20px_80px_rgba(255,255,255,0.6)] border-4 border-white/20 bg-clip-padding group/btn"
+            className={`absolute top-[45%] sm:top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-[4.5rem] h-[4.5rem] sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-500 bg-clip-padding group/btn ${
+              isLightMode 
+                ? 'bg-dark-bg text-white shadow-[0_20px_60px_rgba(0,0,0,0.3)] border-4 border-black/5' 
+                : 'bg-white text-dark-bg shadow-[0_20px_60px_rgba(255,255,255,0.4)] hover:shadow-[0_20px_80px_rgba(255,255,255,0.6)] border-4 border-white/20'
+            }`}
           >
             {isPlaying ? (
-              <Pause className="w-7 h-7 sm:w-10 sm:h-10 md:w-12 md:h-12 fill-current text-black group-hover/btn:text-neon-purple transition-colors duration-300" />
+              <Pause className={`w-7 h-7 sm:w-10 sm:h-10 md:w-12 md:h-12 fill-current group-hover/btn:text-neon-purple transition-colors duration-300 ${isLightMode ? 'text-white' : 'text-black'}`} />
             ) : (
-              <Play className="w-7 h-7 sm:w-10 sm:h-10 md:w-12 md:h-12 ml-1 md:ml-2 fill-current text-black group-hover/btn:text-neon-blue transition-colors duration-300" />
+              <Play className={`w-7 h-7 sm:w-10 sm:h-10 md:w-12 md:h-12 ml-1 md:ml-2 fill-current group-hover/btn:text-neon-blue transition-colors duration-300 ${isLightMode ? 'text-white' : 'text-black'}`} />
             )}
           </button>
         </motion.div>
