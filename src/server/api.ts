@@ -9,6 +9,8 @@ import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import multer from "multer";
 import fs from "fs";
+// @ts-ignore
+import sharp from "sharp";
 
 export const apiRouter = Router();
 console.log("[API] apiRouter initialized and loaded");
@@ -477,10 +479,13 @@ apiRouter.get("/admin/check", authMiddleware, (req: any, res: any) => {
 
 apiRouter.use("/admin", authMiddleware);
 
-apiRouter.post("/admin/upload", upload.single("image"), (req: any, res: any) => {
+apiRouter.post("/admin/upload", upload.single("image"), async (req: any, res: any) => {
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+  
+  const processedFilename = `opt-${req.file.filename.split('.')[0]}.webp`;
+  const outputPath = path.join(process.cwd(), "public", "uploads", processedFilename);
 
-  // Cleanup previous image if it was a local upload
+  // Secure local cleanup
   const oldUrl = req.body.oldUrl;
   if (oldUrl && typeof oldUrl === 'string' && oldUrl.startsWith('/uploads/')) {
     try {
@@ -496,7 +501,18 @@ apiRouter.post("/admin/upload", upload.single("image"), (req: any, res: any) => 
     }
   }
 
-  res.json({ url: `/uploads/${req.file.filename}` });
+  try {
+    await sharp(req.file.path)
+      .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toFile(outputPath);
+    
+    // Remove original unoptimized file
+    fs.unlinkSync(req.file.path);
+    res.json({ url: `/uploads/${processedFilename}` });
+  } catch (err) {
+    res.status(500).json({ error: "Image optimization failed" });
+  }
 });
 
 apiRouter.get("/admin/analytics", (req: any, res: any) => {
@@ -642,6 +658,17 @@ apiRouter.put("/admin/djs/:id", (req, res) => {
 });
 
 apiRouter.delete("/admin/djs/:id", (req, res) => {
+  // Professional cleanup: Delete the image file from disk if it's a local upload
+  const dj = db.prepare("SELECT image_url FROM djs WHERE id = ?").get(req.params.id) as any;
+  if (dj?.image_url?.startsWith('/uploads/')) {
+    try {
+      const filePath = path.join(process.cwd(), "public", "uploads", path.basename(dj.image_url));
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    } catch (e) {
+      console.error("[API] Failed to cleanup DJ image on deletion:", e);
+    }
+  }
+
   // First clear schedule entries
   try { db.prepare("DELETE FROM schedule WHERE dj_id = ?").run(req.params.id); } catch(e) {}
   db.prepare("DELETE FROM djs WHERE id = ?").run(req.params.id);
@@ -698,6 +725,17 @@ apiRouter.put("/admin/blogs/:id", (req, res) => {
 });
 
 apiRouter.delete("/admin/blogs/:id", (req, res) => {
+  // Professional cleanup: Delete the blog image from disk if it's a local upload
+  const blog = db.prepare("SELECT image_url FROM blogs WHERE id = ?").get(req.params.id) as any;
+  if (blog?.image_url?.startsWith('/uploads/')) {
+    try {
+      const filePath = path.join(process.cwd(), "public", "uploads", path.basename(blog.image_url));
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    } catch (e) {
+      console.error("[API] Failed to cleanup blog image on deletion:", e);
+    }
+  }
+
   db.prepare("DELETE FROM blogs WHERE id = ?").run(req.params.id);
   logAction(req, 'DELETE', 'blog', req.params.id);
   res.json({ success: true });

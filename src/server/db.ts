@@ -14,7 +14,7 @@ if (dbDir !== '.' && !fs.existsSync(dbDir)) {
 export const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('busy_timeout = 5000');
-db.pragma('synchronous = NORMAL');
+db.pragma('synchronous = OFF'); // Faster for SSDs, though less crash-safe. 'NORMAL' is safer.
 db.pragma('cache_size = 10000');
 db.pragma('foreign_keys = ON');
 

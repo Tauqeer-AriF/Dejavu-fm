@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx server.ts",
     "start": "NODE_ENV=production node dist/server.cjs",
-    "build:server": "esbuild server.ts --platform=node --format=cjs --bundle --external:better-sqlite3 --external:express --external:vite --outfile=dist/server.cjs",
+    "build:server": "esbuild server.ts --platform=node --format=cjs --bundle --external:better-sqlite3 --external:express --external:vite --external:sharp --outfile=dist/server.cjs",
     "build": "vite build && npm run build:server",
     "preview": "NODE_ENV=production node dist/server.cjs",
     "clean": "rm -rf dist",
@@ -35,6 +35,7 @@
     "react-router-dom": "^7.15.0",
     "recharts": "^3.8.1",
     "rss-parser": "^3.13.0",
+    "sharp": "^0.33.5",
     "socket.io": "^4.5.4",
     "socket.io-client": "^4.2.0",
     "sonner": "^2.0.7",
@@ -55,7 +56,5 @@
     "tsx": "^4.21.0",
     "typescript": "~5.8.2"
   },
-  "overrides": {
-    "ws": "8.20.1"
-  }
+  "overrides": {}
 }
