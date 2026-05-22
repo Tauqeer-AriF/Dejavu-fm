@@ -7,6 +7,8 @@ import crypto from "crypto";
 import path from "path";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
+import multer from "multer";
+import fs from "fs";
 
 export const apiRouter = Router();
 console.log("[API] apiRouter initialized and loaded");
@@ -102,6 +104,27 @@ function logAction(req: any, action: string, resource: string, resource_id?: str
     console.error("[AuditLog] Failed to record log:", err);
   }
 }
+
+// Configure Multer for secure image uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(process.cwd(), "public", "uploads");
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, "upl-" + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    cb(null, file.mimetype.startsWith("image/"));
+  }
+});
 
 // Specific Limiters for high-value targets
 const authLimiter = (req: Request, res: Response, next: NextFunction) => next(); // Disabled for diagnostics
@@ -453,6 +476,28 @@ apiRouter.get("/admin/check", authMiddleware, (req: any, res: any) => {
 // ------ ADMIN PROTECTED ROUTES ------
 
 apiRouter.use("/admin", authMiddleware);
+
+apiRouter.post("/admin/upload", upload.single("image"), (req: any, res: any) => {
+  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+  // Cleanup previous image if it was a local upload
+  const oldUrl = req.body.oldUrl;
+  if (oldUrl && typeof oldUrl === 'string' && oldUrl.startsWith('/uploads/')) {
+    try {
+      const fileName = path.basename(oldUrl);
+      const filePath = path.join(process.cwd(), "public", "uploads", fileName);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log(`[API] Replaced and deleted old image: ${fileName}`);
+      }
+    } catch (err) {
+      console.error(`[API] Error cleaning up old image ${oldUrl}:`, err);
+      // We don't block the new upload if deletion fails, just log it
+    }
+  }
+
+  res.json({ url: `/uploads/${req.file.filename}` });
+});
 
 apiRouter.get("/admin/analytics", (req: any, res: any) => {
   const { range } = req.query; // 'today', '7d', '30d', 'all'

@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useNavigate, Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search } from "lucide-react";
+import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload } from "lucide-react";
 import { useModal } from "../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -29,6 +29,69 @@ const fetchAdmin = (url: string, options: RequestInit = {}) => {
   };
   return fetch(url, { ...options, headers, credentials: "include" });
 };
+
+function ImageUploadField({ 
+  label, 
+  value, 
+  onChange, 
+  description,
+  placeholder = "URL or upload...",
+  className = ""
+}: { 
+  label?: string; 
+  value: string; 
+  onChange: (val: string) => void; 
+  description?: string;
+  placeholder?: string;
+  className?: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { showAlert } = useModal();
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const formData = new FormData();
+    
+    // If current value is a local upload, tell the server to delete it
+    if (value && value.startsWith('/uploads/')) {
+      formData.append("oldUrl", value);
+    }
+    formData.append("image", file);
+
+    setUploading(true);
+    try {
+      const res = await fetchAdmin("/api/admin/upload", { method: "POST", body: formData });
+      if (res.ok) {
+        const data = await res.json();
+        onChange(data.url);
+      } else {
+        const err = await res.json().catch(() => ({ error: "Upload failed" }));
+        showAlert({ title: "Upload Error", message: err.error, style: "danger" });
+      }
+    } catch (err) {
+      showAlert({ title: "Error", message: "Failed to connect to upload server", style: "danger" });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className={`space-y-2 ${className}`}>
+      {label && <label className="block text-xs uppercase mb-1 text-white/50 font-bold">{label}</label>}
+      <div className="flex gap-2">
+        <input value={value} onChange={e => onChange(e.target.value)} className="flex-1 bg-dark-bg border border-white/10 rounded px-4 py-2 focus:border-neon-purple outline-none text-sm" placeholder={placeholder} />
+        <button type="button" disabled={uploading} onClick={() => fileInputRef.current?.click()} className="px-4 bg-white/5 border border-white/10 rounded hover:bg-white/10 transition-colors flex items-center justify-center">
+          {uploading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white animate-spin rounded-full" /> : <Upload className="w-4 h-4 text-white/60" />}
+        </button>
+        <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+      </div>
+      {description && <p className="text-[10px] text-white/30 mt-1 italic">{description}</p>}
+    </div>
+  );
+}
 
 export default function Admin() {
   const [isLogged, setIsLogged] = useState(false);
@@ -669,38 +732,10 @@ function AdminBranding() {
           </div>
 
           <div className="space-y-4 pt-4 border-t border-white/5">
-            <div>
-              <label className="block text-xs uppercase mb-1 text-white/50 font-bold">Logo URL (Global / Fallback)</label>
-              <input 
-                value={logoUrl} 
-                onChange={e=>setLogoUrl(e.target.value)} 
-                className="w-full bg-dark-bg border border-white/10 rounded px-4 py-2 focus:border-neon-purple outline-none" 
-                placeholder="https://your-domain.com/logo.svg"
-              />
-              <p className="text-[10px] text-white/30 mt-1 italic">Base logo used if specific theme logos are missing.</p>
-            </div>
-            
+            <ImageUploadField label="Logo URL (Global / Fallback)" value={logoUrl} onChange={setLogoUrl} placeholder="https://..." description="Base logo used if specific theme logos are missing." />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs uppercase mb-1 text-white/50 font-bold">Dark Mode Logo</label>
-                <input 
-                  value={logoDark} 
-                  onChange={e=>setLogoDark(e.target.value)} 
-                  className="w-full bg-dark-bg border border-white/10 rounded px-4 py-2 focus:border-neon-purple outline-none" 
-                  placeholder="https://your-domain.com/logo-dark.svg"
-                />
-                <p className="text-[10px] text-white/30 mt-1 italic">Optimized for dark backgrounds.</p>
-              </div>
-              <div>
-                <label className="block text-xs uppercase mb-1 text-white/50 font-bold">Light Mode Logo</label>
-                <input 
-                  value={logoLight} 
-                  onChange={e=>setLogoLight(e.target.value)} 
-                  className="w-full bg-dark-bg border border-white/10 rounded px-4 py-2 focus:border-neon-purple outline-none" 
-                  placeholder="https://your-domain.com/logo-light.svg"
-                />
-                <p className="text-[10px] text-white/30 mt-1 italic">Optimized for light backgrounds.</p>
-              </div>
+              <ImageUploadField label="Dark Mode Logo" value={logoDark} onChange={setLogoDark} description="Optimized for dark backgrounds." />
+              <ImageUploadField label="Light Mode Logo" value={logoLight} onChange={setLogoLight} description="Optimized for light backgrounds." />
             </div>
           </div>
 
@@ -970,10 +1005,7 @@ function EditDJForm({dj, onSave, onCancel}: {dj: any, onSave: ()=>void, onCancel
           <label className="block text-xs uppercase mb-1">Name</label>
           <input required value={name} onChange={e=>setName(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5 focus:outline-none focus:border-neon-purple text-sm" />
         </div>
-        <div>
-          <label className="block text-xs uppercase mb-1">Image URL</label>
-          <input value={image} onChange={e=>setImage(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5 focus:outline-none focus:border-neon-purple text-sm" />
-        </div>
+        <ImageUploadField label="Image URL" value={image} onChange={setImage} className="!space-y-1" />
       </div>
       <div>
         <label className="block text-xs uppercase mb-1">Bio</label>
@@ -1035,10 +1067,7 @@ function AddDJForm({onAdd}: {onAdd:()=>void}) {
           <label className="block text-xs uppercase mb-1">Name</label>
           <input required value={name} onChange={e=>setName(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5" />
         </div>
-        <div>
-          <label className="block text-xs uppercase mb-1">Image URL</label>
-          <input value={image} onChange={e=>setImage(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5" />
-        </div>
+        <ImageUploadField label="Image URL" value={image} onChange={setImage} className="!space-y-1" />
       </div>
       <div>
         <label className="block text-xs uppercase mb-1">Bio (Short)</label>
@@ -1298,10 +1327,7 @@ function BlogForm({ mode, blog, onSaved, onCancel }: { mode: "create" | "edit"; 
             <label className="block text-[10px] uppercase tracking-widest font-black text-white/40 mb-2">Short Summary</label>
             <input value={excerpt} onChange={e => setExcerpt(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-neon-purple text-sm" placeholder="Optional preview text for the blog page" />
           </div>
-          <div>
-            <label className="block text-[10px] uppercase tracking-widest font-black text-white/40 mb-2">Image URL</label>
-            <input value={imageUrl} onChange={e => setImageUrl(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-neon-purple text-sm" placeholder="https://..." />
-          </div>
+          <ImageUploadField label="Image URL" value={imageUrl} onChange={setImageUrl} placeholder="https://..." />
         </div>
 
         <div className="rounded-2xl overflow-hidden bg-white/5 border border-white/10 min-h-[220px] flex items-center justify-center">
@@ -1324,9 +1350,9 @@ function BlogForm({ mode, blog, onSaved, onCancel }: { mode: "create" | "edit"; 
             <ImageIcon className="w-4 h-4 text-neon-blue" />
             <span className="text-[10px] font-black uppercase tracking-widest">Insert image into post text</span>
           </div>
-          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(180px,280px)_auto] gap-3">
-            <input value={paragraphImageUrl} onChange={e => setParagraphImageUrl(e.target.value)} className="bg-panel-bg border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-neon-blue" placeholder="Image URL for paragraph" />
-            <input value={paragraphImageCaption} onChange={e => setParagraphImageCaption(e.target.value)} className="bg-panel-bg border border-white/10 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-neon-blue" placeholder="Caption / alt text" />
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(180px,280px)_auto] gap-3 items-end">
+            <ImageUploadField value={paragraphImageUrl} onChange={setParagraphImageUrl} placeholder="Image URL" className="!space-y-0" />
+            <input value={paragraphImageCaption} onChange={e => setParagraphImageCaption(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-neon-blue" placeholder="Caption / alt text" />
             <button type="button" onClick={insertParagraphImage} className="px-4 py-2 rounded-lg bg-neon-blue text-dark-bg text-[10px] font-black uppercase tracking-widest hover:bg-neon-purple hover:text-white transition-colors">
               Insert
             </button>
@@ -1776,15 +1802,7 @@ function AdminProfile() {
       </div>
 
       <form onSubmit={handleSave} className="space-y-4">
-        <div>
-          <label className="block text-sm mb-1 text-white/70">Profile Photo URL</label>
-          <input 
-            value={photoUrl} 
-            onChange={e => setPhotoUrl(e.target.value)} 
-            className="w-full bg-dark-bg border border-white/10 rounded px-4 py-2 focus:border-neon-purple outline-none" 
-            placeholder="https://..."
-          />
-        </div>
+        <ImageUploadField label="Profile Photo URL" value={photoUrl} onChange={setPhotoUrl} placeholder="https://..." />
         <div>
           <label className="block text-sm mb-1 text-white/70">Bio</label>
           <textarea 
