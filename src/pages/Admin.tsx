@@ -18,9 +18,6 @@ import {
 } from 'recharts';
 import { useModal } from "../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
-
-// In a real professional setup, these would be moved to separate files
-// For now, we simulate the performance win by ensuring the structural return uses Suspense.
 const LoadingFallback = () => (
   <div className="flex items-center justify-center p-12">
     <div className="w-6 h-6 border-2 border-neon-purple border-t-transparent animate-spin rounded-full" />
@@ -158,100 +155,82 @@ export default function Admin() {
     });
   };
 
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="w-8 h-8 border-4 border-neon-purple rounded-full animate-spin shadow-[0_0_15px_rgba(176,38,255,0.5)]"></div>
+    </div>
+  );
+
+  if (!isLogged) {
+    return (
+      <AdminSecretGate 
+        onPass={() => setIsLogged(false)} 
+        onLogin={(user) => { setIsLogged(true); if (user?.role === 'admin') setIsAdminUser(true); }} 
+      />
+    );
+  }
+
   return (
-    <AnimatePresence mode="wait">
-      {loading ? (
-        <motion.div 
-          key="loading"
-          initial={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[500] bg-dark-bg flex flex-col items-center justify-center space-y-6"
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="max-w-7xl mx-auto px-4 py-8 md:py-16"
+    >
+      <div className="mb-10 md:mb-16">
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6 }}
         >
-          <div className="relative">
-            <div className="w-20 h-20 border-4 border-white/5 rounded-full" />
-            <div className="absolute inset-0 w-20 h-20 border-t-4 border-neon-purple rounded-full animate-spin shadow-[0_0_20px_rgba(176,38,255,0.5)]" />
-          </div>
-          <div className="text-center space-y-2">
-            <h2 className="text-2xl font-display font-black uppercase tracking-widest text-white">Initializing</h2>
-            <p className="text-white/30 text-[10px] uppercase tracking-[0.3em] font-black animate-pulse">Secure Control Link...</p>
+          <h1 className="text-5xl md:text-5xl lg:text-5xl font-display font-black uppercase tracking-tighter text-white leading-none">
+            Creator <span className="text-neon-purple">Dashboard</span>
+          </h1>
+          <div className="flex items-center space-x-4 mt-4">
+            <div className="h-px w-12 bg-neon-purple"></div>
+            <p className="text-white/40 text-xs md:text-sm font-mono uppercase tracking-[0.3em]">Control center for DejavuFM station</p>
           </div>
         </motion.div>
-      ) : !isLogged ? (
-        <motion.div 
-          key="gate"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
-          <AdminSecretGate 
-            onPass={() => setIsLogged(false)} 
-            onLogin={(user) => { setIsLogged(true); if (user?.role === 'admin') setIsAdminUser(true); }} 
-          />
-        </motion.div>
-      ) : (
-        <motion.div 
-          key="dashboard"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="max-w-7xl mx-auto px-4 py-8 md:py-16"
-        >
-          <div className="mb-10 md:mb-16">
+      </div>
+
+      <div className="glass-panel min-h-[80vh] rounded-3xl flex flex-col md:flex-row overflow-hidden shadow-2xl relative z-10">
+        <AdminSidebar onLogout={handleLogout} isAdminUser={isAdminUser} />
+        <div className="flex-1 p-4 md:p-8 lg:p-12 overflow-y-auto">
+          <AnimatePresence mode="wait">
             <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
+              key={location.pathname}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="min-h-full"
             >
-              <h1 className="text-5xl md:text-5xl lg:text-5xl font-display font-black uppercase tracking-tighter text-white leading-none">
-                Creator <span className="text-neon-purple">Dashboard</span>
-              </h1>
-              <div className="flex items-center space-x-4 mt-4">
-                <div className="h-px w-12 bg-neon-purple"></div>
-                <p className="text-white/40 text-xs md:text-sm font-mono uppercase tracking-[0.3em]">Control center for DejavuFM station</p>
-              </div>
+              <Suspense fallback={<LoadingFallback />}>
+              <Routes location={location}>
+                <Route path="/" element={<AdminAnalytics isAdminUser={isAdminUser} />} />
+                <Route path="/live-tools" element={<AdminLiveTools />} />
+                <Route path="/djs" element={<AdminDJs />} />
+                <Route path="/blogs" element={<AdminBlogs />} />
+                <Route path="/shoutouts" element={<AdminShoutouts isAdminUser={isAdminUser} />} />
+                <Route path="/bookings" element={<AdminBookings />} />
+                <Route path="/schedule" element={<AdminSchedule />} />
+                <Route path="/profile" element={<AdminProfile />} />
+
+                {/* Admin Only Protected Routes */}
+                <Route path="/settings" element={isAdminUser ? <AdminSettings /> : <Navigate to="/admin" replace />} />
+                <Route path="/advanced" element={isAdminUser ? <AdminAdvanced /> : <Navigate to="/admin" replace />} />
+                <Route path="/branding" element={isAdminUser ? <AdminBranding /> : <Navigate to="/admin" replace />} />
+                <Route path="/users" element={isAdminUser ? <AdminUsers isAdminUser={isAdminUser} /> : <Navigate to="/admin" replace />} />
+                <Route path="/chat-users" element={isAdminUser ? <AdminChatUsers isAdminUser={isAdminUser} /> : <Navigate to="/admin" replace />} />
+                <Route path="/audit-logs" element={isAdminUser ? <AdminAuditLogs /> : <Navigate to="/admin" replace />} />
+                
+                <Route path="*" element={<Navigate to="/admin" replace />} />
+              </Routes>
+              </Suspense>
             </motion.div>
-          </div>
-
-          <div className="glass-panel min-h-[80vh] rounded-3xl flex flex-col md:flex-row overflow-hidden shadow-2xl relative z-10">
-            <AdminSidebar onLogout={handleLogout} isAdminUser={isAdminUser} />
-            <div className="flex-1 p-4 md:p-8 lg:p-12 overflow-y-auto">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={location.pathname}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="min-h-full"
-                >
-                  <Suspense fallback={<LoadingFallback />}>
-                  <Routes location={location}>
-                    <Route path="/" element={<AdminAnalytics isAdminUser={isAdminUser} />} />
-                    <Route path="/live-tools" element={<AdminLiveTools />} />
-                    <Route path="/djs" element={<AdminDJs />} />
-                    <Route path="/blogs" element={<AdminBlogs />} />
-                    <Route path="/shoutouts" element={<AdminShoutouts isAdminUser={isAdminUser} />} />
-                    <Route path="/bookings" element={<AdminBookings />} />
-                    <Route path="/schedule" element={<AdminSchedule />} />
-                    <Route path="/profile" element={<AdminProfile />} />
-
-                    {/* Admin Only Protected Routes */}
-                    <Route path="/settings" element={isAdminUser ? <AdminSettings /> : <Navigate to="/admin" replace />} />
-                    <Route path="/advanced" element={isAdminUser ? <AdminAdvanced /> : <Navigate to="/admin" replace />} />
-                    <Route path="/branding" element={isAdminUser ? <AdminBranding /> : <Navigate to="/admin" replace />} />
-                    <Route path="/users" element={isAdminUser ? <AdminUsers isAdminUser={isAdminUser} /> : <Navigate to="/admin" replace />} />
-                    <Route path="/chat-users" element={isAdminUser ? <AdminChatUsers isAdminUser={isAdminUser} /> : <Navigate to="/admin" replace />} />
-                    <Route path="/audit-logs" element={isAdminUser ? <AdminAuditLogs /> : <Navigate to="/admin" replace />} />
-                    
-                    <Route path="*" element={<Navigate to="/admin" replace />} />
-                  </Routes>
-                  </Suspense>
-                </motion.div>
-              </AnimatePresence>
-            </div>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          </AnimatePresence>
+        </div>
+      </div>
+    </motion.div>
   );
 }
 
@@ -288,7 +267,7 @@ function AdminSecretGate({ onPass, onLogin }: { onPass: () => void; onLogin: (us
 
   if (!passedSecret) {
     return (
-      <div className="max-w-md mx-auto mt-20 p-8 md:p-12 glass-panel rounded-[2.5rem] shadow-2xl relative z-10 text-center space-y-8">
+      <div className="max-w-md w-full mx-auto p-8 md:p-12 glass-panel rounded-[2.5rem] shadow-2xl relative z-10 text-center space-y-8">
         <div className="flex flex-col items-center space-y-4">
           <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
             <Shield className="w-8 h-8 text-neon-purple" />
@@ -362,7 +341,7 @@ function AdminLogin({ onLogin }: { onLogin: (user?: any) => void }) {
   };
 
   return (
-    <div className="max-w-md mx-auto mt-20 p-8 md:p-12 glass-panel rounded-3xl shadow-[0_0_50px_rgba(176,38,255,0.15)] relative z-10">
+    <div className="max-w-md w-full mx-auto p-8 md:p-12 glass-panel rounded-3xl shadow-[0_0_50px_rgba(176,38,255,0.15)] relative z-10">
       <h2 className="text-4xl font-display font-black mb-8 text-center tracking-tight uppercase">Admin <span className="text-neon-purple">Portal</span></h2>
       {err && !success && <div className="bg-red-500/20 text-red-500 p-3 rounded mb-4 text-center text-sm">{err}</div>}
       {success && <div className="bg-green-500/20 border border-green-500 text-green-400 p-3 rounded mb-4 text-center text-sm">You are logged in! Redirecting...</div>}
@@ -2205,6 +2184,10 @@ function AdminAuditLogs() {
     load();
   }, []);
 
+  if (loading) return (
+    <div className="p-8 flex justify-center"><div className="w-6 h-6 border-2 border-neon-purple border-t-transparent animate-spin rounded-full" /></div>
+  );
+
   const filteredLogs = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
     if (!term) return logs;
@@ -2416,7 +2399,7 @@ function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
       <div className="h-64 bg-white/5 rounded-3xl"></div>
     </div>
   );
-  
+
   if (error && !stats) return (
     <div className="p-8 space-y-4">
       <div className="bg-red-500/20 border border-red-500/50 p-6 rounded-3xl text-red-400">
@@ -2662,6 +2645,10 @@ function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
       }
     };
   }, []);
+
+  if (loading) return (
+    <div className="p-8 flex justify-center"><div className="w-6 h-6 border-2 border-neon-purple border-t-transparent animate-spin rounded-full" /></div>
+  );
 
   const deleteShoutout = async (id: number) => {
     try {
