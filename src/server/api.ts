@@ -453,7 +453,7 @@ apiRouter.post("/admin/login", authLimiter, (req, res) => {
         sameSite: "none",
         path: '/' 
       });
-      return res.json({ success: true, token });
+      return res.json({ success: true, token, user: { username: admin.username, role: admin.role } });
     } else {
       console.warn(`[Admin Login] FAILED | Invalid password | User: ${username} | IP: ${ip}`);
     }

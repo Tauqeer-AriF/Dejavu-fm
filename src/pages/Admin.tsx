@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useNavigate, Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload } from "lucide-react";
+import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight } from "lucide-react";
 import { useModal } from "../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -124,13 +124,19 @@ export default function Admin() {
   );
 
   if (!isLogged) {
-    return <AdminSecretGate onPass={() => setIsLogged(false)} onLogin={() => setIsLogged(true)} />;
+    return (
+      <AdminSecretGate 
+        onPass={() => setIsLogged(false)} 
+        onLogin={(user) => { setIsLogged(true); if (user?.role === 'admin') setIsAdminUser(true); }} 
+      />
+    );
   }
 
   const handleLogout = () => {
     fetchAdmin("/api/admin/logout", { method: 'POST' }).then(() => {
       localStorage.removeItem('admin_token');
       setIsLogged(false);
+      setIsAdminUser(false);
       navigate("/admin");
     });
   };
@@ -143,7 +149,7 @@ export default function Admin() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-display font-black uppercase tracking-tighter text-white leading-none">
+          <h1 className="text-5xl md:text-5xl lg:text-5xl font-display font-black uppercase tracking-tighter text-white leading-none">
             Creator <span className="text-neon-purple">Dashboard</span>
           </h1>
           <div className="flex items-center space-x-4 mt-4">
@@ -193,7 +199,7 @@ export default function Admin() {
   );
 }
 
-function AdminSecretGate({ onPass, onLogin }: { onPass: () => void; onLogin: () => void }) {
+function AdminSecretGate({ onPass, onLogin }: { onPass: () => void; onLogin: (user?: any) => void }) {
   const [passedSecret, setPassedSecret] = useState(() => sessionStorage.getItem('admin_secret_passed') === 'true');
   const [answer, setAnswer] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
@@ -272,7 +278,7 @@ function AdminSecretGate({ onPass, onLogin }: { onPass: () => void; onLogin: () 
   return <AdminLogin onLogin={onLogin} />;
 }
 
-function AdminLogin({ onLogin }: { onLogin: () => void }) {
+function AdminLogin({ onLogin }: { onLogin: (user?: any) => void }) {
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -292,7 +298,7 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
         localStorage.setItem('admin_token', data.token);
       }
       setSuccess(true);
-      setTimeout(() => onLogin(), 1500);
+      setTimeout(() => onLogin(data.user), 1500);
     } else {
       const data = await res.json().catch(() => ({ error: "Invalid login" }));
       setErr(data.error || "Invalid login");
@@ -335,6 +341,14 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
 function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; isAdminUser: boolean }) {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    const saved = localStorage.getItem('admin_sidebar_collapsed');
+    return saved === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('admin_sidebar_collapsed', isCollapsed.toString());
+  }, [isCollapsed]);
 
   const { data: features = {} } = useQuery({
     queryKey: ['settings'],
@@ -386,27 +400,50 @@ function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; isAdmin
         </button>
       </div>
 
-      <div className={`${isOpen ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-64 bg-dark-bg/95 md:bg-dark-bg/50 border-b md:border-b-0 md:border-r border-white/10 p-4 absolute md:relative z-20 top-[73px] md:top-0 left-0 h-[calc(100%-73px)] md:h-auto overflow-y-auto`}>
-        <div className="flex-1 space-y-2 mt-4">
-          {navs.map(n => {
-            const active = location.pathname === n.path;
-            return (
-              <Link key={n.name} to={n.path} onClick={() => setIsOpen(false)} className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${active ? 'bg-neon-purple/20 text-neon-purple' : 'hover:bg-white/5 text-white/70'}`}>
-                <n.icon className="w-5 h-5 flex-shrink-0" />
-                <span className="font-semibold text-sm">{n.name}</span>
-              </Link>
-            )
-          })}
-        </div>
-        <div className="mt-auto space-y-2 pt-4">
-          <Link to="/" onClick={() => setIsOpen(false)} className="flex items-center space-x-3 px-4 py-3 rounded-lg text-white/50 hover:text-white hover:bg-white/5 transition-colors">
-            <HomeIcon className="w-5 h-5 flex-shrink-0" />
-            <span className="font-semibold text-sm">Go to Homepage</span>
-          </Link>
-          <button onClick={onLogout} className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-white/50 hover:text-red-500 hover:bg-red-500/10 transition-colors">
-            <LogOut className="w-5 h-5 flex-shrink-0" />
-            <span className="font-semibold text-sm">Logout</span>
-          </button>
+      <div className={`${isOpen ? 'flex' : 'hidden'} md:flex flex-col w-full ${isCollapsed ? 'md:w-20' : 'md:w-64'} bg-dark-bg/95 md:bg-dark-bg/50 border-b md:border-b-0 md:border-r border-white/10 absolute md:relative z-20 top-[73px] md:top-0 left-0 h-[calc(100%-73px)] md:h-auto transition-all duration-300 ease-in-out`}>
+        {/* Toggle Button for Desktop */}
+        <button 
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="hidden md:flex absolute -right-3 top-6 w-6 h-6 bg-neon-purple rounded-full items-center justify-center text-white border border-white/20 shadow-lg z-30 hover:scale-110 transition-transform"
+          title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+        >
+          {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+        </button>
+
+        <div className="flex-1 flex flex-col p-4 overflow-y-auto scrollbar-thin overflow-x-visible">
+          <div className="flex-1 space-y-2 mt-4">
+            {navs.map(n => {
+              const active = location.pathname === n.path;
+              return (
+                <Link key={n.name} title={isCollapsed ? n.name : ""} to={n.path} onClick={() => setIsOpen(false)} className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'space-x-3 px-4'} py-3 rounded-lg transition-all duration-200 ${active ? 'bg-neon-purple/20 text-neon-purple' : 'hover:bg-white/5 text-white/70'}`}>
+                  <n.icon className={`w-5 h-5 flex-shrink-0 ${active ? 'text-neon-purple' : ''}`} />
+                  {!isCollapsed && <span className="font-semibold text-sm truncate">{n.name}</span>}
+                </Link>
+              )
+            })}
+          </div>
+          <div className="mt-auto space-y-2 pt-4">
+            <a 
+              href="/" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'justify-between px-4'} py-3 rounded-xl bg-neon-blue/10 border border-neon-blue/30 text-neon-blue hover:bg-neon-blue hover:text-dark-bg transition-all duration-300 shadow-[0_0_15px_rgba(0,210,255,0.1)] group mb-2`}
+              title={isCollapsed ? "Station View" : ""}
+            >
+              <div className={`flex items-center ${isCollapsed ? '' : 'space-x-3'}`}>
+                <Globe className="w-5 h-5 flex-shrink-0 group-hover:rotate-12 transition-transform" />
+                {!isCollapsed && <span className="font-bold text-sm">Station View</span>}
+              </div>
+              {!isCollapsed && <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-blue group-hover:bg-dark-bg opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-neon-blue group-hover:bg-dark-bg"></span>
+              </span>}
+            </a>
+            <button onClick={onLogout} title={isCollapsed ? "Logout" : ""} className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0' : 'space-x-3 px-4'} py-3 rounded-lg text-white/50 hover:text-red-500 hover:bg-red-500/10 transition-colors`}>
+              <LogOut className="w-5 h-5 flex-shrink-0" />
+              {!isCollapsed && <span className="font-semibold text-sm">Logout</span>}
+            </button>
+          </div>
         </div>
       </div>
     </>
