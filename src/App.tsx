@@ -37,6 +37,7 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import Admin from './pages/Admin';
 import WatchLive from './pages/WatchLive';
+import Stream from './pages/Stream';
 import Blog from './pages/Blog';
 import BlogDetail from './pages/BlogDetail';
 
@@ -129,8 +130,8 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
         <div className="hidden xl:flex items-center bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2rem] px-2 py-2 shadow-2xl">
           <NavLink to="/" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>Listen</NavLink>
           {featLiveTools && (
-            <NavLink to="/watch" className={({isActive}) => `px-4 xl:px-8 py-3 flex items-center gap-2 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-neon-purple text-white shadow-[0_0_25px_rgba(176,38,255,0.4)]' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>
-              <Video className="w-4 h-4 hidden xl:block" /> Watch
+            <NavLink to="/stream" className={({isActive}) => `px-4 xl:px-8 py-3 flex items-center gap-2 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-neon-purple text-white shadow-[0_0_25px_rgba(176,38,255,0.4)]' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>
+              <Radio className="w-4 h-4 hidden xl:block" /> Stream
             </NavLink>
           )}
           <NavLink to="/schedule" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>Schedule</NavLink>
@@ -187,7 +188,7 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
               <div className="flex flex-col space-y-2 mt-auto mb-auto">
                 {[
                   { path: '/', label: 'Listen', exact: true },
-                  ...(featLiveTools ? [{ path: '/watch', label: 'Watch', icon: <Video className="w-5 h-5" />, color: 'text-neon-purple' }] : []),
+                  ...(featLiveTools ? [{ path: '/stream', label: 'Stream', icon: <Radio className="w-5 h-5" />, color: 'text-neon-purple' }] : []),
                   { path: '/schedule', label: 'Schedule' },
                   { path: '/djs', label: 'DJs' },
                   { path: '/podcasts', label: 'Podcasts', matchPrefix: true },
@@ -337,6 +338,7 @@ function AnimatedRoutes() {
         <Routes location={location}>
           <Route path="/" element={<Home />} />
           <Route path="/watch" element={<WatchLive />} />
+          <Route path="/stream" element={<Stream />} />
           <Route path="/schedule" element={<Schedule />} />
           <Route path="/djs" element={<DJs />} />
           <Route path="/djs/:id" element={<DJDetail />} />

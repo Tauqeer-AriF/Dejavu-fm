@@ -233,8 +233,8 @@ export default function WatchLive() {
       className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-6 pt-4 lg:h-[calc(100vh-220px)] lg:min-h-[600px]"
     >
       {/* Video Player Section */}
-      <div className="flex-1 glass-panel rounded-3xl overflow-hidden flex flex-col shadow-2xl border border-white/5 relative bg-black/40 min-h-[300px] sm:min-h-[400px] lg:min-h-0">
-        <div className="flex-1 w-full relative bg-black group flex items-center justify-center aspect-video lg:aspect-auto">
+      <div className="flex-1 glass-panel rounded-3xl overflow-hidden flex flex-col shadow-2xl border border-white/5 relative bg-black/40 min-h-[450px] sm:min-h-[500px] lg:min-h-0">
+        <div className="flex-1 w-full relative bg-black group flex items-center justify-center aspect-[4/3] sm:aspect-video lg:aspect-auto">
             {getEmbedUrl(studioVideoUrl) ? (
               <iframe 
                 key={getEmbedUrl(studioVideoUrl) || 'empty'}
@@ -277,7 +277,7 @@ export default function WatchLive() {
             )}
           </AnimatePresence>
         </div>
-        <div className="p-4 md:p-6 bg-dark-bg/80 border-t border-white/5 flex flex-col md:flex-row items-center gap-6">
+        <div className="hidden md:flex p-4 md:p-6 bg-dark-bg/80 border-t border-white/5 flex-col md:flex-row items-center gap-6">
            {resolveDjImage(onAirInfo?.djPhoto) && (
              <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl overflow-hidden shadow-2xl border-2 border-neon-purple/30 shrink-0 bg-white/5">
                <img src={resolveDjImage(onAirInfo?.djPhoto)} alt={onAirInfo?.djName || "DJ"} className={`w-full h-full ${resolveDjImage(onAirInfo?.djPhoto) === logoUrl && logoUrl ? 'object-contain p-2' : 'object-cover'}`} />
