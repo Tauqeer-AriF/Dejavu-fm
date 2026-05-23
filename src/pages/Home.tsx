@@ -3,8 +3,8 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAudio } from "../context/AudioContext";
 import { useLogo } from "../hooks/useLogo";
-import { Play, Pause, Mic2, Tv, Clock } from "lucide-react";
-import { motion } from "motion/react";
+import { Play, Pause, Mic2, Tv, Clock, X } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { io } from "socket.io-client";
 import { convertToLocalTime } from "../lib/timeUtils";
 

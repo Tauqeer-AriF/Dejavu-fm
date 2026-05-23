@@ -139,6 +139,17 @@ export function initDb() {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS popups (
+      id TEXT PRIMARY KEY,
+      heading TEXT,
+      text TEXT,
+      btn_text TEXT,
+      btn_link TEXT,
+      type TEXT,
+      is_active INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS audit_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT NOT NULL,
@@ -181,6 +192,18 @@ export function initDb() {
   runMigration('user_source_field', "ALTER TABLE users ADD COLUMN source TEXT DEFAULT 'register';");
   runMigration('admin_role_field', "ALTER TABLE admins ADD COLUMN role TEXT DEFAULT 'admin';"); // Add role column
   runMigration('user_ban_field', "ALTER TABLE users ADD COLUMN is_banned INTEGER DEFAULT 0;");
+  runMigration('popups_table_v2', `
+    CREATE TABLE IF NOT EXISTS popups (
+      id TEXT PRIMARY KEY,
+      heading TEXT,
+      text TEXT,
+      btn_text TEXT,
+      btn_link TEXT,
+      type TEXT,
+      is_active INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
   runMigration('audit_logs_table', "CREATE TABLE IF NOT EXISTS audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL, role TEXT NOT NULL, action TEXT NOT NULL, resource TEXT NOT NULL, resource_id TEXT, details TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);");
   
   // If photo_url exists but image_url is null, migrate it

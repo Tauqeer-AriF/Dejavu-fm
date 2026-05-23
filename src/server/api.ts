@@ -198,6 +198,16 @@ apiRouter.get("/public/settings", (req, res) => {
   res.json(settings);
 });
 
+apiRouter.get("/public/popups", (req, res) => {
+  try {
+    const popups = db.prepare("SELECT * FROM popups WHERE is_active = 1 AND type = 'permanent' ORDER BY created_at DESC").all();
+    res.json(popups || []);
+  } catch (err) {
+    console.error("[API] Failed to fetch public popups:", err);
+    res.json([]); // Return empty array instead of 500 to keep the frontend working
+  }
+});
+
 apiRouter.get("/public/djs", (req, res) => {
   const djs = db.prepare("SELECT * FROM djs").all();
   res.json(djs);
@@ -252,7 +262,9 @@ apiRouter.post("/public/book-artist", (req, res) => {
   if (!dj_id || !client_name || !client_email) {
     return res.status(400).json({ error: "Missing required fields" });
   }
-  const id = crypto.randomUUID();
+  // Senior Dev: Use randomUUID with a fallback for older Node versions
+  const id = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
+  db.prepare("INSERT INTO popups (id, heading, text, btn_text, btn_link, type, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)")
   db.prepare("INSERT INTO bookings (id, dj_id, client_name, client_email, event_date, message) VALUES (?, ?, ?, ?, ?, ?)")
     .run(id, dj_id, client_name, client_email, event_date, message);
   res.json({ success: true, id });
@@ -673,6 +685,36 @@ apiRouter.delete("/admin/djs/:id", (req, res) => {
   try { db.prepare("DELETE FROM schedule WHERE dj_id = ?").run(req.params.id); } catch(e) {}
   db.prepare("DELETE FROM djs WHERE id = ?").run(req.params.id);
   logAction(req, 'DELETE', 'dj', req.params.id);
+  res.json({ success: true });
+});
+
+apiRouter.get("/admin/popups", (req, res) => {
+  const popups = db.prepare("SELECT * FROM popups ORDER BY created_at DESC").all();
+  res.json(popups);
+});
+
+apiRouter.post("/admin/popups", (req, res) => {
+  const { heading, text, btn_text, btn_link, type, is_active } = req.body;
+  const id = crypto.randomUUID();
+  db.prepare("INSERT INTO popups (id, heading, text, btn_text, btn_link, type, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)")
+    .run(id, heading, text, btn_text, btn_link, type, is_active ? 1 : 0);
+  logAction(req, 'CREATE', 'popup', id, { heading });
+  res.json({ success: true, id });
+});
+
+apiRouter.delete("/admin/popups/:id", (req, res) => {
+  db.prepare("DELETE FROM popups WHERE id = ?").run(req.params.id);
+  logAction(req, 'DELETE', 'popup', req.params.id);
+  res.json({ success: true });
+});
+
+apiRouter.post("/admin/push-popup", authorizeRole('admin'), (req, res) => {
+  const { heading, text, btnText, btnLink } = req.body;
+  const io = req.app.get('io');
+  if (io) {
+    io.emit('show_popup', { heading, text, btnText, btnLink });
+  }
+  logAction(req, 'PUSH_POPUP', 'popup', null, { heading });
   res.json({ success: true });
 });
 

@@ -17,6 +17,7 @@ import { io } from 'socket.io-client';
 import { convertToLocalTime } from './lib/timeUtils';
 import { useLogo } from './hooks/useLogo';
 import { SecretAdminPrompt } from './components/SecretAdminPrompt';
+import { SitePopup } from './components/SitePopup';
 
 const queryClient = new QueryClient();
 
@@ -516,6 +517,7 @@ function MainLayout() {
       </div>
       
       <Navigation onOpenChat={() => setIsChatOpen(true)} featChat={featChat} />
+      <SitePopup />
       <NotificationManager />
       {featChat && <ChatSidebar isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />}
       {featShoutouts && <ShoutoutWidget />}
