@@ -208,7 +208,7 @@ export default function Home() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col lg:flex-row items-center justify-between min-h-[75vh] gap-12 mt-12 md:mt-0">
+      <div className="flex flex-col lg:flex-row items-center justify-between min-h-[75vh] gap-12">
         <div className="flex-1 space-y-6 md:space-y-8 z-10 w-full">
           <div className="w-40 h-10 bg-white/10 animate-pulse rounded-full"></div>
           <div className="space-y-4 pt-4">
@@ -226,11 +226,11 @@ export default function Home() {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-      className="flex flex-col space-y-8 md:space-y-12 pb-24"
+      className="flex flex-col space-y-8 md:space-y-12 pb-40 md:pb-64"
     >
-      <div className="flex flex-col lg:flex-row items-center justify-center lg:justify-between min-h-[70vh] gap-6 md:gap-12 lg:gap-16 relative mt-6 md:mt-8 lg:mt-12">
-        <div className="flex-1 space-y-8 md:space-y-10 lg:space-y-12 z-10 w-full flex flex-col items-center lg:items-start pt-2 md:pt-12 lg:pt-0">
-          <div className="space-y-5 md:space-y-6 flex flex-col items-center lg:items-start text-center lg:text-left">
+      <div className="flex flex-col lg:flex-row items-center justify-center lg:justify-between min-h-[60vh] lg:min-h-[75vh] gap-8 md:gap-12 relative">
+        <div className="flex-1 space-y-6 md:space-y-8 z-10 w-full flex flex-col items-center lg:items-start pt-4 lg:pt-0">
+          <div className="space-y-4 md:space-y-6 flex flex-col items-center lg:items-start text-center lg:text-left">
             <motion.div 
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -249,7 +249,7 @@ export default function Home() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 1, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl xl:text-[11rem] leading-[0.9] md:leading-[0.85] font-black font-display uppercase tracking-[-0.04em] md:tracking-[-0.05em] flex flex-col items-center lg:items-start w-full"
+              className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl leading-[0.95] md:leading-[0.9] font-black font-display uppercase tracking-tight md:tracking-[-0.05em] flex flex-col items-center lg:items-start w-full"
             >
               {onAirInfo ? (
                 <>
@@ -275,9 +275,9 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
-            className="flex flex-col md:flex-row items-center lg:items-center gap-6 md:gap-8 lg:gap-10 justify-center lg:justify-start w-full"
+            className="flex flex-col md:flex-row items-center gap-6 md:gap-8 justify-center lg:justify-start w-full"
           >
-            <p className="hidden sm:block text-[17px] sm:text-lg md:text-2xl text-white/50 font-light max-w-[300px] sm:max-w-md md:max-w-lg lg:border-l-2 border-neon-blue/40 lg:pl-6 py-1 text-center lg:text-left leading-relaxed">
+            <p className="hidden sm:block text-base md:text-xl text-white/50 font-light max-w-[300px] sm:max-w-md md:max-w-lg lg:border-l border-white/20 lg:pl-6 py-1 text-center lg:text-left leading-relaxed">
               {onAirInfo ? onAirInfo.showName : settings?.app_tagline || "Broadcasting 24/7. The heartbeat of underground music since 2005."}
             </p>
             
@@ -288,10 +288,10 @@ export default function Home() {
                 className="hidden sm:block w-full sm:w-auto"
               >
                 <Link
-                  to="/watch"
-                  className="flex items-center justify-center space-x-4 px-8 md:px-8 py-4 md:py-5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all font-black uppercase tracking-[0.2em] text-[11px] md:text-xs text-neon-blue shadow-[0_20px_40px_rgba(0,0,0,0.3)] w-full sm:w-auto"
+                  to="/stream"
+                  className="flex items-center justify-center space-x-3 px-6 py-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all font-black uppercase tracking-[0.2em] text-[10px] md:text-xs text-neon-blue shadow-lg w-full sm:w-auto"
                 >
-                  <Tv className="w-5 md:w-5 h-5 md:h-5" />
+                  <Tv className="w-5 h-5" />
                   <span>Live Studio Cam</span>
                   <span className="w-2 md:w-2 h-2 md:h-2 rounded-full bg-red-500 animate-[pulse_1.5s_ease-in-out_infinite] shadow-[0_0_10px_rgba(239,68,68,0.6)]"></span>
                 </Link>
@@ -304,11 +304,11 @@ export default function Home() {
           initial={{ opacity: 0, scale: 0.85 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.2, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        className="relative group w-full lg:w-1/2 flex justify-center py-2 md:py-6 lg:py-12"
+        className="relative group w-full lg:w-[45%] flex justify-center py-2 md:py-6 lg:py-12"
         >
           <HeroVisualizer isPlaying={isPlaying} isLightMode={isLightMode} />
           
-          <div className={`relative w-full aspect-square max-w-[300px] sm:max-w-[360px] md:max-w-[450px] lg:max-w-[540px] rounded-[2.5rem] md:rounded-[3rem] overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.6)] border border-white/5 group-hover:border-white/20 transition-all duration-700 ${
+          <div className={`relative w-full aspect-square max-w-[280px] sm:max-w-[340px] md:max-w-[400px] lg:max-w-[480px] rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/5 group-hover:border-white/20 transition-all duration-700 ${
             (resolveDjImage(onAirInfo?.djPhoto) === logoUrl) && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''
           }`}>
             <img 
@@ -339,23 +339,23 @@ export default function Home() {
           
           <button 
             onClick={togglePlay}
-            className={`absolute top-[45%] sm:top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-[4.5rem] h-[4.5rem] sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-500 bg-clip-padding group/btn ${
+            className={`absolute top-[45%] sm:top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-500 bg-clip-padding group/btn ${
               isLightMode 
                 ? 'bg-dark-bg text-white shadow-[0_20px_60px_rgba(0,0,0,0.3)] border-4 border-black/5' 
-                : 'bg-white text-dark-bg shadow-[0_20px_60px_rgba(255,255,255,0.4)] hover:shadow-[0_20px_80px_rgba(255,255,255,0.6)] border-4 border-white/20'
+                : 'bg-white text-dark-bg shadow-2xl hover:shadow-[0_20px_80px_rgba(255,255,255,0.6)] border-4 border-white/20'
             }`}
           >
             {isPlaying ? (
-              <Pause className={`w-7 h-7 sm:w-10 sm:h-10 md:w-12 md:h-12 fill-current group-hover/btn:text-neon-purple transition-colors duration-300 ${isLightMode ? 'text-white' : 'text-black'}`} />
+              <Pause className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 fill-current group-hover/btn:text-neon-purple transition-colors duration-300 ${isLightMode ? 'text-white' : 'text-black'}`} />
             ) : (
-              <Play className={`w-7 h-7 sm:w-10 sm:h-10 md:w-12 md:h-12 ml-1 md:ml-2 fill-current group-hover/btn:text-neon-blue transition-colors duration-300 ${isLightMode ? 'text-white' : 'text-black'}`} />
+              <Play className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 ml-1 fill-current group-hover/btn:text-neon-blue transition-colors duration-300 ${isLightMode ? 'text-white' : 'text-black'}`} />
             )}
           </button>
         </motion.div>
       </div>
 
       {nextShow && (
-        <div className="w-full px-4 sm:px-6 xl:px-12 pb-8 !mt-2 md:!-mt-12 relative z-20">
+        <div className="w-full px-4 sm:px-6 xl:px-12 pb-16 !mt-2 md:!-mt-12 relative z-20">
           <div className="max-w-[1400px] mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}

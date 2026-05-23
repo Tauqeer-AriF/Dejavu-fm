@@ -16,7 +16,9 @@ export default function Stream() {
       'google.com',
       'run.app',
       'dejavufm.com',
-      'www.dejavufm.com'
+      'www.dejavufm.com',
+      'dejavufm.net',
+      'www.dejavufm.net'
     ])).filter(Boolean);
     
     const parentParams = parents.map(p => `parent=${p}`).join('&');

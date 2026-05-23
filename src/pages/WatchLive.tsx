@@ -42,7 +42,9 @@ function getEmbedUrl(url: string | null) {
           'ai.studio',
           'aistudio.google.com',
           'google.com',
-          'run.app'
+          'run.app',
+          'dejavufm.com',
+          'www.dejavufm.com'
         ];
         
         // Also extract any parents already provided in the input URL
