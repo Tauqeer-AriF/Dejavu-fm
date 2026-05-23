@@ -232,7 +232,7 @@ export default function Home() {
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       className="flex flex-col space-y-8 md:space-y-12 pb-40 md:pb-64"
     >
-      <div className="flex flex-col lg:flex-row items-center justify-center lg:justify-between min-h-[calc(100vh-180px)] lg:min-h-[75vh] gap-8 md:gap-12 relative px-4">
+      <div className="flex flex-col lg:flex-row items-center justify-center lg:justify-between min-h-[calc(100vh-80px)] pb-32 lg:pb-0 lg:min-h-[75vh] gap-8 md:gap-12 relative px-4">
         <div className="hidden lg:flex flex-1 space-y-6 md:space-y-8 z-10 w-full flex-col items-center lg:items-start pt-4 lg:pt-0">
           <div className="space-y-4 md:space-y-6 flex flex-col items-center lg:items-start text-center lg:text-left">
             <motion.div 
