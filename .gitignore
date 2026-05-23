@@ -23,5 +23,3 @@ pnpm-debug.log*
 # Runtime caches
 .cache/
 .parcel-cache/
-
-public/uploads/opt-upl-1779503844249-989059693.webp
