@@ -12,6 +12,13 @@ export function ShoutoutWidget() {
   const [recentShoutouts, setRecentShoutouts] = useState<any[]>([]);
   const [showBoothClear, setShowBoothClear] = useState(false);
   const prevCountRef = useRef(0);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const handleRemoteOpen = () => setIsOpen(true);
@@ -48,15 +55,14 @@ export function ShoutoutWidget() {
     if (recentShoutouts.length === 0) return;
 
     // Check for small screens (Tailwind's sm breakpoint is 640px)
-    const isSmallScreen = window.innerWidth < 640;
-    const duration = isSmallScreen ? 4000 : 8000; 
+    const duration = isMobile ? 4000 : 8000; 
 
     const timer = setTimeout(() => {
       setRecentShoutouts(prev => prev.slice(0, -1)); // Remove the oldest entry
     }, duration);
 
     return () => clearTimeout(timer);
-  }, [recentShoutouts]);
+  }, [recentShoutouts, isMobile]);
 
   // Handle "Booth Clear" temporary visibility logic
   useEffect(() => {
@@ -187,7 +193,13 @@ export function ShoutoutWidget() {
               initial={{ y: '100%', opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: '100%', opacity: 0 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              drag={isMobile ? "y" : false}
+              dragConstraints={{ top: 0, bottom: 0 }}
+              dragElastic={{ top: 0, bottom: 0.6 }}
+              onDragEnd={(_, info) => {
+                if (info.offset.y > 100) setIsOpen(false);
+              }}
+              transition={{ type: 'spring', damping: 28, stiffness: 200 }}
               className="fixed inset-x-0 bottom-0 sm:absolute sm:bottom-16 sm:md:bottom-20 sm:right-0 sm:left-auto w-full sm:w-80 sm:max-w-[320px] bg-dark-bg/95 sm:bg-white/10 backdrop-blur-3xl border-t sm:border border-white/10 rounded-t-[2.5rem] sm:rounded-[2rem] p-8 sm:p-6 shadow-2xl pointer-events-auto z-[100]"
             >
               {/* Visual Drag Handle for Mobile */}
