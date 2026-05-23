@@ -229,7 +229,7 @@ export default function Home() {
       className="flex flex-col space-y-8 md:space-y-12 pb-24"
     >
       <div className="flex flex-col lg:flex-row items-center justify-center lg:justify-between min-h-[70vh] gap-6 md:gap-12 lg:gap-16 relative mt-6 md:mt-8 lg:mt-12">
-        <div className="flex-1 space-y-8 md:space-y-10 lg:space-y-12 z-10 w-full flex flex-col items-center lg:items-start pt-2 md:pt-12 lg:pt-0">
+        <div className="lg:flex-1 space-y-8 md:space-y-10 lg:space-y-12 z-10 w-full flex flex-col items-center lg:items-start pt-2 md:pt-12 lg:pt-0">
           <div className="space-y-5 md:space-y-6 flex flex-col items-center lg:items-start text-center lg:text-left">
             <motion.div 
               initial={{ opacity: 0, scale: 0.8 }}
