@@ -14,6 +14,12 @@ export function ShoutoutWidget() {
   const prevCountRef = useRef(0);
 
   useEffect(() => {
+    const handleRemoteOpen = () => setIsOpen(true);
+    window.addEventListener('open-shoutout', handleRemoteOpen);
+    return () => window.removeEventListener('open-shoutout', handleRemoteOpen);
+  }, []);
+
+  useEffect(() => {
     const socket = (window as any).socket;
     if (socket) {
       const handler = (shoutout: any) => {
@@ -115,7 +121,7 @@ export function ShoutoutWidget() {
             initial={{ opacity: 0, x: 50, scale: 0.8 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 20, scale: 0.5 }}
-            className="bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl shadow-2xl flex items-center space-x-3 pointer-events-auto max-w-[280px]"
+            className="hidden sm:flex bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl shadow-2xl items-center space-x-3 pointer-events-auto max-w-[280px]"
           >
              <div className="w-8 h-8 bg-neon-purple/20 rounded-lg flex items-center justify-center shrink-0">
                 <User className="w-4 h-4 text-neon-purple" />
@@ -141,7 +147,7 @@ export function ShoutoutWidget() {
         )}
       </AnimatePresence>
 
-      <div className="pointer-events-auto flex items-center group">
+      <div className="hidden sm:flex pointer-events-auto items-center group">
         <div className="flex items-center space-x-2 overflow-hidden max-w-0 opacity-0 px-0 group-hover:max-w-[150px] group-hover:opacity-100 group-hover:px-2 group-hover:mr-2 transition-all duration-500 ease-out origin-right">
           <button 
             onClick={() => sendReaction('🔥')}
@@ -167,12 +173,26 @@ export function ShoutoutWidget() {
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="absolute bottom-16 md:bottom-20 right-0 w-[calc(100vw-3rem)] sm:w-80 max-w-[320px] bg-white/10 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-5 md:p-6 shadow-2xl pointer-events-auto"
-          >
+          <>
+            {/* Mobile Backdrop Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsOpen(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] sm:hidden pointer-events-auto"
+            />
+            
+            <motion.div 
+              initial={{ y: '100%', opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '100%', opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed inset-x-0 bottom-0 sm:absolute sm:bottom-16 sm:md:bottom-20 sm:right-0 sm:left-auto w-full sm:w-80 sm:max-w-[320px] bg-dark-bg/95 sm:bg-white/10 backdrop-blur-3xl border-t sm:border border-white/10 rounded-t-[2.5rem] sm:rounded-[2rem] p-8 sm:p-6 shadow-2xl pointer-events-auto z-[100]"
+            >
+              {/* Visual Drag Handle for Mobile */}
+              <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto mb-6 sm:hidden" />
+
              <div className="flex justify-between items-center mb-6">
                 <h3 className="text-sm font-black uppercase tracking-widest text-white">Direct Shoutout</h3>
                 <button onClick={() => setIsOpen(false)} className="text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
@@ -208,7 +228,8 @@ export function ShoutoutWidget() {
                   <span>Send to Booth</span>
                 </button>
              </form>
-          </motion.div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>

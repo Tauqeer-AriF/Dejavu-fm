@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAudio } from "../context/AudioContext";
 import { useLogo } from "../hooks/useLogo";
-import { Play, Pause, Mic2, Tv, Clock, X } from "lucide-react";
+import { Play, Pause, Mic2, Tv, Clock, X, MessageSquare } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { io } from "socket.io-client";
 import { convertToLocalTime } from "../lib/timeUtils";
@@ -148,6 +148,10 @@ export default function Home() {
     };
   }, []);
 
+  const handleMobileShoutout = () => {
+    window.dispatchEvent(new CustomEvent('open-shoutout'));
+  };
+
   const { data: scheduleData, isLoading } = useQuery({
     queryKey: ['schedule'],
     queryFn: () => fetch("/api/public/schedule").then(res => res.json()),
@@ -209,7 +213,7 @@ export default function Home() {
   if (isLoading) {
     return (
       <div className="flex flex-col lg:flex-row items-center justify-between min-h-[75vh] gap-12">
-        <div className="flex-1 space-y-6 md:space-y-8 z-10 w-full">
+        <div className="hidden lg:block flex-1 space-y-6 md:space-y-8 z-10 w-full">
           <div className="w-40 h-10 bg-white/10 animate-pulse rounded-full"></div>
           <div className="space-y-4 pt-4">
             <div className="h-20 md:h-24 lg:h-32 bg-white/10 animate-pulse rounded-2xl w-3/4"></div>
@@ -228,8 +232,8 @@ export default function Home() {
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       className="flex flex-col space-y-8 md:space-y-12 pb-40 md:pb-64"
     >
-      <div className="flex flex-col lg:flex-row items-center justify-center lg:justify-between min-h-[60vh] lg:min-h-[75vh] gap-8 md:gap-12 relative">
-        <div className="flex-1 space-y-6 md:space-y-8 z-10 w-full flex flex-col items-center lg:items-start pt-4 lg:pt-0">
+      <div className="flex flex-col lg:flex-row items-center justify-center lg:justify-between min-h-[calc(100vh-180px)] lg:min-h-[75vh] gap-8 md:gap-12 relative px-4">
+        <div className="hidden lg:flex flex-1 space-y-6 md:space-y-8 z-10 w-full flex-col items-center lg:items-start pt-4 lg:pt-0">
           <div className="space-y-4 md:space-y-6 flex flex-col items-center lg:items-start text-center lg:text-left">
             <motion.div 
               initial={{ opacity: 0, scale: 0.8 }}
@@ -304,7 +308,7 @@ export default function Home() {
           initial={{ opacity: 0, scale: 0.85 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.2, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        className="relative group w-full lg:w-[45%] flex justify-center py-2 md:py-6 lg:py-12"
+        className="relative group w-full lg:w-[45%] flex justify-center py-0 md:py-6 lg:py-12"
         >
           <HeroVisualizer isPlaying={isPlaying} isLightMode={isLightMode} />
           
@@ -336,7 +340,19 @@ export default function Home() {
               </div>
             </div>
           </div>
-          
+
+          {/* Mobile Only Shoutout Button */}
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.5 }}
+            onClick={handleMobileShoutout}
+            className="lg:hidden absolute -bottom-12 flex items-center space-x-2 px-6 py-3 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 text-white/70 hover:text-white transition-all active:scale-95 shadow-xl"
+          >
+            <MessageSquare className="w-4 h-4 text-neon-purple" />
+            <span className="text-[10px] font-black uppercase tracking-widest">Send Shoutout</span>
+          </motion.button>
+
           <button 
             onClick={togglePlay}
             className={`absolute top-[45%] sm:top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-500 bg-clip-padding group/btn ${
@@ -355,7 +371,7 @@ export default function Home() {
       </div>
 
       {nextShow && (
-        <div className="w-full px-4 sm:px-6 xl:px-12 pb-16 !mt-2 md:!-mt-12 relative z-20">
+        <div className="w-full px-4 sm:px-6 xl:px-12 pb-16 mt-24 md:-mt-12 relative z-20">
           <div className="max-w-[1400px] mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
