@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Radio, MessageSquare, Instagram, Music2, Globe } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -6,29 +6,53 @@ import { useAudio } from '../context/AudioContext';
 import { useLogo } from '../hooks/useLogo';
 
 export default function Stream() {
-  // Dynamically get the current hostname for Twitch parent parameters
-  const hostname = window.location.hostname;
-  const parents = [
-    hostname,
-    'localhost',
-    'ai.studio',
-    'aistudio.google.com'
-  ].filter(Boolean);
-  
-  const parentParams = parents.map(p => `parent=${p}`).join('&');
-  const twitchUrl = `https://player.twitch.tv/?channel=dejavufmlive&${parentParams}&autoplay=true&muted=true`;
+  const twitchUrl = useMemo(() => {
+    const hostname = window.location.hostname;
+    const parents = Array.from(new Set([
+      hostname,
+      'localhost',
+      'ai.studio',
+      'aistudio.google.com',
+      'google.com',
+      'run.app',
+      'dejavufm.com',
+      'www.dejavufm.com'
+    ])).filter(Boolean);
+    
+    const parentParams = parents.map(p => `parent=${p}`).join('&');
+    // Optimized parameter order for reliability
+    return `https://player.twitch.tv/?channel=dejavufmlive&autoplay=true&muted=true&${parentParams}`;
+  }, []);
 
   const { onAirInfo } = useAudio();
   const { logoUrl, resolveDjImage } = useLogo();
   const [listeners, setListeners] = useState(0);
+  const [trackOverlay, setTrackOverlay] = useState<{artist: string, title: string} | null>(null);
+  const overlayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Sync with global socket for listener count
   useEffect(() => {
     const socket = (window as any).socket;
     if (!socket) return;
+    
     const handler = (count: number) => setListeners(count);
+    
+    const onPushTrack = (data: {artist: string, title: string}) => {
+      setTrackOverlay(data);
+      if (overlayTimeoutRef.current) clearTimeout(overlayTimeoutRef.current);
+      overlayTimeoutRef.current = setTimeout(() => {
+        setTrackOverlay(null);
+      }, 8000); 
+    };
+
     socket.on('onlineCount', handler);
-    return () => { socket.off('onlineCount', handler); };
+    socket.on('pushTrack', onPushTrack);
+
+    return () => { 
+      socket.off('onlineCount', handler); 
+      socket.off('pushTrack', onPushTrack);
+      if (overlayTimeoutRef.current) clearTimeout(overlayTimeoutRef.current);
+    };
   }, []);
 
   // Fetch settings for naming consistency
@@ -56,10 +80,31 @@ export default function Stream() {
           </div>
           
           <iframe
+            key={twitchUrl}
             src={twitchUrl}
             className="w-full h-full border-none shadow-inner absolute inset-0 z-10"
+            allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; clipboard-write; gyroscope"
             allowFullScreen
           />
+
+          {/* Animated Track overlay (Matches WatchLive) */}
+          <AnimatePresence>
+            {trackOverlay && (
+              <motion.div
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="absolute bottom-6 left-6 z-[60] bg-black/80 backdrop-blur-md border-l-4 border-l-neon-pink p-4 rounded-xl shadow-2xl pointer-events-none"
+              >
+                <div className="text-neon-pink text-[10px] font-bold uppercase tracking-widest mb-1 flex items-center space-x-2">
+                  <span className="w-1.5 h-1.5 bg-neon-pink rounded-full animate-pulse"></span>
+                  <span>Now Playing</span>
+                </div>
+                <div className="text-xl font-bold text-white break-words max-w-[250px] leading-tight mb-1">{trackOverlay.title}</div>
+                <div className="text-sm font-medium text-white/70 truncate max-w-[250px]">{trackOverlay.artist}</div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* DJ Info Footer (Matches WatchLive) */}
