@@ -355,7 +355,7 @@ export default function Home() {
 
           <button 
             onClick={togglePlay}
-            className={`absolute top-[45%] sm:top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-500 bg-clip-padding group/btn ${
+            className={`absolute top-[40%] sm:top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-500 bg-clip-padding group/btn ${
               isLightMode 
                 ? 'bg-dark-bg text-white shadow-[0_20px_60px_rgba(0,0,0,0.3)] border-4 border-black/5' 
                 : 'bg-white text-dark-bg shadow-2xl hover:shadow-[0_20px_80px_rgba(255,255,255,0.6)] border-4 border-white/20'
