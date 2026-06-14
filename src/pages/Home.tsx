@@ -323,7 +323,7 @@ export default function Home() {
             <div className={`absolute inset-0 bg-gradient-to-t ${isPlaying ? 'from-neon-purple/40 via-dark-bg/60' : 'from-dark-bg via-dark-bg/40'} to-transparent opacity-90 transition-colors duration-1000`}></div>
             
             {/* CDJ Style Now Playing Overlay */}
-            <div className="absolute bottom-4 left-4 right-4 md:bottom-10 md:left-10 md:right-10 p-4 md:p-6 glass-panel rounded-2xl md:rounded-3xl border border-white/10 flex flex-col space-y-1.5 md:space-y-2 translate-y-0 group-hover:-translate-y-2 transition-transform duration-500 shadow-2xl backdrop-blur-xl bg-black/40">
+            <div className="now-playing-panel absolute bottom-4 left-4 right-4 md:bottom-10 md:left-10 md:right-10 z-10 p-4 md:p-6 rounded-2xl md:rounded-3xl border border-white/10 flex flex-col space-y-1.5 md:space-y-2 translate-y-0 group-hover:-translate-y-2 transition-transform duration-500 shadow-2xl backdrop-blur-xl bg-black/40">
               <div className="flex justify-between items-center text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] text-white/50">
                 <span className="flex items-center space-x-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-white/40"></div>

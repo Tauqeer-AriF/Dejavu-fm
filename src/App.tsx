@@ -520,6 +520,7 @@ function MainLayout() {
         <div className="absolute bottom-[20%] right-[-10%] w-[50%] h-[50%] bg-neon-blue/20 rounded-full blur-[120px] animate-[pulse_12s_ease-in-out_infinite_2s]"></div>
         <div className="absolute top-[40%] right-[20%] w-[30%] h-[30%] bg-white/5 rounded-full blur-[100px] animate-[pulse_15s_ease-in-out_infinite_4s]"></div>
       </div>
+      <div className="app-shimmer-overlay" aria-hidden="true"></div>
       
       <Navigation onOpenChat={() => setIsChatOpen(true)} featChat={featChat} />
       <SitePopup />
