@@ -1,9 +1,0 @@
-
-> react-example@0.0.0 dev
-> tsx server.ts
-
-[API] apiRouter initialized and loaded
-[DB] admin_secret is already set in database. Preserving existing value.
-[DB] Already have 1 admin user(s).
-Server running on http://0.0.0.0:3000
-Server running on http://0.0.0.0:3001
