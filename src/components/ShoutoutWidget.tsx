@@ -119,7 +119,7 @@ export function ShoutoutWidget() {
   };
 
   return (
-    <div className="fixed bottom-28 sm:bottom-[180px] xl:bottom-32 right-6 xl:right-8 z-50 flex flex-col items-end gap-5 pointer-events-none">
+    <div className="fixed bottom-28 sm:bottom-[180px] xl:bottom-32 right-6 xl:right-8 z-[10020] flex flex-col items-end gap-5 pointer-events-none">
       <AnimatePresence>
         {recentShoutouts.map((s, i) => (
           <motion.div
@@ -127,7 +127,7 @@ export function ShoutoutWidget() {
             initial={{ opacity: 0, x: 50, scale: 0.9 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 20, scale: 0.5 }}
-            className="flex bg-black/60 backdrop-blur-2xl border-l-4 border-l-neon-purple border-y border-r border-white/10 px-5 py-3 rounded-2xl shadow-2xl items-center space-x-4 pointer-events-auto max-w-[280px] sm:max-w-[320px]"
+            className="hidden sm:flex bg-black/60 backdrop-blur-2xl border-l-4 border-l-neon-purple border-y border-r border-white/10 px-5 py-3 rounded-2xl shadow-2xl items-center space-x-4 pointer-events-auto max-w-[280px] sm:max-w-[320px]"
           >
              <div className="w-10 h-10 bg-neon-purple/10 rounded-xl flex items-center justify-center shrink-0 border border-neon-purple/20">
                 <Radio className="w-5 h-5 text-neon-purple" />
@@ -146,7 +146,7 @@ export function ShoutoutWidget() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            className="flex bg-white/5 backdrop-blur-md border border-white/10 px-5 py-2.5 rounded-full items-center space-x-3 pointer-events-auto shadow-lg"
+            className="hidden sm:flex bg-white/5 backdrop-blur-md border border-white/10 px-5 py-2.5 rounded-full items-center space-x-3 pointer-events-auto shadow-lg"
           >
             <Sparkles className="w-4 h-4 text-white/20" />
             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">Deck Reset</span>
@@ -154,7 +154,7 @@ export function ShoutoutWidget() {
         )}
       </AnimatePresence>
 
-      <div className="flex pointer-events-auto items-center group relative">
+      <div className="hidden sm:flex pointer-events-auto items-center group relative">
         <div className="flex items-center space-x-3 overflow-hidden max-w-0 opacity-0 px-0 group-hover:max-w-[200px] group-hover:opacity-100 group-hover:px-4 group-hover:mr-2 transition-all duration-500 ease-out origin-right">
           <button 
             onClick={() => sendReaction('🔥')}
