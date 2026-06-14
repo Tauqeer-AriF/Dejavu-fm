@@ -4,7 +4,7 @@ import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
 import { apiRouter } from "./src/server/api.ts";
-import { initDb, db } from "./src/server/db.ts";
+import { initDb, db, backupDatabase } from "./src/server/db.ts";
 import http from "http";
 import { Server as SocketIOServer } from "socket.io";
 import crypto from "crypto";
@@ -185,6 +185,38 @@ async function startServer() {
 
   // Initialize DB
   initDb();
+
+  // Automated Database Backups with Dynamic Frequency
+  const performAutoBackup = async () => {
+    try {
+      const enabledRow = db.prepare("SELECT value FROM settings WHERE key = 'backup_enabled'").get() as {value: string};
+      if (enabledRow?.value === '0') return;
+
+      const row = db.prepare("SELECT value FROM settings WHERE key = 'backup_frequency_hours'").get() as {value: string};
+      const freqHours = parseInt(row?.value || "24");
+      
+      const backupDir = path.join(process.cwd(), 'backups');
+      if (!fs.existsSync(backupDir)) {
+        await backupDatabase();
+        return;
+      }
+
+      const files = fs.readdirSync(backupDir).filter(f => f.startsWith('backup-'));
+      if (files.length === 0) {
+        await backupDatabase();
+        return;
+      }
+
+      const latestFile = files.map(f => fs.statSync(path.join(backupDir, f)).mtime.getTime()).sort((a,b) => b-a)[0];
+      if (Date.now() - latestFile >= freqHours * 60 * 60 * 1000) {
+        await backupDatabase();
+      }
+    } catch (e) { console.error("[Backup Task] Error:", e); }
+  };
+
+  const backupCheckInterval = 60 * 60 * 1000; // Check every hour
+  setInterval(performAutoBackup, backupCheckInterval);
+  setTimeout(performAutoBackup, 5000); // Initial check 5 seconds after startup
 
   // Background task to reset shoutouts when DJ changes
   let lastScheduledDjId: string | null = null;

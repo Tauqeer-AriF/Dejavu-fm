@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import path from 'path';
 import fs from 'fs';
 
-const dbPath = process.env.DATABASE_PATH || 'dejavufm.db';
+export const dbPath = process.env.DATABASE_PATH || 'dejavufm.db';
 
 // Ensure the directory exists if a path is provided
 const dbDir = path.dirname(dbPath);
@@ -175,6 +175,11 @@ export function initDb() {
   runMigration('audit_logs_table', "CREATE TABLE IF NOT EXISTS audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL, role TEXT NOT NULL, action TEXT NOT NULL, resource TEXT NOT NULL, resource_id TEXT, details TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);");
   runMigration('correct_rss_endpoint', "UPDATE settings SET value = 'https://dejavufmpodcast.podomatic.com/rss2.xml' WHERE key = 'rss_feed_url' AND value = 'https://dejavufm.podomatic.com/rss2.xml';");
   runMigration('advanced_features_flag', "INSERT OR IGNORE INTO settings (key, value) VALUES ('advanced_features_enabled', '1');");
+  runMigration('backup_enabled_flag', "INSERT OR IGNORE INTO settings (key, value) VALUES ('backup_enabled', '1');");
+  runMigration('backup_status_logging', "INSERT OR IGNORE INTO settings (key, value) VALUES ('backup_last_attempt', ''), ('backup_last_status', 'never');");
+  runMigration('backup_metadata_table', "CREATE TABLE IF NOT EXISTS backup_metadata (filename TEXT PRIMARY KEY, label TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);");
+  runMigration('backup_retention_days_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('backup_retention_days', '30');");
+  runMigration('backup_frequency_hours_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('backup_frequency_hours', '24');");
 
   // Initialize hours
   const insertHour = db.prepare('INSERT OR IGNORE INTO hourly_stats (hour, peak_listeners) VALUES (?, 0)');
@@ -220,6 +225,10 @@ export function initDb() {
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_live_tools', '1');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_stream_quality', '1');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('advanced_features_enabled', '1');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('backup_frequency_hours', '24');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('backup_enabled', '1');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('backup_last_attempt', '');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('backup_last_status', 'never');
   }
 
   // Ensure admin secret exists
@@ -269,5 +278,54 @@ export function initDb() {
     db.prepare('INSERT INTO admins (username, password_hash, role) VALUES (?, ?, ?)').run('admin', defaultHash, 'admin');
   } else {
     console.log(`[DB] Already have ${countAdmins.count} admin user(s).`);
+  }
+}
+
+/**
+ * Delete backups older than the configured retention setting.
+ */
+export function pruneBackups() {
+  const backupDir = path.join(process.cwd(), 'backups');
+  if (!fs.existsSync(backupDir)) return;
+
+  const retentionRow = db.prepare("SELECT value FROM settings WHERE key = 'backup_retention_days'").get() as {value: string} | undefined;
+  const retentionDays = parseInt(retentionRow?.value || "30");
+  const RETENTION_MS = retentionDays * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+
+  fs.readdirSync(backupDir)
+    .filter(f => (f.startsWith('backup-') || f.startsWith('manual-backup-')) && f.endsWith('.db'))
+    .forEach(f => {
+      const filePath = path.join(backupDir, f);
+      const stats = fs.statSync(filePath);
+      if (now - stats.mtime.getTime() > RETENTION_MS) {
+        fs.unlinkSync(filePath);
+        db.prepare("DELETE FROM backup_metadata WHERE filename = ?").run(f);
+        console.log(`[DB] Pruned expired backup (older than ${retentionDays} days): ${f}`);
+      }
+    });
+}
+
+/**
+ * Atomic backup of the SQLite database.
+ */
+export async function backupDatabase() {
+  const backupDir = path.join(process.cwd(), 'backups');
+  if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const backupPath = path.join(backupDir, `backup-${timestamp}.db`);
+
+  const now = new Date().toISOString();
+  try {
+    console.log(`[DB] Starting automated backup...`);
+    db.prepare("UPDATE settings SET value = ? WHERE key = 'backup_last_attempt'").run(now);
+    await db.backup(backupPath);
+    db.prepare("UPDATE settings SET value = ? WHERE key = 'backup_last_status'").run('success');
+    console.log(`[DB] Backup successful: ${backupPath}`);
+    pruneBackups();
+  } catch (err) {
+    db.prepare("UPDATE settings SET value = ? WHERE key = 'backup_last_status'").run('failed');
+    console.error("[DB] Automated backup failed:", err);
   }
 }

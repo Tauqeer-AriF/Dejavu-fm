@@ -18,6 +18,7 @@ import { AdminAdvanced, AdminBranding, AdminSettings } from "./admin/AdminSystem
 import { AdminUsers } from "./admin/AdminUsers";
 import { AdminChatUsers } from "./admin/AdminChatUsers";
 import { AdminAuditLogs } from "./admin/AdminAuditLogs";
+import { AdminBackup } from "./admin/AdminBackup";
 
 export default function Admin() {
   const [isLogged, setIsLogged] = useState(false);
@@ -130,6 +131,7 @@ export default function Admin() {
                   <Route path="/users" element={isAdminUser ? <AdminUsers isAdminUser={isAdminUser} /> : <Navigate to="/admin" replace />} />
                   <Route path="/chat-users" element={isAdminUser ? <AdminChatUsers isAdminUser={isAdminUser} /> : <Navigate to="/admin" replace />} />
                   <Route path="/audit-logs" element={isAdminUser ? <AdminAuditLogs /> : <Navigate to="/admin" replace />} />
+                  <Route path="/backup" element={isAdminUser ? <AdminBackup /> : <Navigate to="/admin" replace />} />
 
                   <Route path="*" element={<Navigate to="/admin" replace />} />
                 </Routes>

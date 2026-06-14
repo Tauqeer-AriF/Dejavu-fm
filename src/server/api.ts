@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
-import { db } from "./db.js";
+import Database from 'better-sqlite3';
+import { db, dbPath, pruneBackups } from "./db.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Parser from "rss-parser";
@@ -836,7 +837,8 @@ apiRouter.put("/admin/settings", authorizeRole('admin'), (req, res) => {
     "app_title", "font_sans", "font_display", "is_on_air", "primary_color", 
     "secondary_color", "feat_chat", "feat_shoutouts", "feat_cinematic", 
     "feat_pwa", "feat_bookings", "feat_live_tools", "feat_stream_quality",
-    "logo_dark", "logo_light"
+    "logo_dark", "logo_light", "backup_retention_days",
+    "backup_frequency_hours", "backup_enabled"
   ];
   
   for (const key of allowedKeys) {
@@ -1014,6 +1016,296 @@ apiRouter.delete("/admin/audit-logs", authorizeRole('admin'), (req, res) => {
   logAction(req, 'PURGE', 'audit_logs');
   res.json({ success: true });
 });
+
+apiRouter.get("/admin/database/list-backups", authorizeRole('admin'), (req, res) => {
+  const backupDir = path.join(process.cwd(), 'backups');
+  if (!fs.existsSync(backupDir)) return res.json([]);
+
+  try {
+    const metadata = db.prepare("SELECT * FROM backup_metadata").all() as any[];
+    const files = fs.readdirSync(backupDir)
+      .filter(f => (f.startsWith('backup-') || f.startsWith('manual-backup-')) && f.endsWith('.db'))
+      .map(f => {
+        const stats = fs.statSync(path.join(backupDir, f));
+        const m = metadata.find(x => x.filename === f);
+        return {
+          name: f,
+          size: stats.size,
+          createdAt: stats.mtime,
+          label: m ? m.label : null
+        };
+      })
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, 15);
+
+    res.json(files);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to list backups" });
+  }
+});
+
+apiRouter.get("/admin/database/download-file/:filename", authorizeRole('admin'), (req, res) => {
+  const { filename } = req.params;
+  // Security check: only allow files from the backup directory with the correct naming convention
+  if (!(filename.startsWith('backup-') || filename.startsWith('manual-backup-')) || !filename.endsWith('.db') || filename.includes('..')) {
+    return res.status(400).json({ error: "Invalid filename" });
+  }
+
+  const filePath = path.join(process.cwd(), 'backups', filename);
+  
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: "Backup file not found" });
+  }
+
+  res.download(filePath, filename);
+});
+
+apiRouter.get("/admin/database/stats", authorizeRole('admin'), (req, res) => {
+  const backupDir = path.join(process.cwd(), 'backups');
+  if (!fs.existsSync(backupDir)) {
+    return res.json({ totalSize: 0, fileCount: 0 });
+  }
+
+  try {
+    const files = fs.readdirSync(backupDir).filter(f => f.endsWith('.db'));
+    let totalSize = 0;
+    files.forEach(f => {
+      try {
+        const stats = fs.statSync(path.join(backupDir, f));
+        totalSize += stats.size;
+      } catch (e) {}
+    });
+
+    res.json({ 
+      totalSize, 
+      fileCount: files.length 
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to calculate storage stats" });
+  }
+});
+
+apiRouter.delete("/admin/database/backups/all", authorizeRole('admin'), (req, res) => {
+  const backupDir = path.join(process.cwd(), 'backups');
+  if (!fs.existsSync(backupDir)) return res.json({ success: true });
+  
+  try {
+    const files = fs.readdirSync(backupDir).filter(f => f.endsWith('.db'));
+    files.forEach(f => {
+      try { fs.unlinkSync(path.join(backupDir, f)); } catch (e) {}
+    });
+    logAction(req, 'PURGE_BACKUPS', 'database');
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to purge backups" });
+  }
+});
+
+apiRouter.post("/admin/database/prune", authorizeRole('admin'), (req, res) => {
+  try {
+    pruneBackups();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Maintenance task failed" });
+  }
+});
+
+apiRouter.post("/admin/database/restore-file/:filename", authorizeRole('admin'), asyncHandler(async (req: Request, res: Response) => {
+  const { filename } = req.params;
+  // Security check: only allow files from the backup directory with the correct naming convention
+  if (!(filename.startsWith('backup-') || filename.startsWith('manual-backup-')) || !filename.endsWith('.db') || filename.includes('..')) {
+    return res.status(400).json({ error: "Invalid filename" });
+  }
+
+  const filePath = path.join(process.cwd(), 'backups', filename);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: "Backup file not found" });
+  }
+
+  const absoluteDbPath = path.resolve(process.cwd(), dbPath);
+  const backupPath = absoluteDbPath + ".pre-restore.bak";
+
+  try {
+    // 1. Verify the snapshot before touching the live database
+    let checkDb;
+    try {
+      checkDb = new Database(filePath, { readonly: true });
+      const settingsTable = checkDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='settings'").get();
+      if (!settingsTable) throw new Error("Invalid database schema: 'settings' table missing.");
+      const integrity = checkDb.pragma('integrity_check', { simple: true });
+      if (integrity !== 'ok') throw new Error(`Database integrity check failed: ${integrity}`);
+    } finally {
+      if (checkDb) checkDb.close();
+    }
+
+    logAction(req, 'RESTORE_DATABASE_SNAPSHOT', 'database', null, { filename });
+
+    // Close connection and swap files
+    db.close();
+    if (fs.existsSync(absoluteDbPath)) {
+      fs.renameSync(absoluteDbPath, backupPath);
+    }
+    fs.copyFileSync(filePath, absoluteDbPath);
+
+    res.json({ success: true, message: "Database restored from snapshot. Server is restarting..." });
+
+    setTimeout(() => {
+      console.log("[DB] Restarting process to apply restored snapshot...");
+      process.exit(0);
+    }, 1000);
+  } catch (err: any) {
+    console.error("[API] Snapshot restore failed:", err);
+    res.status(500).json({ error: `Restore failed: ${err.message}` });
+  }
+}));
+
+apiRouter.delete("/admin/database/delete-backup/:filename", authorizeRole('admin'), (req, res) => {
+  const { filename } = req.params;
+  // Security check: only allow files from the backup directory with the correct naming convention
+  if (!(filename.startsWith('backup-') || filename.startsWith('manual-backup-')) || !filename.endsWith('.db') || filename.includes('..')) {
+    return res.status(400).json({ error: "Invalid filename" });
+  }
+
+  const filePath = path.join(process.cwd(), 'backups', filename);
+  
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      db.prepare("DELETE FROM backup_metadata WHERE filename = ?").run(filename);
+      logAction(req, 'DELETE_BACKUP', 'database', null, { filename });
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ error: "Backup file not found" });
+    }
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete backup" });
+  }
+});
+
+apiRouter.post("/admin/database/snapshot", authorizeRole('admin'), asyncHandler(async (req: Request, res: Response) => {
+  const { label } = req.body;
+  const backupDir = path.join(process.cwd(), 'backups');
+  if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const filename = `manual-backup-${timestamp}.db`;
+  const filePath = path.join(backupDir, filename);
+
+  try {
+    console.log(`[DB] Creating manual snapshot: ${filename}`);
+    await db.backup(filePath);
+    
+    if (label) {
+      db.prepare("INSERT INTO backup_metadata (filename, label) VALUES (?, ?)").run(filename, label);
+    }
+    
+    logAction(req, 'CREATE_SNAPSHOT', 'database', null, { filename, label });
+    res.json({ success: true, filename });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to generate snapshot" });
+  }
+}));
+
+apiRouter.get("/admin/database/download", authorizeRole('admin'), asyncHandler(async (req: Request, res: Response) => {
+  const backupDir = path.join(process.cwd(), 'backups');
+  if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const filename = `manual-backup-${timestamp}.db`;
+  const filePath = path.join(backupDir, filename);
+
+  try {
+    // Perform an atomic backup to a temporary file
+    await db.backup(filePath);
+    
+    logAction(req, 'DOWNLOAD_BACKUP', 'database', null, { filename });
+
+    res.download(filePath, filename, (err) => {
+      if (err) console.error("[API] Backup download failed:", err);
+      
+      // Cleanup: remove the temporary manual backup file after download finishes
+      try {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      } catch (e) {}
+    });
+  } catch (err) {
+    console.error("[API] Manual backup failed:", err);
+    res.status(500).json({ error: "Failed to generate database backup" });
+  }
+}));
+
+const restoreStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const backupDir = path.join(process.cwd(), 'backups');
+    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+    cb(null, backupDir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, "restore-pending.db");
+  }
+});
+const restoreUpload = multer({ storage: restoreStorage });
+
+apiRouter.post("/admin/database/restore", authorizeRole('admin'), restoreUpload.single('database'), asyncHandler(async (req: any, res: Response) => {
+  if (!req.file) return res.status(400).json({ error: "No database file provided" });
+
+  const tempPath = req.file.path;
+  const absoluteDbPath = path.resolve(process.cwd(), dbPath);
+  const backupPath = absoluteDbPath + ".pre-restore.bak";
+
+  try {
+    // 1. Verify the uploaded file before touching the live database
+    console.log(`[DB] Verifying uploaded database file...`);
+    let checkDb;
+    try {
+      checkDb = new Database(tempPath, { readonly: true });
+      
+      // Check for core table existence to ensure it's a Dejavu FM database
+      const settingsTable = checkDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='settings'").get();
+      if (!settingsTable) {
+        throw new Error("Invalid database schema: 'settings' table missing. Is this a Dejavu FM backup?");
+      }
+      
+      // Perform integrity check
+      const integrity = checkDb.pragma('integrity_check', { simple: true });
+      if (integrity !== 'ok') {
+        throw new Error(`Database integrity check failed: ${integrity}`);
+      }
+    } catch (verifErr: any) {
+      if (checkDb) checkDb.close();
+      if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+      return res.status(400).json({ error: `Validation failed: ${verifErr.message}` });
+    } finally {
+      if (checkDb) checkDb.close();
+    }
+
+    console.log(`[DB] Verification successful. Initiating restore and closing connection...`);
+    
+    logAction(req, 'RESTORE_DATABASE', 'database', null, { original_file: req.file.originalname });
+
+    // 1. Close the current connection
+    db.close();
+
+    // 2. Backup current live DB just in case
+    if (fs.existsSync(absoluteDbPath)) {
+      fs.renameSync(absoluteDbPath, backupPath);
+    }
+
+    // 3. Move uploaded file to live location
+    fs.renameSync(tempPath, absoluteDbPath);
+
+    res.json({ success: true, message: "Database replaced. Server is restarting..." });
+
+    // 4. Exit process to trigger restart (Singleton reload)
+    setTimeout(() => {
+      console.log("[DB] Restarting process to apply restored database...");
+      process.exit(0);
+    }, 1000);
+  } catch (err) {
+    console.error("[API] Restore failed:", err);
+    res.status(500).json({ error: "Critical failure during database restoration" });
+  }
+}));
 
 // Global Error Handler Middleware
 apiRouter.use((err: any, req: Request, res: Response, next: NextFunction) => {

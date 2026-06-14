@@ -67,7 +67,7 @@ export function ModalProvider({ children }: { children: ReactNode }) {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-sm glass-panel rounded-[32px] shadow-2xl p-10 overflow-hidden border border-white/5"
+              className="relative w-full max-w-lg glass-panel rounded-[32px] shadow-2xl p-10 overflow-hidden border border-white/5"
             >
               {/* Optional background glow based on style */}
               <div className={`absolute -top-32 -right-32 w-80 h-80 rounded-full blur-[100px] pointer-events-none opacity-40 ${

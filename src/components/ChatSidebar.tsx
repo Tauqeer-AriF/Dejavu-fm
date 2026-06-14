@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { io, Socket } from 'socket.io-client';
 import { Send, User, LogOut, Loader2, X, MessageSquare, Users, Ban, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
+import { useModal } from '../context/ModalContext';
 
 interface ChatMessage {
   id: string;
@@ -30,6 +31,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
       return [];
     }
   });
+  const { showConfirm } = useModal();
 
   const socketRef = useRef<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -149,7 +151,13 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
   };
 
   const handleBanUser = async (email: string) => {
-    const confirmed = window.confirm(`GLOBAL BAN: Permanently suspend ${email} and remove their messages?`);
+    const confirmed = await showConfirm({
+      title: "Global Ban",
+      message: `Are you sure you want to PERMANENTLY suspend ${email} and remove all their messages?`,
+      style: "danger",
+      confirmText: "Ban User"
+    });
+
     if (!confirmed) return;
 
     const adminToken = localStorage.getItem('admin_token');
