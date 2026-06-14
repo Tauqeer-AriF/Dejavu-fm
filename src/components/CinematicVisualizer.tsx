@@ -134,7 +134,7 @@ export function CinematicVisualizer({ isOpen, onClose }: { isOpen: boolean, onCl
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 1.05 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="fixed inset-0 z-50 bg-[#0a0a0f] flex items-center justify-center overflow-hidden"
+          className="fixed inset-0 z-[20000] bg-[#0a0a0f] flex items-center justify-center overflow-hidden"
         >
           <canvas
             ref={canvasRef}
