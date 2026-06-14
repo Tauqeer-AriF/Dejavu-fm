@@ -93,7 +93,7 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
 
   return (
     <>
-      <nav className="flex items-center justify-between p-4 md:p-8 max-w-[100rem] mx-auto w-full relative z-30 gap-4">
+      <nav className="flex items-center justify-between p-4 md:p-8 max-w-[100rem] mx-auto w-full relative z-[1000] gap-4">
         <Link to="/" className="flex items-center space-x-3 md:space-x-4 z-40 shrink-0" onClick={() => setIsMobileMenuOpen(false)}>
           <div className={`w-11 h-11 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center overflow-hidden shrink-0 transition-all ${
             isLightMode 
@@ -182,7 +182,7 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
             animate={{ opacity: 1, backdropFilter: 'blur(24px)' }}
             exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed inset-0 z-20 bg-dark-bg/90 xl:hidden pt-24 pb-8 overflow-y-auto"
+            className="fixed inset-0 z-[950] bg-dark-bg/90 xl:hidden pt-24 pb-8 overflow-y-auto"
           >
             <div className="flex flex-col min-h-full px-8 pb-32 max-w-md mx-auto">
               <div className="flex flex-col space-y-2 mt-auto mb-auto">
@@ -271,13 +271,17 @@ function MobileBottomBar({ featLiveTools }: { featLiveTools: boolean }) {
   const isOnDJs = location.pathname.startsWith('/djs/');
 
   return (
-    <div className="xl:hidden fixed bottom-6 sm:bottom-8 left-0 right-0 z-50 px-4 pointer-events-none flex justify-center">
-      <div className="w-full max-w-[340px] sm:max-w-[400px] pointer-events-auto">
-        <div className="bg-dark-bg/50 backdrop-blur-3xl rounded-[2rem] py-2 px-1 flex items-center justify-around shadow-[0_30px_60px_rgba(0,0,0,0.7)] border border-white/10 relative overflow-hidden group">
+    <div 
+      className="xl:hidden fixed bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 z-[9999] w-[calc(100%-2rem)] max-w-[440px] sm:max-w-[540px] select-none transform-gpu pointer-events-auto touch-manipulation" 
+      onClick={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+    >
+        <div className="bg-dark-bg/95 backdrop-blur-3xl rounded-[2rem] py-2 px-2 flex items-center shadow-[0_30px_60px_rgba(0,0,0,0.7)] border border-white/10 relative overflow-hidden group pointer-events-auto">
           <div className="absolute inset-0 bg-gradient-to-t from-neon-purple/10 to-transparent pointer-events-none"></div>
           
           {[
             { to: "/", icon: Radio, label: "Listen", active: location.pathname === "/" },
+            ...(featLiveTools ? [{ to: "/stream", icon: Video, label: "Stream" }] : []),
             { to: "/schedule", icon: Calendar, label: "Shows" },
             { to: "/djs", icon: Headphones, label: "DJs", active: location.pathname === "/djs" || isOnDJs },
             { to: "/podcasts", icon: Podcast, label: "Archive", active: location.pathname === "/podcasts" || isOnPodcasts },
@@ -287,7 +291,7 @@ function MobileBottomBar({ featLiveTools }: { featLiveTools: boolean }) {
               to={item.to} 
               className={({isActive}) => {
                 const isMatch = item.active !== undefined ? item.active : isActive;
-                return `relative flex flex-col items-center justify-center p-2 rounded-[1.5rem] transition-all duration-500 w-[70px] sm:w-[80px] h-[60px] ${isMatch ? 'text-neon-purple active-bottom-glow' : 'text-white/40 hover:text-white/60'}`
+                return `relative flex-1 flex flex-col items-center justify-center p-2 rounded-[1.5rem] transition-all duration-500 h-[60px] z-10 pointer-events-auto ${isMatch ? 'text-neon-purple active-bottom-glow' : 'text-white/40 hover:text-white/60'}`
               }}
             >
               {({isActive}) => {
@@ -319,7 +323,6 @@ function MobileBottomBar({ featLiveTools }: { featLiveTools: boolean }) {
             </NavLink>
           ))}
         </div>
-      </div>
     </div>
   );
 }

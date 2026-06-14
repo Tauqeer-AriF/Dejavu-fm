@@ -187,14 +187,14 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10000]"
           />
           <motion.div
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed top-0 right-0 h-full w-full max-w-md bg-dark-bg/95 backdrop-blur-2xl border-l border-white/10 z-[101] shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col"
+            className="fixed top-0 right-0 h-full w-full max-w-md bg-dark-bg/95 backdrop-blur-2xl border-l border-white/10 z-[10001] shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col"
           >
             <div className="p-6 border-b border-white/10 flex items-center justify-between">
               <div className="flex items-center space-x-3">

@@ -119,7 +119,7 @@ export function ShoutoutWidget() {
   };
 
   return (
-    <div className="fixed bottom-28 sm:bottom-[180px] xl:bottom-32 right-6 xl:right-8 z-[60] flex flex-col items-end gap-4 pointer-events-none">
+    <div className="fixed bottom-28 sm:bottom-[180px] xl:bottom-32 right-6 xl:right-8 z-[10005] flex flex-col items-end gap-4 pointer-events-none">
       <AnimatePresence>
         {recentShoutouts.map((s, i) => (
           <motion.div
@@ -186,7 +186,7 @@ export function ShoutoutWidget() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsOpen(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] sm:hidden pointer-events-auto"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10010] sm:hidden pointer-events-auto"
             />
             
             <motion.div 
@@ -200,7 +200,7 @@ export function ShoutoutWidget() {
                 if (info.offset.y > 100) setIsOpen(false);
               }}
               transition={{ type: 'spring', damping: 28, stiffness: 200 }}
-              className="fixed inset-x-0 bottom-0 sm:absolute sm:bottom-16 sm:md:bottom-20 sm:right-0 sm:left-auto w-full sm:w-80 sm:max-w-[320px] bg-dark-bg/95 sm:bg-white/10 backdrop-blur-3xl border-t sm:border border-white/10 rounded-t-[2.5rem] sm:rounded-[2rem] p-8 sm:p-6 shadow-2xl pointer-events-auto z-[100]"
+              className="fixed inset-x-0 bottom-0 sm:absolute sm:bottom-16 sm:md:bottom-20 sm:right-0 sm:left-auto w-full sm:w-80 sm:max-w-[320px] bg-dark-bg/95 sm:bg-white/10 backdrop-blur-3xl border-t sm:border border-white/10 rounded-t-[2.5rem] sm:rounded-[2rem] p-8 sm:p-6 shadow-2xl pointer-events-auto z-[10011]"
             >
               {/* Visual Drag Handle for Mobile */}
               <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto mb-6 sm:hidden" />
