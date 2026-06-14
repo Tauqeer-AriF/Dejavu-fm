@@ -142,13 +142,20 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
 
         <div className="flex items-center space-x-2 md:space-x-4 xl:space-x-6 z-40">
            {featChat !== false && (
-             <button 
+             <motion.button 
               onClick={onOpenChat}
-              className="flex items-center space-x-2 xl:space-x-3 px-4 xl:px-6 py-3 rounded-2xl bg-white/5 hover:bg-neon-purple/20 border border-white/10 hover:border-neon-purple/50 transition-all group whitespace-nowrap shrink-0"
+              whileHover="hover"
+              className="flex items-center space-x-2 xl:space-x-3 px-4 xl:px-6 py-3 rounded-2xl bg-white/5 hover:bg-neon-purple/20 border border-white/10 hover:border-neon-purple/50 transition-all group whitespace-nowrap shrink-0 relative overflow-hidden"
             >
-              <MessageSquare className="w-5 h-5 text-neon-purple group-hover:animate-bounce" />
-              <span className="text-[10px] font-black uppercase tracking-widest hidden sm:block">Chat Room</span>
-            </button>
+              <motion.div
+                className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 z-0"
+                variants={{ hover: { x: ['-150%', '150%'] } }}
+                transition={{ duration: 0.75, ease: "easeInOut" }}
+                initial={{ x: '-150%' }}
+              />
+              <MessageSquare className="w-5 h-5 text-neon-purple group-hover:animate-bounce relative z-10" />
+              <span className="text-[10px] font-black uppercase tracking-widest hidden sm:block relative z-10">Chat Room</span>
+            </motion.button>
            )}
 
           <button 

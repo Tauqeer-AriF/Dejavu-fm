@@ -171,27 +171,45 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
 
       {/* Hero Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        <div className="bg-white/5 border border-white/10 p-6 rounded-3xl group hover:border-neon-purple/50 transition-colors shadow-xl">
-          <div className="p-3 bg-neon-purple/10 rounded-2xl w-fit mb-4">
+        <motion.div whileHover="hover" className="bg-white/5 border border-white/10 p-6 rounded-3xl group hover:border-neon-purple/50 transition-colors shadow-xl relative overflow-hidden">
+          <motion.div
+            className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12"
+            variants={{ hover: { x: ['-150%', '150%'] } }}
+            transition={{ duration: 0.75, ease: "easeInOut" }}
+            initial={{ x: '-150%' }}
+          />
+          <div className="p-3 bg-neon-purple/10 rounded-2xl w-fit mb-4 relative z-10">
             <Users className="w-6 h-6 text-neon-purple" />
           </div>
-          <p className="text-white/40 text-xs uppercase tracking-widest font-bold">Total Site Visits</p>
-          <p className="text-3xl font-black mt-1">{(stats.monthlyListeners || 0).toLocaleString()}</p>
-        </div>
-        <div className="bg-white/5 border border-white/10 p-6 rounded-3xl group hover:border-neon-blue/50 transition-colors shadow-xl">
-          <div className="p-3 bg-neon-blue/10 rounded-2xl w-fit mb-4">
+          <p className="text-white/40 text-xs uppercase tracking-widest font-bold relative z-10">Total Site Visits</p>
+          <p className="text-3xl font-black mt-1 relative z-10">{(stats.monthlyListeners || 0).toLocaleString()}</p>
+        </motion.div>
+        <motion.div whileHover="hover" className="bg-white/5 border border-white/10 p-6 rounded-3xl group hover:border-neon-blue/50 transition-colors shadow-xl relative overflow-hidden">
+          <motion.div
+            className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12"
+            variants={{ hover: { x: ['-150%', '150%'] } }}
+            transition={{ duration: 0.75, ease: "easeInOut" }}
+            initial={{ x: '-150%' }}
+          />
+          <div className="p-3 bg-neon-blue/10 rounded-2xl w-fit mb-4 relative z-10">
             <TrendingUp className="w-6 h-6 text-neon-blue" />
           </div>
-          <p className="text-white/40 text-xs uppercase tracking-widest font-bold">Peak Listeners (All Time)</p>
-          <p className="text-3xl font-black mt-1">{stats.peakListeners}</p>
-        </div>
-        <div className="bg-white/5 border border-white/10 p-6 rounded-3xl group hover:border-yellow-400/50 transition-colors shadow-xl">
-          <div className="p-3 bg-yellow-400/10 rounded-2xl w-fit mb-4">
+          <p className="text-white/40 text-xs uppercase tracking-widest font-bold relative z-10">Peak Listeners (All Time)</p>
+          <p className="text-3xl font-black mt-1 relative z-10">{stats.peakListeners}</p>
+        </motion.div>
+        <motion.div whileHover="hover" className="bg-white/5 border border-white/10 p-6 rounded-3xl group hover:border-yellow-400/50 transition-colors shadow-xl relative overflow-hidden">
+          <motion.div
+            className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12"
+            variants={{ hover: { x: ['-150%', '150%'] } }}
+            transition={{ duration: 0.75, ease: "easeInOut" }}
+            initial={{ x: '-150%' }}
+          />
+          <div className="p-3 bg-yellow-400/10 rounded-2xl w-fit mb-4 relative z-10">
             <PlayCircle className="w-6 h-6 text-yellow-400" />
           </div>
-          <p className="text-white/40 text-xs uppercase tracking-widest font-bold">Total Podcast Plays</p>
-          <p className="text-3xl font-black mt-1">{(stats.totalPodcastPlays || 0).toLocaleString()}</p>
-        </div>
+          <p className="text-white/40 text-xs uppercase tracking-widest font-bold relative z-10">Total Podcast Plays</p>
+          <p className="text-3xl font-black mt-1 relative z-10">{(stats.totalPodcastPlays || 0).toLocaleString()}</p>
+        </motion.div>
       </div>
 
       <div className="grid grid-cols-1 gap-8">

@@ -118,8 +118,15 @@ export default function Blog() {
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05, duration: 0.5 }}
-              className="group glass-panel rounded-2xl overflow-hidden hover:border-neon-purple/30 transition-all"
+              whileHover="hover"
+              className="group glass-panel rounded-2xl overflow-hidden hover:border-neon-purple/30 transition-all relative"
             >
+              <motion.div
+                className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 z-30"
+                variants={{ hover: { x: ['-150%', '150%'] } }}
+                transition={{ duration: 0.75, ease: "easeInOut" }}
+                initial={{ x: '-150%' }}
+              />
               <Link to={`/blog/${post.slug}`} className="block h-full">
                 <div className="aspect-[16/10] overflow-hidden relative">
                   <img

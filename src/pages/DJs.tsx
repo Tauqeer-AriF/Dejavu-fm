@@ -86,12 +86,19 @@ export default function DJs() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              whileHover="hover"
               className="group relative overflow-hidden rounded-[2.5rem] bg-[#0A0A0A]/80 backdrop-blur-xl border border-white/5 hover:border-neon-blue/30 transition-all duration-700 shadow-2xl hover:shadow-neon-blue/10"
             >
+              <motion.div
+                className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 z-30"
+                variants={{ hover: { x: ['-150%', '150%'] } }}
+                transition={{ duration: 0.75, ease: "easeInOut" }}
+                initial={{ x: '-150%' }}
+              />
               <div className="absolute inset-0 bg-gradient-to-br from-neon-purple/5 to-neon-blue/5 opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
               
               <div className="aspect-[3/4] relative overflow-hidden">
-                <div className={`w-full h-full transition-transform duration-1000 group-hover:scale-105 ${resolveDjImage(dj.image_url) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''}`}>
+                <div className={`w-full h-full transition-transform duration-1000 group-hover:scale-105 relative z-0 ${resolveDjImage(dj.image_url) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''}`}>
                   <img 
                     src={resolveDjImage(dj.image_url)} 
                     alt={dj.name}
@@ -103,7 +110,7 @@ export default function DJs() {
                 {/* Overlay with details */}
                 <div className="absolute inset-0 bg-gradient-to-t from-dark-bg via-dark-bg/20 to-transparent opacity-90 group-hover:opacity-100 transition-opacity duration-500"></div>
                 
-                <div className="absolute inset-x-0 bottom-0 p-6 md:p-10 space-y-4 md:space-y-6 translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
+                <div className="absolute inset-x-0 bottom-0 p-6 md:p-10 space-y-4 md:space-y-6 translate-y-4 group-hover:translate-y-0 transition-transform duration-500 z-40">
                   <div className="space-y-3">
                     <h3 className="text-4xl md:text-5xl font-display font-black uppercase tracking-tighter leading-[0.9] group-hover:text-neon-blue transition-colors duration-500">
                       {dj.name}

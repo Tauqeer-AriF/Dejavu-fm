@@ -291,11 +291,18 @@ export default function PodcastsPage() {
                 <motion.div 
                   key={podcastId} 
                   variants={itemVariants}
-                  className="group relative"
+                  whileHover="hover"
+                  className="group relative overflow-hidden rounded-2xl"
                 >
+                  <motion.div
+                    className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 z-30"
+                    variants={{ hover: { x: ['-150%', '150%'] } }}
+                    transition={{ duration: 0.75, ease: "easeInOut" }}
+                    initial={{ x: '-150%' }}
+                  />
                   <Link to={`/podcasts/${podcastId}`} className="block h-full">
-                    <div className="glass-panel h-full rounded-2xl flex flex-col hover:bg-white/5 transition-all duration-300 relative overflow-hidden border border-white/10 hover:border-white/20">
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-neon-purple/5 rounded-full blur-[50px] group-hover:bg-neon-blue/10 transition-colors pointer-events-none"></div>
+                    <div className="glass-panel h-full rounded-2xl flex flex-col hover:bg-white/5 transition-all duration-300 relative border border-white/10 hover:border-white/20">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-neon-purple/5 rounded-full blur-[50px] group-hover:bg-neon-blue/10 transition-colors pointer-events-none z-0"></div>
                       
                       <div className="aspect-[16/9] overflow-hidden relative border-b border-white/5">
                         <img src={imageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />

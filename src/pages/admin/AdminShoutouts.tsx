@@ -141,11 +141,18 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
           {shoutouts.map((s) => (
             <motion.div 
               key={s.id}
+              whileHover="hover"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9, x: 20 }}
               className="glass-panel p-4 sm:p-6 rounded-[2rem] border border-white/5 transition-all relative group overflow-hidden hover:border-neon-purple/30"
             >
+              <motion.div
+                className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 z-0"
+                variants={{ hover: { x: ['-150%', '150%'] } }}
+                transition={{ duration: 0.8, ease: "easeInOut" }}
+                initial={{ x: '-150%' }}
+              />
               <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-[40px] pointer-events-none ${s.type === 'reaction' ? 'bg-neon-blue/10' : 'bg-neon-purple/10'}`}></div>
               
               <div className="flex justify-between items-start mb-4 relative z-10 gap-3">

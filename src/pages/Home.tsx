@@ -377,10 +377,17 @@ export default function Home() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.7 }}
+              whileHover="hover"
               className="glass-panel p-5 md:p-8 rounded-[2rem] border border-white/10 relative overflow-hidden group w-full flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:border-white/20 transition-all duration-500"
             >
+              <motion.div
+                className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 z-0"
+                variants={{ hover: { x: ['-150%', '150%'] } }}
+                transition={{ duration: 0.75, ease: "easeInOut" }}
+                initial={{ x: '-150%' }}
+              />
               {/* Subtle ambient light */}
-              <div className="absolute top-1/2 -left-32 w-64 h-64 bg-neon-purple/10 blur-[80px] -translate-y-1/2 rounded-full pointer-events-none transition-all duration-700 group-hover:opacity-100 group-hover:scale-150"></div>
+              <div className="absolute top-1/2 -left-32 w-64 h-64 bg-neon-purple/10 blur-[80px] -translate-y-1/2 rounded-full pointer-events-none transition-all duration-700 group-hover:opacity-100 group-hover:scale-150 z-0"></div>
               
               <div className="flex flex-row items-center gap-4 md:gap-6 relative z-10 w-full md:w-auto">
                 <div className={`w-16 h-16 md:w-24 md:h-24 rounded-2xl overflow-hidden shrink-0 border border-white/10 relative group-hover:border-neon-purple/40 transition-all duration-500 shadow-2xl ${

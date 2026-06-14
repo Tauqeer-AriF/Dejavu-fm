@@ -18,7 +18,8 @@ const containerVariants = {
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { ease: "easeOut", duration: 0.5 } }
+  show: { opacity: 1, y: 0, transition: { ease: "easeOut", duration: 0.5 } },
+  hover: { y: -5, scale: 1.02 }
 };
 
 export default function Schedule() {
@@ -203,9 +204,15 @@ export default function Schedule() {
                     <motion.div 
                       key={show.id}
                       variants={itemVariants}
-                      whileHover={{ y: -5, scale: 1.02 }}
-                      className={`glass-panel rounded-2xl p-5 flex gap-5 transition-all duration-300 group ${isLive ? 'border-neon-purple glow-box bg-white/5' : 'hover:bg-white/5'}`}
+                      whileHover="hover"
+                      className={`glass-panel rounded-2xl p-5 flex gap-5 transition-all duration-300 group relative overflow-hidden ${isLive ? 'border-neon-purple glow-box bg-white/5' : 'hover:bg-white/5'}`}
                     >
+                      <motion.div
+                        className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 z-0"
+                        variants={{ hover: { x: ['-150%', '150%'] } }}
+                        transition={{ duration: 0.75, ease: "easeInOut" }}
+                        initial={{ x: '-150%' }}
+                      />
                       <div className="relative">
                         <div className={`w-24 h-24 rounded-xl overflow-hidden shrink-0 border border-white/5 ${
                           resolveDjImage(show.dj_photo) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''

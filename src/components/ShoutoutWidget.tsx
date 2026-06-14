@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Send, Heart, Flame, MessageSquare, X, Ghost, User, Sparkles } from 'lucide-react';
+import { Send, Heart, Flame, X, User, Sparkles, Mic2, Radio } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function ShoutoutWidget() {
@@ -119,22 +119,23 @@ export function ShoutoutWidget() {
   };
 
   return (
-    <div className="fixed bottom-28 sm:bottom-[180px] xl:bottom-32 right-6 xl:right-8 z-[10005] flex flex-col items-end gap-4 pointer-events-none">
+    <div className="fixed bottom-28 sm:bottom-[180px] xl:bottom-32 right-6 xl:right-8 z-50 flex flex-col items-end gap-5 pointer-events-none">
       <AnimatePresence>
         {recentShoutouts.map((s, i) => (
           <motion.div
             key={s.id || `shoutout-${i}`}
-            initial={{ opacity: 0, x: 50, scale: 0.8 }}
+            initial={{ opacity: 0, x: 50, scale: 0.9 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 20, scale: 0.5 }}
-            className="hidden sm:flex bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl shadow-2xl items-center space-x-3 pointer-events-auto max-w-[280px]"
+            className="flex bg-black/60 backdrop-blur-2xl border-l-4 border-l-neon-purple border-y border-r border-white/10 px-5 py-3 rounded-2xl shadow-2xl items-center space-x-4 pointer-events-auto max-w-[280px] sm:max-w-[320px]"
           >
-             <div className="w-8 h-8 bg-neon-purple/20 rounded-lg flex items-center justify-center shrink-0">
-                <User className="w-4 h-4 text-neon-purple" />
+             <div className="w-10 h-10 bg-neon-purple/10 rounded-xl flex items-center justify-center shrink-0 border border-neon-purple/20">
+                <Radio className="w-5 h-5 text-neon-purple" />
              </div>
-             <div className="min-w-0">
-                <p className="text-[10px] font-black text-neon-purple truncate tracking-tight">{s.listener_name}</p>
-                <p className="text-xs text-white/80 line-clamp-2">{s.message}</p>
+             <div className="min-w-0 flex-1">
+                <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] mb-0.5">Broadcast Alert</p>
+                <p className="text-[11px] font-bold text-neon-purple truncate tracking-tight mb-1">{s.listener_name}</p>
+                <p className="text-xs text-white/90 line-clamp-2 font-medium leading-relaxed italic">"{s.message}"</p>
              </div>
           </motion.div>
         ))}
@@ -145,36 +146,48 @@ export function ShoutoutWidget() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            className="bg-white/5 backdrop-blur-md border border-white/10 px-4 py-2 rounded-2xl flex items-center space-x-2 pointer-events-auto shadow-lg"
+            className="flex bg-white/5 backdrop-blur-md border border-white/10 px-5 py-2.5 rounded-full items-center space-x-3 pointer-events-auto shadow-lg"
           >
-            <Sparkles className="w-3 h-3 text-white/20" />
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20">Booth Clear</span>
+            <Sparkles className="w-4 h-4 text-white/20" />
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">Deck Reset</span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="hidden sm:flex pointer-events-auto items-center group">
-        <div className="flex items-center space-x-2 overflow-hidden max-w-0 opacity-0 px-0 group-hover:max-w-[150px] group-hover:opacity-100 group-hover:px-2 group-hover:mr-2 transition-all duration-500 ease-out origin-right">
+      <div className="flex pointer-events-auto items-center group relative">
+        <div className="flex items-center space-x-3 overflow-hidden max-w-0 opacity-0 px-0 group-hover:max-w-[200px] group-hover:opacity-100 group-hover:px-4 group-hover:mr-2 transition-all duration-500 ease-out origin-right">
           <button 
             onClick={() => sendReaction('🔥')}
-            className="w-10 h-10 md:w-12 md:h-12 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full flex items-center justify-center shrink-0 transition-all hover:scale-110 active:scale-95"
+            className="w-11 h-11 bg-black/40 hover:bg-neon-purple/20 border border-white/10 hover:border-neon-purple/40 rounded-full flex items-center justify-center shrink-0 transition-all hover:-translate-y-1 shadow-xl"
           >
-            <Flame className="w-4 h-4 md:w-5 md:h-5 text-orange-500 transition-transform" />
+            <Flame className="w-5 h-5 text-orange-500" />
           </button>
           <button 
             onClick={() => sendReaction('❤️')}
-            className="w-10 h-10 md:w-12 md:h-12 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full flex items-center justify-center shrink-0 transition-all hover:scale-110 active:scale-95"
+            className="w-11 h-11 bg-black/40 hover:bg-neon-blue/20 border border-white/10 hover:border-neon-blue/40 rounded-full flex items-center justify-center shrink-0 transition-all hover:-translate-y-1 shadow-xl"
           >
-            <Heart className="w-4 h-4 md:w-5 md:h-5 text-red-500 transition-transform" />
+            <Heart className="w-5 h-5 text-red-500" />
           </button>
         </div>
         
-        <button 
+        <motion.button 
           onClick={() => setIsOpen(true)}
-          className="bg-white text-dark-bg p-3.5 md:p-4 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all ring-4 md:ring-8 ring-white/5 z-10 relative"
+          whileHover="hover"
+          className="bg-white text-dark-bg px-6 py-4 rounded-3xl shadow-[0_15px_40px_rgba(0,0,0,0.4)] hover:shadow-neon-purple/20 transition-all flex items-center space-x-3 z-10 relative overflow-hidden group/btn"
         >
-          <MessageSquare className="w-5 h-5 md:w-6 md:h-6" />
-        </button>
+          <motion.div
+            className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-black/5 to-transparent -skew-x-12"
+            variants={{ hover: { x: ['-150%', '150%'] } }}
+            transition={{ duration: 0.75, ease: "easeInOut" }}
+          />
+          <div className="relative">
+            <Mic2 className="w-5 h-5 group-hover/btn:rotate-12 transition-transform" />
+            <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse border-2 border-white"></span>
+          </div>
+          <span className="text-[11px] font-black uppercase tracking-[0.15em] hidden md:block">
+            Live Shoutout
+          </span>
+        </motion.button>
       </div>
 
       <AnimatePresence>
@@ -200,19 +213,26 @@ export function ShoutoutWidget() {
                 if (info.offset.y > 100) setIsOpen(false);
               }}
               transition={{ type: 'spring', damping: 28, stiffness: 200 }}
-              className="fixed inset-x-0 bottom-0 sm:absolute sm:bottom-16 sm:md:bottom-20 sm:right-0 sm:left-auto w-full sm:w-80 sm:max-w-[320px] bg-dark-bg/95 sm:bg-white/10 backdrop-blur-3xl border-t sm:border border-white/10 rounded-t-[2.5rem] sm:rounded-[2rem] p-8 sm:p-6 shadow-2xl pointer-events-auto z-[10011]"
+              className="fixed inset-x-0 bottom-0 sm:absolute sm:bottom-16 sm:md:bottom-24 sm:right-0 sm:left-auto w-full sm:w-[360px] bg-dark-bg/95 backdrop-blur-3xl border-t sm:border border-white/10 rounded-t-[3rem] sm:rounded-[2.5rem] p-8 sm:p-10 shadow-[0_-20px_80px_rgba(0,0,0,0.6)] pointer-events-auto z-[10011] overflow-hidden"
             >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-neon-purple/10 blur-[60px] pointer-events-none" />
+              
               {/* Visual Drag Handle for Mobile */}
-              <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto mb-6 sm:hidden" />
+              <div className="w-16 h-1.5 bg-white/10 rounded-full mx-auto mb-8 sm:hidden" />
 
-             <div className="flex justify-between items-center mb-6">
-                <h3 className="text-sm font-black uppercase tracking-widest text-white">Direct Shoutout</h3>
-                <button onClick={() => setIsOpen(false)} className="text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
+             <div className="flex justify-between items-start mb-8 relative z-10">
+                <div className="space-y-1">
+                  <h3 className="text-2xl font-display font-black uppercase tracking-tight text-white">Studio <span className="text-neon-purple">Link</span></h3>
+                  <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em]">Contact the DJ directly</p>
+                </div>
+                <button onClick={() => setIsOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
              </div>
 
-             <form onSubmit={sendShoutout} className="space-y-4">
-                <div className="space-y-1">
-                   <label className="text-[10px] font-black uppercase text-white/40 ml-2">Your Email</label>
+             <form onSubmit={sendShoutout} className="space-y-6 relative z-10">
+                <div className="space-y-2">
+                   <label className="text-[10px] font-black uppercase text-white/30 ml-2 tracking-widest">Identification (Email)</label>
                    <input 
                      type="email"
                      required
@@ -232,13 +252,19 @@ export function ShoutoutWidget() {
                      rows={3}
                    />
                 </div>
-                <button 
+                <motion.button 
                   disabled={isSending}
-                  className="w-full bg-neon-purple hover:bg-neon-purple/80 text-white py-3 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-neon-purple/20 transition-all flex items-center justify-center space-x-2"
+                  whileHover="hover"
+                  className="w-full bg-white text-dark-bg py-4 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl hover:shadow-neon-purple/20 transition-all flex items-center justify-center space-x-3 relative overflow-hidden"
                 >
-                  <Send className="w-3 h-3" />
-                  <span>Send to Booth</span>
-                </button>
+                  <motion.div
+                    className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-dark-bg/5 to-transparent -skew-x-12"
+                    variants={{ hover: { x: ['-150%', '150%'] } }}
+                    transition={{ duration: 0.75, ease: "easeInOut" }}
+                  />
+                  <Send className="w-4 h-4 relative z-10" />
+                  <span className="relative z-10">Transmit to Studio</span>
+                </motion.button>
              </form>
             </motion.div>
           </>
