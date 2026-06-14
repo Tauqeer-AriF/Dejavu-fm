@@ -139,40 +139,8 @@ export function initDb() {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
-    CREATE TABLE IF NOT EXISTS popups (
-      id TEXT PRIMARY KEY,
-      heading TEXT,
-      text TEXT,
-      btn_text TEXT,
-      btn_link TEXT,
-      type TEXT,
-      is_active INTEGER DEFAULT 1,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS audit_logs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT NOT NULL,
-      role TEXT NOT NULL,
-      action TEXT NOT NULL,
-      resource TEXT NOT NULL,
-      resource_id TEXT,
-      details TEXT,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
     CREATE INDEX IF NOT EXISTS idx_blogs_published_created ON blogs(is_published, created_at);
   `);
-  
-  // Initialize hours
-  const insertHour = db.prepare('INSERT OR IGNORE INTO hourly_stats (hour, peak_listeners) VALUES (?, 0)');
-  for (let i = 0; i < 24; i++) {
-    insertHour.run(i);
-  }
-
-  // Initialize stats if not exists
-  const statsKeys = ['page_views', 'stream_starts'];
-  const insertStat = db.prepare('INSERT OR IGNORE INTO site_stats (category, count) VALUES (?, 0)');
-  statsKeys.forEach(key => insertStat.run(key));
 
   const runMigration = (id: string, sql: string) => {
     const exists = db.prepare("SELECT 1 FROM migrations WHERE id = ?").get(id);
@@ -181,16 +149,16 @@ export function initDb() {
         db.exec(sql);
         db.prepare("INSERT INTO migrations (id) VALUES (?)").run(id);
       } catch (e) {
-        // Fallback for cases where columns might already exist
         db.prepare("INSERT INTO migrations (id) VALUES (?)").run(id);
       }
     }
   };
 
+  // Migrations for existing databases
   runMigration('admin_profile_fields', "ALTER TABLE admins ADD COLUMN bio TEXT; ALTER TABLE admins ADD COLUMN photo_url TEXT;");
   runMigration('dj_social_fields', "ALTER TABLE djs ADD COLUMN image_url TEXT; ALTER TABLE djs ADD COLUMN instagram TEXT; ALTER TABLE djs ADD COLUMN soundcloud TEXT; ALTER TABLE djs ADD COLUMN mixcloud TEXT;");
   runMigration('user_source_field', "ALTER TABLE users ADD COLUMN source TEXT DEFAULT 'register';");
-  runMigration('admin_role_field', "ALTER TABLE admins ADD COLUMN role TEXT DEFAULT 'admin';"); // Add role column
+  runMigration('admin_role_field', "ALTER TABLE admins ADD COLUMN role TEXT DEFAULT 'admin';");
   runMigration('user_ban_field', "ALTER TABLE users ADD COLUMN is_banned INTEGER DEFAULT 0;");
   runMigration('popups_table_v2', `
     CREATE TABLE IF NOT EXISTS popups (
@@ -205,8 +173,21 @@ export function initDb() {
     );
   `);
   runMigration('audit_logs_table', "CREATE TABLE IF NOT EXISTS audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL, role TEXT NOT NULL, action TEXT NOT NULL, resource TEXT NOT NULL, resource_id TEXT, details TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);");
+  runMigration('correct_rss_endpoint', "UPDATE settings SET value = 'https://dejavufmpodcast.podomatic.com/rss2.xml' WHERE key = 'rss_feed_url' AND value = 'https://dejavufm.podomatic.com/rss2.xml';");
+  runMigration('advanced_features_flag', "INSERT OR IGNORE INTO settings (key, value) VALUES ('advanced_features_enabled', '1');");
+
+  // Initialize hours
+  const insertHour = db.prepare('INSERT OR IGNORE INTO hourly_stats (hour, peak_listeners) VALUES (?, 0)');
+  for (let i = 0; i < 24; i++) {
+    insertHour.run(i);
+  }
+
+  // Initialize stats if not exists
+  const statsKeys = ['page_views', 'stream_starts'];
+  const insertStat = db.prepare('INSERT OR IGNORE INTO site_stats (category, count) VALUES (?, 0)');
+  statsKeys.forEach(key => insertStat.run(key));
   
-  // If photo_url exists but image_url is null, migrate it
+  // Data migration: If photo_url exists but image_url is null, migrate it
   try {
     db.exec("UPDATE djs SET image_url = photo_url WHERE image_url IS NULL AND photo_url IS NOT NULL");
   } catch (e) {}
@@ -218,7 +199,7 @@ export function initDb() {
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('stream_url_low', 'https://ice1.somafm.com/groovesalad-64-aac');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('stream_url_medium', 'https://ice1.somafm.com/groovesalad-128-mp3');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('stream_url_high', 'https://ice1.somafm.com/groovesalad-256-mp3');
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('rss_feed_url', 'https://dejavufm.podomatic.com/rss2.xml');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('rss_feed_url', 'https://dejavufmpodcast.podomatic.com/rss2.xml');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('studio_video_url', 'https://player.twitch.tv/?channel=bbcnews&parent=localhost');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('app_name', 'DEJAVU FM');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('app_title', 'DEJAVU FM | THE SOUND OF LONDON');
@@ -238,6 +219,7 @@ export function initDb() {
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_bookings', '1');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_live_tools', '1');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_stream_quality', '1');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('advanced_features_enabled', '1');
   }
 
   // Ensure admin secret exists

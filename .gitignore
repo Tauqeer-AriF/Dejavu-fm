@@ -23,3 +23,9 @@ pnpm-debug.log*
 # Runtime caches
 .cache/
 .parcel-cache/
+
+# Database files
+*.db*
+
+# Local log files
+*.log

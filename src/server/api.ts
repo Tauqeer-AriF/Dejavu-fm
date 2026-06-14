@@ -264,7 +264,6 @@ apiRouter.post("/public/book-artist", (req, res) => {
   }
   // Senior Dev: Use randomUUID with a fallback for older Node versions
   const id = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
-  db.prepare("INSERT INTO popups (id, heading, text, btn_text, btn_link, type, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)")
   db.prepare("INSERT INTO bookings (id, dj_id, client_name, client_email, event_date, message) VALUES (?, ?, ?, ?, ?, ?)")
     .run(id, dj_id, client_name, client_email, event_date, message);
   res.json({ success: true, id });
