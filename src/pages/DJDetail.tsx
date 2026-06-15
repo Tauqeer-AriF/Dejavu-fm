@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Instagram, Music, Radio, Calendar, Send, X, CheckCircle } from 'lucide-react';
@@ -24,6 +25,17 @@ export default function DJDetail() {
     event_date: '',
     message: ''
   });
+
+  // Lock body scroll when modal is open to prevent background scrolling
+  useEffect(() => {
+    if (isBookingOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    // Cleanup function to ensure scroll is restored if component unmounts
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [isBookingOpen]);
 
   const dj = djs?.find(d => d.id === id);
   const featBookings = settings?.feat_bookings !== '0';
@@ -123,104 +135,107 @@ export default function DJDetail() {
         </div>
       </div>
 
-      {/* Booking Modal */}
-      <AnimatePresence>
-        {isBookingOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsBookingOpen(false)}
-              className="absolute inset-0 bg-dark-bg/90 backdrop-blur-xl"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-lg bg-white/5 border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl p-8 md:p-12"
-            >
-              <button onClick={() => setIsBookingOpen(false)} className="absolute top-8 right-8 text-white/40 hover:text-white">
-                <X className="w-6 h-6" />
-              </button>
+      {/* Booking Modal - Portal to body to escape all stacking contexts and z-index issues */}
+      {createPortal(
+        <AnimatePresence>
+          {isBookingOpen && (
+            <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 overflow-y-auto">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsBookingOpen(false)}
+                className="absolute inset-0 bg-black/80 backdrop-blur-xl"
+              />
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="relative w-full max-w-lg bg-[#0A0A0A] border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl p-8 md:p-12 my-auto"
+              >
+                <button onClick={() => setIsBookingOpen(false)} className="absolute top-8 right-8 text-white/40 hover:text-white">
+                  <X className="w-6 h-6" />
+                </button>
 
-              {bookingStatus === 'success' ? (
-                <div className="text-center py-12 space-y-6">
-                  <div className="w-20 h-20 bg-neon-purple/20 rounded-full flex items-center justify-center mx-auto">
-                    <CheckCircle className="w-10 h-10 text-neon-purple" />
+                {bookingStatus === 'success' ? (
+                  <div className="text-center py-12 space-y-6">
+                    <div className="w-20 h-20 bg-neon-purple/20 rounded-full flex items-center justify-center mx-auto">
+                      <CheckCircle className="w-10 h-10 text-neon-purple" />
+                    </div>
+                    <h3 className="text-3xl font-display font-black uppercase">Request Sent</h3>
+                    <p className="text-white/50">Your booking request has been forwarded to the DJ. Expect a reply soon.</p>
                   </div>
-                  <h3 className="text-3xl font-display font-black uppercase">Request Sent</h3>
-                  <p className="text-white/50">Your booking request has been forwarded to the DJ. Expect a reply soon.</p>
-                </div>
-              ) : (
-                <form onSubmit={handleBooking} className="space-y-8">
-                  <div>
-                    <h2 className="text-3xl font-display font-black uppercase">Book <span className="text-neon-purple">{dj.name}</span></h2>
-                    <p className="text-white/40 text-sm mt-2">Professional inquiry for events and radio guest spots.</p>
-                  </div>
+                ) : (
+                  <form onSubmit={handleBooking} className="space-y-8">
+                    <div>
+                      <h2 className="text-3xl font-display font-black uppercase">Book <span className="text-neon-purple">{dj.name}</span></h2>
+                      <p className="text-white/40 text-sm mt-2">Professional inquiry for events and radio guest spots.</p>
+                    </div>
 
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-2">Full Name</label>
-                      <input 
-                        required
-                        value={bookingForm.client_name}
-                        onChange={e => setBookingForm({...bookingForm, client_name: e.target.value})}
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder:text-white/20 focus:outline-none focus:border-neon-purple/50 transition-colors"
-                        placeholder="Your Name"
-                      />
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-2">Full Name</label>
+                        <input 
+                          required
+                          value={bookingForm.client_name}
+                          onChange={e => setBookingForm({...bookingForm, client_name: e.target.value})}
+                          className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder:text-white/20 focus:outline-none focus:border-neon-purple/50 transition-colors"
+                          placeholder="Your Name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-2">Email Address</label>
+                        <input 
+                          required
+                          type="email"
+                          value={bookingForm.client_email}
+                          onChange={e => setBookingForm({...bookingForm, client_email: e.target.value})}
+                          className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder:text-white/20 focus:outline-none focus:border-neon-purple/50 transition-colors"
+                          placeholder="email@address.com"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-2">Event Date</label>
+                        <input 
+                          type="date"
+                          value={bookingForm.event_date}
+                          onChange={e => setBookingForm({...bookingForm, event_date: e.target.value})}
+                          className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder:text-white/20 focus:outline-none focus:border-neon-purple/50 transition-colors [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-50 hover:[&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:transition-opacity"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-2">Event Details</label>
+                        <textarea 
+                          rows={4}
+                          value={bookingForm.message}
+                          onChange={e => setBookingForm({...bookingForm, message: e.target.value})}
+                          className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder:text-white/20 focus:outline-none focus:border-neon-purple/50 transition-colors resize-none"
+                          placeholder="Tell us about your event..."
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-2">Email Address</label>
-                      <input 
-                        required
-                        type="email"
-                        value={bookingForm.client_email}
-                        onChange={e => setBookingForm({...bookingForm, client_email: e.target.value})}
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder:text-white/20 focus:outline-none focus:border-neon-purple/50 transition-colors"
-                        placeholder="email@address.com"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-2">Event Date</label>
-                      <input 
-                        type="date"
-                        value={bookingForm.event_date}
-                        onChange={e => setBookingForm({...bookingForm, event_date: e.target.value})}
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder:text-white/20 focus:outline-none focus:border-neon-purple/50 transition-colors"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-2">Event Details</label>
-                      <textarea 
-                        rows={4}
-                        value={bookingForm.message}
-                        onChange={e => setBookingForm({...bookingForm, message: e.target.value})}
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder:text-white/20 focus:outline-none focus:border-neon-purple/50 transition-colors resize-none"
-                        placeholder="Tell us about your event..."
-                      />
-                    </div>
-                  </div>
 
-                  <button 
-                    disabled={bookingStatus === 'sending'}
-                    className="w-full bg-neon-purple hover:bg-neon-purple/80 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl shadow-neon-purple/20 flex items-center justify-center space-x-3 transition-all disabled:opacity-50"
-                  >
-                    {bookingStatus === 'sending' ? (
-                      <div className="w-5 h-5 border-2 border-white rounded-full animate-spin"></div>
-                    ) : (
-                      <>
-                        <Send className="w-5 h-5" />
-                        <span>Send Booking Request</span>
-                      </>
-                    )}
-                  </button>
-                </form>
-              )}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+                    <button 
+                      disabled={bookingStatus === 'sending'}
+                      className="w-full bg-neon-purple hover:bg-neon-purple/80 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl shadow-neon-purple/20 flex items-center justify-center space-x-3 transition-all disabled:opacity-50"
+                    >
+                      {bookingStatus === 'sending' ? (
+                        <div className="w-5 h-5 border-2 border-white rounded-full animate-spin"></div>
+                      ) : (
+                        <>
+                          <Send className="w-5 h-5" />
+                          <span>Send Booking Request</span>
+                        </>
+                      )}
+                    </button>
+                  </form>
+                )}
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </motion.div>
   );
 }

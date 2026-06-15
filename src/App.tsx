@@ -93,7 +93,7 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
 
   return (
     <>
-      <nav className="flex items-center justify-between p-4 md:p-8 max-w-[100rem] mx-auto w-full relative z-[1000] gap-4">
+      <nav className="flex items-center justify-between p-4 md:p-8 max-w-[100rem] mx-auto w-full relative z-50 gap-4">
         <Link to="/" className="flex items-center space-x-3 md:space-x-4 z-40 shrink-0" onClick={() => setIsMobileMenuOpen(false)}>
           <div className={`w-11 h-11 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center overflow-hidden shrink-0 transition-all ${
             isLightMode 
@@ -279,7 +279,7 @@ function MobileBottomBar({ featLiveTools }: { featLiveTools: boolean }) {
 
   return (
     <div 
-      className="xl:hidden fixed bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 z-[9999] w-[calc(100%-2rem)] max-w-[440px] sm:max-w-[540px] select-none transform-gpu pointer-events-auto touch-manipulation" 
+      className="xl:hidden fixed bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-[440px] sm:max-w-[540px] select-none transform-gpu pointer-events-auto touch-manipulation" 
       onClick={(e) => e.stopPropagation()}
       onTouchStart={(e) => e.stopPropagation()}
     >
@@ -535,13 +535,13 @@ function MainLayout() {
       {featChat && <ChatSidebar isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />}
       {featShoutouts && <ShoutoutWidget isChatOpen={isChatOpen} />}
       
-      <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 relative z-10">
+      <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 relative">
         <ErrorBoundary key={location.pathname}>
           <AnimatedRoutes />
         </ErrorBoundary>
       </main>
 
-      <footer className="w-full max-w-7xl mx-auto p-4 md:p-8 pt-24 border-t border-white/5 relative z-10 flex flex-col md:flex-row items-center justify-between gap-10 text-white/40 text-sm mb-40 md:mb-32">
+      <footer className="w-full max-w-7xl mx-auto p-4 md:p-8 pt-24 border-t border-white/5 relative flex flex-col md:flex-row items-center justify-between gap-10 text-white/40 text-sm mb-40 md:mb-32">
         <div className="flex flex-wrap justify-center md:justify-start items-center gap-x-8 gap-y-6">
           <Link to="/about" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">About</Link>
           <Link to="/contact" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">Advertising</Link>
