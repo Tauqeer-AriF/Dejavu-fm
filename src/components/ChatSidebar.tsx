@@ -195,15 +195,24 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10000]"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10100]"
           />
           <motion.div
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={{ left: 0, right: 1 }}
+            onDragEnd={(_, info) => {
+              if (info.offset.x > 80 || info.velocity.x > 400) onClose();
+            }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed top-0 right-0 h-full w-full max-w-md bg-dark-bg/95 backdrop-blur-2xl border-l border-white/10 z-[10001] shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col"
+            className="fixed top-0 right-0 h-full w-full max-w-md bg-dark-bg/95 backdrop-blur-2xl border-l border-white/10 z-[10101] shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col touch-pan-y"
           >
+            {/* Mobile Drag Handle Indicator */}
+            <div className="absolute left-2 top-1/2 -translate-y-1/2 w-1 h-16 bg-white/10 rounded-full md:hidden pointer-events-none" />
+
             <div className="p-6 border-b border-white/10 flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 rounded-xl bg-neon-purple/20 flex items-center justify-center text-neon-purple">

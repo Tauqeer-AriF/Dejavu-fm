@@ -11,10 +11,32 @@ import { ImageUploadField } from "./ImageUploadField";
 export function AdminChatUsers({ isAdminUser }: { isAdminUser: boolean }) {
   const [users, setUsers] = useState<any[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [showBannedOnly, setShowBannedOnly] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const { showConfirm, showAlert } = useModal();
 
   const load = () => fetchAdmin("/api/admin/chat_users").then(r => r.json()).then(setUsers);
   useEffect(() => { load(); }, []);
+
+  const filteredUsers = useMemo(() => {
+    let result = users;
+    if (showBannedOnly) result = result.filter(u => u.is_banned === 1);
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      result = result.filter(u => (u.username || "").toLowerCase().includes(term));
+    }
+    return result;
+  }, [users, showBannedOnly, searchTerm]);
+
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredUsers.slice(start, start + itemsPerPage);
+  }, [filteredUsers, currentPage]);
+
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, showBannedOnly]);
 
   const handleDeleteUser = async (id: number, username: string) => {
     const confirmed = await showConfirm({
@@ -59,12 +81,27 @@ export function AdminChatUsers({ isAdminUser }: { isAdminUser: boolean }) {
     <div className="space-y-6 max-w-2xl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/10 pb-4 gap-4">
         <h3 className="text-2xl font-bold">Chat Users</h3>
-        <button 
-          onClick={exportChatUsersToCSV}
-          className="px-4 py-2 bg-white/5 hover:bg-neon-blue/20 border border-white/10 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap text-neon-blue"
-        >
-          Export CSV
-        </button>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="relative w-full sm:w-48">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+            <input 
+              type="text"
+              placeholder="Search users..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-10 pr-4 text-[10px] focus:outline-none focus:border-neon-purple/50 transition-all placeholder:text-white/20"
+            />
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer group">
+            <div className="relative">
+              <input type="checkbox" checked={showBannedOnly} onChange={e => setShowBannedOnly(e.target.checked)} className="sr-only peer" />
+              <div className="w-10 h-5 bg-white/10 rounded-full peer peer-checked:bg-red-500/50 transition-colors"></div>
+              <div className="absolute left-1 top-1 w-3 h-3 bg-white/40 rounded-full peer-checked:left-6 peer-checked:bg-red-500 transition-all"></div>
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Banned Only</span>
+          </label>
+          <button onClick={exportChatUsersToCSV} className="px-4 py-2 bg-white/5 hover:bg-neon-blue/20 border border-white/10 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap text-neon-blue">Export CSV</button>
+        </div>
       </div>
       
       {isAdminUser && ( // Only show this form if the logged-in user is an 'admin'
@@ -72,7 +109,7 @@ export function AdminChatUsers({ isAdminUser }: { isAdminUser: boolean }) {
       )}
 
       <div className="space-y-2">
-        {users.map(u => (
+        {paginatedUsers.map(u => (
           <div key={u.id} className="bg-dark-bg/50 border border-white/10 p-4 rounded-xl flex flex-col">
             {editingId === u.id ? (
               <EditChatUserForm user={u} onSave={() => { setEditingId(null); load(); }} onCancel={() => setEditingId(null)} />
@@ -87,6 +124,11 @@ export function AdminChatUsers({ isAdminUser }: { isAdminUser: boolean }) {
                       u.source === 'admin' ? 'bg-neon-blue/10 text-neon-blue border-neon-blue/20' :
                       'bg-neon-purple/10 text-neon-purple border-neon-purple/20'
                     }`}>{u.source || 'register'}</span>
+                    {u.is_banned === 1 && (
+                      <span className="text-[8px] px-1.5 py-0.5 rounded border font-black uppercase tracking-tighter bg-red-500/10 text-red-500 border-red-500/20">
+                        Banned
+                      </span>
+                    )}
                   </div>
                   <span className="text-xs text-white/50 mt-1 block">Joined: {new Date(u.created_at).toLocaleDateString()}</span>
                 </div>
@@ -100,10 +142,20 @@ export function AdminChatUsers({ isAdminUser }: { isAdminUser: boolean }) {
             )}
           </div>
         ))}
-        {users.length === 0 && (
-          <p className="text-white/50 text-center py-8">No chat users registered yet.</p>
+        {filteredUsers.length === 0 && (
+          <p className="text-white/50 text-center py-8">
+            {searchTerm ? `No users matching "${searchTerm}" found.` : (showBannedOnly ? "No banned users found." : "No chat users registered yet.")}
+          </p>
         )}
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center mt-6 space-x-4">
+          <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="p-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-white/50 hover:text-white"><ChevronLeft className="w-4 h-4" /></button>
+          <div className="text-white/40 text-[10px] font-black uppercase tracking-widest">Page <span className="text-neon-purple">{currentPage}</span> of {totalPages}</div>
+          <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className="p-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-white/50 hover:text-white"><ChevronRight className="w-4 h-4" /></button>
+        </div>
+      )}
     </div>
   );
 }

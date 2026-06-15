@@ -18,6 +18,8 @@ export function AdminBackup() {
   const [backupLabel, setBackupLabel] = useState("");
   const [storageStats, setStorageStats] = useState({ totalSize: 0, fileCount: 0 });
   const [restoreProgress, setRestoreProgress] = useState(0);
+  const [nextBackupIn, setNextBackupIn] = useState<string>("");
+  const [isChecking, setIsChecking] = useState(false);
   const { showConfirm } = useModal();
 
   const loadBackups = async () => {
@@ -48,6 +50,34 @@ export function AdminBackup() {
   };
 
   useEffect(() => { loadBackups(); }, []);
+
+  useEffect(() => {
+    if (!backupEnabled || !lastAttempt || lastStatus === 'never') {
+      setNextBackupIn("");
+      return;
+    }
+
+    const calculateTimeLeft = () => {
+      const last = new Date(lastAttempt).getTime();
+      const freqMs = parseInt(backupFrequency) * 60 * 60 * 1000;
+      const next = last + freqMs;
+      const diff = next - Date.now();
+
+      if (diff <= 0) {
+        setNextBackupIn("Due shortly...");
+        return;
+      }
+
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      
+      setNextBackupIn(hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`);
+    };
+
+    calculateTimeLeft();
+    const interval = setInterval(calculateTimeLeft, 60000);
+    return () => clearInterval(interval);
+  }, [lastAttempt, backupFrequency, backupEnabled, lastStatus]);
 
   const handleCreateSnapshot = async () => {
     setIsDownloading(true);
@@ -207,6 +237,21 @@ export function AdminBackup() {
     }
   };
 
+  const handleTriggerCheck = async () => {
+    setIsChecking(true);
+    try {
+      const res = await fetchAdmin('/api/admin/database/trigger-check', { method: 'POST' });
+      if (res.ok) {
+        toast.success('Backup system check completed!');
+        loadBackups();
+      }
+    } catch (e) {
+      toast.error('Failed to trigger backup check');
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
   const updateRetention = async (days: string) => {
     setRetentionDays(days);
     try {
@@ -360,10 +405,19 @@ export function AdminBackup() {
             </button>
           </div>
 
-          <div className="bg-black/40 border border-white/5 rounded-2xl p-6 space-y-4">
+          <div className="lg:col-span-2 bg-black/40 border border-white/5 rounded-2xl p-6 space-y-4">
             <div className="flex items-center gap-3 text-neon-purple">
               <ShieldCheck className="w-5 h-5" />
               <h3 className="font-bold uppercase tracking-widest text-sm">Auto-Backup Status</h3>
+              <button 
+                onClick={handleTriggerCheck}
+                disabled={isChecking}
+                className="ml-auto flex items-center gap-1.5 px-2 py-1 bg-white/5 hover:bg-white/10 border border-white/5 rounded-md text-[9px] font-black uppercase tracking-tighter transition-all disabled:opacity-50"
+                title="Force run the backup logic now"
+              >
+                <RefreshCw className={`w-3 h-3 ${isChecking ? 'animate-spin' : ''}`} />
+                {isChecking ? 'Checking...' : 'Run Check Now'}
+              </button>
             </div>
             <div className="space-y-3 pt-2">
               <div className="flex items-center justify-between text-xs py-2 border-b border-white/5">
@@ -388,6 +442,10 @@ export function AdminBackup() {
                   <option value="24" className="bg-dark-bg text-white">Every 24 Hours</option>
                   <option value="48" className="bg-dark-bg text-white">Every 48 Hours</option>
                 </select>
+              </div>
+              <div className="flex items-center justify-between text-xs py-2 border-b border-white/5">
+                <span className="text-white/40 uppercase font-medium">Next Backup In</span>
+                <span className="text-neon-blue font-bold uppercase">{nextBackupIn || 'N/A'}</span>
               </div>
               <div className="flex items-center justify-between text-xs py-2 border-b border-white/5">
                 <span className="text-white/40 uppercase font-medium">Last Attempt</span>

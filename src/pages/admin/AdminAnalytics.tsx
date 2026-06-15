@@ -13,6 +13,14 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState("all");
   const { showAlert, showConfirm } = useModal();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const fetchStats = async (selectedRange: string) => {
     try {
@@ -144,7 +152,7 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
             </button>
           )}
           
-          <div className="flex bg-white/5 border border-white/10 rounded-full p-1 h-fit shrink-0">
+          <div className="flex bg-white/5 border border-white/10 rounded-full p-1 h-fit w-full sm:w-auto shrink-0 order-last sm:order-none">
             {ranges.map((r) => (
               <button
                 key={r.value}
@@ -152,7 +160,7 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
                   setLoading(true);
                   setRange(r.value);
                 }}
-                className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${
+                className={`flex-1 sm:flex-none px-2 sm:px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${
                   range === r.value 
                     ? "bg-neon-purple text-white shadow-lg shadow-neon-purple/20" 
                     : "text-white/40 hover:text-white"
@@ -222,7 +230,7 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
           {stats.retentionData && stats.retentionData.length > 0 ? (
             <div className="h-[250px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={stats.retentionData}>
+                <AreaChart data={stats.retentionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorListeners" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#00d2ff" stopOpacity={0.3}/>
@@ -230,8 +238,8 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="time" stroke="rgba(255,255,255,0.3)" fontSize={10} />
-                  <YAxis stroke="rgba(255,255,255,0.3)" fontSize={10} />
+                  <XAxis dataKey="time" stroke="rgba(255,255,255,0.3)" fontSize={10} tickLine={false} axisLine={false} minTickGap={30} />
+                  <YAxis stroke="rgba(255,255,255,0.3)" fontSize={10} tickLine={false} axisLine={false} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
                     itemStyle={{ color: '#00d2ff' }}
@@ -254,7 +262,7 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
             <span>Real-time Global Reach</span>
           </h4>
           {stats.geoData && stats.geoData.length > 0 ? (
-            <div className="flex flex-col md:flex-row items-center gap-8">
+            <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-8">
               <div className="h-[200px] w-full max-w-[200px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -303,10 +311,19 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
           {stats.topPodcasts && stats.topPodcasts.length > 0 ? (
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats.topPodcasts} layout="vertical" margin={{ left: 40, right: 40 }}>
+                <BarChart data={stats.topPodcasts} layout="vertical" margin={{ left: 0, right: 30, top: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
-                  <XAxis type="number" stroke="rgba(255,255,255,0.3)" fontSize={10} />
-                  <YAxis dataKey="name" type="category" stroke="#fff" fontSize={12} width={150} tick={{ fontSize: 10 }} />
+                  <XAxis type="number" stroke="rgba(255,255,255,0.3)" fontSize={10} tickLine={false} axisLine={false} />
+                  <YAxis 
+                    dataKey="name" 
+                    type="category" 
+                    stroke="#fff" 
+                    fontSize={10} 
+                    width={isMobile ? 0 : 100} 
+                    tick={!isMobile}
+                    tickLine={false} 
+                    axisLine={false} 
+                  />
                   <Tooltip 
                     cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                     contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}

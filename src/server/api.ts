@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import Database from 'better-sqlite3';
-import { db, dbPath, pruneBackups } from "./db.js";
+import { db, dbPath, pruneBackups, backupDatabase } from "./db.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Parser from "rss-parser";
@@ -949,7 +949,7 @@ apiRouter.delete("/admin/users/:username", authorizeRole('admin'), (req, res) =>
 });
 
 apiRouter.get("/admin/chat_users", authorizeRole('admin'), (req, res) => {
-  const users = db.prepare("SELECT id, username, source, created_at FROM users").all();
+  const users = db.prepare("SELECT id, username, source, is_banned, created_at FROM users").all();
   res.json(users);
 });
 
@@ -980,6 +980,18 @@ apiRouter.post("/admin/chat_users/ban", authorizeRole('admin'), (req, res) => {
   }
 
   logAction(req, 'BAN', 'chat_user', email);
+  res.json({ success: true });
+});
+
+apiRouter.post("/admin/chat_users/unban", authorizeRole('admin'), (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: "Email required" });
+
+  db.prepare("UPDATE users SET is_banned = 0 WHERE username = ?").run(email);
+
+  // Note: We don't need a socket broadcast for unbanning as it simply allows 
+  // the user to log back in normally.
+  logAction(req, 'UNBAN', 'chat_user', email);
   res.json({ success: true });
 });
 
@@ -1100,6 +1112,12 @@ apiRouter.delete("/admin/database/backups/all", authorizeRole('admin'), (req, re
     res.status(500).json({ error: "Failed to purge backups" });
   }
 });
+
+apiRouter.post("/admin/database/trigger-check", authorizeRole('admin'), asyncHandler(async (req: Request, res: Response) => {
+  await backupDatabase();
+  logAction(req, 'TRIGGER_BACKUP_CHECK', 'database');
+  res.json({ success: true });
+}));
 
 apiRouter.post("/admin/database/prune", authorizeRole('admin'), (req, res) => {
   try {

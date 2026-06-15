@@ -193,28 +193,19 @@ async function startServer() {
       if (enabledRow?.value === '0') return;
 
       const row = db.prepare("SELECT value FROM settings WHERE key = 'backup_frequency_hours'").get() as {value: string};
-      const freqHours = parseInt(row?.value || "24");
-      
-      const backupDir = path.join(process.cwd(), 'backups');
-      if (!fs.existsSync(backupDir)) {
-        await backupDatabase();
-        return;
-      }
+      const freqHours = Math.max(1, parseInt(row?.value || "24") || 24);
 
-      const files = fs.readdirSync(backupDir).filter(f => f.startsWith('backup-'));
-      if (files.length === 0) {
-        await backupDatabase();
-        return;
-      }
+      const lastAttemptRow = db.prepare("SELECT value FROM settings WHERE key = 'backup_last_attempt'").get() as {value: string};
+      const lastAttemptTime = lastAttemptRow?.value ? new Date(lastAttemptRow.value).getTime() : 0;
 
-      const latestFile = files.map(f => fs.statSync(path.join(backupDir, f)).mtime.getTime()).sort((a,b) => b-a)[0];
-      if (Date.now() - latestFile >= freqHours * 60 * 60 * 1000) {
+      // If we've never backed up or the frequency interval has passed, trigger a new backup
+      if (!lastAttemptTime || isNaN(lastAttemptTime) || (Date.now() - lastAttemptTime >= freqHours * 60 * 60 * 1000)) {
         await backupDatabase();
       }
     } catch (e) { console.error("[Backup Task] Error:", e); }
   };
 
-  const backupCheckInterval = 60 * 60 * 1000; // Check every hour
+  const backupCheckInterval = 15 * 60 * 1000; // Check every 15 minutes for better responsiveness to setting changes
   setInterval(performAutoBackup, backupCheckInterval);
   setTimeout(performAutoBackup, 5000); // Initial check 5 seconds after startup
 
