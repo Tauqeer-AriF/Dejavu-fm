@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Send, Heart, Flame, X, User, Sparkles, Mic2, Radio } from 'lucide-react';
 import { toast } from 'sonner';
 
-export function ShoutoutWidget() {
+export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
@@ -119,7 +119,9 @@ export function ShoutoutWidget() {
   };
 
   return (
-    <div className="fixed bottom-28 sm:bottom-[180px] xl:bottom-32 right-6 xl:right-8 z-[10020] flex flex-col items-end gap-5 pointer-events-none">
+    <div className={`fixed bottom-28 sm:bottom-[180px] xl:bottom-32 z-[10020] flex flex-col items-end gap-5 pointer-events-none transition-all duration-500 ease-in-out ${
+      isChatOpen ? 'right-6 sm:right-[472px] xl:right-[480px]' : 'right-6 xl:right-8'
+    }`}>
       <AnimatePresence>
         {recentShoutouts.map((s, i) => (
           <motion.div

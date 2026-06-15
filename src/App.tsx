@@ -533,7 +533,7 @@ function MainLayout() {
       <SitePopup />
       <NotificationManager />
       {featChat && <ChatSidebar isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />}
-      {featShoutouts && <ShoutoutWidget />}
+      {featShoutouts && <ShoutoutWidget isChatOpen={isChatOpen} />}
       
       <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 relative z-10">
         <ErrorBoundary key={location.pathname}>
