@@ -48,6 +48,16 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
   const [showSecretPrompt, setShowSecretPrompt] = useState(false);
   const { logoUrl, isLightMode, settings } = useLogo();
 
+  // Professional touch: Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isMobileMenuOpen]);
+
   const toggleTheme = () => {
     const next = !isLightMode;
     if (next) {
@@ -93,7 +103,7 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
 
   return (
     <>
-      <nav className="flex items-center justify-between p-4 md:p-8 max-w-[100rem] mx-auto w-full relative z-50 gap-4">
+      <nav className="flex items-center justify-between p-4 md:p-8 max-w-[100rem] mx-auto w-full relative z-[1000] gap-4">
         <Link to="/" className="flex items-center space-x-3 md:space-x-4 z-40 shrink-0" onClick={() => setIsMobileMenuOpen(false)}>
           <div className={`w-11 h-11 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center overflow-hidden shrink-0 transition-all ${
             isLightMode 
@@ -276,9 +286,38 @@ function MobileBottomBar({ featLiveTools }: { featLiveTools: boolean }) {
   const location = useLocation();
   const isOnPodcasts = location.pathname.startsWith('/podcasts/');
   const isOnDJs = location.pathname.startsWith('/djs/');
+  const [isVisible, setIsVisible] = useState(true);
+  const lastScrollY = useRef(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      // Always show when near the top of the page
+      if (currentScrollY < 10) {
+        setIsVisible(true);
+        return;
+      }
+
+      const diff = currentScrollY - lastScrollY.current;
+      // Only trigger if we've scrolled more than 10px to avoid jitter
+      if (Math.abs(diff) > 10) {
+        setIsVisible(diff < 0);
+        lastScrollY.current = currentScrollY;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   return (
-    <div 
+    <motion.div 
+      animate={{ 
+        y: isVisible ? 0 : 120,
+        opacity: isVisible ? 1 : 0
+      }}
+      transition={{ duration: 0.3, ease: "easeInOut" }}
       className="xl:hidden fixed bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-[440px] sm:max-w-[540px] select-none transform-gpu pointer-events-auto touch-manipulation" 
       onClick={(e) => e.stopPropagation()}
       onTouchStart={(e) => e.stopPropagation()}
@@ -330,7 +369,7 @@ function MobileBottomBar({ featLiveTools }: { featLiveTools: boolean }) {
             </NavLink>
           ))}
         </div>
-    </div>
+    </motion.div>
   );
 }
 
