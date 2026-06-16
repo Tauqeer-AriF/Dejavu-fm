@@ -10,8 +10,7 @@ import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import multer from "multer";
 import fs from "fs";
-// @ts-ignore
-import sharp from "sharp";
+// `sharp` is optional at runtime; dynamically import when needed to avoid startup failure
 
 export const apiRouter = Router();
 console.log("[API] apiRouter initialized and loaded");
@@ -514,14 +513,32 @@ apiRouter.post("/admin/upload", upload.single("image"), async (req: any, res: an
   }
 
   try {
-    await sharp(req.file.path)
-      .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
-      .webp({ quality: 80 })
-      .toFile(outputPath);
-    
-    // Remove original unoptimized file
-    fs.unlinkSync(req.file.path);
-    res.json({ url: `/uploads/${processedFilename}` });
+    let sharpLib = null;
+    try {
+      // @ts-ignore: optional dependency, may not be installed in all environments
+      const mod: any = await import('sharp');
+      sharpLib = mod.default || mod;
+    } catch (e) {
+      console.warn('[API] sharp is not installed; skipping image optimization');
+    }
+
+    if (sharpLib) {
+      await sharpLib(req.file.path)
+        .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 80 })
+        .toFile(outputPath);
+
+      // Remove original unoptimized file
+      fs.unlinkSync(req.file.path);
+      res.json({ url: `/uploads/${processedFilename}` });
+    } else {
+      // Move the uploaded file to the intended optimized filename as a fallback
+      const fallbackDest = outputPath.replace(/\.webp$/, path.extname(req.file.originalname) || '.png');
+      fs.copyFileSync(req.file.path, fallbackDest);
+      fs.unlinkSync(req.file.path);
+      const fallbackName = path.basename(fallbackDest);
+      res.json({ url: `/uploads/${fallbackName}`, notice: 'Image uploaded without optimization (sharp missing)' });
+    }
   } catch (err) {
     res.status(500).json({ error: "Image optimization failed" });
   }
