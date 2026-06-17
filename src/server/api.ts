@@ -854,7 +854,7 @@ apiRouter.put("/admin/settings", authorizeRole('admin'), (req, res) => {
     "app_title", "font_sans", "font_display", "is_on_air", "primary_color", 
     "secondary_color", "feat_chat", "feat_shoutouts", "feat_cinematic", 
     "feat_pwa", "feat_bookings", "feat_live_tools", "feat_stream_quality",
-    "logo_dark", "logo_light", "backup_retention_days",
+    "logo_dark", "logo_light", "favicon", "backup_retention_days",
     "backup_frequency_hours", "backup_enabled"
   ];
   

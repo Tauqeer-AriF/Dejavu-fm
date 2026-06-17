@@ -519,6 +519,31 @@ function MainLayout() {
         document.title = settings.app_name;
       }
       
+      if (settings.favicon) {
+        const cacheBuster = `v=${Date.now()}`;
+        const finalUrl = settings.favicon.includes('?') 
+          ? `${settings.favicon}&${cacheBuster}` 
+          : `${settings.favicon}?${cacheBuster}`;
+          
+        const selectors = ["link[rel*='icon']", "link[rel='apple-touch-icon']"];
+        let found = false;
+        
+        selectors.forEach(selector => {
+          const links = document.querySelectorAll(selector);
+          links.forEach(link => {
+            (link as HTMLLinkElement).href = finalUrl;
+            found = true;
+          });
+        });
+
+        if (!found) {
+          const newLink = document.createElement('link');
+          newLink.rel = 'icon';
+          newLink.href = finalUrl;
+          document.head.appendChild(newLink);
+        }
+      }
+
       if (settings.primary_color) {
         document.documentElement.style.setProperty('--color-neon-purple', settings.primary_color);
       }

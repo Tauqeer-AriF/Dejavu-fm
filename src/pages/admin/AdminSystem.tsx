@@ -117,6 +117,7 @@ export function AdminBranding() {
   const [logoUrl, setLogoUrl] = useState("");
   const [logoDark, setLogoDark] = useState("");
   const [logoLight, setLogoLight] = useState("");
+  const [favicon, setFavicon] = useState("");
   const [primaryColor, setPrimaryColor] = useState("#b026ff");
   const [secondaryColor, setSecondaryColor] = useState("#00d2ff");
   const [fontSans, setFontSans] = useState("Inter");
@@ -130,6 +131,7 @@ export function AdminBranding() {
     logo_url: "",
     logo_dark: "",
     logo_light: "",
+    favicon: "/favicon.ico",
     primary_color: "#b026ff",
     secondary_color: "#00d2ff",
     font_sans: "Inter",
@@ -155,12 +157,41 @@ export function AdminBranding() {
       setLogoUrl(d.logo_url || DEFAULTS.logo_url);
       setLogoDark(d.logo_dark || DEFAULTS.logo_dark);
       setLogoLight(d.logo_light || DEFAULTS.logo_light);
+      setFavicon(d.favicon || DEFAULTS.favicon);
       setPrimaryColor(d.primary_color || DEFAULTS.primary_color);
       setSecondaryColor(d.secondary_color || DEFAULTS.secondary_color);
       setFontSans(d.font_sans || DEFAULTS.font_sans);
       setFontDisplay(d.font_display || DEFAULTS.font_display);
     });
   }, []);
+
+  // Update the browser tab icon instantly when the favicon state changes
+  useEffect(() => {
+    if (favicon) {
+      const cacheBuster = `v=${Date.now()}`;
+      const finalUrl = favicon.includes('?') 
+        ? `${favicon}&${cacheBuster}` 
+        : `${favicon}?${cacheBuster}`;
+        
+      const selectors = ["link[rel*='icon']", "link[rel='apple-touch-icon']"];
+      let found = false;
+      
+      selectors.forEach(selector => {
+        const links = document.querySelectorAll(selector);
+        links.forEach(link => {
+          (link as HTMLLinkElement).href = finalUrl;
+          found = true;
+        });
+      });
+
+      if (!found) {
+        const newLink = document.createElement('link');
+        newLink.rel = 'icon';
+        newLink.href = finalUrl;
+        document.head.appendChild(newLink);
+      }
+    }
+  }, [favicon]);
 
   const handleReset = async () => {
     const confirmed = await showConfirm({
@@ -182,6 +213,7 @@ export function AdminBranding() {
           logo_url: DEFAULTS.logo_url,
           logo_dark: DEFAULTS.logo_dark,
           logo_light: DEFAULTS.logo_light,
+          favicon: DEFAULTS.favicon,
           primary_color: DEFAULTS.primary_color,
           secondary_color: DEFAULTS.secondary_color,
           font_sans: DEFAULTS.font_sans,
@@ -196,6 +228,7 @@ export function AdminBranding() {
         setLogoUrl(DEFAULTS.logo_url);
         setLogoDark(DEFAULTS.logo_dark);
         setLogoLight(DEFAULTS.logo_light);
+        setFavicon(DEFAULTS.favicon);
         setPrimaryColor(DEFAULTS.primary_color);
         setSecondaryColor(DEFAULTS.secondary_color);
         setFontSans(DEFAULTS.font_sans);
@@ -220,6 +253,7 @@ export function AdminBranding() {
           logo_url: logoUrl,
           logo_dark: logoDark,
           logo_light: logoLight,
+          favicon: favicon,
           primary_color: primaryColor,
           secondary_color: secondaryColor,
           font_sans: fontSans,
@@ -332,6 +366,7 @@ export function AdminBranding() {
               <ImageUploadField label="Dark Mode Logo" value={logoDark} onChange={setLogoDark} description="Optimized for dark backgrounds." />
               <ImageUploadField label="Light Mode Logo" value={logoLight} onChange={setLogoLight} description="Optimized for light backgrounds." />
             </div>
+            <ImageUploadField label="Favicon URL" value={favicon} onChange={setFavicon} description="The browser tab icon (.ico or .png)." />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
