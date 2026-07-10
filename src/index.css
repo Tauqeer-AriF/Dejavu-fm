@@ -66,6 +66,22 @@
   opacity: 1;
 }
 
+@media (max-width: 768px) {
+  .swiper-button-next,
+  .swiper-button-prev {
+    width: 28px !important;
+    height: 28px !important;
+  }
+  .swiper-button-next:after,
+  .swiper-button-prev:after {
+    font-size: 6px !important;
+  }
+  .ad-sliders-container .swiper-button-next,
+  .ad-sliders-container .swiper-button-prev {
+    opacity: 0.6 !important;
+  }
+}
+
 :root {
   /* Dark mode is default */
   --theme-bg: #050505;

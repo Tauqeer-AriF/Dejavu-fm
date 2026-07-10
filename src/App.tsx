@@ -763,10 +763,11 @@ function MainLayout() {
       {featShoutouts && <ShoutoutWidget isChatOpen={isChatOpen} />}
       
       <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 relative">
+        {!location.pathname.startsWith('/admin') && <AdvertisementSliders position="top" />}
         <ErrorBoundary key={location.pathname}>
           <AnimatedRoutes />
         </ErrorBoundary>
-        {!location.pathname.startsWith('/admin') && <AdvertisementSliders />}
+        {!location.pathname.startsWith('/admin') && <AdvertisementSliders position="bottom" />}
       </main>
 
       <footer className="w-full max-w-7xl mx-auto p-4 md:p-8 pt-24 border-t border-white/5 relative flex flex-col md:flex-row items-center justify-between gap-10 text-white/40 text-sm mb-40 md:mb-32">

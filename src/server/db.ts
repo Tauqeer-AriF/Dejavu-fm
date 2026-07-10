@@ -232,6 +232,7 @@ export function initDb() {
       display_order INTEGER DEFAULT 0,
       is_active INTEGER DEFAULT 1,
       target_pages TEXT DEFAULT 'all',
+      position TEXT DEFAULT 'bottom',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
@@ -267,6 +268,7 @@ export function initDb() {
   runMigration('admin_role_field', "ALTER TABLE admins ADD COLUMN role TEXT DEFAULT 'admin';");
   runMigration('user_ban_field', "ALTER TABLE users ADD COLUMN is_banned INTEGER DEFAULT 0;");
   runMigration('advertisement_target_pages', "ALTER TABLE advertisements ADD COLUMN target_pages TEXT DEFAULT 'all';");
+  runMigration('advertisement_position_v1', "ALTER TABLE advertisements ADD COLUMN position TEXT DEFAULT 'bottom';");
   runMigration('popups_table_v2', `
     CREATE TABLE IF NOT EXISTS popups (
       id TEXT PRIMARY KEY,

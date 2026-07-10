@@ -43,7 +43,7 @@ function getSliderLayout(sliderType: string): SliderLayout {
   return parseSliderType(sliderType).layout;
 }
 
-export function AdvertisementSliders() {
+export function AdvertisementSliders({ position = "bottom" }: { position?: "top" | "bottom" }) {
   const location = useLocation();
   const currentPage = location.pathname === "/" ? "home" : location.pathname.replace(/^\/+|\/+$/g, "") || "home";
 
@@ -59,10 +59,16 @@ export function AdvertisementSliders() {
 
   const autoScroll = settings.ad_auto_scroll === '1';
 
-  if (ads.length === 0) return null;
+  // Filter ads based on position prop (fallback to bottom for legacy ads)
+  const positionFilteredAds = ads.filter((ad: any) => {
+    const adPosition = ad.position || 'bottom';
+    return adPosition === position;
+  });
+
+  if (positionFilteredAds.length === 0) return null;
 
   const sliderGroups = Array.from(
-    ads.reduce((groups: Map<string, any[]>, ad: any) => {
+    positionFilteredAds.reduce((groups: Map<string, any[]>, ad: any) => {
       const key = ad.slider_type || "single";
       const existing = groups.get(key) || [];
       existing.push(ad);
@@ -77,7 +83,7 @@ export function AdvertisementSliders() {
   }));
 
   return (
-    <div className="w-full space-y-12 py-12 px-4 md:px-8 max-w-7xl mx-auto ad-sliders-container">
+    <div className={`w-full space-y-12 px-4 md:px-8 max-w-7xl mx-auto ad-sliders-container ${position === 'top' ? 'pt-2 pb-8' : 'py-12'}`}>
       {sliderGroups.map(({ sliderType, layout, title, ads: groupAds }) => (
         <motion.div 
           key={sliderType}

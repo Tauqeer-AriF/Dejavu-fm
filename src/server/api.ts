@@ -1769,20 +1769,20 @@ apiRouter.get("/admin/ads", authMiddleware, (req, res) => {
 });
 
 apiRouter.post("/admin/ads", authMiddleware, authorizeRole('admin'), (req: any, res: any) => {
-  const { slider_type, image_url, link_url, display_order, is_active, target_pages } = req.body;
+  const { slider_type, image_url, link_url, display_order, is_active, target_pages, position } = req.body;
   if (!slider_type || !image_url) return res.status(400).json({ error: "Type and Image required" });
   
-  const info = db.prepare("INSERT INTO advertisements (slider_type, image_url, link_url, display_order, is_active, target_pages) VALUES (?, ?, ?, ?, ?, ?)")
-    .run(slider_type, image_url, link_url || "", display_order || 0, is_active ? 1 : 0, target_pages || "all");
+  const info = db.prepare("INSERT INTO advertisements (slider_type, image_url, link_url, display_order, is_active, target_pages, position) VALUES (?, ?, ?, ?, ?, ?, ?)")
+    .run(slider_type, image_url, link_url || "", display_order || 0, is_active ? 1 : 0, target_pages || "all", position || "bottom");
   
   logAction(req, 'CREATE', 'advertisement', info.lastInsertRowid, { slider_type });
   res.json({ success: true, id: info.lastInsertRowid });
 });
 
 apiRouter.put("/admin/ads/:id", authMiddleware, authorizeRole('admin'), (req: any, res: any) => {
-  const { slider_type, image_url, link_url, display_order, is_active, target_pages } = req.body;
-  db.prepare("UPDATE advertisements SET slider_type = ?, image_url = ?, link_url = ?, display_order = ?, is_active = ?, target_pages = ? WHERE id = ?")
-    .run(slider_type, image_url, link_url || "", display_order || 0, is_active ? 1 : 0, target_pages || "all", req.params.id);
+  const { slider_type, image_url, link_url, display_order, is_active, target_pages, position } = req.body;
+  db.prepare("UPDATE advertisements SET slider_type = ?, image_url = ?, link_url = ?, display_order = ?, is_active = ?, target_pages = ?, position = ? WHERE id = ?")
+    .run(slider_type, image_url, link_url || "", display_order || 0, is_active ? 1 : 0, target_pages || "all", position || "bottom", req.params.id);
   
   logAction(req, 'UPDATE', 'advertisement', req.params.id);
   res.json({ success: true });

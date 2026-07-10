@@ -120,7 +120,7 @@ export function ImageUploadField({
             onDragOver={handleDragOver}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`flex-1 min-w-[200px] border border-dashed border-white/10 hover:border-neon-purple/40 hover:bg-white/[0.01] rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all ${
+            className={`flex-1 min-w-[180px] border border-dashed border-white/10 hover:border-neon-purple/40 hover:bg-white/[0.02] rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 relative overflow-hidden group/zone ${
               uploading ? "pointer-events-none opacity-60" : ""
             }`}
           >
@@ -138,34 +138,36 @@ export function ImageUploadField({
                 <span className="text-xs text-white/40">Optimizing & Uploading...</span>
               </div>
             ) : (
-              <div className="flex items-center gap-3">
-                <UploadCloud className="w-5 h-5 text-neon-blue flex-shrink-0" />
-                <div className="text-left min-w-0">
-                  <p className="text-xs font-semibold text-white/70 truncate">
+              <div className="flex items-center gap-3 w-full min-w-0 justify-center px-1">
+                <div className="p-2 bg-white/[0.04] border border-white/5 rounded-xl group-hover/zone:bg-neon-blue/10 group-hover/zone:border-neon-blue/20 transition-all duration-300 flex-shrink-0">
+                  <UploadCloud className="w-5 h-5 text-neon-blue group-hover/zone:scale-110 transition-transform duration-300" />
+                </div>
+                <div className="text-left min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-white/70 truncate group-hover/zone:text-white transition-colors duration-300">
                     Click or drag image here to upload
                   </p>
-                  <p className="text-[10px] text-white/30">PNG, JPG, WEBP, GIF up to 5MB</p>
+                  <p className="text-[10px] text-white/30 truncate group-hover/zone:text-white/40 transition-colors duration-300">PNG, JPG, WEBP, GIF up to 5MB</p>
                 </div>
               </div>
             )}
           </div>
 
           {/* Live Preview Pane */}
-          <div className="w-20 h-20 bg-black/40 border border-white/10 rounded-2xl flex items-center justify-center overflow-hidden relative group flex-shrink-0 self-center sm:self-auto">
+          <div className="w-20 h-20 bg-black/40 border border-white/10 rounded-2xl flex items-center justify-center overflow-hidden relative group/preview flex-shrink-0 self-center sm:self-auto">
             {value && !hasError ? (
               <>
                 <img
                   src={value}
                   alt="Upload preview"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                  className="w-full h-full object-cover group-hover/preview:scale-105 transition-transform duration-300"
                   referrerPolicy="no-referrer"
                   onError={() => setHasError(true)}
                 />
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/preview:opacity-100 flex items-center justify-center transition-opacity duration-200">
                   <button
                     type="button"
                     onClick={() => onChange("")}
-                    className="p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+                    className="p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-lg"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>

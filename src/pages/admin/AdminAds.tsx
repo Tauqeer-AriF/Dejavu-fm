@@ -249,6 +249,7 @@ export function AdminAds() {
 function BulkAdModal({ onClose, onSaved }: { onClose: () => void, onSaved: () => void }) {
   const [sliderLayout, setSliderLayout] = useState<SliderLayout>('single');
   const [sliderName, setSliderName] = useState('');
+  const [position, setPosition] = useState<'top' | 'bottom'>('bottom');
   const [targetPages, setTargetPages] = useState<string[]>(['all']);
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -292,7 +293,8 @@ function BulkAdModal({ onClose, onSaved }: { onClose: () => void, onSaved: () =>
               link_url: '',
               display_order: i,
               is_active: 1,
-              target_pages: targetPages.includes('all') ? 'all' : targetPages.join(',')
+              target_pages: targetPages.includes('all') ? 'all' : targetPages.join(','),
+              position
             })
           });
           successCount++;
@@ -327,145 +329,165 @@ function BulkAdModal({ onClose, onSaved }: { onClose: () => void, onSaved: () =>
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="relative w-full max-w-lg bg-dark-bg border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
+        className="relative w-full max-w-lg max-h-[90vh] flex flex-col bg-dark-bg border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
       >
-        <div className="p-6 md:p-8 space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold">Bulk Add Advertisements</h3>
-            <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-white/40">
-              <Plus className="w-5 h-5 rotate-45" />
-            </button>
+        {/* Header */}
+        <div className="px-6 py-4 md:px-8 md:py-6 flex items-center justify-between border-b border-white/5 flex-shrink-0">
+          <h3 className="text-xl font-bold">Bulk Add Advertisements</h3>
+          <button type="button" onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-white/40">
+            <Plus className="w-5 h-5 rotate-45" />
+          </button>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 md:px-8 md:py-6 space-y-6 custom-scrollbar">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-white/40">Slider Layout</label>
+            <div className="grid grid-cols-2 gap-3">
+              {(['single', 'triple'] as SliderLayout[]).map(type => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setSliderLayout(type)}
+                  className={`py-3 rounded-xl border text-xs font-bold uppercase tracking-widest transition-all ${sliderLayout === type ? 'bg-neon-purple border-neon-purple text-white shadow-lg shadow-neon-purple/20' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'}`}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-white/40">Slider Layout</label>
-              <div className="grid grid-cols-2 gap-3">
-                {(['single', 'triple'] as SliderLayout[]).map(type => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setSliderLayout(type)}
-                    className={`py-3 rounded-xl border text-xs font-bold uppercase tracking-widest transition-all ${sliderLayout === type ? 'bg-neon-purple border-neon-purple text-white shadow-lg shadow-neon-purple/20' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'}`}
-                  >
-                    {type}
-                  </button>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-white/40">Slider Name</label>
+            <input
+              type="text"
+              value={sliderName}
+              onChange={(e) => setSliderName(e.target.value)}
+              placeholder="hero-banner or footer-strip"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-neon-purple transition-all"
+            />
+            <p className="text-[10px] text-white/30">Leave blank to use the default slider, or add a unique name to create another dedicated slider.</p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-white/40">Ad Position</label>
+            <div className="grid grid-cols-2 gap-3">
+              {(['top', 'bottom'] as const).map(pos => (
+                <button
+                  key={pos}
+                  type="button"
+                  onClick={() => setPosition(pos)}
+                  className={`py-3 rounded-xl border text-xs font-bold uppercase tracking-widest transition-all ${position === pos ? 'bg-neon-purple border-neon-purple text-white shadow-lg shadow-neon-purple/20' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'}`}
+                >
+                  {pos === 'top' ? 'Top of page' : 'Bottom of page'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-white/40">Show On Pages</label>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: 'All pages', value: 'all' },
+                { label: 'Home', value: '/' },
+                { label: 'Watch', value: '/watch' },
+                { label: 'Schedule', value: '/schedule' },
+                { label: 'DJs', value: '/djs' },
+                { label: 'Podcasts', value: '/podcasts' },
+                { label: 'Features', value: '/features' },
+                { label: 'About', value: '/about' },
+                { label: 'Contact', value: '/contact' }
+              ].map(page => {
+                const checked = targetPages.includes(page.value);
+                return (
+                  <label key={page.value} className="flex items-center gap-2 text-xs text-white/60 bg-white/5 rounded-lg px-3 py-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      className="rounded border-white/10 bg-white/5 text-neon-purple focus:ring-0"
+                      onChange={() => {
+                        if (page.value === 'all') {
+                          setTargetPages(['all']);
+                          return;
+                        }
+                        const next = targetPages.filter(item => item !== 'all');
+                        setTargetPages(checked ? next.filter(item => item !== page.value) : [...next, page.value]);
+                      }}
+                    />
+                    <span>{page.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <label className="block p-8 border-2 border-dashed border-white/10 rounded-3xl hover:border-neon-purple/50 transition-colors cursor-pointer group text-center">
+              <input 
+                type="file" 
+                multiple 
+                accept="image/*" 
+                className="hidden" 
+                onChange={handleFileChange}
+              />
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-neon-purple/20 transition-colors">
+                  <Plus className="w-6 h-6 text-white/40 group-hover:text-neon-purple" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-white/60">Click to select multiple images</p>
+                  <p className="text-[10px] text-white/20 uppercase tracking-widest mt-1">JPG, PNG, WebP supported</p>
+                </div>
+              </div>
+            </label>
+
+            {files.length > 0 && (
+              <div className="max-h-40 overflow-y-auto space-y-2 p-2 bg-white/5 rounded-xl custom-scrollbar">
+                {files.map((f, i) => (
+                  <div key={i} className="flex items-center justify-between px-3 py-2 text-xs text-white/40 bg-white/5 rounded-lg">
+                    <span className="truncate">{f.name}</span>
+                    <span>{(f.size / 1024 / 1024).toFixed(2)} MB</span>
+                  </div>
                 ))}
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-white/40">Slider Name</label>
-              <input
-                type="text"
-                value={sliderName}
-                onChange={(e) => setSliderName(e.target.value)}
-                placeholder="hero-banner or footer-strip"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-neon-purple transition-all"
-              />
-              <p className="text-[10px] text-white/30">Leave blank to use the default slider, or add a unique name to create another dedicated slider.</p>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-white/40">Show On Pages</label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { label: 'All pages', value: 'all' },
-                  { label: 'Home', value: '/' },
-                  { label: 'Watch', value: '/watch' },
-                  { label: 'Schedule', value: '/schedule' },
-                  { label: 'DJs', value: '/djs' },
-                  { label: 'Podcasts', value: '/podcasts' },
-                  { label: 'Features', value: '/features' },
-                  { label: 'About', value: '/about' },
-                  { label: 'Contact', value: '/contact' }
-                ].map(page => {
-                  const checked = targetPages.includes(page.value);
-                  return (
-                    <label key={page.value} className="flex items-center gap-2 text-xs text-white/60 bg-white/5 rounded-lg px-3 py-2">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => {
-                          if (page.value === 'all') {
-                            setTargetPages(['all']);
-                            return;
-                          }
-                          const next = targetPages.filter(item => item !== 'all');
-                          setTargetPages(checked ? next.filter(item => item !== page.value) : [...next, page.value]);
-                        }}
-                      />
-                      <span>{page.label}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <label className="block p-8 border-2 border-dashed border-white/10 rounded-3xl hover:border-neon-purple/50 transition-colors cursor-pointer group text-center">
-                <input 
-                  type="file" 
-                  multiple 
-                  accept="image/*" 
-                  className="hidden" 
-                  onChange={handleFileChange}
-                />
-                <div className="flex flex-col items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-neon-purple/20 transition-colors">
-                    <Plus className="w-6 h-6 text-white/40 group-hover:text-neon-purple" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-white/60">Click to select multiple images</p>
-                    <p className="text-[10px] text-white/20 uppercase tracking-widest mt-1">JPG, PNG, WebP supported</p>
-                  </div>
-                </div>
-              </label>
-
-              {files.length > 0 && (
-                <div className="max-h-40 overflow-y-auto space-y-2 p-2 bg-white/5 rounded-xl">
-                  {files.map((f, i) => (
-                    <div key={i} className="flex items-center justify-between px-3 py-2 text-xs text-white/40 bg-white/5 rounded-lg">
-                      <span className="truncate">{f.name}</span>
-                      <span>{(f.size / 1024 / 1024).toFixed(2)} MB</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {uploading && (
-              <div className="space-y-2">
-                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-white/40">
-                  <span>Uploading...</span>
-                  <span>{progress}%</span>
-                </div>
-                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${progress}%` }}
-                    className="h-full bg-neon-purple"
-                  />
-                </div>
-              </div>
             )}
-
-            <div className="flex gap-3">
-              <button 
-                onClick={onClose}
-                className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold transition-all"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleUpload}
-                disabled={uploading || files.length === 0}
-                className="flex-1 py-3 rounded-xl bg-neon-purple hover:bg-neon-purple/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold transition-all shadow-lg shadow-neon-purple/20"
-              >
-                {uploading ? 'Processing...' : `Upload ${files.length} Images`}
-              </button>
-            </div>
           </div>
+
+          {uploading && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-white/40">
+                <span>Uploading...</span>
+                <span>{progress}%</span>
+              </div>
+              <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress}%` }}
+                  className="h-full bg-neon-purple"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Fixed Footer */}
+        <div className="px-6 py-4 md:px-8 md:py-6 border-t border-white/5 flex gap-3 flex-shrink-0 bg-dark-bg/80 backdrop-blur-md">
+          <button 
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold transition-all text-sm"
+          >
+            Cancel
+          </button>
+          <button 
+            type="button"
+            onClick={handleUpload}
+            disabled={uploading || files.length === 0}
+            className="flex-1 py-3 rounded-xl bg-neon-purple hover:bg-neon-purple/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold transition-all shadow-lg shadow-neon-purple/20 text-sm"
+          >
+            {uploading ? 'Processing...' : `Upload ${files.length} Images`}
+          </button>
         </div>
       </motion.div>
     </div>
@@ -488,9 +510,14 @@ function AdCard({ ad, onEdit, onDelete, onToggle }: any) {
       </div>
       <div className="p-4 space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${layout === 'triple' ? 'bg-neon-purple/20 text-neon-purple' : 'bg-neon-blue/20 text-neon-blue'}`}>
-            {label}
-          </span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${layout === 'triple' ? 'bg-neon-purple/20 text-neon-purple' : 'bg-neon-blue/20 text-neon-blue'}`}>
+              {label}
+            </span>
+            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${ad.position === 'top' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
+              {ad.position === 'top' ? 'Top' : 'Bottom'}
+            </span>
+          </div>
           <div className="flex items-center gap-2">
             <div className="text-[9px] text-white/35 max-w-[50%] text-right truncate">
               {ad.target_pages === 'all' || !ad.target_pages ? 'All pages' : ad.target_pages}
@@ -532,7 +559,8 @@ function AdModal({ ad, onClose, onSaved }: { ad?: any, onClose: () => void, onSa
     link_url: ad?.link_url || '',
     display_order: ad?.display_order || 0,
     is_active: ad ? ad.is_active : 1,
-    target_pages: ad?.target_pages || 'all'
+    target_pages: ad?.target_pages || 'all',
+    position: ad?.position || 'bottom'
   });
   const [sliderLayout, setSliderLayout] = useState<SliderLayout>(parsedSlider.layout);
   const [sliderName, setSliderName] = useState(parsedSlider.name);
@@ -582,17 +610,19 @@ function AdModal({ ad, onClose, onSaved }: { ad?: any, onClose: () => void, onSa
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="relative w-full max-w-lg bg-dark-bg border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
+        className="relative w-full max-w-lg max-h-[90vh] flex flex-col bg-dark-bg border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
       >
-        <div className="p-6 md:p-8 space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold">{ad ? 'Edit Advertisement' : 'Add New Advertisement'}</h3>
-            <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-white/40">
-              <Plus className="w-5 h-5 rotate-45" />
-            </button>
-          </div>
+        {/* Header */}
+        <div className="px-6 py-4 md:px-8 md:py-6 flex items-center justify-between border-b border-white/5 flex-shrink-0">
+          <h3 className="text-xl font-bold">{ad ? 'Edit Advertisement' : 'Add New Advertisement'}</h3>
+          <button type="button" onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-white/40">
+            <Plus className="w-5 h-5 rotate-45" />
+          </button>
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Scrollable Content inside Form */}
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto px-6 py-4 md:px-8 md:py-6 space-y-5 custom-scrollbar">
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-widest text-white/40">Slider Layout</label>
               <div className="grid grid-cols-2 gap-3">
@@ -622,6 +652,22 @@ function AdModal({ ad, onClose, onSaved }: { ad?: any, onClose: () => void, onSa
             </div>
 
             <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-white/40">Ad Position</label>
+              <div className="grid grid-cols-2 gap-3">
+                {(['top', 'bottom'] as const).map(pos => (
+                  <button
+                    key={pos}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, position: pos })}
+                    className={`py-3 rounded-xl border text-xs font-bold uppercase tracking-widest transition-all ${formData.position === pos ? 'bg-neon-purple border-neon-purple text-white shadow-lg shadow-neon-purple/20' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'}`}
+                  >
+                    {pos === 'top' ? 'Top of page' : 'Bottom of page'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-widest text-white/40">Show On Pages</label>
               <div className="grid grid-cols-2 gap-2">
                 {[
@@ -637,10 +683,11 @@ function AdModal({ ad, onClose, onSaved }: { ad?: any, onClose: () => void, onSa
                 ].map(page => {
                   const checked = formData.target_pages === 'all' ? page.value === 'all' : formData.target_pages.split(',').map(item => item.trim()).includes(page.value);
                   return (
-                    <label key={page.value} className="flex items-center gap-2 text-xs text-white/60 bg-white/5 rounded-lg px-3 py-2">
+                    <label key={page.value} className="flex items-center gap-2 text-xs text-white/60 bg-white/5 rounded-lg px-3 py-2 cursor-pointer select-none">
                       <input
                         type="checkbox"
                         checked={checked}
+                        className="rounded border-white/10 bg-white/5 text-neon-purple focus:ring-0"
                         onChange={() => {
                           if (page.value === 'all') {
                             setFormData({ ...formData, target_pages: 'all' });
@@ -677,7 +724,7 @@ function AdModal({ ad, onClose, onSaved }: { ad?: any, onClose: () => void, onSa
               />
             </div>
 
-            <div className="flex items-center gap-6 pt-4">
+            <div className="flex items-center gap-6 pt-2">
               <div className="flex-1 space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-widest text-white/40">Order</label>
                 <input 
@@ -698,25 +745,26 @@ function AdModal({ ad, onClose, onSaved }: { ad?: any, onClose: () => void, onSa
                 <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Active</span>
               </div>
             </div>
+          </div>
 
-            <div className="flex gap-3 pt-6">
-              <button 
-                type="button" 
-                onClick={onClose}
-                className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold transition-all"
-              >
-                Cancel
-              </button>
-              <button 
-                type="submit" 
-                disabled={saving || !formData.image_url}
-                className="flex-1 py-3 rounded-xl bg-neon-purple hover:bg-neon-purple/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold transition-all shadow-lg shadow-neon-purple/20"
-              >
-                {saving ? 'Saving...' : 'Save Advertisement'}
-              </button>
-            </div>
-          </form>
-        </div>
+          {/* Fixed Footer */}
+          <div className="px-6 py-4 md:px-8 md:py-6 border-t border-white/5 flex gap-3 flex-shrink-0 bg-dark-bg/80 backdrop-blur-md">
+            <button 
+              type="button" 
+              onClick={onClose}
+              className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold transition-all text-sm"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              disabled={saving || !formData.image_url}
+              className="flex-1 py-3 rounded-xl bg-neon-purple hover:bg-neon-purple/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold transition-all shadow-lg shadow-neon-purple/20 text-sm"
+            >
+              {saving ? 'Saving...' : 'Save Advertisement'}
+            </button>
+          </div>
+        </form>
       </motion.div>
     </div>
   );
