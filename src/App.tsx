@@ -482,22 +482,22 @@ function MobileBottomBar({ featLiveTools }: { featLiveTools: boolean }) {
       onClick={(e) => e.stopPropagation()}
       onTouchStart={(e) => e.stopPropagation()}
     >
-        <div className="bg-dark-bg/95 backdrop-blur-3xl rounded-[2rem] py-2 px-2 flex items-center shadow-[0_30px_60px_rgba(0,0,0,0.7)] border border-white/10 relative overflow-hidden group pointer-events-auto">
-          <div className="absolute inset-0 bg-gradient-to-t from-neon-purple/10 to-transparent pointer-events-none"></div>
+        <div className="bg-dark-bg/90 backdrop-blur-[24px] rounded-[1.75rem] py-1.5 px-1.5 flex items-center shadow-[0_18px_45px_rgba(0,0,0,0.45)] border border-white/10 relative overflow-hidden group pointer-events-auto">
+          <div className="absolute inset-0 bg-gradient-to-t from-neon-purple/10 to-transparent pointer-events-none" />
           
           {[
-            { to: "/", icon: Radio, label: "Listen", active: location.pathname === "/" },
-            ...(featLiveTools ? [{ to: "/watch", icon: Video, label: "Watch" }] : []),
-            { to: "/schedule", icon: Calendar, label: "Shows" },
-            { to: "/djs", icon: Headphones, label: "DJs", active: location.pathname === "/djs" || isOnDJs },
-            { to: "/podcasts", icon: Podcast, label: "Archive", active: location.pathname === "/podcasts" || isOnPodcasts },
+            { to: "/", icon: Radio, active: location.pathname === "/" },
+            ...(featLiveTools ? [{ to: "/watch", icon: Video, active: location.pathname === "/watch" }] : []),
+            { to: "/schedule", icon: Calendar, active: location.pathname === "/schedule" },
+            { to: "/djs", icon: Headphones, active: location.pathname === "/djs" || isOnDJs },
+            { to: "/podcasts", icon: Podcast, active: location.pathname === "/podcasts" || isOnPodcasts },
           ].map((item) => (
             <NavLink 
               key={item.to}
               to={item.to} 
               className={({isActive}) => {
                 const isMatch = item.active !== undefined ? item.active : isActive;
-                return `relative flex-1 flex flex-col items-center justify-center p-2 rounded-[1.5rem] transition-all duration-500 h-[60px] z-10 pointer-events-auto ${isMatch ? 'text-neon-purple active-bottom-glow' : 'text-white/40 hover:text-white/60'}`
+                return `relative flex-1 flex items-center justify-center rounded-[1.5rem] transition-all duration-500 h-[52px] z-10 pointer-events-auto ${isMatch ? 'text-neon-purple active-bottom-glow' : 'text-white/40 hover:text-white/70'}`
               }}
             >
               {({isActive}) => {
@@ -505,18 +505,18 @@ function MobileBottomBar({ featLiveTools }: { featLiveTools: boolean }) {
                 return (
                   <>
                     <motion.div
-                      animate={{ y: isMatch ? -4 : 0 }}
-                      transition={{ duration: 0.3 }}
+                      animate={{ y: isMatch ? -2 : 0 }}
+                      transition={{ duration: 0.25 }}
                       className="z-10"
                     >
-                      <item.icon className="w-[1.375rem] h-[1.375rem]" />
+                      <item.icon className="w-5 h-5" />
                     </motion.div>
                     
                     {isMatch && (
                       <motion.div 
                         layoutId="bottom-glow"
                         className="absolute inset-0 bg-white/5 rounded-[1.5rem] -z-0 border border-white/10"
-                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                        transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
                       />
                     )}
                   </>
