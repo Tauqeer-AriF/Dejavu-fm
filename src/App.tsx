@@ -512,10 +512,6 @@ function MobileBottomBar({ featLiveTools }: { featLiveTools: boolean }) {
                       <item.icon className="w-[1.375rem] h-[1.375rem]" />
                     </motion.div>
                     
-                    <span className={`text-[8.5px] font-black uppercase tracking-[0.2em] transform transition-all duration-300 z-10 absolute bottom-1.5 ${isMatch ? 'opacity-100 translate-y-0 text-white' : 'opacity-0 translate-y-2'}`}>
-                      {item.label}
-                    </span>
-                    
                     {isMatch && (
                       <motion.div 
                         layoutId="bottom-glow"
