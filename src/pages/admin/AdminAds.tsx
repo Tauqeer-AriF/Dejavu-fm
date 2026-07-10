@@ -1,10 +1,43 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Trash2, Edit2, Plus, ExternalLink, Image as ImageIcon, Layout, Layers } from "lucide-react";
 import { useModal } from "../../context/ModalContext";
 import { fetchAdmin } from "./adminApi";
 import { ImageUploadField } from "./ImageUploadField";
 import { motion, AnimatePresence } from "motion/react";
+
+type SliderLayout = "single" | "triple";
+
+function parseSliderType(sliderType: string) {
+  const value = (sliderType || "single").toLowerCase().trim();
+  if (value.startsWith("triple:")) {
+    return { layout: "triple" as SliderLayout, name: value.replace("triple:", "") };
+  }
+  if (value.startsWith("single:")) {
+    return { layout: "single" as SliderLayout, name: value.replace("single:", "") };
+  }
+  if (value === "triple") {
+    return { layout: "triple" as SliderLayout, name: "" };
+  }
+  return { layout: "single" as SliderLayout, name: value === "single" ? "" : value };
+}
+
+function buildSliderValue(layout: SliderLayout, name: string) {
+  const normalizedName = name.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  return normalizedName ? `${layout}:${normalizedName}` : layout;
+}
+
+function getSliderLabel(sliderType: string) {
+  const { layout, name } = parseSliderType(sliderType);
+  if (name) {
+    return name
+      .split(/[-_]/)
+      .filter(Boolean)
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  }
+  return layout === "triple" ? "Partner Slider" : "Main Slider";
+}
 
 export function AdminAds() {
   const [ads, setAds] = useState<any[]>([]);
@@ -88,8 +121,22 @@ export function AdminAds() {
     }
   };
 
-  const singleAds = ads.filter(ad => ad.slider_type === 'single');
-  const tripleAds = ads.filter(ad => ad.slider_type === 'triple');
+  const sliderGroups = useMemo(() => {
+    const groups = new Map<string, any[]>();
+    ads.forEach((ad: any) => {
+      const key = ad.slider_type || "single";
+      const existing = groups.get(key) || [];
+      existing.push(ad);
+      groups.set(key, existing);
+    });
+
+    return Array.from(groups.entries()).map(([sliderType, groupAds]) => ({
+      sliderType,
+      layout: parseSliderType(sliderType).layout,
+      label: getSliderLabel(sliderType),
+      ads: groupAds.sort((a: any, b: any) => (Number(a.display_order) || 0) - (Number(b.display_order) || 0) || Number(a.id) - Number(b.id))
+    }));
+  }, [ads]);
 
   return (
     <div className="space-y-8 pb-20">
@@ -136,55 +183,36 @@ export function AdminAds() {
       </div>
 
       <div className="grid grid-cols-1 gap-8">
-        {/* Single Slider Section */}
-        <section className="space-y-4">
-          <div className="flex items-center gap-2 text-neon-blue">
-            <Layout className="w-5 h-5" />
-            <h4 className="font-bold uppercase tracking-widest text-sm">Main Slider (1 Image)</h4>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {singleAds.map(ad => (
-              <AdCard 
-                key={ad.id} 
-                ad={ad} 
-                onEdit={() => setEditingAd(ad)} 
-                onDelete={() => handleDelete(ad.id)} 
-                onToggle={() => handleToggleActive(ad)}
-              />
-            ))}
-            {singleAds.length === 0 && (
-              <div className="col-span-full py-8 border-2 border-dashed border-white/5 rounded-2xl flex flex-col items-center justify-center text-white/20">
-                <ImageIcon className="w-10 h-10 mb-2 opacity-10" />
-                <span className="text-sm">No single-slider ads yet</span>
+        {sliderGroups.map(({ sliderType, layout, label, ads: groupAds }) => (
+          <section key={sliderType} className="space-y-4">
+            <div className={`flex items-center gap-2 ${layout === 'triple' ? 'text-neon-purple' : 'text-neon-blue'}`}>
+              {layout === 'triple' ? <Layers className="w-5 h-5" /> : <Layout className="w-5 h-5" />}
+              <div>
+                <h4 className="font-bold uppercase tracking-widest text-sm">{label}</h4>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-white/30">
+                  {layout === 'triple' ? '3 images per carousel' : '1 image per slide'}
+                </p>
               </div>
-            )}
-          </div>
-        </section>
-
-        {/* Triple Slider Section */}
-        <section className="space-y-4">
-          <div className="flex items-center gap-2 text-neon-purple">
-            <Layers className="w-5 h-5" />
-            <h4 className="font-bold uppercase tracking-widest text-sm">Partner Slider (3 Images)</h4>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {tripleAds.map(ad => (
-              <AdCard 
-                key={ad.id} 
-                ad={ad} 
-                onEdit={() => setEditingAd(ad)} 
-                onDelete={() => handleDelete(ad.id)} 
-                onToggle={() => handleToggleActive(ad)}
-              />
-            ))}
-            {tripleAds.length === 0 && (
-              <div className="col-span-full py-8 border-2 border-dashed border-white/5 rounded-2xl flex flex-col items-center justify-center text-white/20">
-                <ImageIcon className="w-10 h-10 mb-2 opacity-10" />
-                <span className="text-sm">No triple-slider ads yet</span>
-              </div>
-            )}
-          </div>
-        </section>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {groupAds.map(ad => (
+                <AdCard 
+                  key={ad.id} 
+                  ad={ad} 
+                  onEdit={() => setEditingAd(ad)} 
+                  onDelete={() => handleDelete(ad.id)} 
+                  onToggle={() => handleToggleActive(ad)}
+                />
+              ))}
+              {groupAds.length === 0 && (
+                <div className="col-span-full py-8 border-2 border-dashed border-white/5 rounded-2xl flex flex-col items-center justify-center text-white/20">
+                  <ImageIcon className="w-10 h-10 mb-2 opacity-10" />
+                  <span className="text-sm">No ads in this slider yet</span>
+                </div>
+              )}
+            </div>
+          </section>
+        ))}
       </div>
 
       <AnimatePresence>
@@ -219,7 +247,8 @@ export function AdminAds() {
 }
 
 function BulkAdModal({ onClose, onSaved }: { onClose: () => void, onSaved: () => void }) {
-  const [sliderType, setSliderType] = useState('single');
+  const [sliderLayout, setSliderLayout] = useState<SliderLayout>('single');
+  const [sliderName, setSliderName] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -257,7 +286,7 @@ function BulkAdModal({ onClose, onSaved }: { onClose: () => void, onSaved: () =>
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              slider_type: sliderType,
+              slider_type: buildSliderValue(sliderLayout, sliderName),
               image_url: url,
               link_url: '',
               display_order: i,
@@ -308,19 +337,31 @@ function BulkAdModal({ onClose, onSaved }: { onClose: () => void, onSaved: () =>
 
           <div className="space-y-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-white/40">Slider Target</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-white/40">Slider Layout</label>
               <div className="grid grid-cols-2 gap-3">
-                {['single', 'triple'].map(type => (
+                {(['single', 'triple'] as SliderLayout[]).map(type => (
                   <button
                     key={type}
                     type="button"
-                    onClick={() => setSliderType(type)}
-                    className={`py-3 rounded-xl border text-xs font-bold uppercase tracking-widest transition-all ${sliderType === type ? 'bg-neon-purple border-neon-purple text-white shadow-lg shadow-neon-purple/20' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'}`}
+                    onClick={() => setSliderLayout(type)}
+                    className={`py-3 rounded-xl border text-xs font-bold uppercase tracking-widest transition-all ${sliderLayout === type ? 'bg-neon-purple border-neon-purple text-white shadow-lg shadow-neon-purple/20' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'}`}
                   >
                     {type}
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-white/40">Slider Name</label>
+              <input
+                type="text"
+                value={sliderName}
+                onChange={(e) => setSliderName(e.target.value)}
+                placeholder="hero-banner or footer-strip"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-neon-purple transition-all"
+              />
+              <p className="text-[10px] text-white/30">Leave blank to use the default slider, or add a unique name to create another dedicated slider.</p>
             </div>
 
             <div className="space-y-4">
@@ -394,6 +435,9 @@ function BulkAdModal({ onClose, onSaved }: { onClose: () => void, onSaved: () =>
 }
 
 function AdCard({ ad, onEdit, onDelete, onToggle }: any) {
+  const { layout, name } = parseSliderType(ad.slider_type || 'single');
+  const label = name ? name.split(/[-_]/).filter(Boolean).map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ') : (layout === 'triple' ? 'Partner Slider' : 'Main Slider');
+
   return (
     <motion.div 
       layout
@@ -406,8 +450,8 @@ function AdCard({ ad, onEdit, onDelete, onToggle }: any) {
       </div>
       <div className="p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${ad.slider_type === 'single' ? 'bg-neon-blue/20 text-neon-blue' : 'bg-neon-purple/20 text-neon-purple'}`}>
-            {ad.slider_type}
+          <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${layout === 'triple' ? 'bg-neon-purple/20 text-neon-purple' : 'bg-neon-blue/20 text-neon-blue'}`}>
+            {label}
           </span>
           <button 
             onClick={onToggle}
@@ -438,6 +482,7 @@ function AdCard({ ad, onEdit, onDelete, onToggle }: any) {
 }
 
 function AdModal({ ad, onClose, onSaved }: { ad?: any, onClose: () => void, onSaved: () => void }) {
+  const parsedSlider = parseSliderType(ad?.slider_type || 'single');
   const [formData, setFormData] = useState({
     slider_type: ad?.slider_type || 'single',
     image_url: ad?.image_url || '',
@@ -445,6 +490,8 @@ function AdModal({ ad, onClose, onSaved }: { ad?: any, onClose: () => void, onSa
     display_order: ad?.display_order || 0,
     is_active: ad ? ad.is_active : 1
   });
+  const [sliderLayout, setSliderLayout] = useState<SliderLayout>(parsedSlider.layout);
+  const [sliderName, setSliderName] = useState(parsedSlider.name);
   const [saving, setSaving] = useState(false);
   const { showAlert } = useModal();
 
@@ -458,7 +505,10 @@ function AdModal({ ad, onClose, onSaved }: { ad?: any, onClose: () => void, onSa
       const res = await fetchAdmin(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          slider_type: buildSliderValue(sliderLayout, sliderName)
+        })
       });
 
       if (res.ok) {
@@ -500,19 +550,31 @@ function AdModal({ ad, onClose, onSaved }: { ad?: any, onClose: () => void, onSa
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-white/40">Slider Type</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-white/40">Slider Layout</label>
               <div className="grid grid-cols-2 gap-3">
-                {['single', 'triple'].map(type => (
+                {(['single', 'triple'] as SliderLayout[]).map(type => (
                   <button
                     key={type}
                     type="button"
-                    onClick={() => setFormData({ ...formData, slider_type: type })}
-                    className={`py-3 rounded-xl border text-xs font-bold uppercase tracking-widest transition-all ${formData.slider_type === type ? 'bg-neon-purple border-neon-purple text-white shadow-lg shadow-neon-purple/20' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'}`}
+                    onClick={() => setSliderLayout(type)}
+                    className={`py-3 rounded-xl border text-xs font-bold uppercase tracking-widest transition-all ${sliderLayout === type ? 'bg-neon-purple border-neon-purple text-white shadow-lg shadow-neon-purple/20' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'}`}
                   >
                     {type}
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-white/40">Slider Name</label>
+              <input
+                type="text"
+                value={sliderName}
+                onChange={(e) => setSliderName(e.target.value)}
+                placeholder="hero-banner or footer-strip"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-neon-purple transition-all"
+              />
+              <p className="text-[10px] text-white/30">Leave blank to use the default slider, or add a unique name to create another dedicated slider.</p>
             </div>
 
             <div className="space-y-2">

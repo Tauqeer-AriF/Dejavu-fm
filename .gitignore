@@ -32,3 +32,11 @@ pnpm-debug.log*
 
 # Database backups
 backups/
+dejavufm.db
+dejavufm.db
+public/uploads/opt-upl-1783674964593-192469404.png
+public/uploads/opt-upl-1783674968939-513563483.png
+public/uploads/opt-upl-1783674972576-551732689.png
+public/uploads/opt-upl-1783674977613-594629596.png
+*.png
+*.jpg

@@ -2,10 +2,7 @@ import Database from 'better-sqlite3';
 import bcrypt from 'bcryptjs';
 import path from 'path';
 import fs from 'fs';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = (cmd: string) => promisify(exec)(cmd, { maxBuffer: 1024 * 1024 * 10 });
+import * as tar from 'tar';
 
 const getDatabasePath = () => {
   if (process.env.DATABASE_PATH) {
@@ -471,11 +468,11 @@ export async function backupDatabase() {
     if (fs.existsSync(uploadsDir)) {
       const destUploads = path.join(tempDir, 'uploads');
       if (!fs.existsSync(destUploads)) fs.mkdirSync(destUploads, { recursive: true });
-      await execAsync(`cp -a "${uploadsDir}/." "${destUploads}/" 2>/dev/null || true`);
+      fs.cpSync(uploadsDir, destUploads, { recursive: true, force: true });
     }
 
     // 4. Create tarball bundle
-    await execAsync(`tar -czf "${finalBackupPath}" -C "${tempDir}" .`);
+    await tar.c({ gzip: true, file: finalBackupPath, cwd: tempDir }, ['.']);
 
     db.prepare("UPDATE settings SET value = ? WHERE key = 'backup_last_status'").run('success');
     console.log(`[DB] Bundled backup successful: ${finalBackupPath}`);

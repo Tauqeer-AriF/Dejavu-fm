@@ -10,6 +10,38 @@ import "swiper/css";
 import "swiper/css/pagination";
 import "swiper/css/navigation";
 
+type SliderLayout = "single" | "triple";
+
+function parseSliderType(sliderType: string) {
+  const value = (sliderType || "single").toLowerCase().trim();
+  if (value.startsWith("triple:")) {
+    return { layout: "triple" as SliderLayout, name: value.replace("triple:", "") };
+  }
+  if (value.startsWith("single:")) {
+    return { layout: "single" as SliderLayout, name: value.replace("single:", "") };
+  }
+  if (value === "triple") {
+    return { layout: "triple" as SliderLayout, name: "" };
+  }
+  return { layout: "single" as SliderLayout, name: value === "single" ? "" : value };
+}
+
+function getSliderTitle(sliderType: string) {
+  const { layout, name } = parseSliderType(sliderType);
+  if (name) {
+    return name
+      .split(/[-_]/)
+      .filter(Boolean)
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  }
+  return layout === "triple" ? "Our Partners" : "Special Features";
+}
+
+function getSliderLayout(sliderType: string): SliderLayout {
+  return parseSliderType(sliderType).layout;
+}
+
 export function AdvertisementSliders() {
   const { data: ads = [] } = useQuery({
     queryKey: ['publicAds'],
@@ -25,76 +57,75 @@ export function AdvertisementSliders() {
 
   if (ads.length === 0) return null;
 
-  const singleAds = ads.filter((ad: any) => ad.slider_type === 'single');
-  const tripleAds = ads.filter((ad: any) => ad.slider_type === 'triple');
+  const sliderGroups = Array.from(
+    ads.reduce((groups: Map<string, any[]>, ad: any) => {
+      const key = ad.slider_type || "single";
+      const existing = groups.get(key) || [];
+      existing.push(ad);
+      groups.set(key, existing);
+      return groups;
+    }, new Map())
+  ).map(([sliderType, groupAds]) => ({
+    sliderType,
+    layout: getSliderLayout(sliderType),
+    title: getSliderTitle(sliderType),
+    ads: groupAds.sort((a: any, b: any) => (Number(a.display_order) || 0) - (Number(b.display_order) || 0) || Number(a.id) - Number(b.id))
+  }));
 
   return (
     <div className="w-full space-y-12 py-12 px-4 md:px-8 max-w-7xl mx-auto ad-sliders-container">
-      {/* Single Image Slider */}
-      {singleAds.length > 0 && (
+      {sliderGroups.map(({ sliderType, layout, title, ads: groupAds }) => (
         <motion.div 
+          key={sliderType}
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           className="relative group"
         >
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30">Special Features</h3>
-            <div className="h-px flex-1 bg-white/5 mx-4" />
-          </div>
-          
-          <Swiper
-            modules={[Autoplay, Pagination, Navigation]}
-            spaceBetween={0}
-            slidesPerView={1}
-            autoplay={autoScroll ? { delay: 5000, disableOnInteraction: false } : false}
-            pagination={{ clickable: true }}
-            navigation={true}
-            className="rounded-3xl overflow-hidden shadow-2xl border border-white/5 aspect-[21/9] md:aspect-[3/1] !pb-0"
-          >
-            {singleAds.map((ad: any) => (
-              <SwiperSlide key={ad.id}>
-                <AdItem ad={ad} isLarge />
-              </SwiperSlide>
-            ))}
-          </Swiper>
-        </motion.div>
-      )}
-
-      {/* Triple Image Slider */}
-      {tripleAds.length > 0 && (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="relative group"
-        >
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30">Our Partners</h3>
+            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30">{title}</h3>
             <div className="h-px flex-1 bg-white/5 mx-4" />
           </div>
 
-          <Swiper
-            modules={[Autoplay, Pagination, Navigation]}
-            spaceBetween={20}
-            breakpoints={{
-              320: { slidesPerView: 1 },
-              640: { slidesPerView: 2 },
-              1024: { slidesPerView: 3 }
-            }}
-            autoplay={autoScroll ? { delay: 3500, disableOnInteraction: false } : false}
-            pagination={{ clickable: true }}
-            navigation={true}
-            className="pb-12"
-          >
-            {tripleAds.map((ad: any) => (
-              <SwiperSlide key={ad.id}>
-                <AdItem ad={ad} />
-              </SwiperSlide>
-            ))}
-          </Swiper>
+          {layout === "triple" ? (
+            <Swiper
+              modules={[Autoplay, Pagination, Navigation]}
+              spaceBetween={20}
+              breakpoints={{
+                320: { slidesPerView: 1 },
+                640: { slidesPerView: 2 },
+                1024: { slidesPerView: 3 }
+              }}
+              autoplay={autoScroll ? { delay: 3500, disableOnInteraction: false } : false}
+              pagination={{ clickable: true }}
+              navigation={true}
+              className="pb-12"
+            >
+              {groupAds.map((ad: any) => (
+                <SwiperSlide key={ad.id}>
+                  <AdItem ad={ad} />
+                </SwiperSlide>
+              ))}
+            </Swiper>
+          ) : (
+            <Swiper
+              modules={[Autoplay, Pagination, Navigation]}
+              spaceBetween={0}
+              slidesPerView={1}
+              autoplay={autoScroll ? { delay: 5000, disableOnInteraction: false } : false}
+              pagination={{ clickable: true }}
+              navigation={true}
+              className="rounded-3xl overflow-hidden shadow-2xl border border-white/5 aspect-[21/9] md:aspect-[3/1] !pb-0"
+            >
+              {groupAds.map((ad: any) => (
+                <SwiperSlide key={ad.id}>
+                  <AdItem ad={ad} isLarge />
+                </SwiperSlide>
+              ))}
+            </Swiper>
+          )}
         </motion.div>
-      )}
+      ))}
     </div>
   );
 }

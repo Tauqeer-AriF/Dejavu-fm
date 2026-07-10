@@ -10,10 +10,7 @@ import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import multer from "multer";
 import fs from "fs";
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = (cmd: string) => promisify(exec)(cmd, { maxBuffer: 1024 * 1024 * 10 }); // 10MB buffer
+import * as tar from "tar";
 // `sharp` is optional at runtime; dynamically import when needed to avoid startup failure
 
 export const apiRouter = Router();
@@ -1425,11 +1422,11 @@ apiRouter.post("/admin/database/snapshot", authorizeRole('admin'), asyncHandler(
     if (fs.existsSync(uploadsDir)) {
       const destUploads = path.join(tempDir, 'uploads');
       if (!fs.existsSync(destUploads)) fs.mkdirSync(destUploads, { recursive: true });
-      await execAsync(`cp -a "${uploadsDir}/." "${destUploads}/" 2>/dev/null || true`);
+      fs.cpSync(uploadsDir, destUploads, { recursive: true, force: true });
     }
 
     // 4. Create tarball bundle
-    await execAsync(`tar -czf "${finalPath}" -C "${tempDir}" .`);
+    await tar.c({ gzip: true, file: finalPath, cwd: tempDir }, ['.']);
     
     if (label) {
       db.prepare("INSERT INTO backup_metadata (filename, label) VALUES (?, ?)").run(filename, label);
@@ -1468,11 +1465,11 @@ apiRouter.get("/admin/database/download", authorizeRole('admin'), asyncHandler(a
     if (fs.existsSync(uploadsDir)) {
       const destUploads = path.join(tempDir, 'uploads');
       if (!fs.existsSync(destUploads)) fs.mkdirSync(destUploads, { recursive: true });
-      await execAsync(`cp -a "${uploadsDir}/." "${destUploads}/" 2>/dev/null || true`);
+      fs.cpSync(uploadsDir, destUploads, { recursive: true, force: true });
     }
 
     // 4. Create tarball bundle
-    await execAsync(`tar -czf "${finalPath}" -C "${tempDir}" .`);
+    await tar.c({ gzip: true, file: finalPath, cwd: tempDir }, ['.']);
     
     logAction(req, 'DOWNLOAD_BACKUP', 'database', null, { filename });
 
@@ -1613,7 +1610,7 @@ apiRouter.post("/admin/database/restore/finalize-file", authorizeRole('admin'), 
     if (isBundle) {
       console.log(`[DB RESTORE] Extracting bundle ${sourcePath}...`);
       if (!fs.existsSync(tempExtractDir)) fs.mkdirSync(tempExtractDir, { recursive: true });
-      await execAsync(`tar -xzf "${sourcePath}" -C "${tempExtractDir}"`);
+      await tar.x({ file: sourcePath, cwd: tempExtractDir });
       dbFileToRestore = path.join(tempExtractDir, 'database.db');
       if (!fs.existsSync(dbFileToRestore)) {
         throw new Error("Bundle is missing database.db");
