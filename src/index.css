@@ -14,6 +14,58 @@
   --font-display: "Outfit", sans-serif;
 }
 
+/* Swiper Navigation Custom Styles */
+.swiper-button-next,
+.swiper-button-prev {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white !important;
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.swiper-button-next:after,
+.swiper-button-prev:after {
+  font-size: 12px !important;
+  font-weight: 300;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+.swiper-button-next:hover,
+.swiper-button-prev:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 0 15px rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.swiper-pagination-bullet {
+  background: rgba(255, 255, 255, 0.2) !important;
+  opacity: 1 !important;
+}
+
+.swiper-pagination-bullet-active {
+  background: white !important;
+  width: 24px !important;
+  border-radius: 4px !important;
+}
+
+.ad-sliders-container .swiper-button-next,
+.ad-sliders-container .swiper-button-prev {
+  opacity: 0;
+}
+
+.ad-sliders-container:hover .swiper-button-next,
+.ad-sliders-container:hover .swiper-button-prev {
+  opacity: 1;
+}
+
 :root {
   /* Dark mode is default */
   --theme-bg: #050505;
@@ -138,6 +190,10 @@ button:not(.absolute)::after {
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
+}
+
+:root.light .now-playing-panel {
+  background: rgba(255, 255, 255, 0.8);
 }
 
 button:not(.absolute) {

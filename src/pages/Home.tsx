@@ -7,6 +7,7 @@ import { Play, Pause, Mic2, Tv, Clock, X, MessageSquare } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { io } from "socket.io-client";
 import { convertToLocalTime } from "../lib/timeUtils";
+import { AdvertisementSliders } from "../components/AdvertisementSliders";
 
 function HeroVisualizer({ isPlaying, isLightMode }: { isPlaying: boolean; isLightMode: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -292,7 +293,7 @@ export default function Home() {
                 className="hidden sm:block w-full sm:w-auto"
               >
                 <Link
-                  to="/stream"
+                  to="/watch"
                   className="flex items-center justify-center space-x-3 px-6 py-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all font-black uppercase tracking-[0.2em] text-[10px] md:text-xs text-neon-blue shadow-lg w-full sm:w-auto"
                 >
                   <Tv className="w-5 h-5" />
@@ -323,16 +324,22 @@ export default function Home() {
             <div className={`absolute inset-0 bg-gradient-to-t ${isPlaying ? 'from-neon-purple/40 via-dark-bg/60' : 'from-dark-bg via-dark-bg/40'} to-transparent opacity-90 transition-colors duration-1000`}></div>
             
             {/* CDJ Style Now Playing Overlay */}
-            <div className="now-playing-panel absolute bottom-4 left-4 right-4 md:bottom-10 md:left-10 md:right-10 z-10 p-4 md:p-6 rounded-2xl md:rounded-3xl border border-white/10 flex flex-col space-y-1.5 md:space-y-2 translate-y-0 group-hover:-translate-y-2 transition-transform duration-500 shadow-2xl backdrop-blur-xl bg-black/40">
-              <div className="flex justify-between items-center text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] text-white/50">
+            <div className={`now-playing-panel absolute bottom-4 left-4 right-4 md:bottom-10 md:left-10 md:right-10 z-10 p-4 md:p-6 rounded-2xl md:rounded-3xl border flex flex-col space-y-1.5 md:space-y-2 translate-y-0 group-hover:-translate-y-2 transition-transform duration-500 backdrop-blur-xl ${
+              isLightMode ? 'bg-white border-black/10 shadow-[0_20px_50px_rgba(0,0,0,0.1)]' : 'bg-black/40 border-white/10 shadow-2xl'
+            }`}>
+              <div className={`flex justify-between items-center text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] ${
+                isLightMode ? 'text-black/50' : 'text-white/50'
+              }`}>
                 <span className="flex items-center space-x-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-white/40"></div>
+                  <div className={`w-1.5 h-1.5 rounded-full ${isLightMode ? 'bg-black/40' : 'bg-white/40'}`}></div>
                   <span>HD Feed</span>
                 </span>
                 <span className="text-neon-blue drop-shadow-[0_0_5px_rgba(0,210,255,0.5)]">LIVE / 320K</span>
               </div>
-              <div className="h-[1px] w-full bg-white/10 my-2"></div>
-              <div className="text-[15px] sm:text-lg md:text-xl font-bold uppercase tracking-tight truncate text-white">
+              <div className={`h-[1px] w-full my-2 ${isLightMode ? 'bg-black/10' : 'bg-white/10'}`}></div>
+              <div className={`text-[15px] sm:text-lg md:text-xl font-bold uppercase tracking-tight truncate ${
+                isLightMode ? 'text-black' : 'text-white'
+              }`}>
                 {onAirInfo?.showName || "DEJAVU AUTO-MIX"}
               </div>
               <div className="text-[9px] md:text-xs text-neon-purple font-black tracking-[0.25em] uppercase drop-shadow-[0_0_8px_rgba(176,38,255,0.4)]">
@@ -378,7 +385,11 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.7 }}
               whileHover="hover"
-              className="glass-panel p-5 md:p-8 rounded-[2rem] border border-white/10 relative overflow-hidden group w-full flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:border-white/20 transition-all duration-500"
+              className={`glass-panel p-5 md:p-8 rounded-[2rem] border relative overflow-hidden group w-full flex flex-col md:flex-row items-start md:items-center justify-between gap-6 transition-all duration-500 ${
+                isLightMode 
+                  ? 'bg-white border-black/10 shadow-[0_20px_50px_rgba(0,0,0,0.05)] hover:border-black/20' 
+                  : 'border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:border-white/20'
+              }`}
             >
               <motion.div
                 className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 z-0"
@@ -390,7 +401,9 @@ export default function Home() {
               <div className="absolute top-1/2 -left-32 w-64 h-64 bg-neon-purple/10 blur-[80px] -translate-y-1/2 rounded-full pointer-events-none transition-all duration-700 group-hover:opacity-100 group-hover:scale-150 z-0"></div>
               
               <div className="flex flex-row items-center gap-4 md:gap-6 relative z-10 w-full md:w-auto">
-                <div className={`w-16 h-16 md:w-24 md:h-24 rounded-2xl overflow-hidden shrink-0 border border-white/10 relative group-hover:border-neon-purple/40 transition-all duration-500 shadow-2xl ${
+                <div className={`w-16 h-16 md:w-24 md:h-24 rounded-2xl overflow-hidden shrink-0 border relative group-hover:border-neon-purple/40 transition-all duration-500 shadow-2xl ${
+                  isLightMode ? 'border-black/10' : 'border-white/10'
+                } ${
                   resolveDjImage(nextShow.dj_photo) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''
                 }`}>
                   <img src={resolveDjImage(nextShow.dj_photo)} alt={nextShow.dj_name} className={`w-full h-full filter grayscale group-hover:grayscale-0 transition-all duration-700 scale-100 group-hover:scale-110 ${resolveDjImage(nextShow.dj_photo) === logoUrl && logoUrl ? 'object-contain p-2' : 'object-cover'}`} />
@@ -402,19 +415,21 @@ export default function Home() {
                     <Clock className="w-3 h-3 md:w-3.5 md:h-3.5 text-neon-blue" />
                     <span>Next Up</span>
                   </h4>
-                  <h3 className="font-display font-black text-xl sm:text-3xl leading-tight text-white group-hover:text-neon-blue transition-colors duration-500 truncate uppercase tracking-tight">
+                  <h3 className={`font-display font-black text-xl sm:text-3xl leading-tight group-hover:text-neon-blue transition-colors duration-500 truncate uppercase tracking-tight ${isLightMode ? 'text-black' : 'text-white'}`}>
                     {nextShow.dj_name}
                   </h3>
-                  <p className="text-[11px] sm:text-sm text-white/60 truncate mt-0.5 font-mono uppercase tracking-widest font-bold">
+                  <p className={`text-[11px] sm:text-sm truncate mt-0.5 font-mono uppercase tracking-widest font-bold ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>
                     {nextShow.show_name}
                   </p>
                 </div>
               </div>
               
-              <div className="relative z-10 w-full md:w-auto flex justify-start md:justify-end shrink-0 mt-0 md:mt-0">
-                <div className="inline-flex items-center space-x-3 bg-white/5 border border-white/10 rounded-xl px-4 md:px-5 py-2.5 md:py-3 shadow-inner backdrop-blur-md group-hover:border-white/20 transition-colors duration-300 w-full sm:w-auto justify-center sm:justify-start">
+              <div className={`relative z-10 w-full md:w-auto flex justify-start md:justify-end shrink-0 mt-0 md:mt-0`}>
+                <div className={`inline-flex items-center space-x-3 border rounded-xl px-4 md:px-5 py-2.5 md:py-3 shadow-inner backdrop-blur-md transition-colors duration-300 w-full sm:w-auto justify-center sm:justify-start ${
+                  isLightMode ? 'bg-black/5 border-black/10 group-hover:border-black/20' : 'bg-white/5 border-white/10 group-hover:border-white/20'
+                }`}>
                    <div className="w-1.5 h-1.5 rounded-full bg-neon-blue animate-pulse"></div>
-                   <span className="text-sm md:text-base font-bold text-white font-mono tracking-widest uppercase">{nextShow.local_start}</span>
+                   <span className={`text-sm md:text-base font-bold font-mono tracking-widest uppercase ${isLightMode ? 'text-black' : 'text-white'}`}>{nextShow.local_start}</span>
                 </div>
               </div>
             </motion.div>
@@ -422,17 +437,18 @@ export default function Home() {
         </div>
       )}
 
-      {/* Global Activity Marquee */}
-      <div className="w-full py-5 md:py-8 border-y border-white/5 overflow-hidden relative group bg-white/[0.01]">
+      <AdvertisementSliders />
+
+      <div className={`w-full py-5 md:py-8 border-y overflow-hidden relative group ${isLightMode ? 'border-black/5 bg-black/[0.01]' : 'border-white/5 bg-white/[0.01]'}`}>
         <div className="flex whitespace-nowrap animate-[marquee_180s_linear_infinite] group-hover:[animation-play-state:paused] space-x-12 md:space-x-24 w-max">
           {Array.from({ length: 12 }).map((_, i) => (
             <div key={i} className="flex items-center space-x-12 md:space-x-16 shrink-0">
               <div className="flex items-center space-x-3">
                 <span className="w-1.5 h-1.5 bg-neon-purple rounded-full animate-pulse"></span>
-                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30">Live on {settings?.app_name || "DEJAVU FM"}</span>
+                <span className={`text-[10px] font-black uppercase tracking-[0.4em] ${isLightMode ? 'text-black/30' : 'text-white/30'}`}>Live on {settings?.app_name || "DEJAVU FM"}</span>
               </div>
               <div className="flex items-center space-x-3">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">{listeners} Global Listeners</span>
+                <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>{listeners} Global Listeners</span>
               </div>
               <div className="flex items-center space-x-3">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neon-blue">Digital Signal Optimal</span>
@@ -440,8 +456,8 @@ export default function Home() {
             </div>
           ))}
         </div>
-        <div className="absolute inset-y-0 left-0 w-24 md:w-64 bg-gradient-to-r from-dark-bg to-transparent z-10"></div>
-        <div className="absolute inset-y-0 right-0 w-24 md:w-64 bg-gradient-to-l from-dark-bg to-transparent z-10"></div>
+        <div className={`absolute inset-y-0 left-0 w-24 md:w-64 z-10 ${isLightMode ? 'bg-gradient-to-r from-[#f3f4f6] to-transparent' : 'bg-gradient-to-r from-dark-bg to-transparent'}`}></div>
+        <div className={`absolute inset-y-0 right-0 w-24 md:w-64 z-10 ${isLightMode ? 'bg-gradient-to-l from-[#f3f4f6] to-transparent' : 'bg-gradient-to-l from-dark-bg to-transparent'}`}></div>
       </div>
     </motion.div>
   );

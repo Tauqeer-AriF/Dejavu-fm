@@ -84,7 +84,7 @@ function EditScheduleForm({schedule, djs, onSave, onCancel}: {schedule: any, djs
     e.preventDefault();
     const res = await fetchAdmin(`/api/admin/schedule/${schedule.id}`, {
       method: "PUT", headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({dj_id: parseInt(djId), day_of_week: parseInt(day), start_time: start, end_time: end, show_name: show})
+      body: JSON.stringify({dj_id: djId, day_of_week: parseInt(day), start_time: start, end_time: end, show_name: show})
     });
     if (res.ok) {
       showAlert({ title: "Success", message: "Schedule entry updated!", style: "success" });
@@ -145,7 +145,7 @@ function AddScheduleForm({djs, onAdd}: {djs: any[], onAdd: ()=>void}) {
     e.preventDefault();
     const res = await fetchAdmin("/api/admin/schedule", {
       method: "POST", headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({dj_id: parseInt(djId), day_of_week: parseInt(day), start_time: start, end_time: end, show_name: show})
+      body: JSON.stringify({dj_id: djId, day_of_week: parseInt(day), start_time: start, end_time: end, show_name: show})
     });
     if (res.ok) {
       showAlert({ title: "Success", message: "Show added to the schedule!", style: "success" });

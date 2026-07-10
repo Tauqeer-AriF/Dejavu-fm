@@ -1,89 +1,190 @@
-import React, { useRef, useState } from "react";
-import { Upload, X } from "lucide-react";
-import { useModal } from "../../context/ModalContext";
+import React, { useState, useRef, useEffect } from "react";
 import { fetchAdmin } from "./adminApi";
+import { UploadCloud, X, Image, Link, Loader2 } from "lucide-react";
 
-export function ImageUploadField({ 
-  label, 
-  value, 
-  onChange, 
-  description,
-  placeholder = "URL or upload...",
-  className = ""
-}: { 
-  label?: string; 
-  value: string; 
-  onChange: (val: string) => void; 
-  description?: string;
+interface ImageUploadFieldProps {
+  label?: string;
+  value: string;
+  onChange: (value: string) => void;
   placeholder?: string;
+  description?: string;
   className?: string;
-}) {
+}
+
+export function ImageUploadField({
+  label,
+  value,
+  onChange,
+  placeholder = "https://...",
+  description,
+  className = "space-y-2",
+}: ImageUploadFieldProps) {
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const [hasError, setHasError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { showAlert } = useModal();
+
+  useEffect(() => {
+    setHasError(false);
+  }, [value]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    await uploadFile(file);
+  };
+
+  const uploadFile = async (file: File) => {
+    setError("");
+    setUploading(true);
+
     const formData = new FormData();
-    
-    // If current value is a local upload, tell the server to delete it
-    if (value && value.startsWith('/uploads/')) {
+    formData.append("image", file);
+    // Include old URL so server can clean it up if needed
+    if (value) {
       formData.append("oldUrl", value);
     }
-    formData.append("image", file);
 
-    setUploading(true);
     try {
-      const res = await fetchAdmin("/api/admin/upload", { method: "POST", body: formData });
+      const res = await fetchAdmin("/api/admin/upload", {
+        method: "POST",
+        body: formData,
+      });
+
       if (res.ok) {
         const data = await res.json();
-        onChange(data.url);
+        if (data.url) {
+          onChange(data.url);
+        } else {
+          setError("Upload response did not contain image URL");
+        }
       } else {
-        const err = await res.json().catch(() => ({ error: "Upload failed" }));
-        showAlert({ title: "Upload Error", message: err.error, style: "danger" });
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Failed to upload image");
       }
     } catch (err) {
-      showAlert({ title: "Error", message: "Failed to connect to upload server", style: "danger" });
+      console.error(err);
+      setError("Failed to upload due to network error");
     } finally {
       setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith("image/")) {
+      await uploadFile(file);
     }
   };
 
   return (
-    <div className={`space-y-2 ${className}`}>
-      {label && <label className="block text-xs uppercase mb-1 text-white/50 font-bold">{label}</label>}
-      <div className="flex items-center gap-3">
-        {value && (
-          <div className="w-10 h-10 rounded-lg overflow-hidden border border-white/10 shrink-0 bg-white/5">
-            <img src={value} alt="Preview" className="w-full h-full object-cover" />
-          </div>
-        )}
-        <div className="flex-1 relative">
-          <input 
-            value={value} 
-            onChange={e => onChange(e.target.value)} 
-            className="w-full bg-dark-bg border border-white/10 rounded-xl px-4 py-2 focus:border-neon-purple outline-none text-sm pr-10" 
-            placeholder={placeholder} 
+    <div className={className}>
+      {label && (
+        <label className="block text-[10px] uppercase font-black tracking-widest text-white/30 mb-1">
+          {label}
+        </label>
+      )}
+
+      <div className="space-y-3">
+        {/* URL Input Row - Full Width */}
+        <div className="relative">
+          <Link className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-10 py-3 text-sm text-white placeholder-white/20 focus:border-neon-purple focus:outline-none transition-all"
           />
           {value && (
-            <button 
-              type="button" 
-              onClick={() => onChange("")} 
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-red-500 transition-colors"
+            <button
+              type="button"
+              onClick={() => onChange("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors"
             >
-              <X size={14} />
+              <X className="w-4 h-4" />
             </button>
           )}
         </div>
-        <button type="button" disabled={uploading} onClick={() => fileInputRef.current?.click()} className="h-10 px-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors flex items-center justify-center">
-          {uploading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white animate-spin rounded-full" /> : <Upload className="w-4 h-4 text-white/60" />}
-        </button>
-        <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+
+        {/* Drag & Drop Upload Zone + Live Preview Pane - Flex Wrap */}
+        <div className="flex flex-wrap gap-3 items-stretch">
+          {/* Drag & Drop Upload Zone */}
+          <div
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`flex-1 min-w-[200px] border border-dashed border-white/10 hover:border-neon-purple/40 hover:bg-white/[0.01] rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all ${
+              uploading ? "pointer-events-none opacity-60" : ""
+            }`}
+          >
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept="image/*"
+              className="hidden"
+            />
+
+            {uploading ? (
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="w-5 h-5 text-neon-purple animate-spin" />
+                <span className="text-xs text-white/40">Optimizing & Uploading...</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <UploadCloud className="w-5 h-5 text-neon-blue flex-shrink-0" />
+                <div className="text-left min-w-0">
+                  <p className="text-xs font-semibold text-white/70 truncate">
+                    Click or drag image here to upload
+                  </p>
+                  <p className="text-[10px] text-white/30">PNG, JPG, WEBP, GIF up to 5MB</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Live Preview Pane */}
+          <div className="w-20 h-20 bg-black/40 border border-white/10 rounded-2xl flex items-center justify-center overflow-hidden relative group flex-shrink-0 self-center sm:self-auto">
+            {value && !hasError ? (
+              <>
+                <img
+                  src={value}
+                  alt="Upload preview"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                  referrerPolicy="no-referrer"
+                  onError={() => setHasError(true)}
+                />
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <button
+                    type="button"
+                    onClick={() => onChange("")}
+                    className="p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center gap-1 text-white/20 p-2 text-center">
+                <Image className="w-5 h-5 text-white/10" />
+                <span className="text-[8px] uppercase font-black tracking-widest leading-none">
+                  {hasError ? "Invalid URL" : "No Preview"}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-      {description && <p className="text-[10px] text-white/30 mt-1 italic">{description}</p>}
+
+      {description && <p className="text-[10px] text-white/30 italic leading-normal mt-1">{description}</p>}
+      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
     </div>
   );
 }
-

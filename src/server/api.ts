@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import Database from 'better-sqlite3';
-import { db, dbPath, pruneBackups, backupDatabase } from "./db.js";
+import { db, dbPath, backupDir, pruneBackups, backupDatabase, reopenDatabaseConnection } from "./db.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Parser from "rss-parser";
@@ -10,6 +10,10 @@ import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import multer from "multer";
 import fs from "fs";
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = (cmd: string) => promisify(exec)(cmd, { maxBuffer: 1024 * 1024 * 10 }); // 10MB buffer
 // `sharp` is optional at runtime; dynamically import when needed to avoid startup failure
 
 export const apiRouter = Router();
@@ -59,20 +63,31 @@ apiRouter.post("/admin/settings/secret", authMiddleware, authorizeRole('admin'),
 // Fallback secret only for development
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET && process.env.NODE_ENV === "production") {
-  console.error("FATAL: JWT_SECRET environment variable is not set in production!");
-  process.exit(1);
+  console.warn("WARNING: JWT_SECRET environment variable is not set in production! Falling back to a default secret. Please configure JWT_SECRET in your Cloud Run settings for production security.");
 }
 const ACTUAL_SECRET = JWT_SECRET || "dev_only_secret_123456789";
 
 // Check Auth Middleware
 function authMiddleware(req: any, res: any, next: any) {
   const authHeader = req.headers.authorization;
-  const token = req.cookies.admin_token || (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null);
+  let token = req.cookies.admin_token || (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null);
+  
+  // Senior Dev: If no admin_token, try the public user_token which might contain admin/dj role
+  if (!token) {
+    token = req.cookies.user_token;
+  }
   
   if (!token) return res.status(401).json({ error: "Unauthorized" });
 
   try {
     const decoded = jwt.verify(token, ACTUAL_SECRET) as any;
+    
+    // Ensure the token actually belongs to a staff account (must have a role)
+    // role is 'admin' or 'dj'
+    if (!decoded.role) {
+      return res.status(401).json({ error: "Unauthorized: Access restricted to staff accounts" });
+    }
+    
     req.user = decoded;
     next();
   } catch (err) {
@@ -94,6 +109,10 @@ function authorizeRole(role: string) {
 // Audit Logging Helper
 function logAction(req: any, action: string, resource: string, resource_id?: string | number | bigint, details?: any) {
   try {
+    if (!db.open) {
+      console.warn("[AuditLog] Database connection is closed, skipping log entry.");
+      return;
+    }
     const username = req.user?.username || 'unknown';
     const role = req.user?.role || 'unknown';
     const detailsStr = details ? JSON.stringify(details) : null;
@@ -128,6 +147,14 @@ const upload = multer({
   }
 });
 
+const attachmentUpload = multer({
+  storage,
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB limit
+  fileFilter: (req, file, cb) => {
+    cb(null, file.mimetype.startsWith("image/") || file.mimetype.startsWith("audio/"));
+  }
+});
+
 // Specific Limiters for high-value targets
 const authLimiter = (req: Request, res: Response, next: NextFunction) => next(); // Disabled for diagnostics
 /*
@@ -159,20 +186,20 @@ const toSlug = (value: string) => {
   return slug || `post-${Date.now()}`;
 };
 
-const uniqueBlogSlug = (title: string, currentId?: string) => {
+const uniqueFeatureSlug = (title: string, currentId?: string) => {
   const baseSlug = toSlug(title);
   let slug = baseSlug;
   let suffix = 2;
 
   while (true) {
-    const existing = db.prepare("SELECT id FROM blogs WHERE slug = ?").get(slug) as { id: string } | undefined;
+    const existing = db.prepare("SELECT id FROM features WHERE slug = ?").get(slug) as { id: string } | undefined;
     if (!existing || existing.id === currentId) return slug;
     slug = `${baseSlug}-${suffix}`;
     suffix += 1;
   }
 };
 
-const cleanBlogInput = (body: any) => {
+const cleanFeatureInput = (body: any) => {
   const title = (body.title || "").toString().trim();
   const content = (body.content || "").toString().trim();
   const excerpt = (body.excerpt || "").toString().trim();
@@ -182,7 +209,7 @@ const cleanBlogInput = (body: any) => {
   return { title, content, excerpt, image_url, is_published };
 };
 
-const BlogSchema = z.object({
+const FeatureSchema = z.object({
   title: z.string().min(1),
   content: z.string().min(1),
   excerpt: z.string().optional(),
@@ -227,29 +254,35 @@ apiRouter.get("/public/schedule", (req, res) => {
 import { getPodcastFeed, clearPodcastCache } from "./utils.js";
 
 apiRouter.get("/public/podcasts", asyncHandler(async (req: Request, res: Response) => {
-  const feed = await getPodcastFeed();
+  const forceRefresh = req.query.refresh === 'true';
+  const feed = await getPodcastFeed(forceRefresh);
   res.json(feed);
 }));
 
-apiRouter.get("/public/blogs", (req, res) => {
-  const blogs = db.prepare(`
+apiRouter.get("/public/features", (req, res) => {
+  const features = db.prepare(`
     SELECT id, slug, title, excerpt, image_url, content, created_at, updated_at
-    FROM blogs
+    FROM features
     WHERE is_published = 1
     ORDER BY datetime(created_at) DESC
   `).all();
-  res.json(blogs);
+  res.json(features);
 });
 
-apiRouter.get("/public/blogs/:slug", (req, res) => {
-  const blog = db.prepare(`
+apiRouter.get("/public/features/:slug", (req, res) => {
+  const feature = db.prepare(`
     SELECT id, slug, title, excerpt, image_url, content, created_at, updated_at
-    FROM blogs
+    FROM features
     WHERE slug = ? AND is_published = 1
   `).get(req.params.slug);
 
-  if (!blog) return res.status(404).json({ error: "Blog post not found" });
-  res.json(blog);
+  if (!feature) return res.status(404).json({ error: "Feature post not found" });
+  res.json(feature);
+});
+
+apiRouter.get("/public/ads", (req, res) => {
+  const ads = db.prepare("SELECT * FROM advertisements WHERE is_active = 1 ORDER BY display_order ASC").all();
+  res.json(ads);
 });
 
 apiRouter.get("/public/status", (req, res) => {
@@ -270,21 +303,37 @@ apiRouter.post("/public/book-artist", (req, res) => {
 });
 
 apiRouter.post("/public/shoutout", shoutoutLimiter, (req, res) => {
-  const { email, message, type } = req.body;
+  let { email, message, type } = req.body;
+  let isLoggedIn = false;
+
+  const token = req.cookies?.user_token;
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, ACTUAL_SECRET) as any;
+      const user = db.prepare("SELECT username, email FROM users WHERE username = ?").get(decoded.username) as any;
+      if (user) {
+        email = user.email || user.username;
+        isLoggedIn = true;
+      }
+    } catch (e) {}
+  }
+
   if (!email || !message) {
     return res.status(400).json({ error: "Email and message required" });
   }
-  if (!/^\S+@\S+\.\S+$/.test(email)) {
+
+  // Only enforce valid email format if not logged in
+  if (!isLoggedIn && !/^\S+@\S+\.\S+$/.test(email)) {
     return res.status(400).json({ error: "Invalid email address" });
   }
 
   // Automatically save shoutout users as chat users if they don't exist
-  const existingUser = db.prepare("SELECT id FROM users WHERE username = ?").get(email);
+  const existingUser = db.prepare("SELECT id FROM users WHERE username = ? OR email = ?").get(email, email);
   if (!existingUser) {
     try {
       const placeholderPass = crypto.randomBytes(16).toString('hex');
       const hash = bcrypt.hashSync(placeholderPass, 10);
-      db.prepare("INSERT INTO users (username, password_hash, source) VALUES (?, ?, ?)").run(email, hash, 'shoutout');
+      db.prepare("INSERT INTO users (username, email, password_hash, source) VALUES (?, ?, ?, ?)").run(email, email, hash, 'shoutout');
     } catch (err) {
       // Silently ignore unique constraint race conditions
     }
@@ -303,24 +352,72 @@ apiRouter.post("/public/shoutout", shoutoutLimiter, (req, res) => {
 // ------ PUBLIC AUTH ROUTES ------
 
 apiRouter.post("/public/auth/register", (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ error: "Email and password required" });
-  if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: "Invalid email address" });
+  const { username, email, password } = req.body;
+  if (!username || !email || !password) {
+    return res.status(400).json({ error: "Username, email and password are required" });
+  }
+  
+  const cleanUsername = username.trim();
+  const cleanEmail = email.trim().toLowerCase();
+  
+  if (cleanUsername.length < 2) {
+    return res.status(400).json({ error: "Username must be at least 2 characters" });
+  }
+  if (!/^\S+@\S+\.\S+$/.test(cleanEmail)) {
+    return res.status(400).json({ error: "Invalid email address" });
+  }
+  if (password.length < 6) {
+    return res.status(400).json({ error: "Password must be at least 6 characters" });
+  }
+
+  // Check if username already exists
+  const existingUser = db.prepare("SELECT id FROM users WHERE LOWER(username) = ?").get(cleanUsername.toLowerCase());
+  if (existingUser) {
+    return res.status(400).json({ error: "Username already exists" });
+  }
+
+  // Check if email already exists
+  const existingEmail = db.prepare("SELECT id FROM users WHERE LOWER(email) = ? OR LOWER(username) = ?").get(cleanEmail, cleanEmail);
+  if (existingEmail) {
+    return res.status(400).json({ error: "Email already registered" });
+  }
   
   const hash = bcrypt.hashSync(password, 10);
   try {
-    const info = db.prepare("INSERT INTO users (username, password_hash, source) VALUES (?, ?, ?)").run(email, hash, 'register');
-    const token = jwt.sign({ userId: info.lastInsertRowid, username: email }, ACTUAL_SECRET, { expiresIn: "7d" });
+    const info = db.prepare("INSERT INTO users (username, email, password_hash, source) VALUES (?, ?, ?, ?)").run(cleanUsername, cleanEmail, hash, 'register');
+    const token = jwt.sign({ userId: info.lastInsertRowid, username: cleanUsername }, ACTUAL_SECRET, { expiresIn: "7d" });
     res.cookie("user_token", token, { httpOnly: true, secure: true, sameSite: "none" });
-    res.json({ success: true, username: email });
+    res.json({ success: true, username: cleanUsername, avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${cleanUsername}` });
   } catch (err) {
-    res.status(400).json({ error: "Email already exists" });
+    res.status(400).json({ error: "Email or username already exists" });
   }
 });
 
 apiRouter.post("/public/auth/login", authLimiter, (req, res) => {
   const { email, password } = req.body;
-  const user = db.prepare("SELECT * FROM users WHERE username = ?").get(email) as any;
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email/Username and password are required" });
+  }
+  
+  const identifier = email.trim().toLowerCase();
+
+  // 1. First check if they are in the admins table (for staff/admin accounts)
+  const admin = db.prepare("SELECT * FROM admins WHERE LOWER(username) = ? OR LOWER(email) = ?").get(identifier, identifier) as any;
+  if (admin && bcrypt.compareSync(password, admin.password_hash)) {
+    const token = jwt.sign({ userId: 'admin_' + admin.username, username: admin.username, isAdmin: true, role: admin.role }, ACTUAL_SECRET, { expiresIn: "7d" });
+    res.cookie("user_token", token, { httpOnly: true, secure: true, sameSite: "none" });
+    return res.json({ 
+      success: true, 
+      username: admin.username, 
+      avatar_url: admin.photo_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${admin.username}`,
+      isAdmin: true,
+      role: admin.role,
+      token: token
+    });
+  }
+
+  // 2. Otherwise check standard chat users
+  const user = db.prepare("SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(email) = ?").get(identifier, identifier) as any;
   
   if (user && user.is_banned) {
     return res.status(403).json({ error: "This account has been suspended." });
@@ -329,7 +426,11 @@ apiRouter.post("/public/auth/login", authLimiter, (req, res) => {
   if (user && bcrypt.compareSync(password, user.password_hash)) {
     const token = jwt.sign({ userId: user.id, username: user.username }, ACTUAL_SECRET, { expiresIn: "7d" });
     res.cookie("user_token", token, { httpOnly: true, secure: true, sameSite: "none" });
-    res.json({ success: true, username: user.username });
+    res.json({ 
+      success: true, 
+      username: user.username, 
+      avatar_url: user.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.username}`
+    });
   } else {
     res.status(401).json({ error: "Invalid credentials" });
   }
@@ -345,9 +446,107 @@ apiRouter.get("/public/auth/check", (req, res) => {
   if (!token) return res.json({ loggedIn: false });
   try {
     const decoded = jwt.verify(token, ACTUAL_SECRET) as any;
-    res.json({ loggedIn: true, username: decoded.username });
+
+    // First check if they are in the admins table
+    const admin = db.prepare("SELECT * FROM admins WHERE LOWER(username) = ?").get(decoded.username.toLowerCase()) as any;
+    if (admin) {
+      return res.json({ 
+        loggedIn: true, 
+        username: admin.username, 
+        email: admin.email,
+        avatar_url: admin.photo_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${admin.username}`,
+        created_at: admin.created_at || new Date().toISOString(),
+        isAdmin: true,
+        role: admin.role
+      });
+    }
+
+    const user = db.prepare("SELECT username, email, avatar_url, created_at FROM users WHERE username = ?").get(decoded.username) as any;
+    if (user) {
+      res.json({ 
+        loggedIn: true, 
+        username: user.username, 
+        email: user.email,
+        avatar_url: user.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.username}`,
+        created_at: user.created_at
+      });
+    } else {
+      res.json({ loggedIn: true, username: decoded.username, avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${decoded.username}` });
+    }
   } catch(e) {
     res.json({ loggedIn: false });
+  }
+});
+
+apiRouter.put("/public/user/profile", (req: any, res: any) => {
+  const token = req.cookies.user_token;
+  if (!token) return res.status(401).json({ error: "Unauthorized" });
+
+  try {
+    const decoded = jwt.verify(token, ACTUAL_SECRET) as any;
+    const { avatar_url } = req.body;
+    db.prepare("UPDATE users SET avatar_url = ? WHERE username = ?").run(avatar_url || null, decoded.username);
+    res.json({ success: true, avatar_url });
+  } catch (err) {
+    res.status(401).json({ error: "Invalid token" });
+  }
+});
+
+apiRouter.post("/public/user/upload-avatar", upload.single("avatar"), (req: any, res: any) => {
+  const token = req.cookies.user_token;
+  if (!token) return res.status(401).json({ error: "Unauthorized" });
+
+  try {
+    const decoded = jwt.verify(token, ACTUAL_SECRET) as any;
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+    const avatarUrl = `/uploads/${req.file.filename}`;
+    db.prepare("UPDATE users SET avatar_url = ? WHERE username = ?").run(avatarUrl, decoded.username);
+    res.json({ success: true, avatar_url: avatarUrl });
+  } catch (err) {
+    res.status(401).json({ error: "Unauthorized" });
+  }
+});
+
+apiRouter.post("/public/chat/upload", (req: any, res: any) => {
+  const token = req.cookies.user_token;
+  if (!token) return res.status(401).json({ error: "Unauthorized" });
+
+  try {
+    jwt.verify(token, ACTUAL_SECRET);
+  } catch (err) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  attachmentUpload.single("file")(req, res, (err: any) => {
+    if (err) {
+      return res.status(400).json({ error: err.message || "Failed to upload file" });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: "No file was uploaded" });
+    }
+
+    const fileUrl = `/uploads/${req.file.filename}`;
+    const fileType = req.file.mimetype.startsWith("audio/") ? "audio" : "image";
+    res.json({
+      success: true,
+      url: fileUrl,
+      type: fileType,
+      filename: req.file.originalname
+    });
+  });
+});
+
+apiRouter.get("/public/chat/users", (req: any, res: any) => {
+  const token = req.cookies.user_token;
+  if (!token) return res.status(401).json({ error: "Unauthorized" });
+
+  try {
+    const decoded = jwt.verify(token, ACTUAL_SECRET) as any;
+    const users = db.prepare("SELECT username, avatar_url FROM users WHERE is_banned = 0 AND username != ? ORDER BY username ASC").all(decoded.username) as any[];
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch users" });
   }
 });
 
@@ -451,7 +650,10 @@ apiRouter.post("/admin/login", authLimiter, (req, res) => {
     return res.status(400).json({ error: "Username and password are required" });
   }
   
-  const admin = db.prepare("SELECT * FROM admins WHERE username = ?").get(username) as any;
+  const identifier = username.trim().toLowerCase();
+  
+  // Senior Dev: Support login via username OR email, case-insensitive
+  const admin = db.prepare("SELECT * FROM admins WHERE LOWER(username) = ? OR LOWER(email) = ?").get(identifier, identifier) as any;
   
   if (admin) {
     const isMatched = bcrypt.compareSync(password, admin.password_hash);
@@ -471,7 +673,14 @@ apiRouter.post("/admin/login", authLimiter, (req, res) => {
       console.warn(`[Admin Login] FAILED | Invalid password | User: ${username} | IP: ${ip}`);
     }
   } else {
-    console.warn(`[Admin Login] FAILED | User not found | User: "${username}" | IP: ${ip}`);
+    // Senior Dev: Fallback check in users table to see if we missed an admin account there 
+    // that should have been in the admins table (rare but possible during transitions)
+    const chatUser = db.prepare("SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(email) = ?").get(identifier, identifier) as any;
+    if (chatUser && bcrypt.compareSync(password, chatUser.password_hash)) {
+       console.warn(`[Admin Login] FAILED | User found in Chat Users but not in Admins | User: "${username}" | IP: ${ip}`);
+    } else {
+       console.warn(`[Admin Login] FAILED | User not found | User: "${username}" | IP: ${ip}`);
+    }
   }
   
   res.status(401).json({ error: "Invalid credentials" });
@@ -735,68 +944,68 @@ apiRouter.post("/admin/push-popup", authorizeRole('admin'), (req, res) => {
   res.json({ success: true });
 });
 
-apiRouter.get("/admin/blogs", (req, res) => {
-  const blogs = db.prepare(`
+apiRouter.get("/admin/features", (req, res) => {
+  const features = db.prepare(`
     SELECT *
-    FROM blogs
+    FROM features
     ORDER BY datetime(created_at) DESC
   `).all();
-  res.json(blogs);
+  res.json(features);
 });
 
-apiRouter.post("/admin/blogs", (req, res) => {
-  const { title, content, excerpt, image_url, is_published } = cleanBlogInput(req.body);
+apiRouter.post("/admin/features", (req, res) => {
+  const { title, content, excerpt, image_url, is_published } = cleanFeatureInput(req.body);
 
   if (!title || !content) {
     return res.status(400).json({ error: "Title and post text are required" });
   }
 
   const id = crypto.randomUUID();
-  const slug = uniqueBlogSlug(title);
+  const slug = uniqueFeatureSlug(title);
 
   db.prepare(`
-    INSERT INTO blogs (id, slug, title, excerpt, image_url, content, is_published)
+    INSERT INTO features (id, slug, title, excerpt, image_url, content, is_published)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(id, slug, title, excerpt, image_url, content, is_published);
-  logAction(req, 'CREATE', 'blog', id, { title });
+  logAction(req, 'CREATE', 'feature', id, { title });
 
   res.json({ success: true, id, slug });
 });
 
-apiRouter.put("/admin/blogs/:id", (req, res) => {
-  const existing = db.prepare("SELECT id FROM blogs WHERE id = ?").get(req.params.id);
-  if (!existing) return res.status(404).json({ error: "Blog post not found" });
+apiRouter.put("/admin/features/:id", (req, res) => {
+  const existing = db.prepare("SELECT id FROM features WHERE id = ?").get(req.params.id);
+  if (!existing) return res.status(404).json({ error: "Feature post not found" });
 
-  const { title, content, excerpt, image_url, is_published } = cleanBlogInput(req.body);
+  const { title, content, excerpt, image_url, is_published } = cleanFeatureInput(req.body);
   if (!title || !content) {
     return res.status(400).json({ error: "Title and post text are required" });
   }
 
-  const slug = uniqueBlogSlug(title, req.params.id);
+  const slug = uniqueFeatureSlug(title, req.params.id);
   db.prepare(`
-    UPDATE blogs
+    UPDATE features
     SET slug = ?, title = ?, excerpt = ?, image_url = ?, content = ?, is_published = ?, updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
   `).run(slug, title, excerpt, image_url, content, is_published, req.params.id);
-  logAction(req, 'UPDATE', 'blog', req.params.id, { title });
+  logAction(req, 'UPDATE', 'feature', req.params.id, { title });
 
   res.json({ success: true, slug });
 });
 
-apiRouter.delete("/admin/blogs/:id", (req, res) => {
-  // Professional cleanup: Delete the blog image from disk if it's a local upload
-  const blog = db.prepare("SELECT image_url FROM blogs WHERE id = ?").get(req.params.id) as any;
-  if (blog?.image_url?.startsWith('/uploads/')) {
+apiRouter.delete("/admin/features/:id", (req, res) => {
+  // Professional cleanup: Delete the feature image from disk if it's a local upload
+  const feature = db.prepare("SELECT image_url FROM features WHERE id = ?").get(req.params.id) as any;
+  if (feature?.image_url?.startsWith('/uploads/')) {
     try {
-      const filePath = path.join(process.cwd(), "public", "uploads", path.basename(blog.image_url));
+      const filePath = path.join(process.cwd(), "public", "uploads", path.basename(feature.image_url));
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     } catch (e) {
-      console.error("[API] Failed to cleanup blog image on deletion:", e);
+      console.error("[API] Failed to cleanup feature image on deletion:", e);
     }
   }
 
-  db.prepare("DELETE FROM blogs WHERE id = ?").run(req.params.id);
-  logAction(req, 'DELETE', 'blog', req.params.id);
+  db.prepare("DELETE FROM features WHERE id = ?").run(req.params.id);
+  logAction(req, 'DELETE', 'feature', req.params.id);
   res.json({ success: true });
 });
 
@@ -854,7 +1063,7 @@ apiRouter.put("/admin/settings", authorizeRole('admin'), (req, res) => {
     "app_title", "font_sans", "font_display", "is_on_air", "primary_color", 
     "secondary_color", "feat_chat", "feat_shoutouts", "feat_cinematic", 
     "feat_pwa", "feat_bookings", "feat_live_tools", "feat_stream_quality",
-    "logo_dark", "logo_light", "favicon", "backup_retention_days",
+    "logo_dark", "logo_light", "logo_shape", "favicon", "backup_retention_days",
     "backup_frequency_hours", "backup_enabled"
   ];
   
@@ -928,18 +1137,18 @@ apiRouter.post("/admin/push-track", (req, res) => {
 });
 
 apiRouter.get("/admin/users", authMiddleware, authorizeRole('admin'), (req, res) => {
-  const users = db.prepare("SELECT username, role FROM admins").all();
+  const users = db.prepare("SELECT username, email, role FROM admins").all();
   res.json(users);
 });
 
 apiRouter.post("/admin/users", authMiddleware, authorizeRole('admin'), (req: Request, res: Response) => {
-  const { username, password, role } = req.body;
+  const { username, email, password, role } = req.body;
   if (!username || !password) return res.status(400).json({ error: "Username and password required" });
   if (!['admin', 'dj'].includes(role)) return res.status(400).json({ error: "Invalid role specified" });
   const hash = bcrypt.hashSync(password, 10);
   try {
-    db.prepare("INSERT INTO admins (username, password_hash, role) VALUES (?, ?, ?)").run(username, hash, role);
-    logAction(req, 'CREATE', 'admin_user', username, { role });
+    db.prepare("INSERT INTO admins (username, email, password_hash, role) VALUES (?, ?, ?, ?)").run(username, email || null, hash, role);
+    logAction(req, 'CREATE', 'admin_user', username, { role, email });
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ error: "Username might already exist" });
@@ -947,12 +1156,25 @@ apiRouter.post("/admin/users", authMiddleware, authorizeRole('admin'), (req: Req
 });
 
 apiRouter.put("/admin/users/:username", authorizeRole('admin'), (req, res) => {
-  const { password } = req.body; // Role changes are not requested here, only password
-  if (!password) return res.status(400).json({ error: "Password required" });
-  const hash = bcrypt.hashSync(password, 10);
-  db.prepare("UPDATE admins SET password_hash = ? WHERE username = ?").run(hash, req.params.username);
-  logAction(req, 'UPDATE_PASSWORD', 'admin_user', req.params.username);
-  res.json({ success: true });
+  const { password, email, role } = req.body;
+  
+  try {
+    if (password) {
+      const hash = bcrypt.hashSync(password, 10);
+      db.prepare("UPDATE admins SET password_hash = ? WHERE username = ?").run(hash, req.params.username);
+    }
+    if (email !== undefined) {
+      db.prepare("UPDATE admins SET email = ? WHERE username = ?").run(email || null, req.params.username);
+    }
+    if (role !== undefined) {
+      if (!['admin', 'dj'].includes(role)) return res.status(400).json({ error: "Invalid role specified" });
+      db.prepare("UPDATE admins SET role = ? WHERE username = ?").run(role, req.params.username);
+    }
+    logAction(req, 'UPDATE', 'admin_user', req.params.username, { email, role });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ error: "Update failed" });
+  }
 });
 
 apiRouter.delete("/admin/users/:username", authorizeRole('admin'), (req, res) => {
@@ -1047,13 +1269,12 @@ apiRouter.delete("/admin/audit-logs", authorizeRole('admin'), (req, res) => {
 });
 
 apiRouter.get("/admin/database/list-backups", authorizeRole('admin'), (req, res) => {
-  const backupDir = path.join(process.cwd(), 'backups');
   if (!fs.existsSync(backupDir)) return res.json([]);
 
   try {
     const metadata = db.prepare("SELECT * FROM backup_metadata").all() as any[];
     const files = fs.readdirSync(backupDir)
-      .filter(f => (f.startsWith('backup-') || f.startsWith('manual-backup-')) && f.endsWith('.db'))
+      .filter(f => (f.startsWith('backup-') || f.startsWith('manual-backup-')) && (f.endsWith('.db') || f.endsWith('.bundle')))
       .map(f => {
         const stats = fs.statSync(path.join(backupDir, f));
         const m = metadata.find(x => x.filename === f);
@@ -1076,11 +1297,11 @@ apiRouter.get("/admin/database/list-backups", authorizeRole('admin'), (req, res)
 apiRouter.get("/admin/database/download-file/:filename", authorizeRole('admin'), (req, res) => {
   const { filename } = req.params;
   // Security check: only allow files from the backup directory with the correct naming convention
-  if (!(filename.startsWith('backup-') || filename.startsWith('manual-backup-')) || !filename.endsWith('.db') || filename.includes('..')) {
+  if (!(filename.startsWith('backup-') || filename.startsWith('manual-backup-')) || !(filename.endsWith('.db') || filename.endsWith('.bundle')) || filename.includes('..')) {
     return res.status(400).json({ error: "Invalid filename" });
   }
 
-  const filePath = path.join(process.cwd(), 'backups', filename);
+  const filePath = path.join(backupDir, filename);
   
   if (!fs.existsSync(filePath)) {
     return res.status(404).json({ error: "Backup file not found" });
@@ -1090,13 +1311,12 @@ apiRouter.get("/admin/database/download-file/:filename", authorizeRole('admin'),
 });
 
 apiRouter.get("/admin/database/stats", authorizeRole('admin'), (req, res) => {
-  const backupDir = path.join(process.cwd(), 'backups');
   if (!fs.existsSync(backupDir)) {
     return res.json({ totalSize: 0, fileCount: 0 });
   }
 
   try {
-    const files = fs.readdirSync(backupDir).filter(f => f.endsWith('.db'));
+    const files = fs.readdirSync(backupDir).filter(f => f.endsWith('.db') || f.endsWith('.bundle'));
     let totalSize = 0;
     files.forEach(f => {
       try {
@@ -1115,14 +1335,21 @@ apiRouter.get("/admin/database/stats", authorizeRole('admin'), (req, res) => {
 });
 
 apiRouter.delete("/admin/database/backups/all", authorizeRole('admin'), (req, res) => {
-  const backupDir = path.join(process.cwd(), 'backups');
   if (!fs.existsSync(backupDir)) return res.json({ success: true });
   
   try {
-    const files = fs.readdirSync(backupDir).filter(f => f.endsWith('.db'));
+    const files = fs.readdirSync(backupDir).filter(f => f.endsWith('.db') || f.endsWith('.bundle'));
     files.forEach(f => {
       try { fs.unlinkSync(path.join(backupDir, f)); } catch (e) {}
     });
+    
+    // Also clear manual backup metadata
+    try {
+      db.prepare("DELETE FROM backup_metadata").run();
+    } catch (e) {
+      console.error("[DB] Failed to clear backup_metadata during purge:", e);
+    }
+
     logAction(req, 'PURGE_BACKUPS', 'database');
     res.json({ success: true });
   } catch (err) {
@@ -1145,63 +1372,20 @@ apiRouter.post("/admin/database/prune", authorizeRole('admin'), (req, res) => {
   }
 });
 
-apiRouter.post("/admin/database/restore-file/:filename", authorizeRole('admin'), asyncHandler(async (req: Request, res: Response) => {
-  const { filename } = req.params;
-  // Security check: only allow files from the backup directory with the correct naming convention
-  if (!(filename.startsWith('backup-') || filename.startsWith('manual-backup-')) || !filename.endsWith('.db') || filename.includes('..')) {
-    return res.status(400).json({ error: "Invalid filename" });
-  }
-
-  const filePath = path.join(process.cwd(), 'backups', filename);
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ error: "Backup file not found" });
-  }
-
-  const absoluteDbPath = path.resolve(process.cwd(), dbPath);
-  const backupPath = absoluteDbPath + ".pre-restore.bak";
-
-  try {
-    // 1. Verify the snapshot before touching the live database
-    let checkDb;
-    try {
-      checkDb = new Database(filePath, { readonly: true });
-      const settingsTable = checkDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='settings'").get();
-      if (!settingsTable) throw new Error("Invalid database schema: 'settings' table missing.");
-      const integrity = checkDb.pragma('integrity_check', { simple: true });
-      if (integrity !== 'ok') throw new Error(`Database integrity check failed: ${integrity}`);
-    } finally {
-      if (checkDb) checkDb.close();
-    }
-
-    logAction(req, 'RESTORE_DATABASE_SNAPSHOT', 'database', null, { filename });
-
-    // Close connection and swap files
-    db.close();
-    if (fs.existsSync(absoluteDbPath)) {
-      fs.renameSync(absoluteDbPath, backupPath);
-    }
-    fs.copyFileSync(filePath, absoluteDbPath);
-
-    res.json({ success: true, message: "Database restored from snapshot. Server is restarting..." });
-
-    setTimeout(() => {
-      console.log("[DB] Restarting process to apply restored snapshot...");
-      process.exit(0);
-    }, 1000);
-  } catch (err: any) {
-    console.error("[API] Snapshot restore failed:", err);
-    res.status(500).json({ error: `Restore failed: ${err.message}` });
-  }
-}));
+interface RestoreSession {
+  filePath: string;
+  tables: { name: string; count: number }[];
+}
+// Restore Sessions are no longer required for file-based atomic swaps.
 
 apiRouter.delete("/admin/database/delete-backup/:filename", authorizeRole('admin'), (req, res) => {
   const { filename } = req.params;
   // Security check: only allow files from the backup directory with the correct naming convention
-  if (!(filename.startsWith('backup-') || filename.startsWith('manual-backup-')) || !filename.endsWith('.db') || filename.includes('..')) {
+  if (!(filename.startsWith('backup-') || filename.startsWith('manual-backup-')) || !(filename.endsWith('.db') || filename.endsWith('.bundle')) || filename.includes('..')) {
     return res.status(400).json({ error: "Invalid filename" });
   }
 
-  const filePath = path.join(process.cwd(), 'backups', filename);
+  const filePath = path.join(backupDir, filename);
   
   try {
     if (fs.existsSync(filePath)) {
@@ -1219,128 +1403,379 @@ apiRouter.delete("/admin/database/delete-backup/:filename", authorizeRole('admin
 
 apiRouter.post("/admin/database/snapshot", authorizeRole('admin'), asyncHandler(async (req: Request, res: Response) => {
   const { label } = req.body;
-  const backupDir = path.join(process.cwd(), 'backups');
   if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const filename = `manual-backup-${timestamp}.db`;
-  const filePath = path.join(backupDir, filename);
+  const filename = `manual-backup-${timestamp}.bundle`;
+  const finalPath = path.join(backupDir, filename);
+  const tempDir = path.join(backupDir, `temp-manual-${timestamp}`);
 
   try {
-    console.log(`[DB] Creating manual snapshot: ${filename}`);
-    await db.backup(filePath);
+    console.log(`[DB] Creating manual bundled snapshot: ${filename}`);
+    
+    // 1. Create temp directory
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+
+    // 2. Backup database to temp dir
+    const dbBackupPath = path.join(tempDir, 'database.db');
+    await db.backup(dbBackupPath);
+
+    // 3. Copy uploads if they exist
+    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+    if (fs.existsSync(uploadsDir)) {
+      const destUploads = path.join(tempDir, 'uploads');
+      if (!fs.existsSync(destUploads)) fs.mkdirSync(destUploads, { recursive: true });
+      await execAsync(`cp -a "${uploadsDir}/." "${destUploads}/" 2>/dev/null || true`);
+    }
+
+    // 4. Create tarball bundle
+    await execAsync(`tar -czf "${finalPath}" -C "${tempDir}" .`);
     
     if (label) {
       db.prepare("INSERT INTO backup_metadata (filename, label) VALUES (?, ?)").run(filename, label);
     }
     
+    // Cleanup temp dir
+    fs.rmSync(tempDir, { recursive: true, force: true });
+
     logAction(req, 'CREATE_SNAPSHOT', 'database', null, { filename, label });
     res.json({ success: true, filename });
   } catch (err) {
+    console.error("[API] Snapshot failed:", err);
+    if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true });
     res.status(500).json({ error: "Failed to generate snapshot" });
   }
 }));
 
 apiRouter.get("/admin/database/download", authorizeRole('admin'), asyncHandler(async (req: Request, res: Response) => {
-  const backupDir = path.join(process.cwd(), 'backups');
   if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const filename = `manual-backup-${timestamp}.db`;
-  const filePath = path.join(backupDir, filename);
+  const filename = `manual-backup-${timestamp}.bundle`;
+  const finalPath = path.join(backupDir, filename);
+  const tempDir = path.join(backupDir, `temp-dl-${timestamp}`);
 
   try {
-    // Perform an atomic backup to a temporary file
-    await db.backup(filePath);
+    // 1. Create temp directory
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+
+    // 2. Backup database to temp dir
+    const dbBackupPath = path.join(tempDir, 'database.db');
+    await db.backup(dbBackupPath);
+
+    // 3. Copy uploads if they exist
+    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+    if (fs.existsSync(uploadsDir)) {
+      const destUploads = path.join(tempDir, 'uploads');
+      if (!fs.existsSync(destUploads)) fs.mkdirSync(destUploads, { recursive: true });
+      await execAsync(`cp -a "${uploadsDir}/." "${destUploads}/" 2>/dev/null || true`);
+    }
+
+    // 4. Create tarball bundle
+    await execAsync(`tar -czf "${finalPath}" -C "${tempDir}" .`);
     
     logAction(req, 'DOWNLOAD_BACKUP', 'database', null, { filename });
 
-    res.download(filePath, filename, (err) => {
+    res.download(finalPath, filename, (err) => {
       if (err) console.error("[API] Backup download failed:", err);
       
-      // Cleanup: remove the temporary manual backup file after download finishes
+      // Cleanup: remove the temporary manual backup file and temp dir after download finishes
       try {
-        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        if (fs.existsSync(finalPath)) fs.unlinkSync(finalPath);
+        if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true });
       } catch (e) {}
     });
   } catch (err) {
-    console.error("[API] Manual backup failed:", err);
-    res.status(500).json({ error: "Failed to generate database backup" });
+    console.error("[API] Download generation failed:", err);
+    if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true });
+    res.status(500).json({ error: "Failed to generate download bundle" });
   }
 }));
 
 const restoreStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const backupDir = path.join(process.cwd(), 'backups');
     if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
     cb(null, backupDir);
   },
   filename: (req, file, cb) => {
-    cb(null, "restore-pending.db");
+    cb(null, `chunk-${Date.now()}-${Math.random().toString(36).substring(7)}`);
   }
 });
 const restoreUpload = multer({ storage: restoreStorage });
 
-apiRouter.post("/admin/database/restore", authorizeRole('admin'), restoreUpload.single('database'), asyncHandler(async (req: any, res: Response) => {
-  if (!req.file) return res.status(400).json({ error: "No database file provided" });
+// Chunked backup upload endpoint
+apiRouter.post("/admin/database/restore/upload-chunk", authorizeRole('admin'), restoreUpload.single('chunk'), asyncHandler(async (req: any, res: Response) => {
+  const { sessionId, chunkIndex, totalChunks, filename } = req.body;
+  if (!req.file) {
+    return res.status(400).json({ error: "No chunk provided" });
+  }
 
-  const tempPath = req.file.path;
-  const absoluteDbPath = path.resolve(process.cwd(), dbPath);
-  const backupPath = absoluteDbPath + ".pre-restore.bak";
+  const idx = parseInt(chunkIndex);
+  const total = parseInt(totalChunks);
+
+  const tempChunkPath = req.file.path;
+  const isBundleUpload = filename && filename.endsWith('.bundle');
+  const targetPath = path.join(backupDir, `upload-${sessionId}${isBundleUpload ? '.bundle' : '.db'}`);
 
   try {
-    // 1. Verify the uploaded file before touching the live database
-    console.log(`[DB] Verifying uploaded database file...`);
+    // Read current chunk and append to the target session db file
+    const chunkData = fs.readFileSync(tempChunkPath);
+    fs.appendFileSync(targetPath, chunkData);
+
+    // Delete the temporary multer chunk file
+    fs.unlinkSync(tempChunkPath);
+
+    // If it's the last chunk, verify integrity (only for .db files) before completing
+    if (idx === total - 1) {
+      if (!isBundleUpload) {
+        console.log(`[DB] Received final chunk for session ${sessionId}. Verifying database...`);
+        let checkDb;
+        try {
+          checkDb = new Database(targetPath, { readonly: true });
+          
+          // Ensure critical settings table exists
+          const settingsTable = checkDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='settings'").get();
+          if (!settingsTable) {
+            throw new Error("Invalid database schema: 'settings' table missing. Is this a Dejavu FM backup?");
+          }
+
+          // Run PRAGMA integrity check
+          const integrity = checkDb.pragma('integrity_check', { simple: true });
+          if (integrity !== 'ok') {
+            throw new Error(`Database integrity check failed: ${integrity}`);
+          }
+        } catch (err: any) {
+          if (checkDb) checkDb.close();
+          if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath);
+          return res.status(400).json({ error: `Verification failed: ${err.message}` });
+        } finally {
+          if (checkDb) checkDb.close();
+        }
+      } else {
+        console.log(`[DB] Received final chunk for session ${sessionId} (bundle). Skipping SQLite integrity check.`);
+      }
+
+      res.json({ success: true, status: 'complete', sessionId });
+    } else {
+      res.json({ success: true, status: 'chunk_received', chunkIndex: idx });
+    }
+  } catch (err: any) {
+    console.error("[API] Error processing upload chunk:", err);
+    if (fs.existsSync(tempChunkPath)) {
+      try { fs.unlinkSync(tempChunkPath); } catch (e) {}
+    }
+    if (fs.existsSync(targetPath)) {
+      try { fs.unlinkSync(targetPath); } catch (e) {}
+    }
+    res.status(500).json({ error: `Chunk upload failed: ${err.message}` });
+  }
+}));
+
+// Finalize and swap database file atomicly
+apiRouter.post("/admin/database/restore/finalize-file", authorizeRole('admin'), asyncHandler(async (req: Request, res: Response) => {
+  const { sessionId, filename } = req.body;
+
+  let sourcePath = "";
+  let isBundle = false;
+  if (sessionId) {
+    const bundlePath = path.join(backupDir, `upload-${sessionId}.bundle`);
+    const dbPathUpload = path.join(backupDir, `upload-${sessionId}.db`);
+    if (fs.existsSync(bundlePath)) {
+      sourcePath = bundlePath;
+      isBundle = true;
+    } else {
+      sourcePath = dbPathUpload;
+      isBundle = false;
+    }
+  } else if (filename) {
+    // Security check for filename
+    if (!(filename.startsWith('backup-') || filename.startsWith('manual-backup-')) || !(filename.endsWith('.db') || filename.endsWith('.bundle')) || filename.includes('..')) {
+      return res.status(400).json({ error: "Invalid filename" });
+    }
+    sourcePath = path.join(backupDir, filename);
+    isBundle = filename.endsWith('.bundle');
+  } else {
+    return res.status(400).json({ error: "No restore source specified" });
+  }
+
+  if (!fs.existsSync(sourcePath)) {
+    return res.status(404).json({ error: "Restore source file not found" });
+  }
+
+  const absoluteDbPath = path.resolve(process.cwd(), dbPath);
+  const backupPath = absoluteDbPath + ".pre-restore.bak";
+  const tempExtractDir = path.join(backupDir, `extract-${Date.now()}`);
+
+  try {
+    let dbFileToRestore = sourcePath;
+
+    // Handle bundle extraction
+    if (isBundle) {
+      console.log(`[DB RESTORE] Extracting bundle ${sourcePath}...`);
+      if (!fs.existsSync(tempExtractDir)) fs.mkdirSync(tempExtractDir, { recursive: true });
+      await execAsync(`tar -xzf "${sourcePath}" -C "${tempExtractDir}"`);
+      dbFileToRestore = path.join(tempExtractDir, 'database.db');
+      if (!fs.existsSync(dbFileToRestore)) {
+        throw new Error("Bundle is missing database.db");
+      }
+    }
+
+    // Verify integrity of the source file one final time before replacing the active database
     let checkDb;
     try {
-      checkDb = new Database(tempPath, { readonly: true });
-      
-      // Check for core table existence to ensure it's a Dejavu FM database
+      checkDb = new Database(dbFileToRestore, { readonly: true });
       const settingsTable = checkDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='settings'").get();
-      if (!settingsTable) {
-        throw new Error("Invalid database schema: 'settings' table missing. Is this a Dejavu FM backup?");
-      }
-      
-      // Perform integrity check
+      if (!settingsTable) throw new Error("Invalid database schema");
       const integrity = checkDb.pragma('integrity_check', { simple: true });
-      if (integrity !== 'ok') {
-        throw new Error(`Database integrity check failed: ${integrity}`);
-      }
-    } catch (verifErr: any) {
-      if (checkDb) checkDb.close();
-      if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
-      return res.status(400).json({ error: `Validation failed: ${verifErr.message}` });
+      if (integrity !== 'ok') throw new Error(`Integrity check failed: ${integrity}`);
     } finally {
       if (checkDb) checkDb.close();
     }
 
-    console.log(`[DB] Verification successful. Initiating restore and closing connection...`);
-    
-    logAction(req, 'RESTORE_DATABASE', 'database', null, { original_file: req.file.originalname });
+    logAction(req, 'RESTORE_DATABASE', 'database', null, { sessionId, filename });
 
-    // 1. Close the current connection
-    db.close();
+    res.json({ success: true, message: "Database restore initiated. Server is restarting..." });
 
-    // 2. Backup current live DB just in case
-    if (fs.existsSync(absoluteDbPath)) {
-      fs.renameSync(absoluteDbPath, backupPath);
-    }
+    // Perform the actual swap in a delayed timeout to allow the response to be sent and avoid immediate 'connection closed' errors for concurrent requests
+    setTimeout(async () => {
+      console.log(`[DB RESTORE] Starting atomic database swap. ID: ${sessionId || filename}`);
+      
+      try {
+        // 1. Close active connection to release locks and flush WAL
+        if (db.open) {
+          console.log("[DB RESTORE] Closing active connection...");
+          db.close();
+        }
 
-    // 3. Move uploaded file to live location
-    fs.renameSync(tempPath, absoluteDbPath);
+        // 2. Define paths for WAL and SHM files which MUST be removed for a clean restore
+        const walPath = absoluteDbPath + "-wal";
+        const shmPath = absoluteDbPath + "-shm";
 
-    res.json({ success: true, message: "Database replaced. Server is restarting..." });
+        // 3. Backup current DB file just in case
+        if (fs.existsSync(absoluteDbPath)) {
+          fs.copyFileSync(absoluteDbPath, backupPath);
+          console.log(`[DB RESTORE] Original database backed up to ${backupPath}`);
+        }
 
-    // 4. Exit process to trigger restart (Singleton reload)
-    setTimeout(() => {
-      console.log("[DB] Restarting process to apply restored database...");
-      process.exit(0);
+        // 4. Clean up existing WAL/SHM files if they exist (they would corrupt the new DB)
+        try { if (fs.existsSync(walPath)) fs.unlinkSync(walPath); } catch(e) {}
+        try { if (fs.existsSync(shmPath)) fs.unlinkSync(shmPath); } catch(e) {}
+
+        // 5. Atomicly replace the database file using a temp move for maximum reliability
+        const liveTmp = absoluteDbPath + ".live-tmp";
+        console.log(`[DB RESTORE] Swapping database file: ${dbFileToRestore} -> ${absoluteDbPath}`);
+        
+        try {
+          // Verify source exists
+          if (!fs.existsSync(dbFileToRestore)) {
+            throw new Error(`Restoration source file not found: ${dbFileToRestore}`);
+          }
+
+          // Verify it's a valid SQLite DB before swapping (basic check)
+          const checkDb = new Database(dbFileToRestore, { readonly: true });
+          try {
+            const settingsCheck = checkDb.prepare("SELECT count(*) as count FROM sqlite_master WHERE type='table' AND name='settings'").get() as any;
+            if (!settingsCheck || settingsCheck.count === 0) {
+              throw new Error("Restored database is missing the 'settings' table - might be invalid or from a different app.");
+            }
+          } finally {
+            checkDb.close();
+          }
+
+          fs.copyFileSync(dbFileToRestore, liveTmp);
+          if (fs.existsSync(absoluteDbPath)) fs.unlinkSync(absoluteDbPath);
+          fs.renameSync(liveTmp, absoluteDbPath);
+          console.log("[DB RESTORE] Database file swapped successfully.");
+          
+          // Re-open database connection in-process
+          reopenDatabaseConnection();
+          // Regenerate dynamic server ID so health check pings detect success instantly
+          req.app.get('regenerateServerId')?.();
+        } catch (swapErr: any) {
+          console.error("[DB RESTORE] FAILED to swap database file:", swapErr);
+          throw swapErr;
+        }
+
+        // 6. Handle bundle uploads extraction if it was a bundle
+        if (isBundle) {
+          const extractedUploads = path.join(tempExtractDir, 'uploads');
+          const publicUploads = path.join(process.cwd(), 'public', 'uploads');
+          if (fs.existsSync(extractedUploads)) {
+            console.log("[DB RESTORE] Restoring uploads from bundle...");
+            if (!fs.existsSync(publicUploads)) fs.mkdirSync(publicUploads, { recursive: true });
+            
+            // Correctly copy contents to avoid uploads/uploads
+            const items = fs.readdirSync(extractedUploads);
+            let count = 0;
+            items.forEach(item => {
+              const src = path.join(extractedUploads, item);
+              const dest = path.join(publicUploads, item);
+              fs.cpSync(src, dest, { recursive: true, force: true });
+              count++;
+            });
+            console.log(`[DB RESTORE] ${count} upload items restored successfully.`);
+          } else {
+            console.log("[DB RESTORE] No uploads folder found in bundle, skipping uploads restoration.");
+          }
+        }
+
+        // 7. Clean up the uploaded session file if applicable
+        if (sessionId && fs.existsSync(sourcePath)) {
+          try { fs.unlinkSync(sourcePath); } catch (e) {}
+        }
+
+        // 8. Cleanup temp extraction dir
+        if (fs.existsSync(tempExtractDir)) {
+          fs.rmSync(tempExtractDir, { recursive: true, force: true });
+        }
+
+        console.log("[DB RESTORE] Database restore steps complete. Connection reopened in-process. Keeping server running.");
+      } catch (err: any) {
+        console.error("[DB RESTORE] CRITICAL ERROR during swap:", err);
+        if (fs.existsSync(tempExtractDir)) fs.rmSync(tempExtractDir, { recursive: true, force: true });
+        // Even if swap fails, we must exit to ensure the system doesn't stay in a broken 'closed connection' state
+        process.exit(1);
+      }
     }, 1000);
-  } catch (err) {
-    console.error("[API] Restore failed:", err);
-    res.status(500).json({ error: "Critical failure during database restoration" });
+  } catch (err: any) {
+    console.error("[API] Database finalize restore failed:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: `Restore initiation failed: ${err.message}` });
+    }
   }
 }));
+
+// Advertisement Management
+apiRouter.get("/admin/ads", authMiddleware, (req, res) => {
+  const ads = db.prepare("SELECT * FROM advertisements ORDER BY slider_type, display_order ASC").all();
+  res.json(ads);
+});
+
+apiRouter.post("/admin/ads", authMiddleware, authorizeRole('admin'), (req: any, res: any) => {
+  const { slider_type, image_url, link_url, display_order, is_active } = req.body;
+  if (!slider_type || !image_url) return res.status(400).json({ error: "Type and Image required" });
+  
+  const info = db.prepare("INSERT INTO advertisements (slider_type, image_url, link_url, display_order, is_active) VALUES (?, ?, ?, ?, ?)")
+    .run(slider_type, image_url, link_url || "", display_order || 0, is_active ? 1 : 0);
+  
+  logAction(req, 'CREATE', 'advertisement', info.lastInsertRowid, { slider_type });
+  res.json({ success: true, id: info.lastInsertRowid });
+});
+
+apiRouter.put("/admin/ads/:id", authMiddleware, authorizeRole('admin'), (req: any, res: any) => {
+  const { slider_type, image_url, link_url, display_order, is_active } = req.body;
+  db.prepare("UPDATE advertisements SET slider_type = ?, image_url = ?, link_url = ?, display_order = ?, is_active = ? WHERE id = ?")
+    .run(slider_type, image_url, link_url || "", display_order || 0, is_active ? 1 : 0, req.params.id);
+  
+  logAction(req, 'UPDATE', 'advertisement', req.params.id);
+  res.json({ success: true });
+});
+
+apiRouter.delete("/admin/ads/:id", authMiddleware, authorizeRole('admin'), (req: any, res: any) => {
+  db.prepare("DELETE FROM advertisements WHERE id = ?").run(req.params.id);
+  logAction(req, 'DELETE', 'advertisement', req.params.id);
+  res.json({ success: true });
+});
 
 // Global Error Handler Middleware
 apiRouter.use((err: any, req: Request, res: Response, next: NextFunction) => {

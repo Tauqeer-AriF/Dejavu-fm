@@ -4,8 +4,10 @@ import { Database, Download, RefreshCw, Clock, AlertTriangle, ShieldCheck, Uploa
 import { toast } from 'sonner';
 import { useModal } from '../../context/ModalContext';
 import { fetchAdmin } from './adminApi';
+import { useLogo } from '../../hooks/useLogo';
 
 export function AdminBackup() {
+  const { isLightMode } = useLogo();
   const [isDownloading, setIsDownloading] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -18,9 +20,52 @@ export function AdminBackup() {
   const [backupLabel, setBackupLabel] = useState("");
   const [storageStats, setStorageStats] = useState({ totalSize: 0, fileCount: 0 });
   const [restoreProgress, setRestoreProgress] = useState(0);
+  const [restoreStatusMsg, setRestoreStatusMsg] = useState("");
   const [nextBackupIn, setNextBackupIn] = useState<string>("");
   const [isChecking, setIsChecking] = useState(false);
   const { showConfirm } = useModal();
+
+  const waitForServer = async (startProgress: number, oldServerId?: string) => {
+    let progress = startProgress;
+    setRestoreStatusMsg("Restarting Server...");
+    
+    const interval = setInterval(() => {
+      progress += (99 - progress) * 0.15;
+      setRestoreProgress(Math.round(progress));
+    }, 500);
+
+    // Wait 1.5s before first ping to let server shut down
+    await new Promise(r => setTimeout(r, 1500));
+    
+    let attempts = 0;
+    while (attempts < 60) { // Increased to 60s for larger bundles
+      try {
+        console.log(`[RESTORE] Health check attempt ${attempts + 1}...`);
+        const res = await fetch('/api/health');
+        if (res.ok) {
+          const data = await res.json().catch(() => ({}));
+          console.log(`[RESTORE] Server is UP. Current ID: ${data.serverId}, Old ID: ${oldServerId}`);
+          // Only return true if we have a NEW server ID (confirming full restart)
+          if (!oldServerId || (data.serverId && data.serverId !== oldServerId)) {
+            console.log(`[RESTORE] New server detected. Proceeding.`);
+            clearInterval(interval);
+            setRestoreProgress(100);
+            return true;
+          }
+        } else {
+          console.log(`[RESTORE] Health check returned ${res.status}`);
+        }
+      } catch (e) {
+        console.log(`[RESTORE] Health check failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
+        // Expected, server is down
+      }
+      await new Promise(r => setTimeout(r, 1000));
+      attempts++;
+    }
+    
+    clearInterval(interval);
+    return false;
+  };
 
   const loadBackups = async () => {
     try {
@@ -127,22 +172,45 @@ export function AdminBackup() {
     if (!confirmed) return;
 
     setIsRestoring(true);
+    setRestoreProgress(0);
+    setRestoreStatusMsg("Initiating Database Restoration...");
+    
     try {
-      const res = await fetchAdmin(`/api/admin/database/restore-file/${filename}`, {
-        method: 'POST'
+      // Get current server ID to detect when it actually restarts
+      const healthRes = await fetch('/api/health').then(r => r.json()).catch(() => ({}));
+      const oldServerId = healthRes.serverId;
+
+      setRestoreProgress(10);
+      setRestoreStatusMsg("Requesting Server Swap...");
+
+      const res = await fetchAdmin(`/api/admin/database/restore/finalize-file`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename })
       });
       
       if (res.ok) {
-        toast.success('Database restored successfully! Reconnecting...');
-        setTimeout(() => window.location.reload(), 3000);
+        setRestoreProgress(50);
+        setRestoreStatusMsg("Waiting for Server Reboot...");
+        const isUp = await waitForServer(50, oldServerId);
+        if (isUp) {
+          toast.success('Database restored successfully! Reconnecting...');
+          localStorage.removeItem('dejavufm_last_path'); // Clear stale nav state
+          setTimeout(() => window.location.reload(), 800);
+        } else {
+          throw new Error('Server reboot timed out. The database might still be restoring. Please refresh manually in a moment.');
+        }
       } else {
         const data = await res.json().catch(() => ({}));
-        toast.error(data.error || 'Restore failed.');
+        throw new Error(data.error || 'Server rejected the restoration request.');
       }
-    } catch (error) {
-      toast.error('Network error during restore.');
-    } finally {
+    } catch (error: any) {
+      console.error("[RESTORE ERROR]", error);
+      toast.error(error?.message || 'Restore failed. Please check the system logs.');
+      // Keep UI state stable but allow retry
       setIsRestoring(false);
+      setRestoreProgress(0);
+      setRestoreStatusMsg("");
     }
   };
 
@@ -187,53 +255,80 @@ export function AdminBackup() {
 
     setIsRestoring(true);
     setRestoreProgress(0);
-    const formData = new FormData();
-    formData.append('database', file);
-
-    const uploadWithProgress = () => {
-      return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        const token = localStorage.getItem('admin_token');
-        
-        xhr.open('POST', '/api/admin/database/restore');
-        if (token) {
-          xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-        }
-        xhr.withCredentials = true;
-
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const percent = Math.round((event.loaded / event.total) * 100);
-            setRestoreProgress(percent);
-          }
-        };
-
-        xhr.onload = () => {
-          try {
-            const data = JSON.parse(xhr.responseText);
-            if (xhr.status >= 200 && xhr.status < 300) resolve(data);
-            else reject(data);
-          } catch (e) {
-            if (xhr.status >= 200 && xhr.status < 300) resolve({ success: true });
-            else reject({ error: `Server error: ${xhr.status}` });
-          }
-        };
-
-        xhr.onerror = () => reject({ error: 'Network error during restore.' });
-        xhr.send(formData);
-      });
-    };
+    setRestoreStatusMsg("Preparing upload...");
 
     try {
-      await uploadWithProgress();
-      toast.success('Database restored successfully! Reconnecting to server...');
-      setTimeout(() => window.location.reload(), 3000);
-    } catch (error) {
-      toast.error(error?.error || 'Restore failed. Check server logs.');
+      // Get current server ID to detect when it actually restarts later
+      const healthRes = await fetch('/api/health').then(r => r.json()).catch(() => ({}));
+      const oldServerId = healthRes.serverId;
+
+      // Chunked Upload implementation
+      const CHUNK_SIZE = 1024 * 1024; // 1MB chunks
+      const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+      const sessionId = `upload-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+      for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+        const start = chunkIndex * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, file.size);
+        const chunk = file.slice(start, end);
+
+        const formData = new FormData();
+        formData.append('chunk', chunk);
+        formData.append('sessionId', sessionId);
+        formData.append('chunkIndex', String(chunkIndex));
+        formData.append('totalChunks', String(totalChunks));
+        formData.append('filename', file.name);
+
+        const percent = Math.round((chunkIndex / totalChunks) * 100);
+        setRestoreProgress(Math.round(percent * 0.5)); // Visually up to 50%
+        setRestoreStatusMsg(`Uploading Database (${percent}%)...`);
+
+        const res = await fetch('/api/admin/database/restore/upload-chunk', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
+          },
+          body: formData
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.error || `Failed to upload chunk ${chunkIndex + 1}/${totalChunks}`);
+        }
+      }
+
+      setRestoreProgress(50);
+      setRestoreStatusMsg("Finalizing Restore & Rebooting...");
+
+      const finalizeRes = await fetchAdmin('/api/admin/database/restore/finalize-file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId })
+      });
+
+      if (!finalizeRes.ok) {
+        const errorData = await finalizeRes.json().catch(() => ({}));
+        throw new Error(errorData.error || "Server rejected the finalized backup file.");
+      }
+
+      setRestoreProgress(60);
+      const isUp = await waitForServer(60, oldServerId);
+      if (isUp) {
+        toast.success('Database restored successfully! Reconnecting...');
+        localStorage.removeItem('dejavufm_last_path'); // Clear stale nav state
+        setTimeout(() => window.location.reload(), 800);
+      } else {
+        throw new Error('Server reboot timed out. The system might still be processing. Please refresh manually.');
+      }
+    } catch (error: any) {
+      console.error("[UPLOAD RESTORE ERROR]", error);
+      toast.error(error?.message || 'Upload & Restore failed.');
       if (fileInputRef.current) fileInputRef.current.value = "";
-    } finally {
+      
+      // Reset state so user is not stuck
       setIsRestoring(false);
       setRestoreProgress(0);
+      setRestoreStatusMsg("");
     }
   };
 
@@ -331,32 +426,47 @@ export function AdminBackup() {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
     >
-      <div className="bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-xl">
+      <div className={`rounded-3xl p-8 backdrop-blur-xl border ${isLightMode ? 'bg-[#ffffff] border-black/10 shadow-sm' : 'bg-white/5 border-white/10'}`}>
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-neon-purple/20 rounded-2xl flex items-center justify-center text-neon-purple">
               <Database className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-2xl font-display font-black uppercase tracking-tight">Database Management</h2>
-              <p className="text-white/40 text-sm">Create snapshots and monitor system storage</p>
+              <h2 className={`text-2xl font-display font-black uppercase tracking-tight ${isLightMode ? 'text-black' : 'text-white'}`}>Database Management</h2>
+              <p className={`text-sm ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Create snapshots and monitor system storage</p>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-black/40 border border-white/5 rounded-2xl p-6 space-y-4">
+          <div className={`rounded-2xl p-6 space-y-4 border ${isLightMode ? 'bg-[#f8f9fa] border-black/5' : 'bg-black/40 border-white/5'}`}>
             <div className="flex items-center gap-3 text-red-500">
               <Upload className="w-5 h-5" />
               <h3 className="font-bold uppercase tracking-widest text-sm">Restore Data</h3>
             </div>
-            <p className="text-sm text-white/60 leading-relaxed">
-              Upload a previously downloaded <code className="text-neon-purple">.db</code> file to restore the entire station state.
+            <p className={`text-sm leading-relaxed ${isLightMode ? 'text-black/70' : 'text-white/60'}`}>
+              Upload a previously downloaded <code className="text-neon-purple font-bold">.db</code> or <code className="text-neon-purple font-bold">.bundle</code> file to restore the entire station state.
             </p>
+            {isRestoring && (
+              <div className="space-y-2 py-2">
+                <div className={`flex justify-between text-[10px] uppercase font-black tracking-widest ${isLightMode ? 'text-red-600' : 'text-red-400'}`}>
+                  <span>{restoreStatusMsg}</span>
+                  <span>{restoreProgress}%</span>
+                </div>
+                <div className={`h-2 w-full rounded-full overflow-hidden ${isLightMode ? 'bg-black/10' : 'bg-white/10'}`}>
+                   <motion.div 
+                     initial={{ width: 0 }}
+                     animate={{ width: `${restoreProgress}%` }}
+                     className="h-full bg-red-500"
+                   />
+                </div>
+              </div>
+            )}
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isRestoring}
-              className="w-full bg-red-500/10 border border-red-500/20 text-red-500 font-black uppercase tracking-wider py-4 rounded-xl text-xs hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2 disabled:opacity-50 whitespace-nowrap"
+              className={`w-full font-black uppercase tracking-wider py-4 rounded-xl text-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50 whitespace-nowrap border ${isLightMode ? 'bg-red-600/10 border-red-600/20 text-red-600 hover:bg-red-600 hover:text-white' : 'bg-red-500/10 border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white'}`}
             >
               {isRestoring ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
@@ -369,18 +479,18 @@ export function AdminBackup() {
               type="file" 
               ref={fileInputRef} 
               onChange={handleRestore} 
-              accept=".db" 
+              accept=".db,.bundle" 
               className="hidden" 
             />
           </div>
 
-          <div className="bg-black/40 border border-white/5 rounded-2xl p-6 space-y-4">
-            <div className="flex items-center gap-3 text-neon-blue">
+          <div className={`rounded-2xl p-6 space-y-4 border ${isLightMode ? 'bg-[#f8f9fa] border-black/5' : 'bg-black/40 border-white/5'}`}>
+            <div className={`flex items-center gap-3 ${isLightMode ? 'text-cyan-600' : 'text-neon-blue'}`}>
               <Download className="w-5 h-5" />
               <h3 className="font-bold uppercase tracking-widest text-sm">Manual Export</h3>
             </div>
             <div className="space-y-3">
-              <p className="text-xs text-white/40 leading-relaxed">
+              <p className={`text-xs leading-relaxed ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
                 Create a persistent snapshot with a custom label. Use this to mark specific milestones (e.g., "Post Christmas Event").
               </p>
               <input 
@@ -388,13 +498,13 @@ export function AdminBackup() {
                 value={backupLabel}
                 onChange={(e) => setBackupLabel(e.target.value)}
                 placeholder="Describe this backup (e.g. Pre-Update V2)"
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-neon-blue outline-none transition-colors"
+                className={`w-full rounded-xl px-4 py-3 text-sm focus:border-cyan-500 outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black placeholder:text-black/40' : 'bg-black/40 border-white/10 text-white placeholder:text-white/20'}`}
               />
             </div>
             <button
               onClick={handleCreateSnapshot}
               disabled={isDownloading}
-              className="w-full bg-white text-dark-bg font-black uppercase tracking-wider py-3.5 rounded-xl text-[10px] hover:bg-neon-blue hover:text-white transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-xl whitespace-nowrap"
+              className={`w-full font-black uppercase tracking-wider py-3.5 rounded-xl text-[10px] transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg whitespace-nowrap ${isLightMode ? 'bg-cyan-600 text-white hover:bg-cyan-700' : 'bg-white text-dark-bg hover:bg-neon-blue hover:text-white'}`}
             >
               {isDownloading ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
@@ -405,14 +515,14 @@ export function AdminBackup() {
             </button>
           </div>
 
-          <div className="lg:col-span-2 bg-black/40 border border-white/5 rounded-2xl p-6 space-y-4">
-            <div className="flex items-center gap-3 text-neon-purple">
+          <div className={`lg:col-span-2 rounded-2xl p-6 space-y-4 border ${isLightMode ? 'bg-[#f8f9fa] border-black/5' : 'bg-black/40 border-white/5'}`}>
+            <div className={`flex items-center gap-3 ${isLightMode ? 'text-purple-600' : 'text-neon-purple'}`}>
               <ShieldCheck className="w-5 h-5" />
               <h3 className="font-bold uppercase tracking-widest text-sm">Auto-Backup Status</h3>
               <button 
                 onClick={handleTriggerCheck}
                 disabled={isChecking}
-                className="ml-auto flex items-center gap-1.5 px-2 py-1 bg-white/5 hover:bg-white/10 border border-white/5 rounded-md text-[9px] font-black uppercase tracking-tighter transition-all disabled:opacity-50"
+                className={`ml-auto flex items-center gap-1.5 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-tighter transition-all disabled:opacity-50 border ${isLightMode ? 'bg-black/5 hover:bg-black/10 border-black/10 text-black' : 'bg-white/5 hover:bg-white/10 border-white/5 text-white'}`}
                 title="Force run the backup logic now"
               >
                 <RefreshCw className={`w-3 h-3 ${isChecking ? 'animate-spin' : ''}`} />
@@ -420,90 +530,90 @@ export function AdminBackup() {
               </button>
             </div>
             <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between text-xs py-2 border-b border-white/5">
-                <span className="text-white/40 uppercase font-medium">Auto-Backups Active</span>
+              <div className={`flex items-center justify-between text-xs py-2 border-b ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
+                <span className={`uppercase font-medium ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Auto-Backups Active</span>
                 <button 
                   onClick={() => updateBackupEnabled(!backupEnabled)}
-                  className={`w-10 h-5 rounded-full relative transition-colors ${backupEnabled ? 'bg-neon-blue' : 'bg-white/10'}`}
+                  className={`w-10 h-5 rounded-full relative transition-colors ${backupEnabled ? 'bg-neon-blue' : isLightMode ? 'bg-black/10' : 'bg-white/10'}`}
                 >
                   <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${backupEnabled ? 'left-6' : 'left-1'}`}></div>
                 </button>
               </div>
-              <div className="flex items-center justify-between text-xs py-2 border-b border-white/5">
-                <span className="text-white/40 uppercase font-medium">Automatic Backups</span>
+              <div className={`flex items-center justify-between text-xs py-2 border-b ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
+                <span className={`uppercase font-medium ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Automatic Backups</span>
                 <select 
                   value={backupFrequency} 
                   onChange={(e) => updateFrequency(e.target.value)}
                   disabled={!backupEnabled}
-                  className="bg-transparent text-neon-blue font-bold uppercase outline-none cursor-pointer hover:text-white transition-colors text-right"
+                  className={`bg-transparent font-bold uppercase outline-none cursor-pointer transition-colors text-right ${isLightMode ? 'text-cyan-600 hover:text-black' : 'text-neon-blue hover:text-white'}`}
                 >
-                  <option value="6" className="bg-dark-bg text-white">Every 6 Hours</option>
-                  <option value="12" className="bg-dark-bg text-white">Every 12 Hours</option>
-                  <option value="24" className="bg-dark-bg text-white">Every 24 Hours</option>
-                  <option value="48" className="bg-dark-bg text-white">Every 48 Hours</option>
+                  <option value="6" className={isLightMode ? 'bg-white text-black' : 'bg-dark-bg text-white'}>Every 6 Hours</option>
+                  <option value="12" className={isLightMode ? 'bg-white text-black' : 'bg-dark-bg text-white'}>Every 12 Hours</option>
+                  <option value="24" className={isLightMode ? 'bg-white text-black' : 'bg-dark-bg text-white'}>Every 24 Hours</option>
+                  <option value="48" className={isLightMode ? 'bg-white text-black' : 'bg-dark-bg text-white'}>Every 48 Hours</option>
                 </select>
               </div>
-              <div className="flex items-center justify-between text-xs py-2 border-b border-white/5">
-                <span className="text-white/40 uppercase font-medium">Next Backup In</span>
-                <span className="text-neon-blue font-bold uppercase">{nextBackupIn || 'N/A'}</span>
+              <div className={`flex items-center justify-between text-xs py-2 border-b ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
+                <span className={`uppercase font-medium ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Next Backup In</span>
+                <span className={`font-bold uppercase ${isLightMode ? 'text-cyan-600' : 'text-neon-blue'}`}>{nextBackupIn || 'N/A'}</span>
               </div>
-              <div className="flex items-center justify-between text-xs py-2 border-b border-white/5">
-                <span className="text-white/40 uppercase font-medium">Last Attempt</span>
-                <span className="text-white font-mono text-[10px]">{lastAttempt ? new Date(lastAttempt).toLocaleString() : 'NEVER'}</span>
+              <div className={`flex items-center justify-between text-xs py-2 border-b ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
+                <span className={`uppercase font-medium ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Last Attempt</span>
+                <span className={`font-mono text-[10px] ${isLightMode ? 'text-black/80' : 'text-white'}`}>{lastAttempt ? new Date(lastAttempt).toLocaleString() : 'NEVER'}</span>
               </div>
-              <div className="flex items-center justify-between text-xs py-2 border-b border-white/5">
-                <span className="text-white/40 uppercase font-medium">Last Status</span>
-                <span className={`font-black uppercase text-[10px] ${lastStatus === 'success' ? 'text-green-500' : lastStatus === 'failed' ? 'text-red-500' : 'text-white/20'}`}>
+              <div className={`flex items-center justify-between text-xs py-2 border-b ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
+                <span className={`uppercase font-medium ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Last Status</span>
+                <span className={`font-black uppercase text-[10px] ${lastStatus === 'success' ? 'text-green-600' : lastStatus === 'failed' ? 'text-red-600' : isLightMode ? 'text-black/30' : 'text-white/20'}`}>
                   {lastStatus}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-xs py-2 border-b border-white/5">
-                <span className="text-white/40 uppercase font-medium">Retention Policy</span>
+              <div className={`flex items-center justify-between text-xs py-2 border-b ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
+                <span className={`uppercase font-medium ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Retention Policy</span>
                 <select 
                   value={retentionDays} 
                   onChange={(e) => updateRetention(e.target.value)}
-                  className="bg-transparent text-neon-blue font-bold uppercase outline-none cursor-pointer hover:text-white transition-colors"
+                  className={`bg-transparent font-bold uppercase outline-none cursor-pointer transition-colors ${isLightMode ? 'text-cyan-600 hover:text-black' : 'text-neon-blue hover:text-white'}`}
                 >
-                  <option value="1" className="bg-dark-bg text-white">24 Hours</option>
-                  <option value="7" className="bg-dark-bg text-white">7 Days</option>
-                  <option value="15" className="bg-dark-bg text-white">15 Days</option>
-                  <option value="30" className="bg-dark-bg text-white">30 Days</option>
-                  <option value="90" className="bg-dark-bg text-white">90 Days</option>
+                  <option value="1" className={isLightMode ? 'bg-white text-black' : 'bg-dark-bg text-white'}>24 Hours</option>
+                  <option value="7" className={isLightMode ? 'bg-white text-black' : 'bg-dark-bg text-white'}>7 Days</option>
+                  <option value="15" className={isLightMode ? 'bg-white text-black' : 'bg-dark-bg text-white'}>15 Days</option>
+                  <option value="30" className={isLightMode ? 'bg-white text-black' : 'bg-dark-bg text-white'}>30 Days</option>
+                  <option value="90" className={isLightMode ? 'bg-white text-black' : 'bg-dark-bg text-white'}>90 Days</option>
                 </select>
               </div>
               <div className="flex items-center justify-between text-xs py-2">
-                <span className="text-white/40 uppercase font-medium">Journal Mode</span>
-                <span className="text-white font-bold uppercase">WAL (Concurrent)</span>
+                <span className={`uppercase font-medium ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Journal Mode</span>
+                <span className={`font-bold uppercase ${isLightMode ? 'text-black' : 'text-white'}`}>WAL (Concurrent)</span>
               </div>
 
-              <div className="pt-4 mt-2 border-t border-white/10 space-y-2">
-                <div className="flex justify-between text-[10px] uppercase font-black tracking-widest text-white/40">
+              <div className={`pt-4 mt-2 border-t space-y-2 ${isLightMode ? 'border-black/10' : 'border-white/10'}`}>
+                <div className={`flex justify-between text-[10px] uppercase font-black tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
                   <span>Storage Used</span>
-                  <span className="text-neon-blue">{(storageStats.totalSize / 1024 / 1024).toFixed(2)} MB</span>
+                  <span className={isLightMode ? 'text-cyan-600' : 'text-neon-blue'}>{(storageStats.totalSize / 1024 / 1024).toFixed(2)} MB</span>
                 </div>
-                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                <div className={`h-1.5 w-full rounded-full overflow-hidden ${isLightMode ? 'bg-black/5' : 'bg-white/5'}`}>
                    <motion.div 
                      initial={{ width: 0 }}
                      animate={{ width: `${Math.min(100, (storageStats.totalSize / (500 * 1024 * 1024)) * 100)}%` }}
                      className="h-full bg-gradient-to-r from-neon-purple to-neon-blue"
                    />
                 </div>
-                <p className="text-[9px] text-white/20 uppercase font-bold text-right italic">
+                <p className={`text-[9px] uppercase font-bold text-right italic ${isLightMode ? 'text-black/30' : 'text-white/20'}`}>
                   {storageStats.fileCount} Snapshot{storageStats.fileCount !== 1 ? 's' : ''} active
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="lg:col-span-2 bg-black/40 border border-white/5 rounded-2xl p-6">
+          <div className={`lg:col-span-2 rounded-2xl p-6 border ${isLightMode ? 'bg-[#f8f9fa] border-black/5' : 'bg-black/40 border-white/5'}`}>
             <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3 text-white">
+              <div className={`flex items-center gap-3 ${isLightMode ? 'text-black' : 'text-white'}`}>
                 <Clock className="w-5 h-5 text-neon-purple" />
                 <h3 className="font-bold uppercase tracking-widest text-sm">Recent Snapshots</h3>
               </div>
               <button 
                 onClick={handlePurgeAll}
-                className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all"
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${isLightMode ? 'bg-red-600/10 hover:bg-red-600/20 text-red-600 border-red-600/20' : 'bg-red-500/10 hover:bg-red-500/20 text-red-500 border-red-500/20'}`}
               >
                 <Trash className="w-3 h-3" />
                 Purge All
@@ -513,22 +623,22 @@ export function AdminBackup() {
             <div className="space-y-2">
               {recentBackups.length > 0 ? (
                 recentBackups.map((b) => (
-                  <div key={b.name} className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5 group hover:border-white/10 transition-colors">
+                  <div key={b.name} className={`flex items-center justify-between p-4 rounded-xl transition-colors border ${isLightMode ? 'bg-[#ffffff] border-black/5 hover:border-black/10 hover:shadow-sm' : 'bg-white/5 border-white/5 hover:border-white/10'}`}>
                     <div className="min-w-0">
                       {b.label ? (
-                        <h4 className="text-neon-blue font-black uppercase tracking-tight text-sm mb-0.5">{b.label}</h4>
+                        <h4 className={`font-black uppercase tracking-tight text-sm mb-0.5 ${isLightMode ? 'text-cyan-700' : 'text-neon-blue'}`}>{b.label}</h4>
                       ) : (
-                        <p className="text-xs font-mono text-white/80 truncate">{b.name}</p>
+                        <p className={`text-xs font-mono truncate ${isLightMode ? 'text-black/80' : 'text-white/80'}`}>{b.name}</p>
                       )}
-                      {b.label && <p className="text-[10px] font-mono text-white/30 truncate">{b.name}</p>}
-                      <p className="text-[10px] text-white/40 uppercase tracking-widest mt-1">
+                      {b.label && <p className={`text-[10px] font-mono truncate ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>{b.name}</p>}
+                      <p className={`text-[10px] uppercase tracking-widest mt-1 ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
                         {new Date(b.createdAt).toLocaleString()} • {(b.size / 1024 / 1024).toFixed(2)} MB
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <button 
                         onClick={() => handleDownloadSpecific(b.name)}
-                        className="p-2 hover:bg-neon-purple/20 text-white/30 hover:text-neon-purple rounded-lg transition-all"
+                        className={`p-2 rounded-lg transition-all ${isLightMode ? 'hover:bg-purple-100 text-black/40 hover:text-purple-700' : 'hover:bg-neon-purple/20 text-white/30 hover:text-neon-purple'}`}
                         title="Download"
                       >
                         <Download className="w-4 h-4" />
@@ -536,14 +646,14 @@ export function AdminBackup() {
                       <button 
                         onClick={() => handleRestoreSpecific(b.name)}
                         disabled={isRestoring}
-                        className="p-2 hover:bg-neon-blue/20 text-white/30 hover:text-neon-blue rounded-lg transition-all disabled:opacity-30"
+                        className={`p-2 rounded-lg transition-all disabled:opacity-30 ${isLightMode ? 'hover:bg-cyan-100 text-black/40 hover:text-cyan-700' : 'hover:bg-neon-blue/20 text-white/30 hover:text-neon-blue'}`}
                         title="Restore this version"
                       >
                         <RotateCcw className="w-4 h-4" />
                       </button>
                       <button 
                         onClick={() => handleDeleteSpecific(b.name)}
-                        className="p-2 hover:bg-red-500/20 text-white/30 hover:text-red-500 rounded-lg transition-all"
+                        className={`p-2 rounded-lg transition-all ${isLightMode ? 'hover:bg-red-100 text-black/40 hover:text-red-600' : 'hover:bg-red-500/20 text-white/30 hover:text-red-500'}`}
                         title="Delete"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -552,16 +662,16 @@ export function AdminBackup() {
                   </div>
                 ))
               ) : (
-                <p className="text-center py-8 text-white/20 text-xs uppercase tracking-widest font-black">No automated backups found yet.</p>
+                <p className={`text-center py-8 text-xs uppercase tracking-widest font-black ${isLightMode ? 'text-black/30' : 'text-white/20'}`}>No automated backups found yet.</p>
               )}
             </div>
           </div>
         </div>
 
-        <div className="mt-8 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-yellow-500 shrink-0 mt-0.5" />
-          <div className="text-xs text-yellow-500/80 leading-relaxed">
-            <span className="font-bold text-yellow-500 uppercase">Warning:</span> Manual backups contain sensitive environment configuration and hashed passwords. Keep downloaded files in a secure, encrypted volume.
+        <div className={`mt-8 p-4 rounded-xl flex items-start gap-3 border ${isLightMode ? 'bg-amber-50 border-amber-200' : 'bg-yellow-500/10 border-yellow-500/20'}`}>
+          <AlertTriangle className={`w-5 h-5 shrink-0 mt-0.5 ${isLightMode ? 'text-amber-700' : 'text-yellow-500'}`} />
+          <div className={`text-xs leading-relaxed ${isLightMode ? 'text-amber-800' : 'text-yellow-500/80'}`}>
+            <span className={`font-bold uppercase ${isLightMode ? 'text-amber-900' : 'text-yellow-500'}`}>Warning:</span> Manual backups contain sensitive environment configuration and hashed passwords. Keep downloaded files in a secure, encrypted volume.
           </div>
         </div>
       </div>

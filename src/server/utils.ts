@@ -1,63 +1,92 @@
+import { db } from "./db.ts";
 import Parser from "rss-parser";
-import { db } from "./db.js";
 
-let inProgressFetch: Promise<any> | null = null;
-const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+const parser = new Parser();
 
-export async function getPodcastFeed() {
-  const row = db.prepare("SELECT value FROM settings WHERE key = ?").get("rss_feed_url") as {value: string};
-  const rssUrl = row?.value;
+const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes cache TTL
 
-  if (!rssUrl) return { items: [] };
-
-  // 1. Check DB cache
-  const cached = db.prepare("SELECT feed_json, timestamp, url FROM podcast_cache WHERE id = 1").get() as {feed_json: string, timestamp: number, url: string};
-  
-  if (cached && cached.url === rssUrl && Date.now() - cached.timestamp < CACHE_TTL) {
-    try {
-      return JSON.parse(cached.feed_json);
-    } catch (e) {
-      console.error("[RSS Utils] Cache parse failed", e);
+export async function getPodcastFeed(forceRefresh: boolean = false) {
+  try {
+    if (!db.open) {
+      console.warn("[Podcast] Database connection is closed, returning generic response.");
+      return {
+        title: "Dejavu FM Podcasts",
+        description: "Direct from London's heartbeat.",
+        items: []
+      };
     }
-  }
+    // 1. Get the configured RSS Feed URL from settings
+    const settingRow = db.prepare("SELECT value FROM settings WHERE key = 'rss_feed_url'").get() as { value: string } | undefined;
+    const rssUrl = settingRow?.value;
 
-  // 2. Prevent multiple simultaneous fetches
-  if (inProgressFetch) return inProgressFetch;
+    if (!rssUrl || rssUrl.trim() === "") {
+      console.log("[Podcast] RSS Feed URL is empty, returning empty feed.");
+      return {
+        title: "Catchup & Archive",
+        description: "No podcasts currently available.",
+        items: []
+      };
+    }
 
-  inProgressFetch = (async () => {
-    try {
-      console.log(`[RSS Utils] Fetching new feed from ${rssUrl}`);
-      const parser = new Parser({
-        timeout: 15000,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'application/rss+xml, application/xml, text/xml, */*'
+    // 2. Check if we have a valid, unexpired cached feed in podcast_cache
+    if (!forceRefresh) {
+      const cachedRow = db.prepare("SELECT feed_json, url, timestamp FROM podcast_cache WHERE id = 1").get() as { feed_json: string, url: string, timestamp: number } | undefined;
+      
+      const now = Date.now();
+      if (cachedRow && cachedRow.url === rssUrl && (now - cachedRow.timestamp) < CACHE_TTL_MS) {
+        try {
+          return JSON.parse(cachedRow.feed_json);
+        } catch (parseErr) {
+          console.error("[Podcast Cache] Failed to parse cached JSON, refetching...", parseErr);
         }
-      });
-
-      const feed = await parser.parseURL(rssUrl);
-      if (!feed.items) feed.items = [];
-
-      // Update DB cache
-      db.prepare("INSERT OR REPLACE INTO podcast_cache (id, feed_json, url, timestamp) VALUES (1, ?, ?, ?)")
-        .run(JSON.stringify(feed), rssUrl, Date.now());
-
-      return feed;
-    } catch (err) {
-      console.error(`[RSS Utils] Failed for ${rssUrl}:`, err);
-      // Fallback to expired cache if available
-      if (cached && cached.url === rssUrl) {
-        try { return JSON.parse(cached.feed_json); } catch(e) {}
       }
-      return { items: [] };
-    } finally {
-      inProgressFetch = null;
     }
-  })();
 
-  return inProgressFetch;
+    // 3. Fetch and parse the live RSS feed
+    console.log(`[Podcast] Fetching live RSS feed from: ${rssUrl} (Forced: ${forceRefresh})`);
+    const feed = await parser.parseURL(rssUrl);
+
+    // 4. Update the cache in the database
+    const now = Date.now();
+    const feedJson = JSON.stringify(feed);
+    db.prepare(`
+      INSERT INTO podcast_cache (id, feed_json, url, timestamp)
+      VALUES (1, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET feed_json = excluded.feed_json, url = excluded.url, timestamp = excluded.timestamp
+    `).run(feedJson, rssUrl, now);
+
+    return feed;
+  } catch (err) {
+    console.error("[Podcast] Failed to fetch or parse RSS feed:", err);
+    
+    // Fallback: If live fetch fails, try to return any stale cached feed we have
+    try {
+      const cachedRow = db.prepare("SELECT feed_json FROM podcast_cache WHERE id = 1").get() as { feed_json: string } | undefined;
+      if (cachedRow?.feed_json) {
+        console.log("[Podcast] Returning stale cached feed due to live fetch failure");
+        return JSON.parse(cachedRow.feed_json);
+      }
+    } catch (fallbackErr) {
+      console.error("[Podcast] Stale cache fallback failed:", fallbackErr);
+    }
+
+    // Ultimate fallback to prevent client crash
+    return {
+      title: "Dejavu FM Podcasts",
+      description: "Underground Radio Archives",
+      items: [],
+      error: true,
+      message: err instanceof Error ? err.message : String(err)
+    };
+  }
 }
 
 export function clearPodcastCache() {
-  db.prepare("DELETE FROM podcast_cache").run();
+  try {
+    if (!db.open) return;
+    db.prepare("DELETE FROM podcast_cache WHERE id = 1").run();
+    console.log("[Podcast Cache] Cache cleared successfully");
+  } catch (err) {
+    console.error("[Podcast Cache] Failed to clear cache:", err);
+  }
 }

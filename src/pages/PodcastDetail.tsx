@@ -180,7 +180,7 @@ export default function PodcastDetail() {
     : 'Recent';
 
   // Extract a sensible image if possible; many RSS feeds have itunes:image or just use a default
-  const imageUrl = podcast.itunes?.image || "https://images.unsplash.com/photo-1516280440503-4560b4313f8c?auto=format&fit=crop&q=80&w=1200";
+  const imageUrl = podcast.itunes?.image || "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=1200";
 
   return (
     <motion.div 

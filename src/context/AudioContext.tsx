@@ -178,7 +178,11 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
           body: JSON.stringify({ category: 'stream_starts' })
         }).catch(() => {});
       }).catch(e => {
-        console.error("Autoplay blocked:", e);
+        if (e.name === 'AbortError') {
+           console.log("Playback interrupted by new request, ignoring.");
+           return;
+        }
+        console.error("Autoplay blocked or playback failed:", e);
         toast.error("Failed to connect to stream. Retrying...");
         set({ isPlaying: false });
         if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
@@ -211,6 +215,7 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
         audio.play().then(() => {
           if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
         }).catch(e => {
+           if (e.name === 'AbortError') return;
            console.error("Playback error:", e);
            toast.error("Failed to connect to stream. Retrying...");
            set({ isPlaying: false });
@@ -235,7 +240,9 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
       audio.src = newUrl;
       audio.load();
       if (wasPlaying) {
-        audio.play().catch(e => console.error("Quality switch playback error:", e));
+        audio.play().catch(e => {
+          if (e.name !== 'AbortError') console.error("Quality switch playback error:", e);
+        });
       }
     }
   },
@@ -250,7 +257,9 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
        audio.src = urls[quality];
        audio.load();
        if (wasPlaying) {
-         audio.play().catch(e => console.error("Playback error after URL update:", e));
+         audio.play().catch(e => {
+           if (e.name !== 'AbortError') console.error("Playback error after URL update:", e);
+         });
        }
     }
   },
@@ -280,7 +289,9 @@ if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
     } else if (audio && audio.paused) {
       // Recovery via OS lock screen play button if stream stalled
       audio.load();
-      audio.play().catch(e => console.error("MediaSession play recovery failed:", e));
+      audio.play().catch(e => {
+        if (e.name !== 'AbortError') console.error("MediaSession play recovery failed:", e);
+      });
     }
   });
 
@@ -318,7 +329,7 @@ if (typeof window !== 'undefined' && audio) {
             audio.src = currentSrc;
             audio.load();
             audio.play().catch(e => {
-              console.error("Background stream recovery failed:", e);
+              if (e.name !== 'AbortError') console.error("Background stream recovery failed:", e);
               // Do not togglePlay() here, let it keep retrying or stay 'playing' 
               // until user pauses, so when network returns they can hit play again.
             }).finally(() => {

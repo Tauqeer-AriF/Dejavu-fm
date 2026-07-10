@@ -2,8 +2,26 @@ import Database from 'better-sqlite3';
 import bcrypt from 'bcryptjs';
 import path from 'path';
 import fs from 'fs';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 
-export const dbPath = process.env.DATABASE_PATH || 'dejavufm.db';
+const execAsync = (cmd: string) => promisify(exec)(cmd, { maxBuffer: 1024 * 1024 * 10 });
+
+const getDatabasePath = () => {
+  if (process.env.DATABASE_PATH) {
+    return process.env.DATABASE_PATH;
+  }
+  // On Cloud Run (identified by K_SERVICE or production node env), use /tmp to ensure writable filesystem
+  if (process.env.NODE_ENV === 'production' || process.env.K_SERVICE) {
+    return '/tmp/dejavufm.db';
+  }
+  return 'dejavufm.db';
+};
+
+export const dbPath = getDatabasePath();
+export const backupDir = (process.env.NODE_ENV === 'production' || process.env.K_SERVICE || dbPath.startsWith('/tmp/'))
+  ? path.join(path.dirname(dbPath), 'backups')
+  : path.join(process.cwd(), 'backups');
 
 // Ensure the directory exists if a path is provided
 const dbDir = path.dirname(dbPath);
@@ -11,19 +29,72 @@ if (dbDir !== '.' && !fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
 }
 
-export const db = new Database(dbPath);
-db.pragma('journal_mode = WAL');
-db.pragma('busy_timeout = 5000');
-db.pragma('synchronous = OFF'); // Faster for SSDs, though less crash-safe. 'NORMAL' is safer.
-db.pragma('cache_size = 10000');
-db.pragma('foreign_keys = ON');
+// If the source db file exists in current directory but not in the writable destination, copy it
+if (dbPath !== 'dejavufm.db' && fs.existsSync('dejavufm.db') && !fs.existsSync(dbPath)) {
+  try {
+    fs.copyFileSync('dejavufm.db', dbPath);
+    console.log(`[DB] Seeded database by copying local dejavufm.db to ${dbPath}`);
+  } catch (err) {
+    console.error(`[DB] Failed to copy local dejavufm.db to ${dbPath}:`, err);
+  }
+}
+
+let activeDb = new Database(dbPath);
+
+const configureDb = (connection: any) => {
+  try {
+    connection.pragma('journal_mode = WAL');
+  } catch (e) {
+    console.warn('[DB] Failed to set WAL mode, falling back to default:', e);
+  }
+  connection.pragma('busy_timeout = 5000');
+  connection.pragma('synchronous = OFF'); // Faster for SSDs, though less crash-safe. 'NORMAL' is safer.
+  connection.pragma('cache_size = 10000');
+  connection.pragma('foreign_keys = ON');
+};
+
+configureDb(activeDb);
+
+export const db = new Proxy({} as any, {
+  get(_, prop) {
+    if (prop === 'close') {
+      return () => {
+        console.log("[DB Proxy] Closing active database connection...");
+        return activeDb.close();
+      };
+    }
+    const value = Reflect.get(activeDb, prop);
+    if (typeof value === 'function') {
+      return value.bind(activeDb);
+    }
+    return value;
+  },
+  set(_, prop, value) {
+    return Reflect.set(activeDb, prop, value);
+  }
+});
+
+export function closeDatabaseConnection() {
+  if (activeDb.open) {
+    console.log("[DB] Closing active database connection...");
+    activeDb.close();
+  }
+}
+
+export function reopenDatabaseConnection() {
+  console.log(`[DB] Re-opening database connection at ${dbPath}...`);
+  activeDb = new Database(dbPath);
+  configureDb(activeDb);
+}
 
 export function initDb() {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS migrations (
-      id TEXT PRIMARY KEY,
-      applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
+  console.log(`[DB] Initializing database at ${dbPath}...`);
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS migrations (
+        id TEXT PRIMARY KEY,
+        applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
 
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
@@ -55,7 +126,8 @@ export function initDb() {
       password_hash TEXT NOT NULL,
       bio TEXT,
       photo_url TEXT,
-      role TEXT DEFAULT 'admin' -- New column for user roles
+      role TEXT DEFAULT 'admin', -- New column for user roles
+      email TEXT
     );
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -140,7 +212,43 @@ export function initDb() {
     );
 
     CREATE INDEX IF NOT EXISTS idx_blogs_published_created ON blogs(is_published, created_at);
+
+    CREATE TABLE IF NOT EXISTS features (
+      id TEXT PRIMARY KEY,
+      slug TEXT UNIQUE NOT NULL,
+      title TEXT NOT NULL,
+      excerpt TEXT,
+      image_url TEXT,
+      content TEXT NOT NULL,
+      is_published INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_features_published_created ON features(is_published, created_at);
+
+    CREATE TABLE IF NOT EXISTS advertisements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      slider_type TEXT NOT NULL, -- 'single' or 'triple'
+      image_url TEXT NOT NULL,
+      link_url TEXT,
+      display_order INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
+
+  try {
+    const tableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='blogs'").get();
+    if (tableExists) {
+      db.exec(`
+        INSERT OR IGNORE INTO features (id, slug, title, excerpt, image_url, content, is_published, created_at, updated_at)
+        SELECT id, slug, title, excerpt, image_url, content, is_published, created_at, updated_at FROM blogs;
+      `);
+    }
+  } catch (e) {
+    console.error("[DB Migration] Error copying blogs to features:", e);
+  }
 
   const runMigration = (id: string, sql: string) => {
     const exists = db.prepare("SELECT 1 FROM migrations WHERE id = ?").get(id);
@@ -180,6 +288,14 @@ export function initDb() {
   runMigration('backup_metadata_table', "CREATE TABLE IF NOT EXISTS backup_metadata (filename TEXT PRIMARY KEY, label TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);");
   runMigration('backup_retention_days_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('backup_retention_days', '30');");
   runMigration('backup_frequency_hours_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('backup_frequency_hours', '24');");
+  runMigration('ad_auto_scroll_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('ad_auto_scroll', '1');");
+  runMigration('user_avatar_field', "ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT NULL;");
+  runMigration('user_email_field', "ALTER TABLE users ADD COLUMN email TEXT DEFAULT NULL;");
+  runMigration('admin_email_field', "ALTER TABLE admins ADD COLUMN email TEXT;");
+  runMigration('private_messages_table', "CREATE TABLE IF NOT EXISTS private_messages (id TEXT PRIMARY KEY, sender TEXT NOT NULL, recipient TEXT NOT NULL, text TEXT, imageUrl TEXT, imageName TEXT, audioUrl TEXT, audioName TEXT, timestamp INTEGER NOT NULL); CREATE INDEX IF NOT EXISTS idx_private_messages_participants ON private_messages(sender, recipient);");
+  try {
+    db.exec("UPDATE users SET email = username WHERE email IS NULL AND username LIKE '%@%'");
+  } catch (e) {}
 
   // Initialize hours
   const insertHour = db.prepare('INSERT OR IGNORE INTO hourly_stats (hour, peak_listeners) VALUES (?, 0)');
@@ -256,9 +372,9 @@ export function initDb() {
   const countDjs = db.prepare('SELECT COUNT(*) as count FROM djs').get() as {count: number};
   if (countDjs.count === 0) {
     const djs = [
-      { id: '1', name: 'DJ DEJA', bio: 'Founding resident and jungle pioneer.', instagram: 'djdeja', soundcloud: 'djdeja', image_url: 'https://images.unsplash.com/photo-1571266028243-e4733b0f0bb1?q=80&w=800' },
-      { id: '2', name: 'LADY L', bio: 'Reggae and Dancehall specialist.', instagram: 'ladyl_radio', soundcloud: 'ladyl', image_url: 'https://images.unsplash.com/photo-1545620959-1f486effb840?q=80&w=800' },
-      { id: '3', name: 'VIBE MASTER', bio: 'Old school house and garage connoisseur.', instagram: 'vibemaster', soundcloud: 'vibemaster', image_url: 'https://images.unsplash.com/photo-1516280440503-4560b4313f8c?q=80&w=800' }
+      { id: '1', name: 'DJ DEJA', bio: 'Founding resident and jungle pioneer.', instagram: 'djdeja', soundcloud: 'djdeja', image_url: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=800' },
+      { id: '2', name: 'LADY L', bio: 'Reggae and Dancehall specialist.', instagram: 'ladyl_radio', soundcloud: 'ladyl', image_url: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=800' },
+      { id: '3', name: 'VIBE MASTER', bio: 'Old school house and garage connoisseur.', instagram: 'vibemaster', soundcloud: 'vibemaster', image_url: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=800' }
     ];
     const insertDj = db.prepare('INSERT INTO djs (id, name, bio, instagram, soundcloud, image_url) VALUES (?, ?, ?, ?, ?, ?)');
     djs.forEach(dj => insertDj.run(dj.id, dj.name, dj.bio, dj.instagram, dj.soundcloud, dj.image_url));
@@ -269,6 +385,15 @@ export function initDb() {
        insertSchedule.run('2', day, '14:00', '18:00', 'Afternoon Selection');
        insertSchedule.run('3', day, '20:00', '23:59', 'The Night Mix');
     }
+  } else {
+    // Patch existing seeded DJ image URLs in case they are broken
+    try {
+      db.prepare("UPDATE djs SET image_url = 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=800' WHERE image_url LIKE '%photo-1571266028243-e4733b0f0bb1%'").run();
+      db.prepare("UPDATE djs SET image_url = 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=800' WHERE image_url LIKE '%photo-1545620959-1f486effb840%'").run();
+      db.prepare("UPDATE djs SET image_url = 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=800' WHERE image_url LIKE '%photo-1516280440503-4560b4313f8c%'").run();
+    } catch (err) {
+      console.error("[DB] Failed to update seeded DJ image URLs:", err);
+    }
   }
 
   // Ensure default admin exists
@@ -277,16 +402,28 @@ export function initDb() {
     const defaultHash = bcrypt.hashSync('password', 10);
     console.log("[DB] Seeding default admin user (admin/password)");
     db.prepare('INSERT INTO admins (username, password_hash, role) VALUES (?, ?, ?)').run('admin', defaultHash, 'admin');
+  }
+
+  // Ensure Wayne admin exists
+  const wayneExists = db.prepare("SELECT 1 FROM admins WHERE LOWER(email) = ? OR LOWER(username) = ?").get('wayne@creativeengagementservices.com', 'wayne');
+  if (!wayneExists) {
+    const wayneHash = bcrypt.hashSync('password', 10);
+    console.log("[DB] Seeding Wayne admin user (wayne/password)");
+    db.prepare('INSERT INTO admins (username, email, password_hash, role) VALUES (?, ?, ?, ?)').run('wayne', 'wayne@creativeengagementservices.com', wayneHash, 'admin');
   } else {
     console.log(`[DB] Already have ${countAdmins.count} admin user(s).`);
   }
+  console.log("[DB] Database initialization complete.");
+} catch (err) {
+  console.error("[DB] CRITICAL ERROR during database initialization:", err);
+  throw err;
+}
 }
 
 /**
  * Delete backups older than the configured retention setting.
  */
 export function pruneBackups() {
-  const backupDir = path.join(process.cwd(), 'backups');
   if (!fs.existsSync(backupDir)) return;
 
   const retentionRow = db.prepare("SELECT value FROM settings WHERE key = 'backup_retention_days'").get() as {value: string} | undefined;
@@ -295,7 +432,7 @@ export function pruneBackups() {
   const now = Date.now();
 
   fs.readdirSync(backupDir)
-    .filter(f => (f.startsWith('backup-') || f.startsWith('manual-backup-')) && f.endsWith('.db'))
+    .filter(f => (f.startsWith('backup-') || f.startsWith('manual-backup-')) && (f.endsWith('.db') || f.endsWith('.bundle')))
     .forEach(f => {
       const filePath = path.join(backupDir, f);
       const stats = fs.statSync(filePath);
@@ -311,22 +448,45 @@ export function pruneBackups() {
  * Atomic backup of the SQLite database.
  */
 export async function backupDatabase() {
-  const backupDir = path.join(process.cwd(), 'backups');
   if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const backupPath = path.join(backupDir, `backup-${timestamp}.db`);
-
+  const finalBackupPath = path.join(backupDir, `backup-${timestamp}.bundle`);
+  const tempDir = path.join(backupDir, `temp-${timestamp}`);
+  
   const now = new Date().toISOString();
   try {
-    console.log(`[DB] Starting automated backup...`);
+    console.log(`[DB] Starting automated bundled backup...`);
     db.prepare("UPDATE settings SET value = ? WHERE key = 'backup_last_attempt'").run(now);
-    await db.backup(backupPath);
+
+    // 1. Create temp directory
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+
+    // 2. Backup database to temp dir
+    const dbBackupPath = path.join(tempDir, 'database.db');
+    await db.backup(dbBackupPath);
+
+    // 3. Copy uploads if they exist
+    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+    if (fs.existsSync(uploadsDir)) {
+      const destUploads = path.join(tempDir, 'uploads');
+      if (!fs.existsSync(destUploads)) fs.mkdirSync(destUploads, { recursive: true });
+      await execAsync(`cp -a "${uploadsDir}/." "${destUploads}/" 2>/dev/null || true`);
+    }
+
+    // 4. Create tarball bundle
+    await execAsync(`tar -czf "${finalBackupPath}" -C "${tempDir}" .`);
+
     db.prepare("UPDATE settings SET value = ? WHERE key = 'backup_last_status'").run('success');
-    console.log(`[DB] Backup successful: ${backupPath}`);
+    console.log(`[DB] Bundled backup successful: ${finalBackupPath}`);
+    
+    // Cleanup temp dir
+    fs.rmSync(tempDir, { recursive: true, force: true });
+    
     pruneBackups();
   } catch (err) {
     db.prepare("UPDATE settings SET value = ? WHERE key = 'backup_last_status'").run('failed');
     console.error("[DB] Automated backup failed:", err);
+    if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true });
   }
 }

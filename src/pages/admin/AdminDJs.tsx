@@ -94,7 +94,7 @@ function EditDJForm({dj, onSave, onCancel}: {dj: any, onSave: ()=>void, onCancel
 
   return (
     <form onSubmit={handleSave} className="space-y-4 w-full">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="space-y-3">
         <div>
           <label className="block text-xs uppercase mb-1">Name</label>
           <input required value={name} onChange={e=>setName(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5 focus:outline-none focus:border-neon-purple text-sm" />
@@ -156,7 +156,7 @@ function AddDJForm({onAdd}: {onAdd:()=>void}) {
   return (
     <form onSubmit={handleAdd} className="mt-8 bg-dark-bg/50 p-6 rounded-xl border border-white/5 space-y-4 max-w-2xl">
       <h4 className="font-bold">Add New DJ</h4>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="space-y-3">
         <div>
           <label className="block text-xs uppercase mb-1">Name</label>
           <input required value={name} onChange={e=>setName(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5" />

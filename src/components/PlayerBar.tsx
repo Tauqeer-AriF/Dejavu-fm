@@ -145,12 +145,7 @@ export function PlayerBar() {
   const { logoUrl, isLightMode, settings, resolveDjImage } = useLogo();
   
   const [listeners, setListeners] = useState(0);
-  const [isMinimized, setIsMinimized] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return window.innerWidth < 1280;
-    }
-    return false;
-  });
+  const [isMinimized, setIsMinimized] = useState(true);
   const socketRef = useRef<any>(null);
 
   useEffect(() => {

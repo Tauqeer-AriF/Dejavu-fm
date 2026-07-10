@@ -117,6 +117,7 @@ export function AdminBranding() {
   const [logoUrl, setLogoUrl] = useState("");
   const [logoDark, setLogoDark] = useState("");
   const [logoLight, setLogoLight] = useState("");
+  const [logoShape, setLogoShape] = useState("square");
   const [favicon, setFavicon] = useState("");
   const [primaryColor, setPrimaryColor] = useState("#b026ff");
   const [secondaryColor, setSecondaryColor] = useState("#00d2ff");
@@ -131,6 +132,7 @@ export function AdminBranding() {
     logo_url: "",
     logo_dark: "",
     logo_light: "",
+    logo_shape: "square",
     favicon: "/favicon.ico",
     primary_color: "#b026ff",
     secondary_color: "#00d2ff",
@@ -151,12 +153,13 @@ export function AdminBranding() {
 
   useEffect(() => {
     fetch("/api/public/settings").then(r=>r.json()).then(d => {
-      setAppName(d.app_name || DEFAULTS.appName);
+      setAppName(d.app_name !== undefined ? d.app_name : DEFAULTS.appName);
       setAppTitle(d.app_title || DEFAULTS.appTitle);
-      setAppTagline(d.app_tagline || DEFAULTS.appTagline);
+      setAppTagline(d.app_tagline !== undefined ? d.app_tagline : DEFAULTS.appTagline);
       setLogoUrl(d.logo_url || DEFAULTS.logo_url);
       setLogoDark(d.logo_dark || DEFAULTS.logo_dark);
       setLogoLight(d.logo_light || DEFAULTS.logo_light);
+      setLogoShape(d.logo_shape !== undefined ? d.logo_shape : DEFAULTS.logo_shape);
       setFavicon(d.favicon || DEFAULTS.favicon);
       setPrimaryColor(d.primary_color || DEFAULTS.primary_color);
       setSecondaryColor(d.secondary_color || DEFAULTS.secondary_color);
@@ -213,6 +216,7 @@ export function AdminBranding() {
           logo_url: DEFAULTS.logo_url,
           logo_dark: DEFAULTS.logo_dark,
           logo_light: DEFAULTS.logo_light,
+          logo_shape: DEFAULTS.logo_shape,
           favicon: DEFAULTS.favicon,
           primary_color: DEFAULTS.primary_color,
           secondary_color: DEFAULTS.secondary_color,
@@ -228,6 +232,7 @@ export function AdminBranding() {
         setLogoUrl(DEFAULTS.logo_url);
         setLogoDark(DEFAULTS.logo_dark);
         setLogoLight(DEFAULTS.logo_light);
+        setLogoShape(DEFAULTS.logo_shape);
         setFavicon(DEFAULTS.favicon);
         setPrimaryColor(DEFAULTS.primary_color);
         setSecondaryColor(DEFAULTS.secondary_color);
@@ -253,6 +258,7 @@ export function AdminBranding() {
           logo_url: logoUrl,
           logo_dark: logoDark,
           logo_light: logoLight,
+          logo_shape: logoShape,
           favicon: favicon,
           primary_color: primaryColor,
           secondary_color: secondaryColor,
@@ -277,29 +283,43 @@ export function AdminBranding() {
         <div className="flex flex-col sm:flex-row sm:items-center gap-6 pb-6 border-b border-white/5">
           <div className="flex items-center space-x-4">
             <div className="flex flex-col items-center">
-              <div className="w-16 h-16 bg-white border border-black/10 rounded-xl flex items-center justify-center overflow-hidden shadow-sm">
+              <div className={`${logoShape === 'rectangle' ? 'w-32 h-16' : 'w-16 h-16'} bg-white border border-black/10 rounded-xl flex items-center justify-center overflow-hidden shadow-sm transition-all duration-300`}>
                 {(logoLight || logoUrl) ? (
                   <img src={logoLight || logoUrl || undefined} alt="Light Mode" className="max-w-full max-h-full object-contain p-2" />
                 ) : (
-                  <HomeIcon className="w-6 h-6 text-black/20" />
+                  <div className="text-center p-1">
+                    <HomeIcon className="w-6 h-6 text-black/20 mx-auto" />
+                    {logoShape === 'rectangle' && <span className="text-[8px] text-black/30 font-bold block">No Logo</span>}
+                  </div>
                 )}
               </div>
               <span className="text-[9px] font-black uppercase text-white/40 mt-2 tracking-widest">Light Mode</span>
             </div>
             <div className="flex flex-col items-center">
-              <div className="w-16 h-16 bg-dark-bg border border-white/10 rounded-xl flex items-center justify-center overflow-hidden">
+              <div className={`${logoShape === 'rectangle' ? 'w-32 h-16' : 'w-16 h-16'} bg-dark-bg border border-white/10 rounded-xl flex items-center justify-center overflow-hidden transition-all duration-300`}>
                 {(logoDark || logoUrl) ? (
                   <img src={logoDark || logoUrl || undefined} alt="Dark Mode" className="max-w-full max-h-full object-contain p-2" />
                 ) : (
-                  <HomeIcon className="w-6 h-6 text-white/10" />
+                  <div className="text-center p-1">
+                    <HomeIcon className="w-6 h-6 text-white/10 mx-auto" />
+                    {logoShape === 'rectangle' && <span className="text-[8px] text-white/20 font-bold block">No Logo</span>}
+                  </div>
                 )}
               </div>
               <span className="text-[9px] font-black uppercase text-white/40 mt-2 tracking-widest">Dark Mode</span>
             </div>
           </div>
           <div className="flex-1">
-            <h4 className="text-xl font-bold uppercase tracking-tight" style={{ color: primaryColor, fontFamily: fontDisplay }}>{appName || "Your App Name"}</h4>
-            <p className="text-white/40 text-[10px] uppercase tracking-[0.3em] font-black mt-1" style={{ fontFamily: fontSans }}>{appTagline || "Live Radio Preview"}</p>
+            {appName ? (
+              <h4 className="text-xl font-bold uppercase tracking-tight" style={{ color: primaryColor, fontFamily: fontDisplay }}>{appName}</h4>
+            ) : (
+              <h4 className="text-xl font-bold uppercase tracking-tight text-white/20 italic">No App Name</h4>
+            )}
+            {appTagline ? (
+              <p className="text-white/40 text-[10px] uppercase tracking-[0.3em] font-black mt-1" style={{ fontFamily: fontSans }}>{appTagline}</p>
+            ) : (
+              <p className="text-white/20 text-[10px] uppercase tracking-[0.3em] font-black mt-1 italic">No Tagline</p>
+            )}
           </div>
         </div>
 
@@ -308,7 +328,6 @@ export function AdminBranding() {
             <div>
               <label className="block text-xs uppercase mb-1 text-white/50 font-bold">Application Name</label>
               <input 
-                required
                 value={appName} 
                 onChange={e=>setAppName(e.target.value)} 
                 className="w-full bg-dark-bg border border-white/10 rounded px-4 py-2 focus:border-neon-purple outline-none" 
@@ -326,15 +345,27 @@ export function AdminBranding() {
               />
             </div>
           </div>
-          <div>
-            <label className="block text-xs uppercase mb-1 text-white/50 font-bold">Branding Tagline</label>
-            <input 
-              required
-              value={appTagline} 
-              onChange={e=>setAppTagline(e.target.value)} 
-              className="w-full bg-dark-bg border border-white/10 rounded px-4 py-2 focus:border-neon-purple outline-none" 
-              placeholder="The Sound of London"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs uppercase mb-1 text-white/50 font-bold">Branding Tagline</label>
+              <input 
+                value={appTagline} 
+                onChange={e=>setAppTagline(e.target.value)} 
+                className="w-full bg-dark-bg border border-white/10 rounded px-4 py-2 focus:border-neon-purple outline-none" 
+                placeholder="The Sound of London"
+              />
+            </div>
+            <div>
+              <label className="block text-xs uppercase mb-1 text-white/50 font-bold">Logo Shape / Aspect Ratio</label>
+              <select 
+                value={logoShape} 
+                onChange={e=>setLogoShape(e.target.value)}
+                className="w-full bg-dark-bg border border-white/10 rounded px-4 py-2 focus:border-neon-purple outline-none text-white"
+              >
+                <option value="square" className="bg-dark-bg text-white">Square (1:1 Ratio)</option>
+                <option value="rectangle" className="bg-dark-bg text-white">Rectangle (Wide Ratio)</option>
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-white/5">
@@ -538,8 +569,66 @@ export function AdminSettings() {
             </button>
           </div>
         </div>
+
+        <div className="pt-4 border-t border-white/5">
+          <AdminSecretSettings />
+        </div>
+
         <button onClick={saveNode} className="bg-neon-purple px-6 py-2 rounded font-bold hover:bg-neon-blue transition-colors">Save Settings</button>
       </div>
+    </div>
+  );
+}
+
+function AdminSecretSettings() {
+  const [secret, setSecret] = useState("");
+  const { showAlert } = useModal();
+
+  useEffect(() => {
+    fetchAdmin("/api/admin/settings/secret").then(r=>r.json()).then(d => {
+      if (d.secret) setSecret(d.secret);
+    });
+  }, []);
+
+  const handleSaveSecret = async () => {
+    try {
+      const res = await fetchAdmin("/api/admin/settings/secret", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ secret })
+      });
+      if (res.ok) {
+        showAlert({ title: "Success", message: "Admin access secret updated!", style: "success" });
+      } else {
+        showAlert({ title: "Error", message: "Failed to update secret", style: "danger" });
+      }
+    } catch(e) {
+      console.error(e);
+      showAlert({ title: "Error", message: "Failed to update secret", style: "danger" });
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <h4 className="text-lg font-bold mb-2">Admin Portal Security</h4>
+      <label className="block text-sm mb-1 text-white/70">Secret Access Answer (Authorized Name)</label>
+      <div className="flex gap-2">
+        <input 
+          type="text" 
+          value={secret} 
+          onChange={e=>setSecret(e.target.value)} 
+          className="flex-1 bg-dark-bg border border-white/10 rounded px-4 py-2" 
+          placeholder="e.g. waynee"
+        />
+        <button 
+          type="button"
+          onClick={handleSaveSecret}
+          className="px-4 py-2 bg-neon-purple text-white rounded font-bold hover:bg-neon-blue transition-colors"
+        >
+          Update Secret
+        </button>
+      </div>
+      <p className="text-xs text-white/40 mt-2">This is the answer required to access the admin login page from the public site.</p>
     </div>
   );
 }

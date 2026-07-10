@@ -1,6 +1,6 @@
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { NavLink } from 'react-router-dom';
-import { Radio, Calendar, Podcast, Settings as AdminIcon, Headphones, Menu, X, Video, MessageSquare, Sun, Moon, FileText } from 'lucide-react';
+import { Radio, Calendar, Podcast, Shield as AdminIcon, Headphones, Menu, X, Video, MessageSquare, Sun, Moon, FileText, ChevronDown, ExternalLink } from 'lucide-react';
 import { PlayerBar } from './components/PlayerBar';
 import { ChatSidebar } from './components/ChatSidebar';
 import { ShoutoutWidget } from './components/ShoutoutWidget';
@@ -37,16 +37,27 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import Admin from './pages/Admin';
 import WatchLive from './pages/WatchLive';
-import Stream from './pages/Stream';
-import Blog from './pages/Blog';
-import BlogDetail from './pages/BlogDetail';
+import Features from './pages/Features';
+import FeatureDetail from './pages/FeatureDetail';
 
-function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat: boolean }) {
+function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void; featChat: boolean; isStaff?: boolean }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const isAdmin = location.pathname.startsWith('/admin');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isFeaturesOpen, setIsFeaturesOpen] = useState(false);
+  const [isMobileFeaturesOpen, setIsMobileFeaturesOpen] = useState(false);
   const [showSecretPrompt, setShowSecretPrompt] = useState(false);
-  const { logoUrl, isLightMode, settings } = useLogo();
+  const { logoUrl, logoShape, isLightMode, settings } = useLogo();
+
+  const handleAdminClick = () => {
+    // Senior Dev: If the user is already confirmed as staff or has passed the secret, go straight to admin
+    if (isStaff || sessionStorage.getItem('admin_secret_passed') === 'true') {
+      navigate('/admin');
+    } else {
+      setShowSecretPrompt(true);
+    }
+  };
 
   // Professional touch: Lock body scroll when mobile menu is open
   useEffect(() => {
@@ -70,8 +81,8 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
     // Note: useLogo will update automatically via MutationObserver
   };
 
-  const appName = settings?.app_name || "DejavuFM";
-  const appTagline = settings?.app_tagline || "Underground Gold Since 2005";
+  const appName = settings?.app_name !== undefined ? settings.app_name : "DejavuFM";
+  const appTagline = settings?.app_tagline !== undefined ? settings.app_tagline : "Underground Gold Since 2005";
   
   // Detect if we are using a single logo for both modes
   const isSingleLogo = !!settings?.logo_url && !settings?.logo_light && !settings?.logo_dark;
@@ -105,49 +116,116 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
     <>
       <nav className="flex items-center justify-between p-4 md:p-8 max-w-[100rem] mx-auto w-full relative z-[1000] gap-4">
         <Link to="/" className="flex items-center space-x-3 md:space-x-4 z-40 shrink-0" onClick={() => setIsMobileMenuOpen(false)}>
-          <div className={`w-11 h-11 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center overflow-hidden shrink-0 transition-all ${
-            isLightMode 
-              ? (isSingleLogo ? 'bg-neutral-900 shadow-xl' : 'bg-white shadow-[0_10px_30px_rgba(0,0,0,0.1)]') 
-              : (isSingleLogo ? 'bg-white shadow-xl' : 'bg-dark-bg border border-white/5 shadow-[0_10px_30px_rgba(255,255,255,0.05)]')
-          }`}>
-            {logoUrl ? (
-              <img src={logoUrl} alt={appName} className="w-full h-full object-contain p-1" />
-            ) : (
-              <Headphones className={`w-7 h-7 ${isLightMode && !isSingleLogo ? 'text-dark-bg' : (isLightMode && isSingleLogo ? 'text-white' : (isLightMode ? 'text-dark-bg' : 'text-white'))}`} />
-            )}
-          </div>
-          <div className="hidden sm:flex flex-col">
-            <div className="flex items-center space-x-2">
-              <span className="text-3xl md:text-4xl font-display font-black tracking-tighter uppercase leading-none">
-                {appName.split(' ')[0]}
-                <span className="text-neon-purple glow-text ml-1 hidden sm:inline">{appName.split(' ').slice(1).join(' ')}</span>
-              </span>
-              {isOnAir && (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="px-2 py-0.5 bg-red-500 rounded flex items-center space-x-1 shadow-[0_0_15px_rgba(239,68,68,0.5)]"
-                >
-                  <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
-                  <span className="text-[8px] font-black uppercase text-white tracking-widest">Live</span>
-                </motion.div>
+          {logoUrl && (
+            <div className={`${
+              logoShape === 'rectangle' ? 'w-24 md:w-32 h-11 md:h-14 px-2' : 'w-11 h-11 md:w-14 md:h-14 p-1'
+            } rounded-xl md:rounded-2xl flex items-center justify-center overflow-hidden shrink-0 transition-all ${
+              isLightMode 
+                ? (isSingleLogo ? 'bg-neutral-900 shadow-xl' : 'bg-white shadow-[0_10px_30px_rgba(0,0,0,0.1)]') 
+                : (isSingleLogo ? 'bg-white shadow-xl' : 'bg-dark-bg border border-white/5 shadow-[0_10px_30px_rgba(255,255,255,0.05)]')
+            }`}>
+              <img src={logoUrl} alt={appName || "Logo"} className="w-full h-full object-contain" />
+            </div>
+          )}
+          {appName && appName.trim() !== "" && (
+            <div className="hidden sm:flex flex-col">
+              <div className="flex items-center space-x-2">
+                <span className="text-3xl md:text-4xl font-display font-black tracking-tighter uppercase leading-none">
+                  {appName.split(' ')[0]}
+                  <span className="text-neon-purple glow-text ml-1 hidden sm:inline">{appName.split(' ').slice(1).join(' ')}</span>
+                </span>
+                {isOnAir && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="px-2 py-0.5 bg-red-500 rounded flex items-center space-x-1 shadow-[0_0_15px_rgba(239,68,68,0.5)]"
+                  >
+                    <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
+                    <span className="text-[8px] font-black uppercase text-white tracking-widest">Live</span>
+                  </motion.div>
+                )}
+              </div>
+              {appTagline && appTagline.trim() !== "" && (
+                <span className="text-[10px] uppercase tracking-[0.4em] font-black text-white/30 hidden md:block">{appTagline}</span>
               )}
             </div>
-            <span className="text-[10px] uppercase tracking-[0.4em] font-black text-white/30 hidden md:block">{appTagline}</span>
-          </div>
+          )}
         </Link>
         
         <div className="hidden xl:flex items-center bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2rem] px-2 py-2 shadow-2xl">
           <NavLink to="/" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>Listen</NavLink>
           {featLiveTools && (
-            <NavLink to="/stream" className={({isActive}) => `px-4 xl:px-8 py-3 flex items-center gap-2 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-neon-purple text-white shadow-[0_0_25px_rgba(176,38,255,0.4)]' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>
-              <Radio className="w-4 h-4 hidden xl:block" /> Stream
+            <NavLink to="/watch" className={({isActive}) => `px-4 xl:px-8 py-3 flex items-center gap-2 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-neon-purple text-white shadow-[0_0_25px_rgba(176,38,255,0.4)]' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>
+              <Radio className="w-4 h-4 hidden xl:block" /> Watch
             </NavLink>
           )}
           <NavLink to="/schedule" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>Schedule</NavLink>
           <NavLink to="/djs" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>DJs</NavLink>
           <NavLink to="/podcasts" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive || location.pathname.startsWith('/podcasts/') ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>Podcasts</NavLink>
-          <NavLink to="/blog" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive || location.pathname.startsWith('/blog/') ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>Blog</NavLink>
+          
+          <div 
+            className="relative group h-full flex items-center"
+            onMouseEnter={() => setIsFeaturesOpen(true)}
+            onMouseLeave={() => setIsFeaturesOpen(false)}
+          >
+            <button 
+              onClick={() => setIsFeaturesOpen(!isFeaturesOpen)}
+              className={`px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap flex items-center gap-1.5 ${location.pathname.startsWith('/features') || location.pathname === '/contact' ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}
+            >
+              Features <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isFeaturesOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            <AnimatePresence>
+              {isFeaturesOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+                  className="absolute top-[calc(100%+8px)] left-0 w-64 bg-dark-bg/95 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden z-[1001] p-1.5"
+                >
+                  <div className="px-3 py-2 mb-1 border-b border-white/5">
+                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20">Explore</span>
+                  </div>
+                  <Link 
+                    to="/features" 
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] text-white/70 hover:text-white hover:bg-white/10 transition-all group/item"
+                    onClick={() => setIsFeaturesOpen(false)}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-neon-purple/10 flex items-center justify-center group-hover/item:bg-neon-purple/20 transition-colors">
+                      <FileText className="w-4 h-4 text-neon-purple" />
+                    </div>
+                    All Features
+                  </Link>
+                  <a 
+                    href="https://dejavufmstore.secure-decoration.com" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] text-white/70 hover:text-white hover:bg-white/10 transition-all group/item"
+                    onClick={() => setIsFeaturesOpen(false)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-neon-blue/10 flex items-center justify-center group-hover/item:bg-neon-blue/20 transition-colors">
+                        <Radio className="w-4 h-4 text-neon-blue" />
+                      </div>
+                      Online Store
+                    </div>
+                    <ExternalLink className="w-3 h-3 text-white/30" />
+                  </a>
+                  <Link 
+                    to="/contact" 
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] text-white/70 hover:text-white hover:bg-white/10 transition-all group/item"
+                    onClick={() => setIsFeaturesOpen(false)}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center group-hover/item:bg-green-500/20 transition-colors">
+                      <MessageSquare className="w-4 h-4 text-green-400" />
+                    </div>
+                    Contact Us
+                  </Link>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
 
         <div className="flex items-center space-x-2 md:space-x-4 xl:space-x-6 z-40">
@@ -169,7 +247,7 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
            )}
 
           <button 
-            onClick={() => setShowSecretPrompt(true)} 
+            onClick={handleAdminClick} 
             className="hidden xl:block text-white/20 hover:text-white transition-colors shrink-0"
           >
             <AdminIcon className="w-6 h-6" />
@@ -205,46 +283,126 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
               <div className="flex flex-col space-y-2 mt-auto mb-auto">
                 {[
                   { path: '/', label: 'Listen', exact: true },
-                  ...(featLiveTools ? [{ path: '/stream', label: 'Stream', icon: <Radio className="w-5 h-5" />, color: 'text-neon-purple' }] : []),
+                  ...(featLiveTools ? [{ path: '/watch', label: 'Watch', icon: <Radio className="w-5 h-5" />, color: 'text-neon-purple' }] : []),
                   { path: '/schedule', label: 'Schedule' },
                   { path: '/djs', label: 'DJs' },
                   { path: '/podcasts', label: 'Podcasts', matchPrefix: true },
-                  { path: '/blog', label: 'Blog', matchPrefix: true, icon: <FileText className="w-5 h-5" /> },
+                  { 
+                    label: 'Features', 
+                    isMenu: true,
+                    isOpen: isMobileFeaturesOpen,
+                    setOpen: setIsMobileFeaturesOpen,
+                    subItems: [
+                      { path: '/features', label: 'All Features', icon: <FileText className="w-4 h-4" /> },
+                      { path: 'https://dejavufmstore.secure-decoration.com', label: 'Online Store', isExternal: true, icon: <ExternalLink className="w-4 h-4" /> },
+                      { path: '/contact', label: 'Contact', icon: <MessageSquare className="w-4 h-4" /> },
+                    ]
+                  },
                   { path: '/about', label: 'About' },
-                  { path: '/contact', label: 'Contact' },
-                ].map((item, index) => (
+                ].map((item: any, index) => (
                   <motion.div
-                    key={item.path}
+                    key={item.label}
                     initial={{ opacity: 0, x: -30 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
                     transition={{ duration: 0.4, delay: index * 0.05, ease: [0.22, 1, 0.36, 1] }}
                   >
-                    <NavLink 
-                      to={item.path} 
-                      onClick={() => setIsMobileMenuOpen(false)} 
-                      className={({isActive}) => {
-                        const isMatch = item.exact ? isActive : (isActive || (item.matchPrefix && location.pathname.startsWith(item.path)));
-                        return `group flex items-center justify-between py-3 border-b border-white/5 transition-all w-full
-                          ${isMatch ? 'text-white' : 'text-white/50 hover:text-white'}`
-                      }}
-                    >
-                      {({isActive}) => {
-                        const isMatch = item.exact ? isActive : (isActive || (item.matchPrefix && location.pathname.startsWith(item.path)));
-                        return (
-                          <>
-                            <span className={`text-2xl font-display font-medium tracking-tight ${isMatch && item.color ? item.color : ''}`}>
-                              {item.label}
-                            </span>
-                            {item.icon ? (
-                              <div className={isMatch ? (item.color || 'text-white') : 'text-white/30 group-hover:text-white/70 transition-colors'}>
-                                {item.icon}
-                              </div>
-                            ) : null}
-                          </>
-                        )
-                      }}
-                    </NavLink>
+                    {item.isMenu ? (
+                      <div className="flex flex-col">
+                        <button 
+                          onClick={() => item.setOpen?.(!item.isOpen)}
+                          className="flex items-center justify-between py-4 border-b border-white/5 transition-all w-full text-white/50 hover:text-white"
+                        >
+                          <span className="text-3xl font-display font-medium tracking-tight">
+                            {item.label}
+                          </span>
+                          <ChevronDown className={`w-6 h-6 transition-transform duration-300 ${item.isOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                        <AnimatePresence>
+                          {item.isOpen && (
+                            <motion.div 
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="overflow-hidden bg-white/5 rounded-2xl mt-2 mb-4"
+                            >
+                              {item.subItems?.map((sub) => (
+                                sub.isExternal ? (
+                                  <a 
+                                    key={sub.path}
+                                    href={sub.path}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className="flex items-center justify-between p-4 text-white/60 hover:text-white border-b border-white/5 last:border-0"
+                                  >
+                                    <span className="text-lg font-medium tracking-tight uppercase tracking-[0.1em] text-[14px]">
+                                      {sub.label}
+                                    </span>
+                                    {sub.icon}
+                                  </a>
+                                ) : (
+                                  <NavLink 
+                                    key={sub.path}
+                                    to={sub.path}
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className={({isActive}) => `flex items-center justify-between p-4 border-b border-white/5 last:border-0 ${isActive ? 'text-white bg-white/10' : 'text-white/60 hover:text-white'}`}
+                                  >
+                                    <span className="text-lg font-medium tracking-tight uppercase tracking-[0.1em] text-[14px]">
+                                      {sub.label}
+                                    </span>
+                                    {sub.icon}
+                                  </NavLink>
+                                )
+                              ))}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    ) : item.isExternal ? (
+                      <a 
+                        href={item.path} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        onClick={() => setIsMobileMenuOpen(false)} 
+                        className="group flex items-center justify-between py-3 border-b border-white/5 transition-all w-full text-white/50 hover:text-white"
+                      >
+                        <span className="text-2xl font-display font-medium tracking-tight">
+                          {item.label}
+                        </span>
+                        {item.icon ? (
+                          <div className="text-white/30 group-hover:text-white/70 transition-colors">
+                            {item.icon}
+                          </div>
+                        ) : null}
+                      </a>
+                    ) : (
+                      <NavLink 
+                        to={item.path} 
+                        onClick={() => setIsMobileMenuOpen(false)} 
+                        className={({isActive}) => {
+                          const isMatch = item.exact ? isActive : (isActive || (item.matchPrefix && location.pathname.startsWith(item.path)));
+                          return `group flex items-center justify-between py-3 border-b border-white/5 transition-all w-full
+                            ${isMatch ? 'text-white' : 'text-white/50 hover:text-white'}`
+                        }}
+                      >
+                        {({isActive}) => {
+                          const isMatch = item.exact ? isActive : (isActive || (item.matchPrefix && location.pathname.startsWith(item.path)));
+                          return (
+                            <>
+                              <span className={`text-2xl font-display font-medium tracking-tight ${isMatch && item.color ? item.color : ''}`}>
+                                {item.label}
+                              </span>
+                              {item.icon ? (
+                                <div className={isMatch ? (item.color || 'text-white') : 'text-white/30 group-hover:text-white/70 transition-colors'}>
+                                  {item.icon}
+                                </div>
+                              ) : null}
+                            </>
+                          )
+                        }}
+                      </NavLink>
+                    )}
                   </motion.div>
                 ))}
               </div>
@@ -260,7 +418,7 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
                   <button 
                     onClick={() => {
                       setIsMobileMenuOpen(false);
-                      setShowSecretPrompt(true);
+                      handleAdminClick();
                     }} 
                     className="px-6 py-3 rounded-full bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all flex items-center space-x-2"
                   >
@@ -277,6 +435,7 @@ function Navigation({ onOpenChat, featChat }: { onOpenChat: () => void; featChat
       <SecretAdminPrompt 
         isOpen={showSecretPrompt} 
         onClose={() => setShowSecretPrompt(false)} 
+        isLightMode={isLightMode}
       />
     </>
   );
@@ -327,7 +486,7 @@ function MobileBottomBar({ featLiveTools }: { featLiveTools: boolean }) {
           
           {[
             { to: "/", icon: Radio, label: "Listen", active: location.pathname === "/" },
-            ...(featLiveTools ? [{ to: "/stream", icon: Video, label: "Stream" }] : []),
+            ...(featLiveTools ? [{ to: "/watch", icon: Video, label: "Watch" }] : []),
             { to: "/schedule", icon: Calendar, label: "Shows" },
             { to: "/djs", icon: Headphones, label: "DJs", active: location.pathname === "/djs" || isOnDJs },
             { to: "/podcasts", icon: Podcast, label: "Archive", active: location.pathname === "/podcasts" || isOnPodcasts },
@@ -387,14 +546,13 @@ function AnimatedRoutes() {
         <Routes location={location}>
           <Route path="/" element={<Home />} />
           <Route path="/watch" element={<WatchLive />} />
-          <Route path="/stream" element={<Stream />} />
           <Route path="/schedule" element={<Schedule />} />
           <Route path="/djs" element={<DJs />} />
           <Route path="/djs/:id" element={<DJDetail />} />
           <Route path="/podcasts" element={<PodcastsPage />} />
           <Route path="/podcasts/:id" element={<PodcastDetail />} />
-          <Route path="/blog" element={<Blog />} />
-          <Route path="/blog/:slug" element={<BlogDetail />} />
+          <Route path="/features" element={<Features />} />
+          <Route path="/features/:slug" element={<FeatureDetail />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/admin/*" element={<Admin />} />
@@ -427,6 +585,14 @@ function MainLayout() {
     refetchInterval: 3000,
   });
 
+  const { data: authData } = useQuery({
+    queryKey: ['auth-check'],
+    queryFn: () => fetch('/api/public/auth/check').then(res => res.json()),
+    refetchInterval: 10000,
+  });
+
+  const isStaff = authData?.loggedIn && (authData?.isAdmin || authData?.role);
+
   // Prefetch critical data for faster navigation
   useEffect(() => {
     // Prefetch podcasts
@@ -444,8 +610,8 @@ function MainLayout() {
     });
 
     queryClient.prefetchQuery({
-      queryKey: ['blogs'],
-      queryFn: () => fetch("/api/public/blogs").then(res => res.json()),
+      queryKey: ['features'],
+      queryFn: () => fetch("/api/public/features").then(res => res.json()),
       staleTime: 1000 * 60 * 5,
     });
   }, []);
@@ -593,7 +759,7 @@ function MainLayout() {
       </div>
       <div className="app-shimmer-overlay" aria-hidden="true"></div>
       
-      <Navigation onOpenChat={() => setIsChatOpen(true)} featChat={featChat} />
+      <Navigation onOpenChat={() => setIsChatOpen(true)} featChat={featChat} isStaff={isStaff} />
       <SitePopup />
       <NotificationManager />
       {featChat && <ChatSidebar isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />}
@@ -610,7 +776,7 @@ function MainLayout() {
           <Link to="/about" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">About</Link>
           <Link to="/contact" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">Advertising</Link>
           <Link to="/schedule" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">Schedule</Link>
-          <Link to="/blog" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">Blog</Link>
+          <Link to="/features" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">Features</Link>
         </div>
         <div className="flex flex-col items-center md:items-end space-y-2 text-center md:text-right">
           <p className="font-black uppercase tracking-[0.2em] text-[10px]">© {new Date().getFullYear()} {appName}. All rights reserved.</p>
@@ -627,12 +793,45 @@ function MainLayout() {
   );
 }
 
+function RoutePersister() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isFirstMount = useRef(true);
+
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      
+      // If we explicitly request station view, clear the saved path and don't redirect
+      const queryParams = new URLSearchParams(location.search);
+      if (queryParams.get('view') === 'station') {
+        localStorage.removeItem('dejavufm_last_path');
+        return;
+      }
+
+      // Only restore if we land on the root path
+      if (location.pathname === '/' || location.pathname === '') {
+        const savedPath = localStorage.getItem('dejavufm_last_path');
+        if (savedPath && savedPath !== '/' && savedPath !== '') {
+          navigate(savedPath, { replace: true });
+          return;
+        }
+      }
+    }
+    // Save current route change to localStorage
+    localStorage.setItem('dejavufm_last_path', location.pathname + location.search);
+  }, [location.pathname, location.search, navigate]);
+
+  return null;
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ModalProvider>
         <AudioProvider>
           <Router>
+            <RoutePersister />
             <Toaster theme="dark" position="bottom-right" toastOptions={{ style: { background: '#09090b', borderColor: 'var(--color-neon-purple)', color: 'white' } }} />
             <MainLayout />
           </Router>

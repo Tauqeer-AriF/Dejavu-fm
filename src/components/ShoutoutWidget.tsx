@@ -5,7 +5,16 @@ import { toast } from 'sonner';
 
 export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [email, setEmail] = useState('');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+  const [userName, setUserName] = useState('');
+  const [email, setEmail] = useState(() => {
+    try {
+      return localStorage.getItem('dejavu_shoutout_email') || '';
+    } catch {
+      return '';
+    }
+  });
   const [message, setMessage] = useState('');
   const [type, setType] = useState<'text' | 'reaction'>('text');
   const [isSending, setIsSending] = useState(false);
@@ -13,6 +22,50 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
   const [showBoothClear, setShowBoothClear] = useState(false);
   const prevCountRef = useRef(0);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+
+  // Check auth status on mount and when modal opens
+  const checkAuth = async () => {
+    try {
+      const res = await fetch('/api/public/auth/check');
+      const data = await res.json();
+      if (data.loggedIn) {
+        setIsLoggedIn(true);
+        setUserName(data.username);
+        const resolvedEmail = data.email || data.username;
+        setUserEmail(resolvedEmail);
+        setEmail(resolvedEmail);
+      } else {
+        setIsLoggedIn(false);
+        setUserEmail('');
+        setUserName('');
+        try {
+          setEmail(localStorage.getItem('dejavu_shoutout_email') || '');
+        } catch {
+          setEmail('');
+        }
+      }
+    } catch (err) {
+      setIsLoggedIn(false);
+    }
+  };
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      checkAuth();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    try {
+      if (!isLoggedIn && email) {
+        localStorage.setItem('dejavu_shoutout_email', email);
+      }
+    } catch {}
+  }, [email, isLoggedIn]);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 640);
@@ -104,8 +157,24 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
     }
   };
 
-  const sendReaction = (emoji: string) => {
-    if (!email.trim()) {
+  const sendReaction = async (emoji: string) => {
+    let resolvedEmail = email;
+    if (!resolvedEmail.trim()) {
+      try {
+        const res = await fetch('/api/public/auth/check');
+        const data = await res.json();
+        if (data.loggedIn) {
+          const emailVal = data.email || data.username;
+          resolvedEmail = emailVal;
+          setIsLoggedIn(true);
+          setUserName(data.username);
+          setUserEmail(emailVal);
+          setEmail(emailVal);
+        }
+      } catch (err) {}
+    }
+
+    if (!resolvedEmail.trim()) {
       toast.error('Enter your email first!');
       setIsOpen(true);
       return;
@@ -113,7 +182,7 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
     fetch('/api/public/shoutout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, message: emoji, type: 'reaction' })
+      body: JSON.stringify({ email: resolvedEmail, message: emoji, type: 'reaction' })
     });
     toast.success(`${emoji} Sent!`);
   };
@@ -233,17 +302,30 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
              </div>
 
              <form onSubmit={sendShoutout} className="space-y-6 relative z-10">
-                <div className="space-y-2">
-                   <label className="text-[10px] font-black uppercase text-white/30 ml-2 tracking-widest">Identification (Email)</label>
-                   <input 
-                     type="email"
-                     required
-                     value={email}
-                     onChange={e => setEmail(e.target.value)}
-                     placeholder="email@example.com"
-                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs focus:outline-none focus:border-neon-purple transition-all"
-                   />
-                </div>
+                {isLoggedIn ? (
+                  <div className="bg-neon-purple/15 border border-neon-purple/30 rounded-2xl px-5 py-4 flex items-center space-x-3.5 shadow-md">
+                    <div className="w-9 h-9 rounded-xl bg-neon-purple/20 flex items-center justify-center text-neon-purple border border-neon-purple/20 shrink-0">
+                      <User className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[9px] font-black text-neon-purple uppercase tracking-[0.2em] mb-0.5">Logged In Profile</p>
+                      <p className="text-xs font-bold text-white truncate">{userName}</p>
+                      <p className="text-[10px] text-white/50 truncate font-medium">{userEmail}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                     <label className="text-[10px] font-black uppercase text-white/30 ml-2 tracking-widest">Identification (Email)</label>
+                     <input 
+                       type="email"
+                       required
+                       value={email}
+                       onChange={e => setEmail(e.target.value)}
+                       placeholder="email@example.com"
+                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs focus:outline-none focus:border-neon-purple transition-all"
+                     />
+                  </div>
+                )}
                 <div className="space-y-1">
                    <label className="text-[10px] font-black uppercase text-white/40 ml-2">Message</label>
                    <textarea 

@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
-import { useNavigate, Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles, Database } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
@@ -8,7 +8,10 @@ import { motion, AnimatePresence } from "motion/react";
 import { fetchAdmin } from "./adminApi";
 import { ImageUploadField } from "./ImageUploadField";
 
+import { useLogo } from "../../hooks/useLogo";
+
 export function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; isAdminUser: boolean }) {
+  const { isLightMode } = useLogo();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -35,8 +38,9 @@ export function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; 
     { name: "Agency", path: "/admin/bookings", icon: Calendar },
     { name: "Branding", path: "/admin/branding", icon: HomeIcon },
     { name: "DJs", path: "/admin/djs", icon: Users },
-    { name: "Blogs", path: "/admin/blogs", icon: FileText },
+    { name: "Features", path: "/admin/features", icon: FileText },
     { name: "Pop-up", path: "/admin/popup", icon: Sparkles },
+    { name: "Ads", path: "/admin/ads", icon: ImageIcon },
     { name: "Schedule", path: "/admin/schedule", icon: Calendar },
     { name: "Admin Users", path: "/admin/users", icon: UserCog },
     { name: "Chat Users", path: "/admin/chat-users", icon: MessageSquare },
@@ -66,14 +70,14 @@ export function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; 
   return (
     <>
       {/* Mobile top bar */}
-      <div className="md:hidden flex items-center justify-between p-4 border-b border-white/10 w-full bg-dark-bg/50">
+      <div className={`md:hidden flex items-center justify-between p-4 border-b w-full transition-colors ${isLightMode ? 'bg-white border-black/10' : 'bg-dark-bg/50 border-white/10'}`}>
         <span className="font-bold uppercase tracking-widest text-neon-purple">Admin</span>
-        <button onClick={() => setIsOpen(!isOpen)} className="text-white p-2">
+        <button onClick={() => setIsOpen(!isOpen)} className={`${isLightMode ? 'text-black' : 'text-white'} p-2`}>
           {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
       </div>
 
-      <div className={`${isOpen ? 'flex' : 'hidden'} md:flex flex-col w-full ${isCollapsed ? 'md:w-20' : 'md:w-64'} bg-dark-bg/95 md:bg-dark-bg/50 border-b md:border-b-0 md:border-r border-white/10 absolute md:relative z-20 top-[73px] md:top-0 left-0 h-[calc(100%-73px)] md:h-auto transition-all duration-300 ease-in-out`}>
+      <div className={`${isOpen ? 'flex' : 'hidden'} md:flex flex-col w-full ${isCollapsed ? 'md:w-20' : 'md:w-64'} border-b md:border-b-0 md:border-r absolute md:relative z-20 top-[73px] md:top-0 left-0 h-[calc(100%-73px)] md:h-auto transition-all duration-300 ease-in-out ${isLightMode ? 'bg-[#fcfcfc] border-black/10' : 'bg-dark-bg/95 md:bg-dark-bg/50 border-white/10'}`}>
         {/* Toggle Button for Desktop */}
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
@@ -88,7 +92,7 @@ export function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; 
             {navs.map(n => {
               const active = location.pathname === n.path;
               return (
-                <Link key={n.name} title={isCollapsed ? n.name : ""} to={n.path} onClick={() => setIsOpen(false)} className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'space-x-3 px-4'} py-3 rounded-lg transition-all duration-200 ${active ? 'bg-neon-purple/20 text-neon-purple' : 'hover:bg-white/5 text-white/70'}`}>
+                <Link key={n.name} title={isCollapsed ? n.name : ""} to={n.path} onClick={() => setIsOpen(false)} className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'space-x-3 px-4'} py-3 rounded-lg transition-all duration-200 ${active ? 'bg-neon-purple/20 text-neon-purple' : isLightMode ? 'hover:bg-black/5 text-black/70' : 'hover:bg-white/5 text-white/70'}`}>
                   <n.icon className={`w-5 h-5 flex-shrink-0 ${active ? 'text-neon-purple' : ''}`} />
                   {!isCollapsed && <span className="font-semibold text-sm truncate">{n.name}</span>}
                 </Link>
@@ -96,11 +100,13 @@ export function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; 
             })}
           </div>
           <div className="mt-auto space-y-2 pt-4">
-            <a 
-              href="/" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'justify-between px-4'} py-3 rounded-xl bg-neon-blue/10 border border-neon-blue/30 text-neon-blue hover:bg-neon-blue hover:text-dark-bg transition-all duration-300 shadow-[0_0_15px_rgba(0,210,255,0.1)] group mb-2`}
+            <button
+              onClick={() => {
+                // Clear any saved admin path so the new tab opens the true home page
+                localStorage.removeItem('dejavufm_last_path');
+                window.open('/', '_blank', 'noopener,noreferrer');
+              }}
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0' : 'justify-between px-4'} py-3 rounded-xl border transition-all duration-300 shadow-sm group mb-2 ${isLightMode ? 'bg-cyan-50 border-cyan-200 text-cyan-700 hover:bg-cyan-600 hover:text-white' : 'bg-neon-blue/10 border-neon-blue/30 text-neon-blue hover:bg-neon-blue hover:text-dark-bg shadow-[0_0_15px_rgba(0,210,255,0.1)]'}`}
               title={isCollapsed ? "Station View" : ""}
             >
               <div className={`flex items-center ${isCollapsed ? '' : 'space-x-3'}`}>
@@ -108,11 +114,11 @@ export function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; 
                 {!isCollapsed && <span className="font-bold text-sm">Station View</span>}
               </div>
               {!isCollapsed && <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-blue group-hover:bg-dark-bg opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-neon-blue group-hover:bg-dark-bg"></span>
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isLightMode ? 'bg-cyan-400 group-hover:bg-white' : 'bg-neon-blue group-hover:bg-dark-bg'}`}></span>
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${isLightMode ? 'bg-cyan-500 group-hover:bg-white' : 'bg-neon-blue group-hover:bg-dark-bg'}`}></span>
               </span>}
-            </a>
-            <button onClick={onLogout} title={isCollapsed ? "Logout" : ""} className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0' : 'space-x-3 px-4'} py-3 rounded-lg text-white/50 hover:text-red-500 hover:bg-red-500/10 transition-colors`}>
+            </button>
+            <button onClick={onLogout} title={isCollapsed ? "Logout" : ""} className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0' : 'space-x-3 px-4'} py-3 rounded-lg transition-colors ${isLightMode ? 'text-black/40 hover:text-red-600 hover:bg-red-50 hover:border-red-100' : 'text-white/50 hover:text-red-500 hover:bg-red-500/10'}`}>
               <LogOut className="w-5 h-5 flex-shrink-0" />
               {!isCollapsed && <span className="font-semibold text-sm">Logout</span>}
             </button>

@@ -1,192 +1,408 @@
-import React, { useRef, useState, useEffect, useMemo } from "react";
-import { useNavigate, Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
-import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
-import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
-import { useModal } from "../../context/ModalContext";
-import { motion, AnimatePresence } from "motion/react";
+import React, { useState, useEffect } from "react";
 import { fetchAdmin } from "./adminApi";
-import { ImageUploadField } from "./ImageUploadField";
+import { Plus, Trash2, Key, User, Lock, Shield, Check, X, AlertTriangle, Mail, Eye, EyeOff } from "lucide-react";
+
+interface AdminUser {
+  username: string;
+  email?: string;
+  role: "admin" | "dj";
+}
 
 export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  // Create User state
   const [newUsername, setNewUsername] = useState("");
+  const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [newUserRole, setNewUserRole] = useState("dj"); // Default to 'dj'
-  const [changePasswordUser, setChangePasswordUser] = useState("");
-  const [changePasswordVal, setChangePasswordVal] = useState("");
-  const [adminSecret, setAdminSecret] = useState("");
-  const { showConfirm, showAlert } = useModal();
+  const [newRole, setNewRole] = useState<"admin" | "dj">("dj");
+  const [isCreating, setIsCreating] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
-  const load = () => {
-    fetchAdmin("/api/admin/users").then(r=>r.json()).then(setUsers);
-    fetchAdmin("/api/admin/settings/secret").then(r=>r.json()).then(d => {
-      setAdminSecret(d.secret || "waynee");
-    });
-  };
+  // Edit Password state
+  const [editingUsername, setEditingUsername] = useState<string | null>(null);
+  const [editPassword, setEditPassword] = useState("");
+  const [showEditPassword, setShowEditPassword] = useState(false);
 
-  useEffect(() => { load(); }, []);
-
-  const handleUpdateSecret = async (e: any) => {
-    e.preventDefault();
-    const res = await fetchAdmin("/api/admin/settings/secret", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ secret: adminSecret })
-    });
-    if (res.ok) {
-      showAlert({ title: "Success", message: "Secret door answer updated!", style: "success" });
-    } else {
-      showAlert({ title: "Error", message: "Failed to update secret", style: "danger" });
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const res = await fetchAdmin("/api/admin/users");
+      if (res.ok) {
+        const data = await res.json();
+        setUsers(data);
+      } else {
+        setError("Failed to load staff accounts");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("An unexpected error occurred while loading staff accounts");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleAddUser = async (e: any) => {
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetchAdmin("/api/admin/users", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: newUsername, password: newPassword, role: newUserRole })
-    });
-    if (res.ok) {
-      showAlert({ title: "Success", message: `Admin user '${newUsername}' created!`, style: "success" });
-      setNewUsername(""); setNewPassword(""); load();
-    } else {
-      const data = await res.json();
-      showAlert({ title: "Error", message: data.error, style: "danger" });
+    setError("");
+    setSuccess("");
+
+    if (!newUsername || !newPassword) {
+      setError("Username and password are required");
+      return;
+    }
+
+    try {
+      const res = await fetchAdmin("/api/admin/users", {
+        method: "POST",
+        body: {
+          username: newUsername,
+          email: newEmail,
+          password: newPassword,
+          role: newRole,
+        },
+      });
+
+      if (res.ok) {
+        setSuccess(`User ${newUsername} created successfully`);
+        setNewUsername("");
+        setNewEmail("");
+        setNewPassword("");
+        setNewRole("dj");
+        setIsCreating(false);
+        loadUsers();
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to create user");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Failed to create user due to network or server issue");
     }
   };
 
-  const handleChangePassword = async (e: any, username: string) => {
-    e.preventDefault();
-    const res = await fetchAdmin(`/api/admin/users/${username}`, {
-      method: "PUT", headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({password: changePasswordVal})
-    });
-    if (res.ok) {
-      setChangePasswordUser(""); setChangePasswordVal(""); 
-      showAlert({ title: "Success", message: "Password changed!", style: "success" });
-    } else {
-      const data = await res.json();
-      showAlert({ title: "Error", message: data.error, style: "danger" });
+  const handleUpdatePassword = async (username: string) => {
+    setError("");
+    setSuccess("");
+
+    if (!editPassword) {
+      setError("Password cannot be empty");
+      return;
+    }
+
+    try {
+      const res = await fetchAdmin(`/api/admin/users/${username}`, {
+        method: "PUT",
+        body: { password: editPassword },
+      });
+
+      if (res.ok) {
+        setSuccess(`Password for ${username} updated successfully`);
+        setEditingUsername(null);
+        setEditPassword("");
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to update password");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Failed to update password");
     }
   };
 
   const handleDeleteUser = async (username: string) => {
-    const confirmed = await showConfirm({
-      title: "Delete User",
-      message: `Are you sure you want to delete user ${username}?`,
-      style: "danger",
-      confirmText: "Delete"
-    });
-    if (confirmed) {
-      const res = await fetchAdmin(`/api/admin/users/${username}`, { method: "DELETE" });
+    if (username === "admin") {
+      setError("Cannot delete the default admin account");
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete ${username}? This action is irreversible.`)) {
+      return;
+    }
+
+    setError("");
+    setSuccess("");
+
+    try {
+      const res = await fetchAdmin(`/api/admin/users/${username}`, {
+        method: "DELETE",
+      });
+
       if (res.ok) {
-        showAlert({ title: "Success", message: `User '${username}' deleted.`, style: "success" });
-        load();
+        setSuccess(`User ${username} deleted successfully`);
+        loadUsers();
       } else {
         const data = await res.json();
-        showAlert({ title: "Error", message: data.error, style: "danger" });
+        setError(data.error || "Failed to delete user");
       }
+    } catch (err) {
+      console.error(err);
+      setError("Failed to delete user");
     }
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-4">
-        <h3 className="text-2xl font-bold">Manage Users</h3>
-        <div className="bg-neon-purple/10 border border-neon-purple/20 px-4 py-2 rounded-xl flex items-center space-x-3">
-          <Shield className="w-4 h-4 text-neon-purple" />
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black uppercase tracking-tighter text-neon-purple">Security Door</span>
-            <span className="text-[10px] text-white/50 uppercase tracking-widest font-bold">Active Shield</span>
-          </div>
+    <div className="space-y-8" id="admin-users-panel">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-display font-black tracking-tight text-white uppercase">
+            Staff & <span className="text-neon-purple">Admin Accounts</span>
+          </h2>
+          <p className="text-white/40 text-sm mt-1">
+            Manage permissions, credentials, and access roles for DJ booth and Admin panel.
+          </p>
         </div>
-      </div>
 
-      <div className="bg-dark-bg/50 border border-white/10 rounded-2xl p-6 space-y-6">
-        <div className="space-y-2">
-          <h4 className="text-lg font-bold flex items-center space-x-2">
-            <Ghost className="w-5 h-5 text-neon-purple" />
-            <span>Secret Door Challenge</span>
-          </h4>
-          <p className="text-sm text-white/40">This sets the required answer to the question "What's your name?" when clicking the settings icon in the header.</p>
-        </div>
-        
-        <form onSubmit={handleUpdateSecret} className="flex flex-col sm:flex-row gap-4 items-end">
-          <div className="flex-1 w-full">
-            <label className="block text-[10px] uppercase font-black tracking-widest text-white/30 mb-2 ml-1">Answer Key</label>
-            <input 
-              value={adminSecret} 
-              onChange={e => setAdminSecret(e.target.value)} 
-              className="w-full bg-panel-bg border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-neon-purple text-white font-medium" 
-              placeholder="e.g. waynee or your name"
-            />
-          </div>
-          <button className="bg-white text-dark-bg px-8 py-3 rounded-xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-transform shrink-0">
-            Update Secret
+        {!isCreating && (
+          <button
+            onClick={() => setIsCreating(true)}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-neon-purple text-white rounded-2xl font-bold uppercase tracking-widest text-xs hover:bg-neon-blue transition-all shadow-lg shadow-neon-purple/20 self-start md:self-auto"
+            id="btn-add-staff"
+          >
+            <Plus className="w-4 h-4" /> Add Staff Account
           </button>
-        </form>
+        )}
       </div>
 
-      <div className="space-y-4">
-        {users.map(u => (
-          <div key={u.username} className="bg-dark-bg border border-white/10 p-4 rounded-xl flex flex-col space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-lg">{u.username}</span>
-                <span className="text-[10px] uppercase font-black tracking-widest px-2 py-1 rounded-full bg-white/5 border border-white/10 text-white/50">{u.role}</span>
-              </div>
-              <div className="flex space-x-4">
-                <button onClick={() => setChangePasswordUser(changePasswordUser === u.username ? "" : u.username)} className="text-neon-blue hover:text-white transition-colors text-sm px-2 py-1">Change Password</button>
-                {u.username !== "admin" && (
-                  <button onClick={() => handleDeleteUser(u.username)} className="text-red-500 hover:text-red-400 text-sm px-2 py-1">Delete</button>
-                )}
-              </div>
-            </div>
-            {changePasswordUser === u.username && (
-              <form onSubmit={e => handleChangePassword(e, u.username)} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4 mt-2">
-                <input type="password" placeholder="New Password" value={changePasswordVal} onChange={e => setChangePasswordVal(e.target.value)} required className="flex-1 bg-panel-bg border border-white/10 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-neon-purple" />
-                <button className="bg-neon-purple text-white px-4 py-1.5 rounded text-sm hover:bg-neon-blue transition-colors">Update</button>
-              </form>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {isAdminUser && ( // Only show this form if the logged-in user is an 'admin'
-        <form onSubmit={handleAddUser} className="bg-dark-bg/50 p-6 rounded-xl border border-white/5 space-y-4 max-w-xl">
-          <h4 className="font-bold">Add New Admin User</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs uppercase mb-1">Username</label>
-              <input required value={newUsername} onChange={e => setNewUsername(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5 focus:outline-none focus:border-neon-purple" />
-            </div>
-            <div>
-              <label className="block text-xs uppercase mb-1">Password</label>
-              <input required type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5 focus:outline-none focus:border-neon-purple" />
-            </div>
-            <div className="col-span-full">
-              <label className="block text-xs uppercase mb-1">Role</label>
-              <select
-                required
-                value={newUserRole}
-                onChange={e => setNewUserRole(e.target.value)}
-                className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5 focus:outline-none focus:border-neon-purple"
-              >
-                <option value="dj">DJ</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-          </div>
-          <button className="bg-neon-blue text-dark-bg px-4 py-2 font-bold rounded mt-4">Add User</button>
-        </form>
-      )}
-      {!isAdminUser && (
-        <div className="py-16 text-center bg-dark-bg/50 border border-white/10 rounded-2xl">
-          <Shield className="w-12 h-12 text-white/10 mx-auto mb-4" />
-          <p className="text-white/30 uppercase tracking-widest text-xs font-black">Only 'admin' role users can manage admin accounts.</p>
+      {/* Alert Banners */}
+      {error && (
+        <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl flex items-center gap-3 text-sm">
+          <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+          <span>{error}</span>
         </div>
       )}
+      {success && (
+        <div className="p-4 bg-green-500/10 border border-green-500/20 text-green-400 rounded-2xl flex items-center gap-3 text-sm">
+          <Check className="w-5 h-5 flex-shrink-0" />
+          <span>{success}</span>
+        </div>
+      )}
+
+      {/* Creation Form */}
+      {isCreating && (
+        <div className="glass-panel p-6 md:p-8 rounded-3xl border border-white/10 space-y-6">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-bold text-white uppercase tracking-wider">
+              Create New Staff Member
+            </h3>
+            <button
+              onClick={() => setIsCreating(false)}
+              className="text-white/40 hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <form onSubmit={handleCreateUser} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-[10px] uppercase font-black tracking-widest text-white/30 mb-2">
+                  Username / Call Sign
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                  <input
+                    type="text"
+                    value={newUsername}
+                    onChange={(e) => setNewUsername(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:border-neon-purple focus:outline-none transition-all"
+                    placeholder="e.g. djsarah"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase font-black tracking-widest text-white/30 mb-2">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:border-neon-purple focus:outline-none transition-all"
+                    placeholder="admin@dejavufm.com"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase font-black tracking-widest text-white/30 mb-2">
+                  Initial Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-12 py-3 text-white focus:border-neon-purple focus:outline-none transition-all"
+                    placeholder="Min 6 characters"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors focus:outline-none"
+                  >
+                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase font-black tracking-widest text-white/30 mb-2">
+                  System Role
+                </label>
+                <select
+                  value={newRole}
+                  onChange={(e) => setNewRole(e.target.value as "admin" | "dj")}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-neon-purple focus:outline-none transition-all"
+                >
+                  <option value="dj" className="bg-[#121212]">DJ / Presenter</option>
+                  <option value="admin" className="bg-[#121212]">Administrator</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                className="w-full md:w-auto px-8 py-3 bg-neon-purple hover:bg-neon-blue text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-neon-purple/20"
+              >
+                Create Staff Account
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Main Staff List */}
+      <div className="glass-panel overflow-hidden rounded-3xl border border-white/10">
+        <div className="px-6 py-4 border-b border-white/10 bg-white/[0.02]">
+          <h3 className="text-xs uppercase font-black tracking-widest text-white/40">
+            Active Staff List ({users.length})
+          </h3>
+        </div>
+
+        {loading ? (
+          <div className="p-12 text-center text-white/40">
+            <div className="w-8 h-8 border-4 border-neon-purple border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            Loading accounts...
+          </div>
+        ) : users.length === 0 ? (
+          <div className="p-12 text-center text-white/40">No staff accounts found.</div>
+        ) : (
+          <div className="divide-y divide-white/10">
+            {users.map((user) => (
+              <div
+                key={user.username}
+                className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-white/[0.01] transition-all"
+              >
+                {/* User Info */}
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-white/60">
+                    <User className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-bold text-white flex items-center gap-2">
+                      {user.username}
+                      {user.username === "admin" && (
+                        <span className="text-[10px] uppercase font-black tracking-widest bg-neon-purple/20 text-neon-purple px-2 py-0.5 rounded-full">
+                          Primary
+                        </span>
+                      )}
+                    </h4>
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                      <span className="text-xs inline-flex items-center gap-1.5 capitalize px-2.5 py-0.5 bg-white/5 text-white/60 rounded-full">
+                        <Shield className="w-3 h-3 text-neon-blue" />
+                        {user.role === "admin" ? "Administrator" : "DJ / Presenter"}
+                      </span>
+                      {user.email && (
+                        <span className="text-xs inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-white/5 text-white/60 rounded-full">
+                          <Mail className="w-3 h-3 text-neon-purple" />
+                          {user.email}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Account Controls */}
+                <div className="flex flex-wrap items-center gap-3">
+                  {editingUsername === user.username ? (
+                    <div className="flex items-center gap-2 bg-black/40 border border-white/10 p-1.5 rounded-xl">
+                      <div className="relative w-44">
+                        <input
+                          type={showEditPassword ? "text" : "password"}
+                          placeholder="New Password"
+                          value={editPassword}
+                          onChange={(e) => setEditPassword(e.target.value)}
+                          className="bg-transparent text-sm text-white pl-3 pr-8 py-1.5 outline-none focus:outline-none w-full"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowEditPassword(!showEditPassword)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors focus:outline-none"
+                        >
+                          {showEditPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => handleUpdatePassword(user.username)}
+                        className="p-2 bg-green-500/20 text-green-400 hover:bg-green-500/30 rounded-lg transition-all"
+                        title="Save Password"
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingUsername(null);
+                          setEditPassword("");
+                          setShowEditPassword(false);
+                        }}
+                        className="p-2 bg-white/5 text-white/40 hover:bg-white/10 rounded-lg transition-all"
+                        title="Cancel"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setEditingUsername(user.username)}
+                      className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all"
+                    >
+                      <Key className="w-3.5 h-3.5 text-white/40" /> Reset Password
+                    </button>
+                  )}
+
+                  {user.username !== "admin" && (
+                    <button
+                      onClick={() => handleDeleteUser(user.username)}
+                      className="p-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-all"
+                      title="Delete Staff Member"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

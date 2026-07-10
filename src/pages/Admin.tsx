@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useNavigate, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { fetchAdmin } from "./admin/adminApi";
@@ -8,7 +8,7 @@ import { AdminSidebar } from "./admin/AdminSidebar";
 import { AdminAnalytics } from "./admin/AdminAnalytics";
 import { AdminLiveTools } from "./admin/AdminLiveTools";
 import { AdminDJs } from "./admin/AdminDJs";
-import { AdminBlogs } from "./admin/AdminBlogs";
+import { AdminFeatures } from "./admin/AdminFeatures";
 import { AdminPopup } from "./admin/AdminPopup";
 import { AdminShoutouts } from "./admin/AdminShoutouts";
 import { AdminBookings } from "./admin/AdminBookings";
@@ -19,6 +19,7 @@ import { AdminUsers } from "./admin/AdminUsers";
 import { AdminChatUsers } from "./admin/AdminChatUsers";
 import { AdminAuditLogs } from "./admin/AdminAuditLogs";
 import { AdminBackup } from "./admin/AdminBackup";
+import { AdminAds } from "./admin/AdminAds";
 
 export default function Admin() {
   const [isLogged, setIsLogged] = useState(false);
@@ -89,12 +90,12 @@ export default function Admin() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <h1 className="text-5xl md:text-5xl lg:text-5xl font-display font-black uppercase tracking-tighter text-white leading-none">
+          <h1 className={`text-5xl md:text-5xl lg:text-5xl font-display font-black uppercase tracking-tighter leading-none ${isAdminUser ? 'text-[var(--theme-text)]' : 'text-white'}`}>
             Creator <span className="text-neon-purple">Dashboard</span>
           </h1>
           <div className="flex items-center space-x-4 mt-4">
             <div className="h-px w-12 bg-neon-purple" />
-            <p className="text-white/40 text-xs md:text-sm font-mono uppercase tracking-[0.3em]">
+            <p className={`text-xs md:text-sm font-mono uppercase tracking-[0.3em] ${location.pathname.includes('admin') ? 'text-[var(--theme-text)] opacity-40' : 'text-white/40'}`}>
               Control center for DejavuFM station
             </p>
           </div>
@@ -118,8 +119,9 @@ export default function Admin() {
                   <Route path="/" element={<AdminAnalytics isAdminUser={isAdminUser} />} />
                   <Route path="/live-tools" element={<AdminLiveTools />} />
                   <Route path="/djs" element={<AdminDJs />} />
-                  <Route path="/blogs" element={<AdminBlogs />} />
+                  <Route path="/features" element={<AdminFeatures />} />
                   <Route path="/popup" element={<AdminPopup />} />
+                  <Route path="/ads" element={<AdminAds />} />
                   <Route path="/shoutouts" element={<AdminShoutouts isAdminUser={isAdminUser} />} />
                   <Route path="/bookings" element={<AdminBookings />} />
                   <Route path="/schedule" element={<AdminSchedule />} />

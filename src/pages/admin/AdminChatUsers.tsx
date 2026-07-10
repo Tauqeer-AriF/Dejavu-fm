@@ -163,6 +163,7 @@ export function AdminChatUsers({ isAdminUser }: { isAdminUser: boolean }) {
 function AddChatUserForm({onAdd}: {onAdd: ()=>void}) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const { showAlert } = useModal();
 
   const handleAdd = async (e: any) => {
@@ -178,6 +179,7 @@ function AddChatUserForm({onAdd}: {onAdd: ()=>void}) {
       showAlert({ title: "Success", message: `New chat user '${email}' created!`, style: "success" });
       setEmail("");
       setPassword("");
+      setShowPassword(false);
       onAdd();
     } else {
       showAlert({ title: "Error", message: data.error || "Failed to add chat user", style: "danger" });
@@ -196,14 +198,23 @@ function AddChatUserForm({onAdd}: {onAdd: ()=>void}) {
           placeholder="Member Email Address" 
           className="flex-1 bg-panel-bg border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:border-neon-purple text-white" 
         />
-        <input 
-          required 
-          type="password"
-          value={password} 
-          onChange={e=>setPassword(e.target.value)} 
-          placeholder="Password" 
-          className="flex-1 bg-panel-bg border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:border-neon-purple text-white" 
-        />
+        <div className="relative flex-1">
+          <input 
+            required 
+            type={showPassword ? "text" : "password"}
+            value={password} 
+            onChange={e=>setPassword(e.target.value)} 
+            placeholder="Password" 
+            className="w-full bg-panel-bg border border-white/10 rounded pl-3 pr-10 py-2 text-sm focus:outline-none focus:border-neon-purple text-white" 
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white focus:outline-none"
+          >
+            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        </div>
         <button type="submit" className="bg-neon-purple text-white px-4 py-2 font-bold rounded hover:bg-neon-blue transition-colors">Add</button>
       </div>
     </form>
@@ -213,6 +224,7 @@ function AddChatUserForm({onAdd}: {onAdd: ()=>void}) {
 function EditChatUserForm({user, onSave, onCancel}: {user: any, onSave: ()=>void, onCancel: ()=>void}) {
   const [email, setEmail] = useState(user.username);
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const { showAlert } = useModal();
 
   const handleSave = async (e: any) => {
@@ -246,13 +258,22 @@ function EditChatUserForm({user, onSave, onCancel}: {user: any, onSave: ()=>void
         </div>
         <div>
           <label className="block text-xs uppercase mb-1 text-white/70">New Password (leave blank to keep current)</label>
-          <input 
-            type="password"
-            value={password} 
-            onChange={e=>setPassword(e.target.value)} 
-            placeholder="New Password" 
-            className="w-full bg-panel-bg border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:border-neon-purple text-white" 
-          />
+          <div className="relative">
+            <input 
+              type={showPassword ? "text" : "password"}
+              value={password} 
+              onChange={e=>setPassword(e.target.value)} 
+              placeholder="New Password" 
+              className="w-full bg-panel-bg border border-white/10 rounded pl-3 pr-10 py-2 text-sm focus:outline-none focus:border-neon-purple text-white" 
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white focus:outline-none"
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
       </div>
       <div className="flex space-x-2">

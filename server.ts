@@ -26,21 +26,31 @@ try {
 import fs from "fs";
 import { getPodcastFeed } from "./src/server/utils.ts";
 
+let serverId = crypto.randomUUID();
+console.log(`[SERVER] Instance ID: ${serverId}`);
+
 async function startServer() {
   const app = express();
   
+  app.set('serverId', serverId);
+  app.set('regenerateServerId', () => {
+    serverId = crypto.randomUUID();
+    app.set('serverId', serverId);
+    console.log(`[SERVER] Regenerated Instance ID: ${serverId}`);
+  });
+
   // High-level request logging for diagnostics
   app.use((req, res, next) => {
     const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] ${req.method} ${req.url} - IP: ${req.ip} - UA: ${req.headers['user-agent']?.substring(0, 50)}`);
+    const currentId = req.app.get('serverId') || serverId;
+    console.log(`[${timestamp}] ${req.method} ${req.url} - ID: ${currentId.substring(0,8)} - IP: ${req.ip}`);
     next();
   });
 
   // Trust all proxies for dynamic environments
   app.set('trust proxy', true);
 
-  const requestedPort = Number(process.env.PORT || 3000);
-  const hasExplicitPort = Boolean(process.env.PORT);
+  const requestedPort = 3000;
   const server = http.createServer(app);
   
   // Explicitly serve public folder for manifest.json and icons
@@ -84,7 +94,7 @@ async function startServer() {
     // Default meta tags
     let title = "Dejavu FM | The Sound of London";
     let description = "Direct from the heart of the capital. Since 2005, Dejavu FM has been the heartbeat of the underground.";
-    let image = "https://images.unsplash.com/photo-1571266028243-e4733b0f0bb1?q=80&w=1200";
+    let image = "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=1200";
 
     // Podcast detail dynamic tags
     if (reqPath.startsWith("/podcasts/")) {
@@ -106,11 +116,13 @@ async function startServer() {
     // DJ detail dynamic tags
     else if (reqPath.startsWith("/djs/")) {
       const id = reqPath.split("/").pop();
-      const dj = db.prepare("SELECT * FROM djs WHERE id = ?").get(id) as any;
-      if (dj) {
-        title = `${dj.name} | Dejavu FM Resident`;
-        description = (dj.bio || description).substring(0, 160);
-        image = dj.image_url || image;
+      if (db.open) {
+        const dj = db.prepare("SELECT * FROM djs WHERE id = ?").get(id) as any;
+        if (dj) {
+          title = `${dj.name} | Dejavu FM Resident`;
+          description = (dj.bio || description).substring(0, 160);
+          image = dj.image_url || image;
+        }
       }
     }
 
@@ -157,16 +169,101 @@ async function startServer() {
     // Send history on connect
     socket.emit('chatHistory', chatHistory);
 
+    socket.on('registerUser', (username) => {
+      (socket as any).username = username;
+      if (!db.open) return;
+      try {
+        const adminCheck = db.prepare("SELECT 1 FROM admins WHERE LOWER(username) = ?").get(username.toLowerCase());
+        const isUserAdmin = !!adminCheck;
+
+        let privateHistory;
+        if (isUserAdmin) {
+          // Admins can see all private messages in the system
+          privateHistory = db.prepare("SELECT * FROM private_messages ORDER BY timestamp ASC").all() as any[];
+        } else {
+          privateHistory = db.prepare("SELECT * FROM private_messages WHERE sender = ? OR recipient = ? ORDER BY timestamp ASC").all(username, username) as any[];
+        }
+
+        const enrichedHistory = privateHistory.map(m => {
+          let avatar_url = null;
+          try {
+            const senderAdmin = db.prepare("SELECT photo_url FROM admins WHERE LOWER(username) = ?").get(m.sender.toLowerCase()) as any;
+            if (senderAdmin && senderAdmin.photo_url) {
+              avatar_url = senderAdmin.photo_url;
+            } else {
+              const u = db.prepare("SELECT avatar_url FROM users WHERE username = ?").get(m.sender) as any;
+              if (u) avatar_url = u.avatar_url;
+            }
+          } catch {}
+          return {
+            ...m,
+            user: m.sender,
+            avatar_url: avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${m.sender}`
+          };
+        });
+        socket.emit('privateHistory', enrichedHistory);
+      } catch (err) {
+        console.error("Failed to load private history for registered user:", err);
+      }
+    });
+
     socket.on('chatMessage', (msg) => {
-       const newMsg = { ...msg, timestamp: Date.now(), id: crypto.randomUUID() };
-       chatHistory.push(newMsg);
-       
-       // Efficiently maintain maximum history size
-       while (chatHistory.length > MAX_CHAT_HISTORY) {
-         chatHistory.shift();
+       if (!db.open) return;
+       let avatar_url = null;
+       try {
+         const senderAdmin = db.prepare("SELECT photo_url FROM admins WHERE LOWER(username) = ?").get(msg.user.toLowerCase()) as any;
+         if (senderAdmin && senderAdmin.photo_url) {
+           avatar_url = senderAdmin.photo_url;
+         } else {
+           const user = db.prepare("SELECT avatar_url FROM users WHERE username = ?").get(msg.user) as any;
+           if (user) {
+             avatar_url = user.avatar_url;
+           }
+         }
+       } catch (err) {
+         console.error("Failed to query user avatar for chat:", err);
        }
-       
-       io.emit('chatMessage', newMsg);
+       const newMsg = { 
+         ...msg, 
+         avatar_url: avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${msg.user}`,
+         timestamp: Date.now(), 
+         id: crypto.randomUUID() 
+       };
+
+       if (msg.recipient) {
+         try {
+           db.prepare("INSERT INTO private_messages (id, sender, recipient, text, imageUrl, imageName, audioUrl, audioName, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+             .run(newMsg.id, msg.user, msg.recipient, msg.text || null, msg.imageUrl || null, msg.imageName || null, msg.audioUrl || null, msg.audioName || null, newMsg.timestamp);
+         } catch (err) {
+           console.error("Failed to save private message:", err);
+         }
+
+         // Emit to matching sockets (sender, recipient, and any admins)
+         for (const [_, s] of io.sockets.sockets) {
+           const socketUser = (s as any).username;
+           if (socketUser) {
+             const isRecipientOrSender = socketUser === msg.user || socketUser === msg.recipient;
+             let isSocketUserAdmin = false;
+             try {
+               const adminCheck = db.prepare("SELECT 1 FROM admins WHERE LOWER(username) = ?").get(socketUser.toLowerCase());
+               if (adminCheck) isSocketUserAdmin = true;
+             } catch (e) {}
+
+             if (isRecipientOrSender || isSocketUserAdmin) {
+               s.emit('privateMessage', newMsg);
+             }
+           }
+         }
+       } else {
+         chatHistory.push(newMsg);
+         
+         // Efficiently maintain maximum history size
+         while (chatHistory.length > MAX_CHAT_HISTORY) {
+           chatHistory.shift();
+         }
+         
+         io.emit('chatMessage', newMsg);
+       }
     });
   });
 
@@ -188,6 +285,7 @@ async function startServer() {
 
   // Automated Database Backups with Dynamic Frequency
   const performAutoBackup = async () => {
+    if (!db.open) return;
     try {
       const enabledRow = db.prepare("SELECT value FROM settings WHERE key = 'backup_enabled'").get() as {value: string};
       if (enabledRow?.value === '0') return;
@@ -214,6 +312,7 @@ async function startServer() {
   const CHECK_INTERVAL = 30000; // Check every 30 seconds
 
   setInterval(() => {
+    if (!db.open) return;
     try {
       const now = new Date();
       const dayOfWeek = now.getDay(); 
@@ -244,7 +343,21 @@ async function startServer() {
   app.use("/api", apiRouter);
 
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", timestamp: new Date().toISOString() });
+    const currentId = req.app.get('serverId') || serverId;
+    if (!db || !db.open) {
+      return res.status(503).json({ 
+        status: "maintenance", 
+        db: "closed", 
+        serverId: currentId,
+        timestamp: new Date().toISOString() 
+      });
+    }
+    res.json({ 
+      status: "ok", 
+      db: "open", 
+      serverId: currentId,
+      timestamp: new Date().toISOString() 
+    });
   });
 
   // Dynamic preview routes for social sharing (mostly for production or crawlers)
@@ -274,6 +387,11 @@ async function startServer() {
       next();
     });
 
+    // Prevent Vite from returning index.html for unmatched API routes
+    app.use('/api', (req, res, next) => {
+      res.status(404).json({ error: "API route not found", path: req.originalUrl });
+    });
+
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -295,6 +413,10 @@ async function startServer() {
     app.use(express.static(distPath, { index: false })); // don't serve index.html automatically
     
     app.get("*", async (req, res) => {
+      if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ error: "API route not found", path: req.path });
+      }
+
       // Ensure that requests for assets/files (containing a dot) that were not served
       // by static middleware return a proper 404 instead of the SPA's HTML index.
       if (req.path.startsWith('/src/') || (req.path.includes('.') && !req.path.endsWith('.html'))) {
@@ -325,7 +447,7 @@ async function startServer() {
 
   const listen = (port: number) => {
     server.once("error", (err: NodeJS.ErrnoException) => {
-      if (err.code === "EADDRINUSE" && !hasExplicitPort && port < requestedPort + 10) {
+      if (err.code === "EADDRINUSE" && port < requestedPort + 10) {
         console.warn(`Port ${port} is already in use. Trying ${port + 1}...`);
         listen(port + 1);
         return;

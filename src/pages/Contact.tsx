@@ -8,7 +8,7 @@ export default function Contact() {
     "Advertising/Sponsorship via our YouTube Video’s.",
     "Mail Outs to our subscribed users via email Newsletter.",
     "Sponsorship through one of our DJ’s who will help promote your product in Live Shows/Podcasts, Social Network and Events.",
-    "Creating a blog post on our site which is aggregated to various social networks.",
+    "Creating a features post on our site which is aggregated to various social networks.",
     "Posting on our events calendar."
   ];
 

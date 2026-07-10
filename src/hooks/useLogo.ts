@@ -26,15 +26,19 @@ export function useLogo() {
     return () => observer.disconnect();
   }, []);
 
-  const logoUrl = isLightMode 
+  const logoUrlRaw = isLightMode 
     ? (settings?.logo_light || settings?.logo_url || undefined)
     : (settings?.logo_dark || settings?.logo_url || undefined);
 
+  const logoUrl = (logoUrlRaw && logoUrlRaw.trim() !== "") ? logoUrlRaw : undefined;
+  const logoShape = settings?.logo_shape || 'square';
+
   const resolveDjImage = (djPhoto: string | null | undefined) => {
-    if (!djPhoto) return logoUrl;
-    if (djPhoto.includes("images.unsplash.com")) return logoUrl;
+    if (!djPhoto || djPhoto.trim() === "") {
+      return logoUrl || "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=200&q=80";
+    }
     return djPhoto;
   };
 
-  return { logoUrl, isLightMode, settings, resolveDjImage };
+  return { logoUrl, logoShape, isLightMode, settings, resolveDjImage };
 }

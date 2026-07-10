@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { Play, Search, X, Sparkles, Wand2 } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Play, Search, X, Sparkles, Wand2, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { GoogleGenAI } from "@google/genai";
+import { useLogo } from "../hooks/useLogo";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -21,6 +22,8 @@ const itemVariants = {
 import { SkeletonPodcast } from "../components/Skeleton";
 
 export default function PodcastsPage() {
+  const { isLightMode } = useLogo();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get("s") || "";
   const [currentPage, setCurrentPage] = useState(1);
@@ -28,6 +31,7 @@ export default function PodcastsPage() {
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiResult, setAiResult] = useState<any[] | null>(null);
   const [aiProcessing, setAiProcessing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const itemsPerPage = 12;
 
   const { data: feed, isLoading: loading } = useQuery({
@@ -35,6 +39,18 @@ export default function PodcastsPage() {
     queryFn: () => fetch("/api/public/podcasts").then(res => res.json()),
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await fetch("/api/public/podcasts?refresh=true");
+      await queryClient.invalidateQueries({ queryKey: ['podcasts'] });
+    } catch (err) {
+      console.error("Refresh failed:", err);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const handleAiSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,7 +160,7 @@ export default function PodcastsPage() {
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-5xl md:text-8xl font-black font-display uppercase tracking-tighter leading-tight relative"
+            className={`text-5xl md:text-8xl font-black font-display uppercase tracking-tighter leading-tight relative ${isLightMode ? 'text-black' : 'text-white'}`}
           >
             Catchup & <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple via-neon-blue to-neon-purple bg-[length:200%_auto] animate-[gradient_4s_linear_infinite]">Archive</span>
           </motion.h1>
@@ -152,13 +168,24 @@ export default function PodcastsPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="text-white/50 mt-6 text-lg md:text-xl max-w-2xl font-light border-l-2 border-neon-purple/30 pl-6"
+            className={`mt-6 text-lg md:text-xl max-w-2xl font-light border-l-2 border-neon-purple/30 pl-6 ${isLightMode ? 'text-black/50' : 'text-white/50'}`}
           >
             Missed a show? Dive into our massive archive of exclusive sessions and underground broadcasts.
           </motion.p>
         </div>
 
         <div className="flex flex-col items-end gap-5 w-full md:w-auto">
+          <button 
+            onClick={handleRefresh}
+            disabled={refreshing || loading}
+            className={`flex items-center space-x-3 px-6 py-3 rounded-2xl font-bold uppercase tracking-widest text-[10px] transition-all border disabled:opacity-50 group ${
+              isLightMode ? 'bg-black/5 text-black/40 hover:text-black border-black/10' : 'bg-white/5 text-white/40 hover:text-white border-white/10'
+            }`}
+          >
+            <RefreshCw className={`w-4 h-4 text-neon-blue ${refreshing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
+            <span>{refreshing ? 'Refreshing...' : 'Refresh Archive'}</span>
+          </button>
+
           <button 
             onClick={() => {
               setIsAiSearching(!isAiSearching);
@@ -168,7 +195,7 @@ export default function PodcastsPage() {
             className={`flex items-center space-x-3 px-6 py-3 rounded-2xl font-bold uppercase tracking-widest text-[10px] transition-all group overflow-hidden relative ${
               isAiSearching 
                 ? "bg-neon-purple text-white shadow-[0_0_20px_rgba(176,38,255,0.4)]" 
-                : "bg-white/5 text-white/40 hover:text-white border border-white/10"
+                : isLightMode ? "bg-black/5 text-black/40 hover:text-black border border-black/10" : "bg-white/5 text-white/40 hover:text-white border border-white/10"
             }`}
           >
             <Sparkles className={`w-4 h-4 ${isAiSearching ? 'animate-pulse' : 'text-neon-purple'}`} />
@@ -178,20 +205,22 @@ export default function PodcastsPage() {
           <div className="relative w-full md:w-96 group">
             {!isAiSearching ? (
               <>
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 group-focus-within:text-neon-purple transition-colors" />
+                <Search className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 group-focus-within:text-neon-purple transition-colors ${isLightMode ? 'text-black/30' : 'text-white/30'}`} />
                 <input 
                   type="text"
                   placeholder="Search shows or DJs..."
                   value={query}
                   onChange={handleSearch}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-12 text-sm focus:outline-none focus:border-neon-purple/50 focus:bg-white/10 transition-all font-medium"
+                  className={`w-full border rounded-2xl py-3.5 pl-12 pr-12 text-sm focus:outline-none focus:border-neon-purple/50 transition-all font-medium ${
+                    isLightMode ? 'bg-black/5 border-black/10 focus:bg-white' : 'bg-white/5 border-white/10 focus:bg-white/10'
+                  }`}
                 />
                 {query && (
                   <button 
                     onClick={clearSearch}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded-full transition-all"
+                    className={`absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full transition-all ${isLightMode ? 'hover:bg-black/5' : 'hover:bg-white/10'}`}
                   >
-                    <X className="w-3.5 h-3.5 text-white/50" />
+                    <X className={`w-3.5 h-3.5 ${isLightMode ? 'text-black/50' : 'text-white/50'}`} />
                   </button>
                 )}
               </>
@@ -286,7 +315,7 @@ export default function PodcastsPage() {
           >
             {paginatedItems.map((item: any) => {
               const podcastId = btoa(item.guid || item.link).replace(/=/g, '');
-              const imageUrl = item.itunes?.image || "https://images.unsplash.com/photo-1516280440503-4560b4313f8c?auto=format&fit=crop&q=80&w=600";
+              const imageUrl = item.itunes?.image || "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=600";
               return (
                 <motion.div 
                   key={podcastId} 
@@ -301,30 +330,36 @@ export default function PodcastsPage() {
                     initial={{ x: '-150%' }}
                   />
                   <Link to={`/podcasts/${podcastId}`} className="block h-full">
-                    <div className="glass-panel h-full rounded-2xl flex flex-col hover:bg-white/5 transition-all duration-300 relative border border-white/10 hover:border-white/20">
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-neon-purple/5 rounded-full blur-[50px] group-hover:bg-neon-blue/10 transition-colors pointer-events-none z-0"></div>
+                    <div className={`glass-panel h-full rounded-2xl flex flex-col hover:bg-white/5 transition-all duration-300 relative border hover:border-white/20 ${
+                      isLightMode ? 'bg-white border-black/10' : 'border-white/10'
+                    }`}>
+                      <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-[50px] transition-colors pointer-events-none z-0 ${
+                        isLightMode ? 'bg-neon-purple/[0.03]' : 'bg-neon-purple/5 group-hover:bg-neon-blue/10'
+                      }`}></div>
                       
-                      <div className="aspect-[16/9] overflow-hidden relative border-b border-white/5">
+                      <div className={`aspect-[16/9] overflow-hidden relative border-b ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
                         <img src={imageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-dark-bg/90 via-dark-bg/20 to-transparent"></div>
+                        <div className={`absolute inset-0 bg-gradient-to-t ${isLightMode ? 'from-white/90 via-white/20' : 'from-dark-bg/90 via-dark-bg/20'} to-transparent`}></div>
                         <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
                           <span className="px-3 py-1 bg-black/60 backdrop-blur-md rounded-full text-[9px] font-black text-neon-blue uppercase tracking-widest border border-white/10">Archive</span>
-                          <div className="w-12 h-12 rounded-full bg-white text-dark-bg flex items-center justify-center opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500 shadow-2xl">
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500 shadow-2xl ${
+                            isLightMode ? 'bg-neon-purple text-white' : 'bg-white text-dark-bg'
+                          }`}>
                             <Play className="w-5 h-5 ml-1 fill-current" />
                           </div>
                         </div>
                       </div>
                       
-                      <div className="p-6 flex-1 flex flex-col relative z-10 bg-gradient-to-b from-transparent to-black/20">
-                        <p className="text-[10px] text-white/40 uppercase mt-1 mb-3 font-bold tracking-[0.2em] flex items-center">
+                      <div className={`p-6 flex-1 flex flex-col relative z-10 bg-gradient-to-b from-transparent ${isLightMode ? 'to-black/[0.02]' : 'to-black/20'}`}>
+                        <p className={`text-[10px] uppercase mt-1 mb-3 font-bold tracking-[0.2em] flex items-center ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>
                           <span className="w-1 h-4 bg-neon-purple mr-3 rounded-full"></span>
                           {(item.pubDate || item.isoDate) ? new Date(item.pubDate || item.isoDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'Recent'}
                         </p>
-                        <h3 className="text-lg font-display font-bold group-hover:text-neon-blue transition-colors leading-snug line-clamp-2 mb-3">
+                        <h3 className={`text-lg font-display font-bold group-hover:text-neon-blue transition-colors leading-snug line-clamp-2 mb-3 ${isLightMode ? 'text-black' : 'text-white'}`}>
                           {item.title}
                         </h3>
                         
-                        <p className="text-white/60 font-light text-xs line-clamp-2 mt-auto leading-relaxed">
+                        <p className={`font-light text-xs line-clamp-2 mt-auto leading-relaxed ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>
                           {item.contentSnippet || item.content?.replace(/<[^>]+>/g, '') || "No description provided."}
                         </p>
                       </div>
