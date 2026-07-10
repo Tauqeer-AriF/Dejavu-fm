@@ -18,6 +18,7 @@ import { convertToLocalTime } from './lib/timeUtils';
 import { useLogo } from './hooks/useLogo';
 import { SecretAdminPrompt } from './components/SecretAdminPrompt';
 import { SitePopup } from './components/SitePopup';
+import { AdvertisementSliders } from './components/AdvertisementSliders';
 
 const queryClient = new QueryClient();
 
@@ -769,6 +770,7 @@ function MainLayout() {
         <ErrorBoundary key={location.pathname}>
           <AnimatedRoutes />
         </ErrorBoundary>
+        {!location.pathname.startsWith('/admin') && <AdvertisementSliders />}
       </main>
 
       <footer className="w-full max-w-7xl mx-auto p-4 md:p-8 pt-24 border-t border-white/5 relative flex flex-col md:flex-row items-center justify-between gap-10 text-white/40 text-sm mb-40 md:mb-32">

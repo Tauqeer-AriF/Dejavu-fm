@@ -278,8 +278,28 @@ apiRouter.get("/public/features/:slug", (req, res) => {
 });
 
 apiRouter.get("/public/ads", (req, res) => {
+  const rawPage = String(req.query.page || req.query.route || "all");
+  const page = rawPage.trim().toLowerCase();
   const ads = db.prepare("SELECT * FROM advertisements WHERE is_active = 1 ORDER BY display_order ASC").all();
-  res.json(ads);
+
+  const filteredAds = ads.filter((ad: any) => {
+    const targetPages = String(ad.target_pages || "all").trim();
+    if (!targetPages || targetPages === "all") return true;
+
+    const allowedPages = targetPages.split(',').map((entry: string) => entry.trim()).filter(Boolean);
+    if (allowedPages.includes("all")) return true;
+
+    const normalizedPage = page === "home" || page === "/" ? "/" : page.startsWith("/") ? page : `/${page}`;
+
+    return allowedPages.some((target: string) => {
+      const normalizedTarget = target === "home" || target === "/" ? "/" : target.startsWith("/") ? target : `/${target}`;
+      if (normalizedTarget === "/") return normalizedPage === "/";
+      if (normalizedPage === normalizedTarget) return true;
+      return normalizedPage.startsWith(`${normalizedTarget}/`);
+    });
+  });
+
+  res.json(filteredAds);
 });
 
 apiRouter.get("/public/status", (req, res) => {
@@ -1749,20 +1769,20 @@ apiRouter.get("/admin/ads", authMiddleware, (req, res) => {
 });
 
 apiRouter.post("/admin/ads", authMiddleware, authorizeRole('admin'), (req: any, res: any) => {
-  const { slider_type, image_url, link_url, display_order, is_active } = req.body;
+  const { slider_type, image_url, link_url, display_order, is_active, target_pages } = req.body;
   if (!slider_type || !image_url) return res.status(400).json({ error: "Type and Image required" });
   
-  const info = db.prepare("INSERT INTO advertisements (slider_type, image_url, link_url, display_order, is_active) VALUES (?, ?, ?, ?, ?)")
-    .run(slider_type, image_url, link_url || "", display_order || 0, is_active ? 1 : 0);
+  const info = db.prepare("INSERT INTO advertisements (slider_type, image_url, link_url, display_order, is_active, target_pages) VALUES (?, ?, ?, ?, ?, ?)")
+    .run(slider_type, image_url, link_url || "", display_order || 0, is_active ? 1 : 0, target_pages || "all");
   
   logAction(req, 'CREATE', 'advertisement', info.lastInsertRowid, { slider_type });
   res.json({ success: true, id: info.lastInsertRowid });
 });
 
 apiRouter.put("/admin/ads/:id", authMiddleware, authorizeRole('admin'), (req: any, res: any) => {
-  const { slider_type, image_url, link_url, display_order, is_active } = req.body;
-  db.prepare("UPDATE advertisements SET slider_type = ?, image_url = ?, link_url = ?, display_order = ?, is_active = ? WHERE id = ?")
-    .run(slider_type, image_url, link_url || "", display_order || 0, is_active ? 1 : 0, req.params.id);
+  const { slider_type, image_url, link_url, display_order, is_active, target_pages } = req.body;
+  db.prepare("UPDATE advertisements SET slider_type = ?, image_url = ?, link_url = ?, display_order = ?, is_active = ?, target_pages = ? WHERE id = ?")
+    .run(slider_type, image_url, link_url || "", display_order || 0, is_active ? 1 : 0, target_pages || "all", req.params.id);
   
   logAction(req, 'UPDATE', 'advertisement', req.params.id);
   res.json({ success: true });

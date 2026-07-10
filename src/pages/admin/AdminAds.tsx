@@ -249,6 +249,7 @@ export function AdminAds() {
 function BulkAdModal({ onClose, onSaved }: { onClose: () => void, onSaved: () => void }) {
   const [sliderLayout, setSliderLayout] = useState<SliderLayout>('single');
   const [sliderName, setSliderName] = useState('');
+  const [targetPages, setTargetPages] = useState<string[]>(['all']);
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -290,7 +291,8 @@ function BulkAdModal({ onClose, onSaved }: { onClose: () => void, onSaved: () =>
               image_url: url,
               link_url: '',
               display_order: i,
-              is_active: 1
+              is_active: 1,
+              target_pages: targetPages.includes('all') ? 'all' : targetPages.join(',')
             })
           });
           successCount++;
@@ -362,6 +364,42 @@ function BulkAdModal({ onClose, onSaved }: { onClose: () => void, onSaved: () =>
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-neon-purple transition-all"
               />
               <p className="text-[10px] text-white/30">Leave blank to use the default slider, or add a unique name to create another dedicated slider.</p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-white/40">Show On Pages</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: 'All pages', value: 'all' },
+                  { label: 'Home', value: '/' },
+                  { label: 'Watch', value: '/watch' },
+                  { label: 'Schedule', value: '/schedule' },
+                  { label: 'DJs', value: '/djs' },
+                  { label: 'Podcasts', value: '/podcasts' },
+                  { label: 'Features', value: '/features' },
+                  { label: 'About', value: '/about' },
+                  { label: 'Contact', value: '/contact' }
+                ].map(page => {
+                  const checked = targetPages.includes(page.value);
+                  return (
+                    <label key={page.value} className="flex items-center gap-2 text-xs text-white/60 bg-white/5 rounded-lg px-3 py-2">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          if (page.value === 'all') {
+                            setTargetPages(['all']);
+                            return;
+                          }
+                          const next = targetPages.filter(item => item !== 'all');
+                          setTargetPages(checked ? next.filter(item => item !== page.value) : [...next, page.value]);
+                        }}
+                      />
+                      <span>{page.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -449,16 +487,21 @@ function AdCard({ ad, onEdit, onDelete, onToggle }: any) {
         <img src={ad.image_url} alt="Ad" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
       </div>
       <div className="p-4 space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${layout === 'triple' ? 'bg-neon-purple/20 text-neon-purple' : 'bg-neon-blue/20 text-neon-blue'}`}>
             {label}
           </span>
-          <button 
-            onClick={onToggle}
-            className={`text-[9px] font-bold uppercase tracking-tighter px-2 py-0.5 rounded ${ad.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
-          >
-            {ad.is_active ? 'Active' : 'Hidden'}
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="text-[9px] text-white/35 max-w-[50%] text-right truncate">
+              {ad.target_pages === 'all' || !ad.target_pages ? 'All pages' : ad.target_pages}
+            </div>
+            <button 
+              onClick={onToggle}
+              className={`text-[9px] font-bold uppercase tracking-tighter px-2 py-0.5 rounded ${ad.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
+            >
+              {ad.is_active ? 'Active' : 'Hidden'}
+            </button>
+          </div>
         </div>
         
         {ad.link_url && (
@@ -488,7 +531,8 @@ function AdModal({ ad, onClose, onSaved }: { ad?: any, onClose: () => void, onSa
     image_url: ad?.image_url || '',
     link_url: ad?.link_url || '',
     display_order: ad?.display_order || 0,
-    is_active: ad ? ad.is_active : 1
+    is_active: ad ? ad.is_active : 1,
+    target_pages: ad?.target_pages || 'all'
   });
   const [sliderLayout, setSliderLayout] = useState<SliderLayout>(parsedSlider.layout);
   const [sliderName, setSliderName] = useState(parsedSlider.name);
@@ -575,6 +619,43 @@ function AdModal({ ad, onClose, onSaved }: { ad?: any, onClose: () => void, onSa
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-neon-purple transition-all"
               />
               <p className="text-[10px] text-white/30">Leave blank to use the default slider, or add a unique name to create another dedicated slider.</p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-white/40">Show On Pages</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: 'All pages', value: 'all' },
+                  { label: 'Home', value: '/' },
+                  { label: 'Watch', value: '/watch' },
+                  { label: 'Schedule', value: '/schedule' },
+                  { label: 'DJs', value: '/djs' },
+                  { label: 'Podcasts', value: '/podcasts' },
+                  { label: 'Features', value: '/features' },
+                  { label: 'About', value: '/about' },
+                  { label: 'Contact', value: '/contact' }
+                ].map(page => {
+                  const checked = formData.target_pages === 'all' ? page.value === 'all' : formData.target_pages.split(',').map(item => item.trim()).includes(page.value);
+                  return (
+                    <label key={page.value} className="flex items-center gap-2 text-xs text-white/60 bg-white/5 rounded-lg px-3 py-2">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          if (page.value === 'all') {
+                            setFormData({ ...formData, target_pages: 'all' });
+                            return;
+                          }
+                          const currentValues = formData.target_pages === 'all' ? [] : formData.target_pages.split(',').map(item => item.trim()).filter(Boolean);
+                          const nextValues = checked ? currentValues.filter(item => item !== page.value) : [...currentValues, page.value];
+                          setFormData({ ...formData, target_pages: nextValues.length === 0 ? 'all' : nextValues.join(',') });
+                        }}
+                      />
+                      <span>{page.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="space-y-2">

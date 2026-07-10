@@ -6,7 +6,7 @@ import './index.css';
 import { registerSW } from 'virtual:pwa-register';
 
 // Register service worker only in production to avoid duplicate reloads during development
-if (import.meta.env.PROD) {
+if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
   registerSW({
     immediate: false,
     onNeedRefresh() {

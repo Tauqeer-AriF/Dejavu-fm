@@ -4,6 +4,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination, Navigation } from "swiper/modules";
 import { ExternalLink } from "lucide-react";
 import { motion } from "motion/react";
+import { useLocation } from "react-router-dom";
 
 // Import Swiper styles
 import "swiper/css";
@@ -43,9 +44,12 @@ function getSliderLayout(sliderType: string): SliderLayout {
 }
 
 export function AdvertisementSliders() {
+  const location = useLocation();
+  const currentPage = location.pathname === "/" ? "home" : location.pathname.replace(/^\/+|\/+$/g, "") || "home";
+
   const { data: ads = [] } = useQuery({
-    queryKey: ['publicAds'],
-    queryFn: () => fetch("/api/public/ads").then(res => res.json())
+    queryKey: ['publicAds', currentPage],
+    queryFn: () => fetch(`/api/public/ads?page=${encodeURIComponent(currentPage)}`).then(res => res.json())
   });
 
   const { data: settings = {} } = useQuery({

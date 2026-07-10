@@ -7,7 +7,6 @@ import { Play, Pause, Mic2, Tv, Clock, X, MessageSquare } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { io } from "socket.io-client";
 import { convertToLocalTime } from "../lib/timeUtils";
-import { AdvertisementSliders } from "../components/AdvertisementSliders";
 
 function HeroVisualizer({ isPlaying, isLightMode }: { isPlaying: boolean; isLightMode: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -436,8 +435,6 @@ export default function Home() {
           </div>
         </div>
       )}
-
-      <AdvertisementSliders />
 
       <div className={`w-full py-5 md:py-8 border-y overflow-hidden relative group ${isLightMode ? 'border-black/5 bg-black/[0.01]' : 'border-white/5 bg-white/[0.01]'}`}>
         <div className="flex whitespace-nowrap animate-[marquee_180s_linear_infinite] group-hover:[animation-play-state:paused] space-x-12 md:space-x-24 w-max">
