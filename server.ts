@@ -57,7 +57,11 @@ async function startServer() {
   app.use(express.static(path.join(process.cwd(), "public")));
 
   // Serve uploads folder from persistent or local uploads directory dynamically
-  app.use("/uploads", express.static(getUploadsDir()));
+  app.use("/uploads", express.static(getUploadsDir(), {
+    maxAge: '1y',
+    acceptRanges: true,
+    cacheControl: true
+  }));
 
   // Security Headers
   app.use(helmet({

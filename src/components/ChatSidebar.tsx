@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { io, Socket } from 'socket.io-client';
-import { Send, User, LogOut, Loader2, X, MessageSquare, Users, Ban, ShieldAlert, Smile, Search, Paperclip, Music, Mic, Square, Trash2, ArrowLeft, Eye, EyeOff, Volume2, VolumeX } from 'lucide-react';
+import { Send, User, LogOut, Loader2, X, MessageSquare, Users, Ban, ShieldAlert, Smile, Search, Paperclip, Music, Mic, Square, Trash2, ArrowLeft, Eye, EyeOff, Volume2, VolumeX, Video } from 'lucide-react';
 import { toast } from 'sonner';
 import { useModal } from '../context/ModalContext';
 import { useLogo } from '../hooks/useLogo';
@@ -16,6 +16,8 @@ interface ChatMessage {
   imageName?: string;
   audioUrl?: string;
   audioName?: string;
+  videoUrl?: string;
+  videoName?: string;
   recipient?: string;
 }
 
@@ -76,7 +78,16 @@ const EMOJI_CATEGORIES = [
   }
 ];
 
+const getSecureImageUrl = (url?: string) => {
+  if (!url) return undefined;
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return `/api/public/proxy-image?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+};
+
 const playNotificationSound = () => {
+
   try {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContextClass) return;
@@ -221,7 +232,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
 
   const [pendingAttachment, setPendingAttachment] = useState<{
     url: string;
-    type: 'image' | 'audio';
+    type: 'image' | 'audio' | 'video';
     filename: string;
   } | null>(null);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
@@ -523,14 +534,15 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     
     const isImage = file.type.startsWith('image/');
     const isAudio = file.type.startsWith('audio/');
+    const isVideo = file.type.startsWith('video/');
     
-    if (!isImage && !isAudio) {
-      toast.error("Please select an image or audio file");
+    if (!isImage && !isAudio && !isVideo) {
+      toast.error("Please select an image, audio, or video file");
       return;
     }
     
-    if (file.size > 15 * 1024 * 1024) {
-      toast.error("File is too large. Max size is 15MB");
+    if (file.size > 30 * 1024 * 1024) {
+      toast.error("File is too large. Max size is 30MB");
       return;
     }
     
@@ -550,7 +562,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
           type: data.type,
           filename: data.filename
         });
-        toast.success(`${isImage ? 'Image' : 'Audio'} uploaded successfully!`);
+        toast.success(`${isImage ? 'Image' : isAudio ? 'Audio' : 'Video'} uploaded successfully!`);
       } else {
         toast.error(data.error || "Failed to upload file");
       }
@@ -710,6 +722,9 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
       } else if (pendingAttachment.type === 'audio') {
         messagePayload.audioUrl = pendingAttachment.url;
         messagePayload.audioName = pendingAttachment.filename;
+      } else if (pendingAttachment.type === 'video') {
+        messagePayload.videoUrl = pendingAttachment.url;
+        messagePayload.videoName = pendingAttachment.filename;
       }
     }
 
@@ -937,7 +952,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                       {!msg.isSystem && (
                         <div className={`w-8 h-8 rounded-lg overflow-hidden border shrink-0 ${isLightMode ? 'border-black/10 bg-black/5' : 'border-white/10 bg-white/5'}`}>
                           <img 
-                            src={(msg as any).avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${msg.user}`}
+                            src={getSecureImageUrl((msg as any).avatar_url) || `https://api.dicebear.com/7.x/bottts/svg?seed=${msg.user}`}
                             alt={msg.user}
                             className="w-full h-full object-cover"
                             onError={(e) => {
@@ -1003,11 +1018,27 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                             {msg.imageUrl && (
                               <div className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
                                 <img 
-                                  src={msg.imageUrl} 
+                                  src={getSecureImageUrl(msg.imageUrl)} 
                                   alt={msg.imageName || "Attached Image"} 
                                   className="max-h-60 object-contain mx-auto" 
                                   referrerPolicy="no-referrer"
                                 />
+                              </div>
+                            )}
+                            {msg.videoUrl && (
+                              <div className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
+                                <video 
+                                  src={getSecureImageUrl(msg.videoUrl)} 
+                                  controls
+                                  preload="metadata"
+                                  playsInline
+                                  className="max-h-60 w-full object-contain mx-auto bg-black" 
+                                />
+                                {msg.videoName && (
+                                  <div className="absolute top-2 left-2 bg-black/60 px-2 py-1 rounded text-[10px] text-white/70 max-w-[90%] truncate backdrop-blur-md">
+                                    {msg.videoName}
+                                  </div>
+                                )}
                               </div>
                             )}
                             {msg.audioUrl && (
@@ -1018,7 +1049,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                                   </p>
                                 )}
                                 <audio 
-                                  src={msg.audioUrl} 
+                                  src={getSecureImageUrl(msg.audioUrl)} 
                                   controls 
                                   className="w-full h-8 accent-neon-purple rounded" 
                                 />
@@ -1088,7 +1119,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                         >
                           <div className={`w-8 h-8 rounded-lg overflow-hidden border shrink-0 ${isLightMode ? 'border-black/10 bg-black/5' : 'border-white/10 bg-white/5'}`}>
                             <img 
-                              src={(msg as any).avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${msg.user}`}
+                              src={getSecureImageUrl((msg as any).avatar_url) || `https://api.dicebear.com/7.x/bottts/svg?seed=${msg.user}`}
                               alt={msg.user}
                               className="w-full h-full object-cover"
                             />
@@ -1117,11 +1148,27 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                               {msg.imageUrl && (
                                 <div className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
                                   <img 
-                                    src={msg.imageUrl} 
+                                    src={getSecureImageUrl(msg.imageUrl)} 
                                     alt={msg.imageName || "Attached Image"} 
                                     className="max-h-60 object-contain mx-auto" 
                                     referrerPolicy="no-referrer"
                                   />
+                                </div>
+                              )}
+                              {msg.videoUrl && (
+                                <div className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
+                                  <video 
+                                    src={getSecureImageUrl(msg.videoUrl)} 
+                                    controls
+                                    preload="metadata"
+                                    playsInline
+                                    className="max-h-60 w-full object-contain mx-auto bg-black" 
+                                  />
+                                  {msg.videoName && (
+                                    <div className="absolute top-2 left-2 bg-black/60 px-2 py-1 rounded text-[10px] text-white/70 max-w-[90%] truncate backdrop-blur-md">
+                                      {msg.videoName}
+                                    </div>
+                                  )}
                                 </div>
                               )}
                               {msg.audioUrl && (
@@ -1132,7 +1179,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                                     </p>
                                   )}
                                   <audio 
-                                    src={msg.audioUrl} 
+                                    src={getSecureImageUrl(msg.audioUrl)} 
                                     controls 
                                     className="w-full h-8 accent-neon-purple rounded" 
                                   />
@@ -1347,7 +1394,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                     type="file" 
                     ref={fileInputRef} 
                     className="hidden" 
-                    accept="image/*,audio/*" 
+                    accept="image/*,audio/*,video/*" 
                     onChange={e => {
                       const file = e.target.files?.[0];
                       if (file) handleFileSelection(file);
@@ -1395,13 +1442,17 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                             <div className="w-10 h-10 rounded-lg overflow-hidden border border-white/10 shrink-0 bg-black/40 flex items-center justify-center">
                               <img src={pendingAttachment.url} alt="Uploaded" className="w-full h-full object-cover" />
                             </div>
+                          ) : pendingAttachment.type === 'video' ? (
+                            <div className="w-10 h-10 rounded-lg border border-white/10 shrink-0 bg-neon-purple/10 flex items-center justify-center text-neon-purple">
+                              <Video className="w-5 h-5" />
+                            </div>
                           ) : (
                             <div className="w-10 h-10 rounded-lg border border-white/10 shrink-0 bg-neon-blue/10 flex items-center justify-center text-neon-blue">
                               <Music className="w-5 h-5" />
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <p className="text-[10px] font-black uppercase text-white/40 tracking-widest">{pendingAttachment.type === 'image' ? 'Image Attachment' : 'Audio Attachment'}</p>
+                            <p className="text-[10px] font-black uppercase text-white/40 tracking-widest">{pendingAttachment.type === 'image' ? 'Image Attachment' : pendingAttachment.type === 'video' ? 'Video Attachment' : 'Audio Attachment'}</p>
                             <p className="text-xs font-bold text-white truncate">{pendingAttachment.filename}</p>
                           </div>
                           <button

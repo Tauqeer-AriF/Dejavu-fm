@@ -11,6 +11,7 @@ import { z } from "zod";
 import multer from "multer";
 import fs from "fs";
 import * as tar from "tar";
+import { parse } from 'csv-parse/sync';
 // `sharp` is optional at runtime; dynamically import when needed to avoid startup failure
 
 export const apiRouter = Router();
@@ -146,9 +147,9 @@ const upload = multer({
 
 const attachmentUpload = multer({
   storage,
-  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB limit
+  limits: { fileSize: 30 * 1024 * 1024 }, // 30MB limit for video support
   fileFilter: (req, file, cb) => {
-    cb(null, file.mimetype.startsWith("image/") || file.mimetype.startsWith("audio/"));
+    cb(null, file.mimetype.startsWith("image/") || file.mimetype.startsWith("audio/") || file.mimetype.startsWith("video/"));
   }
 });
 
@@ -544,7 +545,7 @@ apiRouter.post("/public/chat/upload", (req: any, res: any) => {
     }
 
     const fileUrl = `/uploads/${req.file.filename}`;
-    const fileType = req.file.mimetype.startsWith("audio/") ? "audio" : "image";
+    const fileType = req.file.mimetype.startsWith("audio/") ? "audio" : req.file.mimetype.startsWith("video/") ? "video" : "image";
     res.json({
       success: true,
       url: fileUrl,
@@ -554,7 +555,36 @@ apiRouter.post("/public/chat/upload", (req: any, res: any) => {
   });
 });
 
+apiRouter.get("/public/proxy-image", async (req: any, res: any) => {
+  const imageUrl = req.query.url;
+  if (!imageUrl || typeof imageUrl !== 'string') {
+    return res.status(400).json({ error: "Missing or invalid URL parameter" });
+  }
+
+  try {
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image, status: ${response.status}`);
+    }
+
+    const contentType = response.headers.get('content-type');
+    if (contentType) {
+      res.setHeader('Content-Type', contentType);
+    }
+    
+    // Cache the image heavily since chat images are static
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    
+    const arrayBuffer = await response.arrayBuffer();
+    res.send(Buffer.from(arrayBuffer));
+  } catch (err) {
+    console.error("[API] Proxy image error:", err);
+    res.status(500).json({ error: "Failed to proxy image" });
+  }
+});
+
 apiRouter.get("/public/chat/users", (req: any, res: any) => {
+
   const token = req.cookies.user_token;
   if (!token) return res.status(401).json({ error: "Unauthorized" });
 
@@ -1207,6 +1237,57 @@ apiRouter.delete("/admin/users/:username", authorizeRole('admin'), (req, res) =>
 apiRouter.get("/admin/chat_users", authorizeRole('admin'), (req, res) => {
   const users = db.prepare("SELECT id, username, email, password_plain, source, is_banned, created_at FROM users").all();
   res.json(users);
+});
+
+const csvUpload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    // allow csv files (text/csv or application/vnd.ms-excel or sometimes empty/generic type)
+    cb(null, true);
+  }
+});
+
+apiRouter.post("/admin/chat_users/import", authorizeRole('admin'), csvUpload.single('csv'), (req: any, res: any) => {
+  if (!req.file) return res.status(400).json({ error: "No CSV file provided" });
+  
+  try {
+    const csvData = fs.readFileSync(req.file.path, 'utf8');
+    const records = parse(csvData, {
+      columns: true,
+      skip_empty_lines: true,
+      trim: true
+    }) as Array<Record<string, string>>;
+
+    let count = 0;
+    const insertStmt = db.prepare("INSERT INTO users (username, email, password_hash, password_plain, source) VALUES (?, ?, ?, ?, ?)");
+    
+    db.transaction(() => {
+      for (const record of records) {
+        const email = record.email || record.Email;
+        const username = record.username || record.Username || (email ? email.split('@')[0] : null);
+        const password = record.password || record.Password;
+
+        if (email && password) {
+          try {
+            const hash = bcrypt.hashSync(password, 10);
+            insertStmt.run(username, email.toLowerCase(), hash, password, 'import');
+            count++;
+          } catch (err) {
+            // Skip duplicates
+          }
+        }
+      }
+    })();
+    
+    fs.unlinkSync(req.file.path);
+    logAction(req, 'CREATE', 'chat_users_import', null, { count });
+    res.json({ success: true, count });
+  } catch (err) {
+    console.error("[API] CSV Import Error:", err);
+    if (req.file) fs.unlinkSync(req.file.path);
+    res.status(500).json({ error: "Failed to parse CSV file" });
+  }
 });
 
 apiRouter.post("/admin/chat_users", authorizeRole('admin'), (req, res) => {

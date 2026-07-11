@@ -106,6 +106,53 @@ export function AdminChatUsers({ isAdminUser }: { isAdminUser: boolean }) {
             <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Banned Only</span>
           </label>
           <button onClick={exportChatUsersToCSV} className="px-4 py-2 bg-white/5 hover:bg-neon-blue/20 border border-white/10 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap text-neon-blue">Export CSV</button>
+          
+          <div className="relative group/import">
+            <input 
+              type="file" 
+              accept=".csv" 
+              className="absolute inset-0 opacity-0 cursor-pointer z-10"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                
+                const formData = new FormData();
+                formData.append('csv', file);
+                
+                try {
+                  const res = await fetchAdmin("/api/admin/chat_users/import", {
+                    method: "POST",
+                    body: formData
+                  });
+                  const data = await res.json();
+                  if (res.ok) {
+                    showAlert({ title: "Import Successful", message: `Imported ${data.count} users successfully.`, style: "success" });
+                    load();
+                  } else {
+                    showAlert({ title: "Import Failed", message: data.error || "Failed to import users.", style: "danger" });
+                  }
+                } catch (err) {
+                  showAlert({ title: "Import Failed", message: "Network error during import.", style: "danger" });
+                }
+                e.target.value = '';
+              }}
+            />
+            <button className="px-4 py-2 bg-white/5 hover:bg-neon-purple/20 border border-white/10 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap text-neon-purple flex items-center gap-2">
+              <Upload className="w-3 h-3" />
+              Import CSV
+            </button>
+          </div>
+          <button onClick={() => {
+            const csvContent = "username,email,password\nuser1,user1@example.com,pass123\nuser2,user2@example.com,pass456";
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `sample_chat_users.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }} className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap text-white/60">Sample CSV</button>
         </div>
       </div>
       
