@@ -4,9 +4,38 @@ import path from 'path';
 import fs from 'fs';
 import * as tar from 'tar';
 
+const isWritableDir = (dirPath: string): boolean => {
+  try {
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+    }
+    const testFile = path.join(dirPath, '.write-test-' + Date.now());
+    fs.writeFileSync(testFile, 'test');
+    fs.unlinkSync(testFile);
+    return true;
+  } catch (e) {
+    return false;
+  }
+};
+
+export const getUploadsDir = (): string => {
+  if (process.env.UPLOADS_PATH) {
+    return process.env.UPLOADS_PATH;
+  }
+  // If running in production / containers with a persistent /data mount (e.g. Railway volume)
+  if (isWritableDir('/data')) {
+    return '/data/uploads';
+  }
+  return path.join(process.cwd(), "public", "uploads");
+};
+
 const getDatabasePath = () => {
   if (process.env.DATABASE_PATH) {
     return process.env.DATABASE_PATH;
+  }
+  // Detect if /data persistent volume is available and writable (e.g. Railway volume mount)
+  if (isWritableDir('/data')) {
+    return '/data/dejavufm.db';
   }
   // On Cloud Run (identified by K_SERVICE or production node env), use /tmp to ensure writable filesystem
   if (process.env.NODE_ENV === 'production' || process.env.K_SERVICE) {
@@ -521,7 +550,7 @@ export async function backupDatabase() {
     await db.backup(dbBackupPath);
 
     // 3. Copy uploads if they exist
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+    const uploadsDir = getUploadsDir();
     if (fs.existsSync(uploadsDir)) {
       const destUploads = path.join(tempDir, 'uploads');
       if (!fs.existsSync(destUploads)) fs.mkdirSync(destUploads, { recursive: true });

@@ -4,7 +4,7 @@ import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
 import { apiRouter } from "./src/server/api.ts";
-import { initDb, db, backupDatabase } from "./src/server/db.ts";
+import { initDb, db, backupDatabase, getUploadsDir } from "./src/server/db.ts";
 import http from "http";
 import { Server as SocketIOServer } from "socket.io";
 import crypto from "crypto";
@@ -55,6 +55,9 @@ async function startServer() {
   
   // Explicitly serve public folder for manifest.json and icons
   app.use(express.static(path.join(process.cwd(), "public")));
+
+  // Serve uploads folder from persistent or local uploads directory dynamically
+  app.use("/uploads", express.static(getUploadsDir()));
 
   // Security Headers
   app.use(helmet({

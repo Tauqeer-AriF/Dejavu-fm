@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { io, Socket } from 'socket.io-client';
-import { Send, User, LogOut, Loader2, X, MessageSquare, Users, Ban, ShieldAlert, Smile, Search, Paperclip, Music, Mic, Square, Trash2, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { Send, User, LogOut, Loader2, X, MessageSquare, Users, Ban, ShieldAlert, Smile, Search, Paperclip, Music, Mic, Square, Trash2, ArrowLeft, Eye, EyeOff, Volume2, VolumeX } from 'lucide-react';
 import { toast } from 'sonner';
 import { useModal } from '../context/ModalContext';
 import { useLogo } from '../hooks/useLogo';
@@ -76,8 +76,52 @@ const EMOJI_CATEGORIES = [
   }
 ];
 
+const playNotificationSound = () => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    
+    // Create oscillator and gain node
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = 'sine';
+    // Clean "ping/pop" sound starting at 800Hz and sliding down to 550Hz
+    osc.frequency.setValueAtTime(800, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(550, ctx.currentTime + 0.15);
+    
+    // Envelope for gain to fade out nicely and prevent clicks
+    gain.gain.setValueAtTime(0.0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.start();
+    osc.stop(ctx.currentTime + 0.16);
+  } catch (err) {
+    console.warn("Failed to play notification sound", err);
+  }
+};
+
 export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { isLightMode } = useLogo();
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('dejavu_chat_sound_enabled');
+      return saved !== null ? JSON.parse(saved) : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const soundEnabledRef = useRef(soundEnabled);
+  useEffect(() => {
+    soundEnabledRef.current = soundEnabled;
+  }, [soundEnabled]);
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -295,6 +339,9 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
         if (newArr.length > 100) newArr.shift();
         return newArr;
       });
+      if (msg.user !== loggedInUser && soundEnabledRef.current) {
+        playNotificationSound();
+      }
     });
 
     socket.on('privateHistory', (history: ChatMessage[]) => {
@@ -319,6 +366,10 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
 
         if (activeDmUserRef.current !== msg.user) {
           toast.info(`New message from ${msg.user.split('@')[0]}: ${msg.text ? (msg.text.length > 25 ? msg.text.substring(0, 25) + '...' : msg.text) : '🎵 Voice note or audio'}`);
+        }
+
+        if (soundEnabledRef.current) {
+          playNotificationSound();
         }
       }
     });
@@ -782,9 +833,37 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const newValue = !soundEnabled;
+                    setSoundEnabled(newValue);
+                    localStorage.setItem('dejavu_chat_sound_enabled', JSON.stringify(newValue));
+                    if (newValue) {
+                      playNotificationSound();
+                    }
+                    toast.success(newValue ? "Chat sounds enabled" : "Chat sounds muted");
+                  }}
+                  id="chat-sound-toggle-btn"
+                  className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all relative cursor-pointer group ${
+                    soundEnabled 
+                      ? 'bg-neon-purple/10 border-neon-purple/30 hover:bg-neon-purple/20' 
+                      : 'bg-white/5 border-white/10 hover:bg-white/10'
+                  }`}
+                  title={soundEnabled ? "Mute chat sounds" : "Unmute chat sounds"}
+                >
+                  {soundEnabled ? (
+                    <Volume2 className="w-5 h-5 text-neon-purple animate-pulse" />
+                  ) : (
+                    <VolumeX className="w-5 h-5 text-white/40" />
+                  )}
+                  {soundEnabled && (
+                    <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-neon-purple animate-ping" />
+                  )}
+                </button>
                 {loggedInUser && (
                   <button
                     onClick={() => setShowProfile(true)}
+                    id="chat-profile-btn"
                     className="w-10 h-10 rounded-xl bg-white/5 hover:bg-neon-purple/20 border border-white/10 hover:border-neon-purple/50 flex items-center justify-center overflow-hidden transition-all group shrink-0 relative cursor-pointer"
                     title="User Profile & Avatar"
                   >
@@ -800,6 +879,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                 )}
                 <button 
                   onClick={onClose}
+                  id="chat-close-btn"
                   className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
                 >
                   <X className="w-5 h-5" />

@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import Database from 'better-sqlite3';
-import { db, dbPath, backupDir, pruneBackups, backupDatabase, reopenDatabaseConnection } from "./db.js";
+import { db, dbPath, backupDir, pruneBackups, backupDatabase, reopenDatabaseConnection, getUploadsDir } from "./db.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Parser from "rss-parser";
@@ -126,7 +126,7 @@ function logAction(req: any, action: string, resource: string, resource_id?: str
 // Configure Multer for secure image uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
+    const uploadDir = getUploadsDir();
     if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
     cb(null, uploadDir);
   },
@@ -720,14 +720,14 @@ apiRouter.post("/admin/upload", upload.single("image"), async (req: any, res: an
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
   
   const processedFilename = `opt-${req.file.filename.split('.')[0]}.webp`;
-  const outputPath = path.join(process.cwd(), "public", "uploads", processedFilename);
+  const outputPath = path.join(getUploadsDir(), processedFilename);
 
   // Secure local cleanup
   const oldUrl = req.body.oldUrl;
   if (oldUrl && typeof oldUrl === 'string' && oldUrl.startsWith('/uploads/')) {
     try {
       const fileName = path.basename(oldUrl);
-      const filePath = path.join(process.cwd(), "public", "uploads", fileName);
+      const filePath = path.join(getUploadsDir(), fileName);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
         console.log(`[API] Replaced and deleted old image: ${fileName}`);
@@ -917,7 +917,7 @@ apiRouter.delete("/admin/djs/:id", (req, res) => {
   const dj = db.prepare("SELECT image_url FROM djs WHERE id = ?").get(req.params.id) as any;
   if (dj?.image_url?.startsWith('/uploads/')) {
     try {
-      const filePath = path.join(process.cwd(), "public", "uploads", path.basename(dj.image_url));
+      const filePath = path.join(getUploadsDir(), path.basename(dj.image_url));
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     } catch (e) {
       console.error("[API] Failed to cleanup DJ image on deletion:", e);
@@ -1014,7 +1014,7 @@ apiRouter.delete("/admin/features/:id", (req, res) => {
   const feature = db.prepare("SELECT image_url FROM features WHERE id = ?").get(req.params.id) as any;
   if (feature?.image_url?.startsWith('/uploads/')) {
     try {
-      const filePath = path.join(process.cwd(), "public", "uploads", path.basename(feature.image_url));
+      const filePath = path.join(getUploadsDir(), path.basename(feature.image_url));
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     } catch (e) {
       console.error("[API] Failed to cleanup feature image on deletion:", e);
@@ -1447,7 +1447,7 @@ apiRouter.post("/admin/database/snapshot", authorizeRole('admin'), asyncHandler(
     await db.backup(dbBackupPath);
 
     // 3. Copy uploads if they exist
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+    const uploadsDir = getUploadsDir();
     if (fs.existsSync(uploadsDir)) {
       const destUploads = path.join(tempDir, 'uploads');
       if (!fs.existsSync(destUploads)) fs.mkdirSync(destUploads, { recursive: true });
@@ -1490,7 +1490,7 @@ apiRouter.get("/admin/database/download", authorizeRole('admin'), asyncHandler(a
     await db.backup(dbBackupPath);
 
     // 3. Copy uploads if they exist
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+    const uploadsDir = getUploadsDir();
     if (fs.existsSync(uploadsDir)) {
       const destUploads = path.join(tempDir, 'uploads');
       if (!fs.existsSync(destUploads)) fs.mkdirSync(destUploads, { recursive: true });
@@ -1725,7 +1725,7 @@ apiRouter.post("/admin/database/restore/finalize-file", authorizeRole('admin'), 
         // 6. Handle bundle uploads extraction if it was a bundle
         if (isBundle) {
           const extractedUploads = path.join(tempExtractDir, 'uploads');
-          const publicUploads = path.join(process.cwd(), 'public', 'uploads');
+          const publicUploads = getUploadsDir();
           if (fs.existsSync(extractedUploads)) {
             console.log("[DB RESTORE] Restoring uploads from bundle...");
             if (!fs.existsSync(publicUploads)) fs.mkdirSync(publicUploads, { recursive: true });
