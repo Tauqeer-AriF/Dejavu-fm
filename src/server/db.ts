@@ -344,6 +344,7 @@ export function initDb() {
   runMigration('ad_auto_scroll_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('ad_auto_scroll', '1');");
   runMigration('user_avatar_field', "ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT NULL;");
   runMigration('user_email_field', "ALTER TABLE users ADD COLUMN email TEXT DEFAULT NULL;");
+  runMigration('user_password_plain_field', "ALTER TABLE users ADD COLUMN password_plain TEXT DEFAULT NULL;");
   runMigration('admin_email_field', "ALTER TABLE admins ADD COLUMN email TEXT;");
   runMigration('private_messages_table', "CREATE TABLE IF NOT EXISTS private_messages (id TEXT PRIMARY KEY, sender TEXT NOT NULL, recipient TEXT NOT NULL, text TEXT, imageUrl TEXT, imageName TEXT, audioUrl TEXT, audioName TEXT, timestamp INTEGER NOT NULL); CREATE INDEX IF NOT EXISTS idx_private_messages_participants ON private_messages(sender, recipient);");
   try {

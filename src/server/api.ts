@@ -350,7 +350,7 @@ apiRouter.post("/public/shoutout", shoutoutLimiter, (req, res) => {
     try {
       const placeholderPass = crypto.randomBytes(16).toString('hex');
       const hash = bcrypt.hashSync(placeholderPass, 10);
-      db.prepare("INSERT INTO users (username, email, password_hash, source) VALUES (?, ?, ?, ?)").run(email, email, hash, 'shoutout');
+      db.prepare("INSERT INTO users (username, email, password_hash, password_plain, source) VALUES (?, ?, ?, ?, ?)").run(email, email, hash, placeholderPass, 'shoutout');
     } catch (err) {
       // Silently ignore unique constraint race conditions
     }
@@ -401,7 +401,7 @@ apiRouter.post("/public/auth/register", (req, res) => {
   
   const hash = bcrypt.hashSync(password, 10);
   try {
-    const info = db.prepare("INSERT INTO users (username, email, password_hash, source) VALUES (?, ?, ?, ?)").run(cleanUsername, cleanEmail, hash, 'register');
+    const info = db.prepare("INSERT INTO users (username, email, password_hash, password_plain, source) VALUES (?, ?, ?, ?, ?)").run(cleanUsername, cleanEmail, hash, password, 'register');
     const token = jwt.sign({ userId: info.lastInsertRowid, username: cleanUsername }, ACTUAL_SECRET, { expiresIn: "7d" });
     res.cookie("user_token", token, { httpOnly: true, secure: true, sameSite: "none" });
     res.json({ success: true, username: cleanUsername, avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${cleanUsername}` });
@@ -1205,22 +1205,25 @@ apiRouter.delete("/admin/users/:username", authorizeRole('admin'), (req, res) =>
 });
 
 apiRouter.get("/admin/chat_users", authorizeRole('admin'), (req, res) => {
-  const users = db.prepare("SELECT id, username, source, is_banned, created_at FROM users").all();
+  const users = db.prepare("SELECT id, username, email, password_plain, source, is_banned, created_at FROM users").all();
   res.json(users);
 });
 
 apiRouter.post("/admin/chat_users", authorizeRole('admin'), (req, res) => {
-  const { email, password } = req.body;
+  const { username, email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: "Email and password required" });
   if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: "Invalid email format" });
   
+  const cleanUsername = (username || email.split('@')[0]).trim();
+  const cleanEmail = email.trim().toLowerCase();
+  
   const hash = bcrypt.hashSync(password, 10);
   try {
-    const info = db.prepare("INSERT INTO users (username, password_hash, source) VALUES (?, ?, ?)").run(email, hash, 'admin');
-    logAction(req, 'CREATE', 'chat_user', email);
-    res.json({ success: true, id: info.lastInsertRowid, username: email });
+    const info = db.prepare("INSERT INTO users (username, email, password_hash, password_plain, source) VALUES (?, ?, ?, ?, ?)").run(cleanUsername, cleanEmail, hash, password, 'admin');
+    logAction(req, 'CREATE', 'chat_user', cleanEmail);
+    res.json({ success: true, id: info.lastInsertRowid, username: cleanUsername, email: cleanEmail });
   } catch (err) {
-    res.status(400).json({ error: "User with this email already exists" });
+    res.status(400).json({ error: "User with this username or email already exists" });
   }
 });
 
@@ -1252,19 +1255,25 @@ apiRouter.post("/admin/chat_users/unban", authorizeRole('admin'), (req, res) => 
 });
 
 apiRouter.put("/admin/chat_users/:id", authorizeRole('admin'), (req, res) => {
-  const { email, password } = req.body;
+  const { username, email, password } = req.body;
   
   try {
+    const existing = db.prepare("SELECT * FROM users WHERE id = ?").get(req.params.id) as any;
+    if (!existing) return res.status(404).json({ error: "User not found" });
+
+    const newUsername = (username || existing.username).trim();
+    const newEmail = (email || existing.email || '').trim().toLowerCase();
+
     if (password) {
       const hash = bcrypt.hashSync(password, 10);
-      db.prepare("UPDATE users SET username=?, password_hash=? WHERE id=?").run(email, hash, req.params.id);
+      db.prepare("UPDATE users SET username=?, email=?, password_hash=?, password_plain=? WHERE id=?").run(newUsername, newEmail, hash, password, req.params.id);
     } else {
-      db.prepare("UPDATE users SET username=? WHERE id=?").run(email, req.params.id);
+      db.prepare("UPDATE users SET username=?, email=? WHERE id=?").run(newUsername, newEmail, req.params.id);
     }
-    logAction(req, 'UPDATE', 'chat_user', req.params.id, { email });
+    logAction(req, 'UPDATE', 'chat_user', req.params.id, { username: newUsername, email: newEmail });
     res.json({ success: true });
   } catch (err) {
-    res.status(400).json({ error: "Update failed, email might already be in use." });
+    res.status(400).json({ error: "Update failed. Username or email might already be in use." });
   }
 });
 
