@@ -36,21 +36,74 @@ if (dbPath !== 'dejavufm.db' && fs.existsSync('dejavufm.db') && !fs.existsSync(d
   }
 }
 
-let activeDb = new Database(dbPath);
-
 const configureDb = (connection: any) => {
   try {
-    connection.pragma('journal_mode = WAL');
-  } catch (e) {
-    console.warn('[DB] Failed to set WAL mode, falling back to default:', e);
+    try {
+      connection.pragma('journal_mode = WAL');
+    } catch (e) {
+      console.warn('[DB] Failed to set WAL mode, falling back to default:', e);
+    }
+    connection.pragma('busy_timeout = 5000');
+    connection.pragma('synchronous = OFF'); // Faster for SSDs, though less crash-safe. 'NORMAL' is safer.
+    connection.pragma('cache_size = 10000');
+    connection.pragma('foreign_keys = ON');
+  } catch (err) {
+    console.error('[DB] Error during pragma configuration:', err);
+    throw err;
   }
-  connection.pragma('busy_timeout = 5000');
-  connection.pragma('synchronous = OFF'); // Faster for SSDs, though less crash-safe. 'NORMAL' is safer.
-  connection.pragma('cache_size = 10000');
-  connection.pragma('foreign_keys = ON');
 };
 
-configureDb(activeDb);
+const createAndConfigureDb = (pathStr: string): any => {
+  let conn: any = null;
+  try {
+    conn = new Database(pathStr);
+    configureDb(conn);
+    return conn;
+  } catch (err: any) {
+    console.error(`[DB] Database connection or configuration failed at ${pathStr}:`, err);
+    if (conn) {
+      try { conn.close(); } catch {}
+    }
+    
+    // Check if malformed or corrupt
+    const isCorrupt = err?.message?.includes('malformed') || err?.code === 'SQLITE_CORRUPT' || String(err).includes('malformed');
+    if (isCorrupt) {
+      console.warn(`[DB] Database at ${pathStr} is malformed/corrupt. Attempting to delete and recreate a fresh database...`);
+      try {
+        if (fs.existsSync(pathStr)) {
+          fs.unlinkSync(pathStr);
+          console.log(`[DB] Deleted corrupt database file at ${pathStr}`);
+        }
+      } catch (unlinkErr) {
+        console.error(`[DB] Failed to delete corrupt database file at ${pathStr}:`, unlinkErr);
+      }
+      
+      // If we are copying from a local 'dejavufm.db' and that's the corrupt one, we should also delete it
+      if (pathStr !== 'dejavufm.db' && fs.existsSync('dejavufm.db')) {
+        try {
+          fs.unlinkSync('dejavufm.db');
+          console.log(`[DB] Deleted corrupt local source database dejavufm.db`);
+        } catch (localUnlinkErr) {
+          console.error(`[DB] Failed to delete corrupt local database dejavufm.db:`, localUnlinkErr);
+        }
+      }
+      
+      // Try creating a brand new clean database
+      try {
+        conn = new Database(pathStr);
+        configureDb(conn);
+        console.log(`[DB] Successfully created a fresh database at ${pathStr}`);
+        return conn;
+      } catch (recreateErr) {
+        console.error(`[DB] Failed to recreate fresh database at ${pathStr}:`, recreateErr);
+        throw recreateErr;
+      }
+    }
+    throw err;
+  }
+};
+
+let activeDb = createAndConfigureDb(dbPath);
 
 export const db = new Proxy({} as any, {
   get(_, prop) {
@@ -80,8 +133,7 @@ export function closeDatabaseConnection() {
 
 export function reopenDatabaseConnection() {
   console.log(`[DB] Re-opening database connection at ${dbPath}...`);
-  activeDb = new Database(dbPath);
-  configureDb(activeDb);
+  activeDb = createAndConfigureDb(dbPath);
 }
 
 export function initDb() {
