@@ -151,9 +151,18 @@ export default function DJDetail() {
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="relative w-full max-w-lg bg-[#0A0A0A] border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl p-8 md:p-12 my-auto"
+                className={`relative w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl p-8 md:p-12 my-auto border transition-colors ${
+                  isLightMode 
+                    ? 'bg-[#ffffff] border-zinc-200 text-zinc-900' 
+                    : 'bg-[#0A0A0A] border-white/10 text-[#ffffff]'
+                }`}
               >
-                <button onClick={() => setIsBookingOpen(false)} className="absolute top-8 right-8 text-white/40 hover:text-white">
+                <button 
+                  onClick={() => setIsBookingOpen(false)} 
+                  className={`absolute top-8 right-8 transition-colors ${
+                    isLightMode ? 'text-zinc-400 hover:text-zinc-900' : 'text-white/40 hover:text-[#ffffff]'
+                  }`}
+                >
                   <X className="w-6 h-6" />
                 </button>
 
@@ -163,53 +172,89 @@ export default function DJDetail() {
                       <CheckCircle className="w-10 h-10 text-neon-purple" />
                     </div>
                     <h3 className="text-3xl font-display font-black uppercase">Request Sent</h3>
-                    <p className="text-white/50">Your booking request has been forwarded to the DJ. Expect a reply soon.</p>
+                    <p className={isLightMode ? 'text-zinc-500' : 'text-white/50'}>
+                      Your booking request has been forwarded to the DJ. Expect a reply soon.
+                    </p>
                   </div>
                 ) : (
                   <form onSubmit={handleBooking} className="space-y-8">
                     <div>
                       <h2 className="text-3xl font-display font-black uppercase">Book <span className="text-neon-purple">{dj.name}</span></h2>
-                      <p className="text-white/40 text-sm mt-2">Professional inquiry for events and radio guest spots.</p>
+                      <p className={`text-sm mt-2 transition-colors ${isLightMode ? 'text-zinc-500' : 'text-white/40'}`}>
+                        Professional inquiry for events and radio guest spots.
+                      </p>
                     </div>
 
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-2">Full Name</label>
+                        <label className={`text-[10px] font-black uppercase tracking-widest ml-2 transition-colors ${
+                          isLightMode ? 'text-zinc-500' : 'text-white/40'
+                        }`}>Full Name</label>
                         <input 
                           required
                           value={bookingForm.client_name}
                           onChange={e => setBookingForm({...bookingForm, client_name: e.target.value})}
-                          className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder:text-white/20 focus:outline-none focus:border-neon-purple/50 transition-colors"
+                          className={`w-full rounded-2xl px-6 py-4 focus:outline-none focus:border-neon-purple/50 transition-all ${
+                            isLightMode 
+                              ? 'bg-zinc-100/80 border border-zinc-200 text-zinc-900 placeholder:text-zinc-400 focus:bg-[#ffffff]' 
+                              : 'bg-white/5 border border-white/10 text-[#ffffff] placeholder:text-white/20'
+                          }`}
                           placeholder="Your Name"
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-2">Email Address</label>
+                        <label className={`text-[10px] font-black uppercase tracking-widest ml-2 transition-colors ${
+                          isLightMode ? 'text-zinc-500' : 'text-white/40'
+                        }`}>Email Address</label>
                         <input 
                           required
                           type="email"
                           value={bookingForm.client_email}
                           onChange={e => setBookingForm({...bookingForm, client_email: e.target.value})}
-                          className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder:text-white/20 focus:outline-none focus:border-neon-purple/50 transition-colors"
+                          className={`w-full rounded-2xl px-6 py-4 focus:outline-none focus:border-neon-purple/50 transition-all ${
+                            isLightMode 
+                              ? 'bg-zinc-100/80 border border-zinc-200 text-zinc-900 placeholder:text-zinc-400 focus:bg-[#ffffff]' 
+                              : 'bg-white/5 border border-white/10 text-[#ffffff] placeholder:text-white/20'
+                          }`}
                           placeholder="email@address.com"
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-2">Event Date</label>
-                        <input 
-                          type="date"
-                          value={bookingForm.event_date}
-                          onChange={e => setBookingForm({...bookingForm, event_date: e.target.value})}
-                          className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder:text-white/20 focus:outline-none focus:border-neon-purple/50 transition-colors [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-50 hover:[&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:transition-opacity"
-                        />
+                        <label className={`text-[10px] font-black uppercase tracking-widest ml-2 transition-colors ${
+                          isLightMode ? 'text-zinc-500' : 'text-white/40'
+                        }`}>Event Date</label>
+                        <div className="relative">
+                          <input 
+                            type="date"
+                            required
+                            value={bookingForm.event_date}
+                            onChange={e => setBookingForm({...bookingForm, event_date: e.target.value})}
+                            className={`w-full rounded-2xl pl-6 pr-12 py-4 focus:outline-none focus:border-neon-purple/50 transition-all text-left min-h-[58px] ${
+                              isLightMode 
+                                ? 'bg-zinc-100/80 border border-zinc-200 text-zinc-900 placeholder:text-zinc-400 focus:bg-[#ffffff] [color-scheme:light]' 
+                                : 'bg-white/5 border border-white/10 text-[#ffffff] placeholder:text-white/20 [color-scheme:dark]'
+                            } [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer`}
+                          />
+                          <div className={`absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none transition-colors ${
+                            isLightMode ? 'text-zinc-400' : 'text-white/40'
+                          }`}>
+                            <Calendar className="w-5 h-5" />
+                          </div>
+                        </div>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-2">Event Details</label>
+                        <label className={`text-[10px] font-black uppercase tracking-widest ml-2 transition-colors ${
+                          isLightMode ? 'text-zinc-500' : 'text-white/40'
+                        }`}>Event Details</label>
                         <textarea 
                           rows={4}
                           value={bookingForm.message}
                           onChange={e => setBookingForm({...bookingForm, message: e.target.value})}
-                          className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder:text-white/20 focus:outline-none focus:border-neon-purple/50 transition-colors resize-none"
+                          className={`w-full rounded-2xl px-6 py-4 focus:outline-none focus:border-neon-purple/50 transition-all resize-none ${
+                            isLightMode 
+                              ? 'bg-zinc-100/80 border border-zinc-200 text-zinc-900 placeholder:text-zinc-400 focus:bg-[#ffffff]' 
+                              : 'bg-white/5 border border-white/10 text-[#ffffff] placeholder:text-white/20'
+                          }`}
                           placeholder="Tell us about your event..."
                         />
                       </div>
@@ -217,10 +262,10 @@ export default function DJDetail() {
 
                     <button 
                       disabled={bookingStatus === 'sending'}
-                      className="w-full bg-neon-purple hover:bg-neon-purple/80 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl shadow-neon-purple/20 flex items-center justify-center space-x-3 transition-all disabled:opacity-50"
+                      className="w-full bg-neon-purple hover:bg-neon-purple/80 text-[#ffffff] py-5 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl shadow-neon-purple/20 flex items-center justify-center space-x-3 transition-all disabled:opacity-50"
                     >
                       {bookingStatus === 'sending' ? (
-                        <div className="w-5 h-5 border-2 border-white rounded-full animate-spin"></div>
+                        <div className="w-5 h-5 border-2 border-[#ffffff] rounded-full animate-spin"></div>
                       ) : (
                         <>
                           <Send className="w-5 h-5" />
