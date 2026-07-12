@@ -140,10 +140,13 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [loggedInUser, setLoggedInUser] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot' | 'reset'>('login');
   const [authUsername, setAuthUsername] = useState('');
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
+  const [resetPasswordConfirm, setResetPasswordConfirm] = useState('');
+  const [resetToken, setResetToken] = useState('');
+  const [loginFailed, setLoginFailed] = useState(false);
   const [showAuthPassword, setShowAuthPassword] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [listeners, setListeners] = useState(0);
@@ -443,18 +446,33 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!authEmail || !authPassword) return;
+    if (!authEmail) return;
+    if ((authMode === 'login' || authMode === 'register' || authMode === 'reset') && !authPassword) return;
     if (authMode === 'register' && !authUsername.trim()) {
       toast.error('Username is required');
+      return;
+    }
+    if (authMode === 'reset' && authPassword !== resetPasswordConfirm) {
+      toast.error('Passwords do not match');
       return;
     }
     setAuthLoading(true);
     
     try {
-      const endpoint = authMode === 'login' ? '/api/public/auth/login' : '/api/public/auth/register';
-      const body = authMode === 'login'
+      let endpoint = authMode === 'login' ? '/api/public/auth/login' : '/api/public/auth/register';
+      let body: any = authMode === 'login'
         ? { email: authEmail, password: authPassword }
         : { username: authUsername, email: authEmail, password: authPassword };
+
+      if (authMode === 'forgot') {
+        endpoint = '/api/public/auth/forgot-password';
+        body = { email: authEmail };
+      }
+
+      if (authMode === 'reset') {
+        endpoint = '/api/public/auth/reset-password';
+        body = { resetToken, password: authPassword };
+      }
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -464,9 +482,31 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
       const data = await res.json();
       
       if (res.ok) {
+        if (authMode === 'forgot') {
+          setResetToken(data.resetToken || '');
+          setAuthMode('reset');
+          setAuthPassword('');
+          setResetPasswordConfirm('');
+          setShowAuthPassword(false);
+          toast.success('Email verified. Set a new password.');
+          return;
+        }
+
+        if (authMode === 'reset') {
+          toast.success('Password updated. You can log in now.');
+          setAuthMode('login');
+          setAuthPassword('');
+          setResetPasswordConfirm('');
+          setResetToken('');
+          setLoginFailed(false);
+          setShowAuthPassword(false);
+          return;
+        }
+
         setLoggedInUser(data.username);
         setUserAvatar(data.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${data.username}`);
         setUserJoinedAt(data.created_at || new Date().toISOString());
+        setLoginFailed(false);
         
         // Senior Dev: If this is a staff account, sync the token to admin_token storage 
         // to ensure they can enter the admin portal seamlessly.
@@ -482,6 +522,9 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
         setAuthPassword('');
         setAuthUsername('');
       } else {
+        if (authMode === 'login') {
+          setLoginFailed(true);
+        }
         toast.error(data.error || 'Authentication failed');
       }
     } catch (err) {
@@ -1459,31 +1502,61 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                       placeholder={authMode === 'login' ? 'Email or Username' : 'Email Address'}
                       className={`w-full border rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-neon-purple/50 transition-all ${isLightMode ? 'bg-[#ffffff] border-black/10 text-black placeholder-black/40' : 'bg-black/50 border-white/10 text-white placeholder-white/20'}`}
                     />
-                    <div className="relative">
+                    {authMode !== 'forgot' && (
+                      <div className="relative">
+                        <input
+                          type={showAuthPassword ? "text" : "password"}
+                          required
+                          value={authPassword}
+                          onChange={e => setAuthPassword(e.target.value)}
+                          placeholder={authMode === 'reset' ? 'New Password' : 'Password'}
+                          minLength={6}
+                          className={`w-full border rounded-2xl pl-4 pr-12 py-3 text-sm focus:outline-none focus:border-neon-purple/50 transition-all ${isLightMode ? 'bg-[#ffffff] border-black/10 text-black placeholder-black/40' : 'bg-black/50 border-white/10 text-white placeholder-white/20'}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowAuthPassword(!showAuthPassword)}
+                          className={`absolute right-4 top-1/2 -translate-y-1/2 focus:outline-none transition-colors ${isLightMode ? 'text-black/40 hover:text-black/80' : 'text-white/30 hover:text-white/80'}`}
+                        >
+                          {showAuthPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
+                        </button>
+                      </div>
+                    )}
+                    {authMode === 'reset' && (
                       <input
-                        type={showAuthPassword ? "text" : "password"}
+                        type={showAuthPassword ? 'text' : 'password'}
                         required
-                        value={authPassword}
-                        onChange={e => setAuthPassword(e.target.value)}
-                        placeholder="Password"
+                        value={resetPasswordConfirm}
+                        onChange={e => setResetPasswordConfirm(e.target.value)}
+                        placeholder="Confirm Password"
                         minLength={6}
                         className={`w-full border rounded-2xl pl-4 pr-12 py-3 text-sm focus:outline-none focus:border-neon-purple/50 transition-all ${isLightMode ? 'bg-[#ffffff] border-black/10 text-black placeholder-black/40' : 'bg-black/50 border-white/10 text-white placeholder-white/20'}`}
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowAuthPassword(!showAuthPassword)}
-                        className={`absolute right-4 top-1/2 -translate-y-1/2 focus:outline-none transition-colors ${isLightMode ? 'text-black/40 hover:text-black/80' : 'text-white/30 hover:text-white/80'}`}
-                      >
-                        {showAuthPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
-                      </button>
-                    </div>
+                    )}
                     <button
                       type="submit"
                       disabled={authLoading}
                       className="w-full bg-gradient-to-r from-neon-purple to-neon-blue transition-all duration-500 text-white font-black uppercase tracking-[0.2em] py-4 rounded-2xl text-[11px] flex items-center justify-center disabled:opacity-50 shadow-[0_5px_20px_rgba(182,36,255,0.3)] hover:shadow-[0_10px_25px_rgba(182,36,255,0.5)] border-b-4 border-purple-900 active:border-b-0 active:translate-y-1"
                     >
-                      {authLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (authMode === 'login' ? 'Enter Radio' : 'Register Now')}
+                      {authLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                        authMode === 'login' ? 'Enter Radio' : authMode === 'forgot' ? 'Verify Email' : authMode === 'reset' ? 'Set New Password' : 'Register Now'
+                      )}
                     </button>
+                    {authMode === 'login' && loginFailed && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthMode('forgot');
+                          setAuthPassword('');
+                          setResetPasswordConfirm('');
+                          setLoginFailed(false);
+                          setShowAuthPassword(false);
+                        }}
+                        className={`w-full text-[10px] font-black uppercase tracking-[0.2em] transition-all border rounded-2xl py-3 ${isLightMode ? 'text-slate-900 border-slate-300 bg-slate-100 hover:bg-slate-200' : 'text-white border-white/10 bg-white/5 hover:bg-white/10'}`}
+                      >
+                        Forgot password? Verify email
+                      </button>
+                    )}
                     <div className="flex flex-col gap-2">
                       <button
                         type="button"
@@ -1492,11 +1565,14 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                           setAuthEmail('');
                           setAuthPassword('');
                           setAuthUsername('');
+                          setResetPasswordConfirm('');
+                          setResetToken('');
                           setShowAuthPassword(false);
+                          setLoginFailed(false);
                         }}
                         className={`w-full text-[10px] text-center font-black uppercase tracking-[0.2em] transition-colors ${isLightMode ? 'text-black/40 hover:text-black' : 'text-white/30 hover:text-white'}`}
                       >
-                        {authMode === 'login' ? 'New here? Register' : 'Have an account? Login'}
+                        {authMode === 'login' ? 'New here? Register' : authMode === 'register' ? 'Have an account? Login' : 'Back to login'}
                       </button>
                     </div>
                   </form>

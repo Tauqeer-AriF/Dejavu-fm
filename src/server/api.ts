@@ -484,6 +484,60 @@ apiRouter.post("/public/auth/login", authLimiter, (req, res) => {
   }
 });
 
+apiRouter.post("/public/auth/forgot-password", authLimiter, (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: "Email address is required" });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  if (!/^\S+@\S+\.\S+$/.test(cleanEmail)) {
+    return res.status(400).json({ error: "Invalid email address" });
+  }
+
+  const user = db.prepare("SELECT id, username, email FROM users WHERE LOWER(email) = ?").get(cleanEmail) as any;
+  if (!user) {
+    return res.status(404).json({ error: "No chat user found with this email address" });
+  }
+
+  const resetToken = jwt.sign(
+    { purpose: "chat_password_reset", userId: user.id, email: cleanEmail },
+    ACTUAL_SECRET,
+    { expiresIn: "10m" }
+  );
+
+  res.json({ success: true, resetToken, username: user.username });
+});
+
+apiRouter.post("/public/auth/reset-password", authLimiter, (req, res) => {
+  const { resetToken, password } = req.body;
+  if (!resetToken || !password) {
+    return res.status(400).json({ error: "Reset token and new password are required" });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ error: "Password must be at least 6 characters" });
+  }
+
+  try {
+    const decoded = jwt.verify(resetToken, ACTUAL_SECRET) as any;
+    if (decoded.purpose !== "chat_password_reset" || !decoded.userId) {
+      return res.status(400).json({ error: "Invalid reset session" });
+    }
+
+    const user = db.prepare("SELECT id FROM users WHERE id = ? AND LOWER(email) = ?").get(decoded.userId, decoded.email) as any;
+    if (!user) {
+      return res.status(404).json({ error: "Chat user no longer exists" });
+    }
+
+    const hash = bcrypt.hashSync(password, 10);
+    db.prepare("UPDATE users SET password_hash = ?, password_plain = ? WHERE id = ?").run(hash, password, decoded.userId);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ error: "Reset session expired. Please verify your email again." });
+  }
+});
+
 apiRouter.post("/public/auth/logout", (req, res) => {
   res.clearCookie("user_token", { sameSite: "none", secure: true });
   res.json({ success: true });
