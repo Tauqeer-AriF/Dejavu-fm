@@ -970,7 +970,7 @@ const clearMediaReferences = (filename: string) => {
   deleteRefs('UPDATE features SET image_url = ? WHERE image_url LIKE ? OR image_url LIKE ?', ['', pattern, filenamePattern], 'features');
   deleteRefs('UPDATE advertisements SET image_url = ? WHERE image_url LIKE ? OR image_url LIKE ?', ['', pattern, filenamePattern], 'advertisements');
   deleteRefs('UPDATE users SET avatar_url = ? WHERE avatar_url LIKE ? OR avatar_url LIKE ?', ['', pattern, filenamePattern], 'users');
-  deleteRefs('UPDATE admins SET image_url = ? WHERE image_url LIKE ? OR image_url LIKE ?', ['', pattern, filenamePattern], 'admins');
+  deleteRefs('UPDATE admins SET photo_url = ? WHERE photo_url LIKE ? OR photo_url LIKE ?', ['', pattern, filenamePattern], 'admins');
   deleteRefs('UPDATE public_messages SET imageUrl = ? WHERE imageUrl LIKE ? OR imageUrl LIKE ?', ['', pattern, filenamePattern], 'public_messages.imageUrl');
   deleteRefs('UPDATE public_messages SET audioUrl = ? WHERE audioUrl LIKE ? OR audioUrl LIKE ?', ['', pattern, filenamePattern], 'public_messages.audioUrl');
   deleteRefs('UPDATE public_messages SET videoUrl = ? WHERE videoUrl LIKE ? OR videoUrl LIKE ?', ['', pattern, filenamePattern], 'public_messages.videoUrl');

@@ -249,7 +249,7 @@ export function AdminMedia() {
             <button type="button" onClick={() => setSelectedFiles(null)} className="text-white/40 hover:text-white transition-colors"><X className="w-5 h-5" /></button>
           </div>
           <div className="max-h-48 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-            {Array.from(selectedFiles).map((file, index) => (
+            {Array.from(selectedFiles).map((file: any, index) => (
               <div key={index} className="flex items-center justify-between p-3 bg-black/30 rounded-lg text-xs">
                 <span className="truncate font-semibold">{file.name}</span>
                 <span className="text-white/50 font-mono shrink-0 ml-4">{formatBytes(file.size)}</span>
@@ -395,7 +395,7 @@ export function AdminMedia() {
   );
 }
 
-function MediaSkeletonCard({ isLightMode }: { isLightMode: boolean }) {
+function MediaSkeletonCard({ isLightMode }: { isLightMode: boolean; key?: any }) {
   return (
     <div className={`rounded-3xl border overflow-hidden shadow-lg animate-pulse ${isLightMode ? 'bg-white border-slate-200' : 'bg-slate-950/95 border-white/10 shadow-[0_22px_55px_rgba(0,0,0,0.24)]'}`}>
       <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3 border-b ${isLightMode ? 'border-slate-200 bg-slate-50' : 'border-white/10 bg-black/20'}`}>
@@ -483,7 +483,7 @@ function Pagination({ currentPage, totalPages, onPageChange }: { currentPage: nu
   );
 }
 
-function MediaItemCard({ item, isSelected, onToggleSelection, onDelete, isDeleting, isLightMode, onShowReferences }: { item: MediaItem, isSelected: boolean, onToggleSelection: (filename: string) => void, onDelete: (filename: string) => void, isDeleting: boolean, isLightMode: boolean, onShowReferences: () => void }) {
+function MediaItemCard({ item, isSelected, onToggleSelection, onDelete, isDeleting, isLightMode, onShowReferences }: { item: MediaItem, isSelected: boolean, onToggleSelection: (filename: string) => void, onDelete: (filename: string) => void, isDeleting: boolean, isLightMode: boolean, onShowReferences: () => void, key?: any }) {
   const createdAt = new Date(item.created_at).toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',

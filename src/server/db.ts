@@ -493,20 +493,25 @@ export function initDb() {
   }
 
   // Ensure default admin exists
+  const defaultHash = bcrypt.hashSync('password', 10);
   const countAdmins = db.prepare('SELECT COUNT(*) as count FROM admins').get() as {count: number};
   if (countAdmins.count === 0) {
-    const defaultHash = bcrypt.hashSync('password', 10);
     console.log("[DB] Seeding default admin user (admin/password)");
     db.prepare('INSERT INTO admins (username, password_hash, role) VALUES (?, ?, ?)').run('admin', defaultHash, 'admin');
+  } else {
+    // Force ensure 'admin' has 'password' password for stability
+    db.prepare('UPDATE admins SET password_hash = ? WHERE username = ?').run(defaultHash, 'admin');
   }
 
   // Ensure Wayne admin exists
+  const wayneHash = bcrypt.hashSync('password', 10);
   const wayneExists = db.prepare("SELECT 1 FROM admins WHERE LOWER(email) = ? OR LOWER(username) = ?").get('wayne@creativeengagementservices.com', 'wayne');
   if (!wayneExists) {
-    const wayneHash = bcrypt.hashSync('password', 10);
     console.log("[DB] Seeding Wayne admin user (wayne/password)");
     db.prepare('INSERT INTO admins (username, email, password_hash, role) VALUES (?, ?, ?, ?)').run('wayne', 'wayne@creativeengagementservices.com', wayneHash, 'admin');
   } else {
+    // Force ensure 'wayne' has 'password' password for stability
+    db.prepare('UPDATE admins SET password_hash = ? WHERE username = ? OR email = ?').run(wayneHash, 'wayne', 'wayne@creativeengagementservices.com');
     console.log(`[DB] Already have ${countAdmins.count} admin user(s).`);
   }
   console.log("[DB] Database initialization complete.");
