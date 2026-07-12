@@ -1,6 +1,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useNavigate, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
+import { Sun, Moon } from "lucide-react";
 import { fetchAdmin } from "./admin/adminApi";
 import { LoadingFallback } from "./admin/LoadingFallback";
 import { AdminSecretGate } from "./admin/AdminAuth";
@@ -22,6 +23,7 @@ import { AdminAuditLogs } from "./admin/AdminAuditLogs";
 import { AdminBackup } from "./admin/AdminBackup";
 import { AdminAds } from "./admin/AdminAds";
 import { AdminSEO } from "./admin/AdminSEO";
+import { useLogo } from "../hooks/useLogo";
 
 export default function Admin() {
   const [isLogged, setIsLogged] = useState(false);
@@ -60,6 +62,18 @@ export default function Admin() {
     });
   };
 
+  const { isLightMode } = useLogo();
+  const toggleTheme = () => {
+    const next = !isLightMode;
+    if (next) {
+      document.documentElement.classList.add('light');
+      localStorage.setItem('theme', 'light');
+    } else {
+      document.documentElement.classList.remove('light');
+      localStorage.setItem('theme', 'dark');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -86,11 +100,12 @@ export default function Admin() {
       animate={{ opacity: 1 }}
       className="max-w-7xl mx-auto px-4 py-8 md:py-16"
     >
-      <div className="mb-10 md:mb-16">
+      <div className="mb-10 md:mb-16 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6 }}
+          className="flex-1"
         >
           <h1 className={`text-5xl md:text-5xl lg:text-5xl font-display font-black uppercase tracking-tighter leading-none ${isAdminUser ? 'text-[var(--theme-text)]' : 'text-white'}`}>
             Creator <span className="text-neon-purple">Dashboard</span>
@@ -102,6 +117,15 @@ export default function Admin() {
             </p>
           </div>
         </motion.div>
+
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="inline-flex items-center justify-center min-h-[3rem] min-w-[3rem] rounded-full border border-white/10 bg-white/5 text-white/80 transition hover:bg-white/10 hover:text-white"
+          title="Toggle theme"
+        >
+          {isLightMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+        </button>
       </div>
 
       <div className="glass-panel min-h-[80vh] rounded-3xl flex flex-col md:flex-row overflow-hidden shadow-2xl relative z-10">
