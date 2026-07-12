@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Image as ImageIcon, Video, Music, Trash2, Search, Loader2, Upload, Plus, CheckSquare, Square, ChevronLeft, ChevronRight, X, Clipboard, Check, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { fetchAdmin } from './adminApi';
 import { useLogo } from '../../hooks/useLogo';
 import { useModal } from '../../context/ModalContext';
@@ -40,6 +41,7 @@ export function AdminMedia() {
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [viewingReferences, setViewingReferences] = useState<MediaItem | null>(null);
   const itemsPerPage = 18;
 
   const { data: media = [], isLoading, isError } = useQuery<MediaItem[], Error>({
@@ -359,6 +361,7 @@ export function AdminMedia() {
               item={item}
               isSelected={isSelected(item.filename)}
               onToggleSelection={toggleSelection}
+              onShowReferences={() => setViewingReferences(item)}
               onDelete={handleDelete}
               isDeleting={deleteMutation.isPending && selectedItems.includes(item.filename)}
             />
@@ -373,6 +376,12 @@ export function AdminMedia() {
           onPageChange={setCurrentPage}
         />
       )}
+
+      <AnimatePresence>
+        {viewingReferences && (
+          <ReferencesModal item={viewingReferences} onClose={() => setViewingReferences(null)} isLightMode={isLightMode} />
+        )}
+      </AnimatePresence>
 
       <div className="rounded-3xl border border-white/10 bg-dark-bg/50 p-6 text-sm text-white/60">
         <p className="font-semibold">Notes</p>
@@ -474,7 +483,7 @@ function Pagination({ currentPage, totalPages, onPageChange }: { currentPage: nu
   );
 }
 
-function MediaItemCard({ item, isSelected, onToggleSelection, onDelete, isDeleting, isLightMode }: { item: MediaItem, isSelected: boolean, onToggleSelection: (filename: string) => void, onDelete: (filename: string) => void, isDeleting: boolean, isLightMode: boolean }) {
+function MediaItemCard({ item, isSelected, onToggleSelection, onDelete, isDeleting, isLightMode, onShowReferences }: { item: MediaItem, isSelected: boolean, onToggleSelection: (filename: string) => void, onDelete: (filename: string) => void, isDeleting: boolean, isLightMode: boolean, onShowReferences: () => void }) {
   const createdAt = new Date(item.created_at).toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
@@ -545,34 +554,104 @@ function MediaItemCard({ item, isSelected, onToggleSelection, onDelete, isDeleti
         )}
 
         <div className="grid gap-2">
-          <div className="flex flex-wrap gap-2">
-            {item.usages?.length ? (
-              item.usages.map((usage: any, index: number) => (
-                <span key={`${usage.table}-${usage.column}-${index}`} className={`rounded-full px-2 py-0.5 text-[9px] uppercase tracking-widest ${isLightMode ? 'bg-black/5 text-black/70' : 'bg-white/10 text-white/70'}`}>
-                  {usage.table}.{usage.column}
-                </span>
-              ))
-            ) : (
-              <span className={`rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] uppercase tracking-widest ${isLightMode ? 'text-emerald-700' : 'text-emerald-200'}`}>
-                Orphaned asset
+          {item.usages?.length > 0 ? (
+            <button
+              onClick={onShowReferences}
+              className={`w-full text-left text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-lg border transition-all ${isLightMode ? 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200' : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'}`}
+            >
+              View {item.usages.length} Reference{item.usages.length === 1 ? '' : 's'}
+            </button>
+          ) : (
+             <div className="flex flex-wrap gap-2">
+              <span className={`w-full text-center rounded-full bg-emerald-500/10 px-2 py-1 text-[9px] uppercase tracking-widest ${isLightMode ? 'text-emerald-700' : 'text-emerald-200'}`}>
+                  Orphaned Asset
               </span>
-            )}
-          </div>
-          {item.usages?.length ? (
-            <div className={`rounded-xl border p-3 text-xs ${isLightMode ? 'border-slate-200 bg-slate-100 text-black/70' : 'border-white/10 bg-black/40 text-white/70'}`}>
-              <p className="font-semibold">Referenced in {item.usages.length} record{item.usages.length === 1 ? '' : 's'}</p>
-              <div className="mt-2 space-y-1">
-                {item.usages.slice(0, 3).map((usage: any, index: number) => (
-                  <p key={`${usage.table}-${index}`} className="truncate text-[10px] text-white/60">
-                    {usage.table} · {usage.column} · {String(usage.recordId)}
-                  </p>
-                ))}
-                {item.usages.length > 3 ? <p className="text-[11px] text-white/40">+{item.usages.length - 3} more usages</p> : null}
-              </div>
             </div>
-          ) : null}
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function ReferencesModal({ item, onClose, isLightMode }: { item: MediaItem, onClose: () => void, isLightMode: boolean }) {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        className={`relative w-full max-w-3xl max-h-[90vh] flex flex-col border rounded-3xl overflow-hidden shadow-2xl ${isLightMode ? 'bg-white border-slate-200' : 'bg-dark-bg border-white/10'}`}
+      >
+        {/* Header */}
+        <div className={`px-6 py-4 flex items-center justify-between border-b flex-shrink-0 ${isLightMode ? 'border-slate-200 bg-slate-50' : 'border-white/5 bg-white/5'}`}>
+          <div className="min-w-0">
+            <h3 className={`font-bold text-lg truncate ${isLightMode ? 'text-black' : 'text-white'}`}>{item.filename}</h3>
+            <p className={`text-xs truncate ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
+              {item.type.toUpperCase()} · {formatBytes(item.size)}
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className={`p-2 rounded-full transition-colors ${isLightMode ? 'hover:bg-black/10 text-black/40' : 'hover:bg-white/5 text-white/40'}`}>
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Left: Preview */}
+          <div className="space-y-4">
+            <h4 className={`text-sm font-bold uppercase tracking-widest ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>Preview</h4>
+            {item.type === 'image' ? (
+              <div className={`relative overflow-hidden rounded-xl aspect-video ${isLightMode ? 'bg-slate-100' : 'bg-slate-950'}`}>
+                <img src={item.url} alt={item.filename} className="h-full w-full object-contain" />
+              </div>
+            ) : item.type === 'video' ? (
+              <div className={`relative overflow-hidden rounded-xl aspect-video ${isLightMode ? 'bg-slate-100' : 'bg-slate-950'}`}>
+                <video src={item.url} controls className="h-full w-full object-contain" />
+              </div>
+            ) : item.type === 'audio' ? (
+              <div className={`rounded-xl border p-4 ${isLightMode ? 'border-slate-200 bg-slate-100' : 'border-white/10 bg-black/70'}`}>
+                <audio src={item.url} controls className="mt-4 w-full" />
+              </div>
+            ) : (
+              <div className={`rounded-xl border p-6 text-center text-sm ${isLightMode ? 'border-slate-200 bg-slate-100 text-black/60' : 'border-white/10 bg-black/70 text-white/60'}`}>
+                No preview available.
+              </div>
+            )}
+          </div>
+
+          {/* Right: Usages */}
+          <div className="space-y-4">
+            <h4 className={`text-sm font-bold uppercase tracking-widest ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>
+              {item.usages.length} Reference{item.usages.length === 1 ? '' : 's'}
+            </h4>
+            <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar pr-2">
+              {item.usages.map((usage, index) => (
+                <div key={index} className={`p-3 rounded-xl border ${isLightMode ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-white/10'}`}>
+                  <p className={`font-mono text-xs font-bold ${isLightMode ? 'text-cyan-700' : 'text-neon-blue'}`}>
+                    {usage.table}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1 text-[10px]">
+                    <span className={`px-2 py-0.5 rounded-full font-semibold ${isLightMode ? 'bg-black/5 text-black/60' : 'bg-white/10 text-white/60'}`}>
+                      {usage.column}
+                    </span>
+                    <span className={`font-mono ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>
+                      ID: {String(usage.recordId)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }
