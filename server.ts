@@ -84,7 +84,15 @@ async function startServer() {
   // Helper for meta tag injection
   let indexHtmlCache: string | null = null;
 
-  async function getDynamicHtml(reqPath: string) {
+  async function getDynamicHtml(req: express.Request, reqPath: string) {
+    const requestOrigin = `${req.protocol}://${req.get('host')}`;
+    const makeAbsoluteUrl = (value: string) => {
+      if (!value) return value;
+      if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('//')) return value;
+      if (value.startsWith('/')) return `${requestOrigin}${value}`;
+      return `${requestOrigin}/${value}`;
+    };
+
     const isProduction = process.env.NODE_ENV === "production" || fs.existsSync(path.join(process.cwd(), "dist", "index.html"));
     const indexPath = isProduction
       ? path.join(process.cwd(), "dist", "index.html")
@@ -105,6 +113,35 @@ async function startServer() {
     let title = "Dejavu FM | The Sound of London";
     let description = "Direct from the heart of the capital. Since 2005, Dejavu FM has been the heartbeat of the underground.";
     let image = "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=1200";
+
+    // Load admin SEO settings from database if available
+    try {
+      const settingsRows = db.prepare("SELECT key, value FROM settings WHERE key IN ('seo_title','seo_description','seo_image','app_title','app_name','favicon')").all() as { key: string; value: string }[];
+      const settingsData = settingsRows.reduce<Record<string, string>>((acc, row) => {
+        acc[row.key] = row.value;
+        return acc;
+      }, {});
+
+      if (settingsData.seo_title) {
+        title = settingsData.seo_title;
+      } else if (settingsData.app_title) {
+        title = settingsData.app_title;
+      } else if (settingsData.app_name) {
+        title = settingsData.app_name;
+      }
+
+      if (settingsData.seo_description) {
+        description = settingsData.seo_description;
+      }
+
+      if (settingsData.seo_image) {
+        image = makeAbsoluteUrl(settingsData.seo_image);
+      } else if (settingsData.favicon) {
+        image = makeAbsoluteUrl(settingsData.favicon);
+      }
+    } catch (err) {
+      console.warn('[getDynamicHtml] Failed to load SEO settings from DB:', err);
+    }
 
     // Podcast detail dynamic tags
     if (reqPath.startsWith("/podcasts/")) {
@@ -136,17 +173,24 @@ async function startServer() {
       }
     }
 
+    image = makeAbsoluteUrl(image);
+
+    const currentUrl = `${requestOrigin}${req.originalUrl}`;
     const metaTags = `
       <title>${title}</title>
+      <link rel="canonical" href="${currentUrl}" />
       <meta name="description" content="${description}" />
       <meta property="og:title" content="${title}" />
       <meta property="og:description" content="${description}" />
       <meta property="og:image" content="${image}" />
+      <meta property="og:url" content="${currentUrl}" />
       <meta property="og:type" content="website" />
+      <meta property="og:site_name" content="Dejavu FM" />
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="${title}" />
       <meta name="twitter:description" content="${description}" />
       <meta name="twitter:image" content="${image}" />
+      <meta name="twitter:url" content="${currentUrl}" />
     `;
 
     // Replace the default title or insert before </head>
@@ -554,7 +598,7 @@ async function startServer() {
       const ua = req.headers["user-agent"] || "";
       if (isBot(ua)) {
         try {
-          const html = await getDynamicHtml(req.path);
+          const html = await getDynamicHtml(req, req.path);
           return res.send(html);
         } catch (e) {
           return next();
@@ -577,7 +621,7 @@ async function startServer() {
     // In production, serve dynamic HTML for these specific routes
     app.get(dynamicPreviewRoutes, async (req, res, next) => {
       try {
-        const html = await getDynamicHtml(req.path);
+        const html = await getDynamicHtml(req, req.path);
         res.send(html);
       } catch (e) {
         next();
@@ -601,7 +645,7 @@ async function startServer() {
       }
 
       try {
-        const html = await getDynamicHtml(req.path);
+        const html = await getDynamicHtml(req, req.path);
         res.send(html);
       } catch (e) {
         if (fs.existsSync(path.join(distPath, "index.html"))) {
