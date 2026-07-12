@@ -21,8 +21,7 @@ function DjCard({ dj, index, resolveDjImage, logoUrl, isLightMode, settings }: {
   const [isImageLoaded, setIsImageLoaded] = useState(false);
 
   return (
-    <motion.div
-      key={dj.id}
+    <motion.div      
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
@@ -196,7 +195,9 @@ export default function DJs() {
       ) : filteredDjs.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 md:gap-10 px-4">
           {filteredDjs.map((dj, index) => (
-            <DjCard key={dj.id} dj={dj} index={index} resolveDjImage={resolveDjImage} logoUrl={logoUrl} isLightMode={isLightMode} settings={settings} />
+            <div key={dj.id}>
+              <DjCard dj={dj} index={index} resolveDjImage={resolveDjImage} logoUrl={logoUrl} isLightMode={isLightMode} settings={settings} />
+            </div>
           ))}
         </div>
       ) : (
