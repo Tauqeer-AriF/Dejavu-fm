@@ -40,7 +40,7 @@ export function AdminMedia() {
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const itemsPerPage = 18;
 
   const { data: media = [], isLoading, isError } = useQuery<MediaItem[], Error>({
     queryKey: ['adminMedia'],
@@ -326,7 +326,7 @@ export function AdminMedia() {
         </label>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
         {filteredMedia.length === 0 && !isLoading ? (
           <div className="col-span-full rounded-3xl border border-dashed border-white/10 bg-slate-950/60 p-12 text-center flex flex-col items-center gap-4 my-8">
             <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center text-white/30">
