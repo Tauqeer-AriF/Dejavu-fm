@@ -1131,6 +1131,77 @@ apiRouter.put("/admin/settings", authorizeRole('admin'), (req, res) => {
   res.json({ success: true });
 });
 
+apiRouter.get("/admin/chat-room-settings", authorizeRole('admin'), (req, res) => {
+  const settingsRows = db.prepare(`
+    SELECT key, value FROM settings
+    WHERE key IN ('chat_auto_delete_enabled', 'chat_auto_delete_hours', 'chat_auto_delete_last_run')
+  `).all() as { key: string; value: string }[];
+  const settings = settingsRows.reduce<Record<string, string>>((acc, row) => {
+    acc[row.key] = row.value;
+    return acc;
+  }, {});
+
+  const publicCount = db.prepare("SELECT COUNT(*) as count FROM public_messages").get() as { count: number };
+  const privateCount = db.prepare("SELECT COUNT(*) as count FROM private_messages").get() as { count: number };
+
+  res.json({
+    enabled: settings.chat_auto_delete_enabled === '1',
+    hours: parseInt(settings.chat_auto_delete_hours || "24", 10) || 24,
+    lastRun: settings.chat_auto_delete_last_run || "",
+    publicMessages: publicCount?.count || 0,
+    privateMessages: privateCount?.count || 0
+  });
+});
+
+apiRouter.put("/admin/chat-room-settings", authorizeRole('admin'), (req, res) => {
+  const enabled = req.body.enabled === true || req.body.enabled === '1' || req.body.enabled === 1;
+  const hours = Number(req.body.hours);
+
+  if (!Number.isInteger(hours) || hours < 1 || hours > 8760) {
+    return res.status(400).json({ error: "Timer must be between 1 and 8760 hours." });
+  }
+
+  const currentEnabledRow = db.prepare("SELECT value FROM settings WHERE key = 'chat_auto_delete_enabled'").get() as { value: string } | undefined;
+  const lastRunRow = db.prepare("SELECT value FROM settings WHERE key = 'chat_auto_delete_last_run'").get() as { value: string } | undefined;
+  const updateStmt = db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value");
+
+  updateStmt.run('chat_auto_delete_enabled', enabled ? '1' : '0');
+  updateStmt.run('chat_auto_delete_hours', hours.toString());
+
+  if (enabled && (currentEnabledRow?.value !== '1' || !lastRunRow?.value)) {
+    updateStmt.run('chat_auto_delete_last_run', new Date().toISOString());
+  }
+
+  logAction(req, 'UPDATE', 'chat_room_settings', null, { enabled, hours });
+  res.json({ success: true });
+});
+
+apiRouter.delete("/admin/chat-room-settings/data", authorizeRole('admin'), (req, res) => {
+  const clearChatRoomData = req.app.get('clearChatRoomData') as ((reason?: string) => { publicDeleted: number; privateDeleted: number; clearedAt?: string }) | undefined;
+
+  let result = { publicDeleted: 0, privateDeleted: 0, clearedAt: new Date().toISOString() };
+  if (clearChatRoomData) {
+    result = clearChatRoomData("manual") as typeof result;
+  } else {
+    const publicInfo = db.prepare("DELETE FROM public_messages").run();
+    const privateInfo = db.prepare("DELETE FROM private_messages").run();
+    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+      .run("chat_auto_delete_last_run", result.clearedAt);
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('messagesCleared', { isPrivate: false, allChatData: true, reason: "manual", clearedAt: result.clearedAt });
+      io.emit('messagesCleared', { isPrivate: true, allChatData: true, reason: "manual", clearedAt: result.clearedAt });
+      io.emit('chatCountsUpdated', { publicMessages: 0, privateMessages: 0 });
+    }
+
+    result = { publicDeleted: publicInfo.changes, privateDeleted: privateInfo.changes, clearedAt: result.clearedAt };
+  }
+
+  logAction(req, 'PURGE', 'chat_room_data', null, result);
+  res.json({ success: true, ...result });
+});
+
 apiRouter.post("/admin/podcasts/refresh", (req, res) => {
   clearPodcastCache();
   res.json({ success: true });

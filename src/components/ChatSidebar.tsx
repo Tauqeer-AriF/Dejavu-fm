@@ -393,7 +393,14 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
       }
     });
 
-    socket.on('messagesCleared', ({ isPrivate, recipient, sender }: { isPrivate: boolean; recipient?: string; sender?: string }) => {
+    socket.on('messagesCleared', ({ isPrivate, recipient, sender, allChatData }: { isPrivate: boolean; recipient?: string; sender?: string; allChatData?: boolean }) => {
+      if (allChatData) {
+        setMessages([]);
+        setPrivateMessages([]);
+        setUnreadDms(new Set());
+        return;
+      }
+
       if (isPrivate) {
         // If it's a private chat clear, we only clear if it involves the current user
         if (loggedInUser === recipient || loggedInUser === sender) {
@@ -421,6 +428,8 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
       socket.off('chatMessage');
       socket.off('privateHistory');
       socket.off('privateMessage');
+      socket.off('messageDeleted');
+      socket.off('messagesCleared');
       socket.off('onlineCount');
       socket.off('user_banned');
     };

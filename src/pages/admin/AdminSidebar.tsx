@@ -44,6 +44,7 @@ export function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; 
     { name: "Schedule", path: "/admin/schedule", icon: Calendar },
     { name: "Admin Users", path: "/admin/users", icon: UserCog },
     { name: "Chat Users", path: "/admin/chat-users", icon: MessageSquare },
+    { name: "Chat Room Setting", path: "/admin/chat-room-setting", icon: Settings },
     { name: "Backup", path: "/admin/backup", icon: Database },
     { name: "Audit Logs", path: "/admin/audit-logs", icon: Shield },
   ];
@@ -56,6 +57,7 @@ export function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; 
       n.name !== "Branding" &&
       n.name !== "Admin Users" &&
       n.name !== "Chat Users" &&
+      n.name !== "Chat Room Setting" &&
       n.name !== "Audit Logs" &&
       n.name !== "Backup"
     );

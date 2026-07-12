@@ -188,6 +188,43 @@ async function startServer() {
     console.error("[Chat] Failed to load history from database:", err);
   }
 
+  const getChatRoomCounts = () => {
+    if (!db.open) return { publicMessages: 0, privateMessages: 0 };
+
+    const publicCount = db.prepare("SELECT COUNT(*) as count FROM public_messages").get() as { count: number };
+    const privateCount = db.prepare("SELECT COUNT(*) as count FROM private_messages").get() as { count: number };
+
+    return {
+      publicMessages: publicCount?.count || 0,
+      privateMessages: privateCount?.count || 0
+    };
+  };
+
+  const emitChatRoomCounts = () => {
+    io.emit('chatCountsUpdated', getChatRoomCounts());
+  };
+
+  const clearAllChatRoomData = (reason = "manual") => {
+    if (!db.open) return { publicDeleted: 0, privateDeleted: 0 };
+
+    const publicInfo = db.prepare("DELETE FROM public_messages").run();
+    const privateInfo = db.prepare("DELETE FROM private_messages").run();
+    chatHistory = [];
+
+    const clearedAt = new Date().toISOString();
+    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+      .run("chat_auto_delete_last_run", clearedAt);
+
+    io.emit('messagesCleared', { isPrivate: false, allChatData: true, reason, clearedAt });
+    io.emit('messagesCleared', { isPrivate: true, allChatData: true, reason, clearedAt });
+    emitChatRoomCounts();
+    console.log(`[Chat Retention] Cleared chat room data (${reason}). Public: ${publicInfo.changes}, Private: ${privateInfo.changes}`);
+
+    return { publicDeleted: publicInfo.changes, privateDeleted: privateInfo.changes, clearedAt };
+  };
+
+  app.set('clearChatRoomData', clearAllChatRoomData);
+
   io.on('connection', (socket) => {
     const emitCounts = () => {
       const count = io.sockets.sockets.size;
@@ -196,6 +233,7 @@ async function startServer() {
     };
 
     emitCounts();
+    socket.emit('chatCountsUpdated', getChatRoomCounts());
 
     socket.on('deleteMessage', (payload: { id: string; user: string; isPrivate: boolean }) => {
       if (!db.open) return;
@@ -224,6 +262,7 @@ async function startServer() {
         
         // Notify all clients to remove the message from their UI
         io.emit('messageDeleted', { id: payload.id, isPrivate: payload.isPrivate });
+        emitChatRoomCounts();
         console.log(`[Delete] Message ${payload.id} deleted by ${payload.user}`);
       } catch (err) {
         console.error("Failed to delete message:", err);
@@ -245,11 +284,13 @@ async function startServer() {
             db.prepare("DELETE FROM private_messages WHERE (sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?)")
               .run(payload.user, payload.targetRecipient, payload.targetRecipient, payload.user);
             io.emit('messagesCleared', { isPrivate: true, recipient: payload.targetRecipient, sender: payload.user });
+            emitChatRoomCounts();
           }
         } else {
           db.prepare("DELETE FROM public_messages").run();
           chatHistory = [];
           io.emit('messagesCleared', { isPrivate: false });
+          emitChatRoomCounts();
         }
         console.log(`[Clear] Messages cleared by admin ${payload.user}`);
       } catch (err) {
@@ -335,6 +376,7 @@ async function startServer() {
          try {
            db.prepare("INSERT INTO private_messages (id, sender, recipient, text, imageUrl, imageName, audioUrl, audioName, videoUrl, videoName, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
              .run(newMsg.id, msg.user, msg.recipient, msg.text || null, msg.imageUrl || null, msg.imageName || null, msg.audioUrl || null, msg.audioName || null, msg.videoUrl || null, msg.videoName || null, newMsg.timestamp);
+           emitChatRoomCounts();
          } catch (err) {
            console.error("Failed to save private message:", err);
          }
@@ -359,6 +401,7 @@ async function startServer() {
          try {
            db.prepare("INSERT INTO public_messages (id, sender, text, imageUrl, imageName, audioUrl, audioName, videoUrl, videoName, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
              .run(newMsg.id, msg.user, msg.text || null, msg.imageUrl || null, msg.imageName || null, msg.audioUrl || null, msg.audioName || null, msg.videoUrl || null, msg.videoName || null, newMsg.timestamp);
+           emitChatRoomCounts();
          } catch (err) {
            console.error("Failed to save public message:", err);
          }
@@ -410,6 +453,35 @@ async function startServer() {
   const backupCheckInterval = 15 * 60 * 1000; // Check every 15 minutes for better responsiveness to setting changes
   setInterval(performAutoBackup, backupCheckInterval);
   setTimeout(performAutoBackup, 5000); // Initial check 5 seconds after startup
+
+  const performChatRetentionCheck = () => {
+    if (!db.open) return;
+    try {
+      const enabledRow = db.prepare("SELECT value FROM settings WHERE key = 'chat_auto_delete_enabled'").get() as {value: string} | undefined;
+      if (enabledRow?.value !== '1') return;
+
+      const hoursRow = db.prepare("SELECT value FROM settings WHERE key = 'chat_auto_delete_hours'").get() as {value: string} | undefined;
+      const intervalHours = Math.max(1, parseInt(hoursRow?.value || "24", 10) || 24);
+
+      const lastRunRow = db.prepare("SELECT value FROM settings WHERE key = 'chat_auto_delete_last_run'").get() as {value: string} | undefined;
+      const lastRunTime = lastRunRow?.value ? new Date(lastRunRow.value).getTime() : Date.now();
+
+      if (!lastRunRow?.value) {
+        db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+          .run("chat_auto_delete_last_run", new Date().toISOString());
+        return;
+      }
+
+      if (isNaN(lastRunTime) || Date.now() - lastRunTime >= intervalHours * 60 * 60 * 1000) {
+        clearAllChatRoomData("timer");
+      }
+    } catch (e) {
+      console.error("[Chat Retention Task] Error:", e);
+    }
+  };
+
+  setInterval(performChatRetentionCheck, 60 * 1000);
+  setTimeout(performChatRetentionCheck, 10000);
 
   // Background task to reset shoutouts when DJ changes
   let lastScheduledDjId: string | null = null;
