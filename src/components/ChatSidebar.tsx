@@ -541,6 +541,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     localStorage.removeItem('admin_token');
     setLoggedInUser(null);
     setUserAvatar(null);
+    setIsAdmin(false);
     setUserJoinedAt(null);
     setAuthMode('login');
     setPrivateMessages([]);
@@ -933,14 +934,14 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
             {/* Mobile Drag Handle Indicator */}
             <div className={`absolute left-2 top-1/2 -translate-y-1/2 w-1 h-16 rounded-full md:hidden pointer-events-none ${isLightMode ? 'bg-black/10' : 'bg-white/10'}`} />
 
-            <div className={`p-6 border-b flex items-center justify-between ${isLightMode ? 'border-black/10' : 'border-white/10'}`}>
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl bg-neon-purple/20 flex items-center justify-center text-neon-purple">
-                  <MessageSquare className="w-6 h-6" />
+            <div className={`p-4 sm:p-6 border-b flex items-center justify-between ${isLightMode ? 'border-black/10' : 'border-white/10'}`}>
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-neon-purple/20 flex items-center justify-center text-neon-purple shrink-0">
+                  <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg leading-tight uppercase tracking-widest">Chat Room</h3>
-                  <div className="flex items-center gap-4">
+                  <h3 className="font-bold text-base sm:text-lg leading-tight uppercase tracking-widest">Chat Room</h3>
+                  <div className="flex items-center gap-2 sm:gap-4">
                     <div className={`flex items-center text-[10px] uppercase tracking-widest font-black ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>
                       <span className="w-1.5 h-1.5 rounded-full bg-neon-blue mr-2 animate-pulse"></span>
                       {listeners} Online now
@@ -957,7 +958,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                 <button
                   onClick={() => {
                     const newValue = !soundEnabled;
@@ -969,7 +970,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                     toast.success(newValue ? "Chat sounds enabled" : "Chat sounds muted");
                   }}
                   id="chat-sound-toggle-btn"
-                  className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all relative cursor-pointer group ${
+                  className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl border transition-all relative cursor-pointer group ${
                     soundEnabled 
                       ? 'bg-neon-purple/10 border-neon-purple/30 hover:bg-neon-purple/20' 
                       : 'bg-white/5 border-white/10 hover:bg-white/10'
@@ -985,10 +986,10 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                     <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-neon-purple animate-ping" />
                   )}
                 </button>
-                {isAdmin && (
+                {isAdmin && chatTab === 'public' && (
                   <button 
                     onClick={handleClearAll}
-                    className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all cursor-pointer group ${
+                    className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl border transition-all cursor-pointer group ${
                       isLightMode ? 'bg-red-500/10 border-red-500/30 hover:bg-red-500/20 text-red-500' : 'bg-red-500/20 border-red-500/40 hover:bg-red-500/30 text-red-500'
                     }`}
                     title="Clear All Messages (Admin)"
@@ -1000,7 +1001,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                   <button
                     onClick={() => setShowProfile(true)}
                     id="chat-profile-btn"
-                    className="w-10 h-10 rounded-xl bg-white/5 hover:bg-neon-purple/20 border border-white/10 hover:border-neon-purple/50 flex items-center justify-center overflow-hidden transition-all group shrink-0 relative cursor-pointer"
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/5 hover:bg-neon-purple/20 border border-white/10 hover:border-neon-purple/50 flex items-center justify-center overflow-hidden transition-all group shrink-0 relative cursor-pointer"
                     title="User Profile & Avatar"
                   >
                     <img
@@ -1016,7 +1017,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                 <button 
                   onClick={onClose}
                   id="chat-close-btn"
-                  className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
+                  className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
