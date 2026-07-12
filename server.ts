@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
 import { apiRouter } from "./src/server/api.ts";
+import { externalApiRouter } from "./src/server/v1_external_api.ts";
 import { initDb, db, backupDatabase, getUploadsDir } from "./src/server/db.ts";
 import http from "http";
 import { Server as SocketIOServer } from "socket.io";
@@ -269,6 +270,40 @@ async function startServer() {
 
   app.set('clearChatRoomData', clearAllChatRoomData);
 
+  const dispatchWebhook = async (msg: any) => {
+    const webhookUrl = process.env.HUB_WEBHOOK_URL;
+    if (!webhookUrl) return;
+
+    try {
+      const baseUrl = process.env.PUBLIC_BASE_URL || "https://dejavu-fm-production-402f.up.railway.app";
+      const makeAbsolute = (url: string | null) => {
+        if (!url) return null;
+        if (url.startsWith('http')) return url;
+        return url.startsWith('/') ? `${baseUrl}${url}` : `${baseUrl}/${url}`;
+      };
+
+      const payload = {
+        sender: msg.user || "Anonymous",
+        senderHandle: msg.user || "anonymous",
+        text: msg.text || "",
+        imageUrl: makeAbsolute(msg.imageUrl),
+        audioUrl: makeAbsolute(msg.audioUrl),
+        videoUrl: makeAbsolute(msg.videoUrl)
+      };
+
+      await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+      console.log(`[Webhook] Successfully dispatched public message from ${payload.senderHandle}`);
+    } catch (err) {
+      console.error("[Webhook] Failed to dispatch webhook:", err);
+    }
+  };
+
   io.on('connection', (socket) => {
     const emitCounts = () => {
       const count = io.sockets.sockets.size;
@@ -450,6 +485,7 @@ async function startServer() {
            console.error("Failed to save public message:", err);
          }
          chatHistory.push(newMsg);
+         dispatchWebhook(newMsg).catch(console.error);
          
          // Efficiently maintain maximum history size
          while (chatHistory.length > MAX_CHAT_HISTORY) {
@@ -560,6 +596,7 @@ async function startServer() {
   app.use(cookieParser());
 
   // API Routes
+  app.use("/api/v1", externalApiRouter);
   app.use("/api", apiRouter);
 
   app.get("/api/health", (req, res) => {
