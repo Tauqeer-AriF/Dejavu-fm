@@ -884,6 +884,218 @@ apiRouter.post("/admin/upload", upload.single("image"), async (req: any, res: an
   }
 });
 
+const getMediaType = (filename: string) => {
+  const ext = path.extname(filename).toLowerCase();
+  if (['.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif', '.bmp', '.tiff', '.svg'].includes(ext)) return 'image';
+  if (['.mp4', '.webm', '.mov', '.mpeg', '.avi', '.mkv', '.quicktime'].includes(ext)) return 'video';
+  if (['.mp3', '.wav', '.ogg', '.aac', '.m4a', '.flac'].includes(ext)) return 'audio';
+  return 'other';
+};
+
+const searchMediaUsages = (filename: string) => {
+  const usages: Array<{ table: string; column: string; recordId: string }> = [];
+  const filePath = `/uploads/${filename}`;
+  const pattern = `%${filePath}%`;
+  const filenamePattern = `%${filename}%`;
+
+  const pushUsage = (table: string, column: string, recordId: string | number) => {
+    usages.push({ table, column, recordId: String(recordId) });
+  };
+
+  const findMatches = (query: string, params: any[], table: string, columns: string[]) => {
+    let rows: any[] = [];
+    try {
+      rows = db.prepare(query).all(...params) as any[];
+    } catch (error: any) {
+      if (error?.code === 'SQLITE_ERROR') {
+        console.warn(`[API] Skipping media usage scan for ${table}: ${error.message}`);
+        return;
+      }
+      throw error;
+    }
+
+    rows.forEach((row) => {
+      columns.forEach((column) => {
+        if (row[column] && String(row[column]).toLowerCase().includes(filename.toLowerCase())) {
+          pushUsage(table, column, row.id ?? row.key ?? row.username ?? 'unknown');
+        }
+      });
+    });
+  };
+
+  findMatches('SELECT id, image_url FROM djs WHERE image_url LIKE ? OR image_url LIKE ?', [pattern, filenamePattern], 'djs', ['image_url']);
+  findMatches('SELECT id, image_url FROM blogs WHERE image_url LIKE ? OR image_url LIKE ?', [pattern, filenamePattern], 'blogs', ['image_url']);
+  findMatches('SELECT id, image_url FROM features WHERE image_url LIKE ? OR image_url LIKE ?', [pattern, filenamePattern], 'features', ['image_url']);
+  findMatches('SELECT id, image_url FROM advertisements WHERE image_url LIKE ? OR image_url LIKE ?', [pattern, filenamePattern], 'advertisements', ['image_url']);
+  findMatches('SELECT id, avatar_url FROM users WHERE avatar_url LIKE ? OR avatar_url LIKE ?', [pattern, filenamePattern], 'users', ['avatar_url']);
+  findMatches('SELECT username, photo_url FROM admins WHERE photo_url LIKE ? OR photo_url LIKE ?', [pattern, filenamePattern], 'admins', ['photo_url']);
+
+  const commentMatches = db.prepare(
+    `SELECT id, imageUrl, audioUrl, videoUrl FROM public_messages WHERE imageUrl LIKE ? OR imageUrl LIKE ? OR audioUrl LIKE ? OR audioUrl LIKE ? OR videoUrl LIKE ? OR videoUrl LIKE ?`
+  ).all(pattern, filenamePattern, pattern, filenamePattern, pattern, filenamePattern) as any[];
+  commentMatches.forEach((row) => {
+    if (row.imageUrl && String(row.imageUrl).toLowerCase().includes(filename.toLowerCase())) pushUsage('public_messages', 'imageUrl', row.id);
+    if (row.audioUrl && String(row.audioUrl).toLowerCase().includes(filename.toLowerCase())) pushUsage('public_messages', 'audioUrl', row.id);
+    if (row.videoUrl && String(row.videoUrl).toLowerCase().includes(filename.toLowerCase())) pushUsage('public_messages', 'videoUrl', row.id);
+  });
+
+  const privateMatches = db.prepare(
+    `SELECT id, imageUrl, audioUrl, videoUrl FROM private_messages WHERE imageUrl LIKE ? OR imageUrl LIKE ? OR audioUrl LIKE ? OR audioUrl LIKE ? OR videoUrl LIKE ? OR videoUrl LIKE ?`
+  ).all(pattern, filenamePattern, pattern, filenamePattern, pattern, filenamePattern) as any[];
+  privateMatches.forEach((row) => {
+    if (row.imageUrl && String(row.imageUrl).toLowerCase().includes(filename.toLowerCase())) pushUsage('private_messages', 'imageUrl', row.id);
+    if (row.audioUrl && String(row.audioUrl).toLowerCase().includes(filename.toLowerCase())) pushUsage('private_messages', 'audioUrl', row.id);
+    if (row.videoUrl && String(row.videoUrl).toLowerCase().includes(filename.toLowerCase())) pushUsage('private_messages', 'videoUrl', row.id);
+  });
+
+  const settingsMatches = db.prepare('SELECT key, value FROM settings WHERE value LIKE ? OR value LIKE ?').all(pattern, filenamePattern) as any[];
+  settingsMatches.forEach((row) => pushUsage('settings', row.key, row.key));
+
+  return usages;
+};
+
+const clearMediaReferences = (filename: string) => {
+  const filePath = `/uploads/${filename}`;
+  const pattern = `%${filePath}%`;
+  const filenamePattern = `%${filename}%`;
+  const results: Record<string, number> = {};
+
+  const deleteRefs = (query: string, params: any[], key: string) => {
+    const info = db.prepare(query).run(...params);
+    results[key] = (results[key] || 0) + Number(info.changes || 0);
+  };
+
+  deleteRefs('UPDATE djs SET image_url = ? WHERE image_url LIKE ? OR image_url LIKE ?', ['', pattern, filenamePattern], 'djs');
+  deleteRefs('UPDATE blogs SET image_url = ? WHERE image_url LIKE ? OR image_url LIKE ?', ['', pattern, filenamePattern], 'blogs');
+  deleteRefs('UPDATE features SET image_url = ? WHERE image_url LIKE ? OR image_url LIKE ?', ['', pattern, filenamePattern], 'features');
+  deleteRefs('UPDATE advertisements SET image_url = ? WHERE image_url LIKE ? OR image_url LIKE ?', ['', pattern, filenamePattern], 'advertisements');
+  deleteRefs('UPDATE users SET avatar_url = ? WHERE avatar_url LIKE ? OR avatar_url LIKE ?', ['', pattern, filenamePattern], 'users');
+  deleteRefs('UPDATE admins SET image_url = ? WHERE image_url LIKE ? OR image_url LIKE ?', ['', pattern, filenamePattern], 'admins');
+  deleteRefs('UPDATE public_messages SET imageUrl = ? WHERE imageUrl LIKE ? OR imageUrl LIKE ?', ['', pattern, filenamePattern], 'public_messages.imageUrl');
+  deleteRefs('UPDATE public_messages SET audioUrl = ? WHERE audioUrl LIKE ? OR audioUrl LIKE ?', ['', pattern, filenamePattern], 'public_messages.audioUrl');
+  deleteRefs('UPDATE public_messages SET videoUrl = ? WHERE videoUrl LIKE ? OR videoUrl LIKE ?', ['', pattern, filenamePattern], 'public_messages.videoUrl');
+  deleteRefs('UPDATE private_messages SET imageUrl = ? WHERE imageUrl LIKE ? OR imageUrl LIKE ?', ['', pattern, filenamePattern], 'private_messages.imageUrl');
+  deleteRefs('UPDATE private_messages SET audioUrl = ? WHERE audioUrl LIKE ? OR audioUrl LIKE ?', ['', pattern, filenamePattern], 'private_messages.audioUrl');
+  deleteRefs('UPDATE private_messages SET videoUrl = ? WHERE videoUrl LIKE ? OR videoUrl LIKE ?', ['', pattern, filenamePattern], 'private_messages.videoUrl');
+  deleteRefs('UPDATE settings SET value = ? WHERE value LIKE ? OR value LIKE ?', ['', pattern, filenamePattern], 'settings');
+
+  return results;
+};
+
+apiRouter.get('/admin/media', (req: any, res: any) => {
+  try {
+    const uploadsDir = getUploadsDir();
+    if (!fs.existsSync(uploadsDir)) {
+      return res.json([]);
+    }
+
+    const files = fs.readdirSync(uploadsDir, { withFileTypes: true })
+      .filter((entry) => entry.isFile())
+      .map((entry) => {
+        const filename = entry.name;
+        const filePath = path.join(uploadsDir, filename);
+        const stats = fs.statSync(filePath);
+        return {
+          filename,
+          url: `/uploads/${filename}`,
+          type: getMediaType(filename),
+          size: stats.size,
+          created_at: stats.mtime.toISOString(),
+          usages: searchMediaUsages(filename),
+        };
+      });
+
+    res.json(files);
+  } catch (err) {
+    console.error('[API] Failed to load media list', err);
+    res.status(500).json({ error: 'Failed to load media assets' });
+  }
+});
+
+apiRouter.delete('/admin/media/:filename', (req: any, res: any) => {
+  try {
+    const filename = decodeURIComponent(req.params.filename);
+    if (!filename || filename.includes('..') || filename.includes('/') || path.isAbsolute(filename)) {
+      return res.status(400).json({ error: 'Invalid filename' });
+    }
+
+    const uploadsDir = getUploadsDir();
+    const filePath = path.join(uploadsDir, filename);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'Media file not found' });
+    }
+
+    fs.unlinkSync(filePath);
+    const cleanup = clearMediaReferences(filename);
+    res.json({ success: true, cleanup });
+  } catch (err) {
+    console.error('[API] Failed to delete media asset', err);
+    res.status(500).json({ error: 'Failed to delete media asset' });
+  }
+});
+
+apiRouter.post('/admin/media/upload', attachmentUpload.array('media'), (req: any, res: any) => {
+  try {
+    if (!req.files || !req.files.length) {
+      return res.status(400).json({ error: 'No files uploaded' });
+    }
+
+    const uploads: Array<{ url: string; filename: string; type: string }> = req.files.map((file: any) => {
+      const fileType = file.mimetype.startsWith('audio/') ? 'audio' : file.mimetype.startsWith('video/') ? 'video' : 'image';
+      return {
+        url: `/uploads/${file.filename}`,
+        filename: file.originalname,
+        type: fileType,
+      };
+    });
+
+    res.json({ success: true, files: uploads });
+  } catch (err) {
+    console.error('[API] Failed to upload media files', err);
+    res.status(500).json({ error: 'Failed to upload media files' });
+  }
+});
+
+apiRouter.delete('/admin/media', (req: any, res: any) => {
+  try {
+    const files = req.body?.files;
+    if (!Array.isArray(files) || files.length === 0) {
+      return res.status(400).json({ error: 'No files provided for deletion' });
+    }
+
+    const results: Array<{ filename: string; deleted: boolean; error?: string }> = [];
+    const uploadsDir = getUploadsDir();
+
+    files.forEach((rawFilename: any) => {
+      try {
+        const filename = String(rawFilename);
+        if (!filename || filename.includes('..') || filename.includes('/') || path.isAbsolute(filename)) {
+          results.push({ filename, deleted: false, error: 'Invalid filename' });
+          return;
+        }
+
+        const filePath = path.join(uploadsDir, filename);
+        if (!fs.existsSync(filePath)) {
+          results.push({ filename, deleted: false, error: 'File not found' });
+          return;
+        }
+
+        fs.unlinkSync(filePath);
+        clearMediaReferences(filename);
+        results.push({ filename, deleted: true });
+      } catch (innerError: any) {
+        console.error(`[API] Failed to delete media file ${rawFilename}`, innerError);
+        results.push({ filename: String(rawFilename), deleted: false, error: innerError?.message || 'Delete failed' });
+      }
+    });
+
+    res.json({ success: true, results });
+  } catch (err) {
+    console.error('[API] Failed to perform bulk media delete', err);
+    res.status(500).json({ error: 'Failed to delete media assets' });
+  }
+});
+
 apiRouter.get("/admin/analytics", (req: any, res: any) => {
   const { range } = req.query; // 'today', '7d', '30d', 'all'
   const io = req.app.get('io');

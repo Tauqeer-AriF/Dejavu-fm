@@ -23,6 +23,7 @@ import { AdminAuditLogs } from "./admin/AdminAuditLogs";
 import { AdminBackup } from "./admin/AdminBackup";
 import { AdminAds } from "./admin/AdminAds";
 import { AdminSEO } from "./admin/AdminSEO";
+import { AdminMedia } from "./admin/AdminMedia";
 import { useLogo } from "../hooks/useLogo";
 
 export default function Admin() {
@@ -155,6 +156,7 @@ export default function Admin() {
 
                   <Route path="/settings" element={isAdminUser ? <AdminSettings /> : <Navigate to="/admin" replace />} />
                   <Route path="/seo" element={isAdminUser ? <AdminSEO /> : <Navigate to="/admin" replace />} />
+                  <Route path="/media" element={isAdminUser ? <AdminMedia /> : <Navigate to="/admin" replace />} />
                   <Route path="/advanced" element={isAdminUser ? <AdminAdvanced /> : <Navigate to="/admin" replace />} />
                   <Route path="/branding" element={isAdminUser ? <AdminBranding /> : <Navigate to="/admin" replace />} />
                   <Route path="/users" element={isAdminUser ? <AdminUsers isAdminUser={isAdminUser} /> : <Navigate to="/admin" replace />} />
