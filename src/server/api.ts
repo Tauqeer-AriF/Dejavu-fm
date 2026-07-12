@@ -1191,7 +1191,7 @@ apiRouter.put("/admin/settings", authorizeRole('admin'), (req, res) => {
   const allowedKeys = [
     "stream_url", "stream_url_low", "stream_url_medium", "stream_url_high", 
     "rss_feed_url", "studio_video_url", "app_name", "logo_url", "app_tagline", 
-    "app_title", "font_sans", "font_display", "is_on_air", "primary_color", 
+    "app_title", "seo_title", "seo_description", "seo_image", "font_sans", "font_display", "is_on_air", "primary_color", 
     "secondary_color", "feat_chat", "feat_shoutouts", "feat_cinematic", 
     "feat_pwa", "feat_bookings", "feat_live_tools", "feat_stream_quality",
     "logo_dark", "logo_light", "logo_shape", "favicon", "backup_retention_days",

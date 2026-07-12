@@ -415,6 +415,9 @@ export function initDb() {
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('app_name', 'DEJAVU FM');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('app_title', 'DEJAVU FM | THE SOUND OF LONDON');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('app_tagline', 'The Underground Worldwide');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('seo_title', 'DEJAVU FM | THE SOUND OF LONDON');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('seo_description', 'Dejavu FM is the underground radio station combining London beats with global energy.');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('seo_image', '/icon.svg');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('font_sans', 'Inter');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('font_display', 'Inter');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('logo_url', '');

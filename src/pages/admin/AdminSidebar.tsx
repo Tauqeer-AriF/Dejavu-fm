@@ -32,6 +32,7 @@ export function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; 
     { name: "Analytics", path: "/admin", icon: BarChart3 },
     { name: "Live Tools", path: "/admin/live-tools", icon: Radio },
     { name: "Settings", path: "/admin/settings", icon: Settings },
+    { name: "SEO", path: "/admin/seo", icon: Search },
     { name: "Advanced", path: "/admin/advanced", icon: Ghost },
     { name: "My Profile", path: "/admin/profile", icon: User },
     { name: "Interaction", path: "/admin/shoutouts", icon: MessageSquare },

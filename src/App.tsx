@@ -676,10 +676,40 @@ function MainLayout() {
     if (settings) {
       if (settings.stream_url) setStreamUrl(settings.stream_url);
       
-      if (settings.app_title) {
+      if (settings.seo_title) {
+        document.title = settings.seo_title;
+      } else if (settings.app_title) {
         document.title = settings.app_title;
       } else if (settings.app_name) {
         document.title = settings.app_name;
+      }
+
+      const updateMetaTag = (attrName: string, attrValue: string, content: string) => {
+        const selector = attrName === 'property' ? `meta[property="${attrValue}"]` : `meta[name="${attrValue}"]`;
+        let element = document.head.querySelector(selector) as HTMLMetaElement | null;
+        if (!element) {
+          element = document.createElement('meta');
+          element.setAttribute(attrName, attrValue);
+          document.head.appendChild(element);
+        }
+        element.content = content;
+      };
+
+      if (settings.seo_description) {
+        updateMetaTag('name', 'description', settings.seo_description);
+        updateMetaTag('property', 'og:description', settings.seo_description);
+        updateMetaTag('name', 'twitter:description', settings.seo_description);
+      }
+
+      if (settings.seo_title) {
+        updateMetaTag('property', 'og:title', settings.seo_title);
+        updateMetaTag('name', 'twitter:title', settings.seo_title);
+      }
+
+      if (settings.seo_image) {
+        updateMetaTag('property', 'og:image', settings.seo_image);
+        updateMetaTag('name', 'twitter:image', settings.seo_image);
+        updateMetaTag('name', 'twitter:card', 'summary_large_image');
       }
       
       if (settings.favicon) {

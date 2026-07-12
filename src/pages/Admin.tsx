@@ -21,6 +21,7 @@ import { AdminChatRoomSettings } from "./admin/AdminChatRoomSettings";
 import { AdminAuditLogs } from "./admin/AdminAuditLogs";
 import { AdminBackup } from "./admin/AdminBackup";
 import { AdminAds } from "./admin/AdminAds";
+import { AdminSEO } from "./admin/AdminSEO";
 
 export default function Admin() {
   const [isLogged, setIsLogged] = useState(false);
@@ -129,6 +130,7 @@ export default function Admin() {
                   <Route path="/profile" element={<AdminProfile />} />
 
                   <Route path="/settings" element={isAdminUser ? <AdminSettings /> : <Navigate to="/admin" replace />} />
+                  <Route path="/seo" element={isAdminUser ? <AdminSEO /> : <Navigate to="/admin" replace />} />
                   <Route path="/advanced" element={isAdminUser ? <AdminAdvanced /> : <Navigate to="/admin" replace />} />
                   <Route path="/branding" element={isAdminUser ? <AdminBranding /> : <Navigate to="/admin" replace />} />
                   <Route path="/users" element={isAdminUser ? <AdminUsers isAdminUser={isAdminUser} /> : <Navigate to="/admin" replace />} />

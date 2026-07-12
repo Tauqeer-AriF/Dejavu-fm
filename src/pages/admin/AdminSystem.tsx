@@ -324,7 +324,7 @@ export function AdminBranding() {
         </div>
 
         <form onSubmit={handleSave} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="block text-xs uppercase mb-1 text-white/50 font-bold">Application Name</label>
               <input 
@@ -332,16 +332,6 @@ export function AdminBranding() {
                 onChange={e=>setAppName(e.target.value)} 
                 className="w-full bg-dark-bg border border-white/10 rounded px-4 py-2 focus:border-neon-purple outline-none" 
                 placeholder="DEJAVU FM"
-              />
-            </div>
-            <div>
-              <label className="block text-xs uppercase mb-1 text-white/50 font-bold">SEO Page Title</label>
-              <input 
-                required
-                value={appTitle} 
-                onChange={e=>setAppTitle(e.target.value)} 
-                className="w-full bg-dark-bg border border-white/10 rounded px-4 py-2 focus:border-neon-purple outline-none" 
-                placeholder="DEJAVU FM | LONDON UNDERGROUND RADIO"
               />
             </div>
           </div>
