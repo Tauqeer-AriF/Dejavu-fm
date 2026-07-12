@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { Instagram, Music, Radio, ExternalLink } from 'lucide-react';
+import { Instagram, Music, Search, X, UserX } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useLogo } from '../hooks/useLogo';
 
@@ -18,6 +18,8 @@ interface DJ {
 import { SkeletonCard } from '../components/Skeleton';
 
 export default function DJs() {
+  const [query, setQuery] = useState("");
+
   const { data: settings } = useQuery({
     queryKey: ['settings'],
     queryFn: () => fetch('/api/public/settings').then(res => res.json()),
@@ -31,6 +33,17 @@ export default function DJs() {
   });
 
   const { logoUrl, isLightMode, resolveDjImage } = useLogo();
+
+  const filteredDjs = useMemo(() => {
+    if (!djs) return [];
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return djs;
+
+    return djs.filter(dj => 
+      dj.name.toLowerCase().includes(normalizedQuery) ||
+      dj.bio?.toLowerCase().includes(normalizedQuery)
+    );
+  }, [djs, query]);
 
   if (isLoading) {
     return (
@@ -73,14 +86,34 @@ export default function DJs() {
         </p>
       </div>
 
+      <div className="max-w-md mx-auto px-4">
+        <div className="relative w-full group">
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20 group-focus-within:text-neon-purple transition-colors" />
+          <input
+            value={query}
+            onChange={event => setQuery(event.target.value)}
+            placeholder="Find a resident DJ..."
+            className="w-full bg-white/[0.02] border border-white/10 rounded-2xl py-4 pl-14 pr-14 text-sm focus:outline-none focus:border-neon-purple/50 focus:bg-white/5 transition-all font-medium placeholder:text-white/30"
+          />
+          {query && (
+            <button
+              onClick={() => setQuery("")}
+              className="absolute right-5 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded-full transition-all"
+            >
+              <X className="w-4 h-4 text-white/50" />
+            </button>
+          )}
+        </div>
+      </div>
+
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-40 space-y-6">
           <div className="w-16 h-16 border-4 border-white/10 border-t-neon-purple rounded-full animate-spin"></div>
           <p className="text-white/30 uppercase tracking-[0.3em] text-[10px] font-black">Summoning Artists...</p>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 md:gap-10">
-          {djs?.map((dj, index) => (
+      ) : filteredDjs.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 md:gap-10 px-4">
+          {filteredDjs.map((dj, index) => (
             <motion.div
               key={dj.id}
               initial={{ opacity: 0, y: 30 }}
@@ -155,6 +188,13 @@ export default function DJs() {
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0 h-1 bg-neon-blue group-hover:w-full transition-all duration-700"></div>
             </motion.div>
           ))}
+        </div>
+      ) : (
+        <div className="mx-4 py-20 text-center glass-panel rounded-2xl border-dashed flex flex-col items-center justify-center gap-4">
+          <UserX className="w-12 h-12 text-white/10" />
+          <p className="text-white/40 uppercase font-black tracking-widest text-xs">
+            No DJs found for "{query}"
+          </p>
         </div>
       )}
     </motion.div>
