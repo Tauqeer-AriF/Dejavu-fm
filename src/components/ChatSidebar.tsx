@@ -304,8 +304,6 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
   }, [emojiSearch]);
 
   useEffect(() => {
-    if (!isOpen) return;
-
     fetch('/api/public/auth/check')
       .then(r => r.json())
       .then(data => {
@@ -336,10 +334,6 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     if (!socket) return;
     socketRef.current = socket;
 
-    if (loggedInUser) {
-      socket.emit('registerUser', loggedInUser);
-    }
-
     socket.on('chatHistory', (history: ChatMessage[]) => {
       setMessages(history);
     });
@@ -354,6 +348,12 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
         playNotificationSound();
       }
     });
+
+    if (loggedInUser) {
+      socket.emit('registerUser', loggedInUser);
+    } else {
+      socket.emit('getChatHistory');
+    }
 
     socket.on('privateHistory', (history: ChatMessage[]) => {
       setPrivateMessages(history);
@@ -382,6 +382,25 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
         if (soundEnabledRef.current) {
           playNotificationSound();
         }
+      }
+    });
+
+    socket.on('messageDeleted', ({ id, isPrivate }: { id: string; isPrivate: boolean }) => {
+      if (isPrivate) {
+        setPrivateMessages(prev => prev.filter(m => m.id !== id));
+      } else {
+        setMessages(prev => prev.filter(m => m.id !== id));
+      }
+    });
+
+    socket.on('messagesCleared', ({ isPrivate, recipient, sender }: { isPrivate: boolean; recipient?: string; sender?: string }) => {
+      if (isPrivate) {
+        // If it's a private chat clear, we only clear if it involves the current user
+        if (loggedInUser === recipient || loggedInUser === sender) {
+          setPrivateMessages([]);
+        }
+      } else {
+        setMessages([]);
       }
     });
 
@@ -733,6 +752,44 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     setPendingAttachment(null);
   };
 
+  const handleDeleteMessage = (id: string, isPrivate: boolean) => {
+    if (!socketRef.current || !loggedInUser) return;
+    socketRef.current.emit('deleteMessage', { id, user: loggedInUser, isPrivate });
+  };
+
+  const handleResendMessage = (msg: ChatMessage) => {
+    setInputText(msg.text || '');
+    if (msg.imageUrl || msg.audioUrl || msg.videoUrl) {
+      setPendingAttachment({
+        url: (msg.imageUrl || msg.audioUrl || msg.videoUrl)!,
+        type: msg.imageUrl ? 'image' : (msg.audioUrl ? 'audio' : 'video'),
+        filename: (msg.imageName || msg.audioName || msg.videoName) || 'file'
+      });
+    }
+    toast.info("Copied to input");
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  const handleClearAll = () => {
+    setShowClearConfirm(true);
+  };
+
+  const confirmClear = () => {
+    if (!socketRef.current || !loggedInUser) return;
+    const isPrivate = chatTab === 'private' && !!activeDmUser;
+    
+    socketRef.current.emit('clearAllMessages', { 
+      user: loggedInUser, 
+      isPrivate: chatTab === 'private',
+      targetRecipient: isPrivate ? activeDmUser : undefined
+    });
+    setShowClearConfirm(false);
+  };
+
   const handleBlockUser = (username: string) => {
     if (username === loggedInUser || username === 'SYSTEM') return;
     const newBlocked = [...new Set([...blockedUsers, username])];
@@ -778,8 +835,9 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
   [messages, blockedUsers]);
 
   return (
-    <AnimatePresence>
-      {isOpen && (
+    <>
+      <AnimatePresence>
+        {isOpen && (
         <>
           <motion.div 
             initial={{ opacity: 0 }}
@@ -875,6 +933,17 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                     <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-neon-purple animate-ping" />
                   )}
                 </button>
+                {isAdmin && (
+                  <button 
+                    onClick={handleClearAll}
+                    className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all cursor-pointer group ${
+                      isLightMode ? 'bg-red-500/10 border-red-500/30 hover:bg-red-500/20 text-red-500' : 'bg-red-500/20 border-red-500/40 hover:bg-red-500/30 text-red-500'
+                    }`}
+                    title="Clear All Messages (Admin)"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                )}
                 {loggedInUser && (
                   <button
                     onClick={() => setShowProfile(true)}
@@ -1011,7 +1080,25 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                              <p className="text-sm font-bold text-neon-pink break-words leading-relaxed">{msg.text}</p>
                           </div>
                         ) : (
-                          <div className={`rounded-2xl rounded-tl-none p-3 border transition-all ${isLightMode ? 'bg-black/5 border-black/5 group-hover:border-black/10' : 'bg-white/5 border-white/5 group-hover:border-white/10'}`}>
+                          <div className={`relative rounded-2xl rounded-tl-none p-3 border transition-all ${isLightMode ? 'bg-black/5 border-black/5 group-hover:border-black/10' : 'bg-white/5 border-white/5 group-hover:border-white/10'}`}>
+                            <div className="absolute top-2 right-2 opacity-30 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 z-10">
+                              <button 
+                                onClick={() => handleResendMessage(msg)}
+                                className={`p-1.5 rounded-lg transition-all cursor-pointer backdrop-blur-md ${isLightMode ? 'bg-black/5 text-black/40 hover:text-neon-purple hover:bg-black/10' : 'bg-black/60 text-white/70 hover:text-white hover:bg-neon-purple'}`}
+                                title="Resend/Copy"
+                              >
+                                <Send className="w-3 h-3" />
+                              </button>
+                              {(isAdmin || msg.user === loggedInUser) && (
+                                <button 
+                                  onClick={() => handleDeleteMessage(msg.id, false)}
+                                  className={`p-1.5 rounded-lg transition-all cursor-pointer backdrop-blur-md ${isLightMode ? 'bg-black/5 text-black/40 hover:text-red-500 hover:bg-black/10' : 'bg-black/60 text-white/70 hover:text-white hover:bg-red-500'}`}
+                                  title="Delete Message"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
                             {msg.text && (
                               <p className={`text-sm break-words leading-relaxed ${isLightMode ? 'text-black/80' : 'text-white/80'}`}>{msg.text}</p>
                             )}
@@ -1115,7 +1202,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           key={msg.id} 
-                          className="flex gap-3"
+                          className="flex gap-3 group"
                         >
                           <div className={`w-8 h-8 rounded-lg overflow-hidden border shrink-0 ${isLightMode ? 'border-black/10 bg-black/5' : 'border-white/10 bg-white/5'}`}>
                             <img 
@@ -1141,7 +1228,25 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             </div>
-                            <div className={`rounded-2xl rounded-tl-none p-3 border transition-all ${isLightMode ? 'bg-black/5 border-black/5' : 'bg-white/5 border-white/5'}`}>
+                            <div className={`relative rounded-2xl rounded-tl-none p-3 border transition-all ${isLightMode ? 'bg-black/5 border-black/5 group-hover:border-black/10' : 'bg-white/5 border-white/5 group-hover:border-white/10'}`}>
+                              <div className="absolute top-2 right-2 opacity-30 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 z-10">
+                                <button 
+                                  onClick={() => handleResendMessage(msg)}
+                                  className={`p-1.5 rounded-lg transition-all cursor-pointer backdrop-blur-md ${isLightMode ? 'bg-black/5 text-black/40 hover:text-neon-purple hover:bg-black/10' : 'bg-black/60 text-white/70 hover:text-white hover:bg-neon-purple'}`}
+                                  title="Resend/Copy"
+                                >
+                                  <Send className="w-3 h-3" />
+                                </button>
+                                {(isAdmin || msg.user === loggedInUser) && (
+                                  <button 
+                                    onClick={() => handleDeleteMessage(msg.id, true)}
+                                    className={`p-1.5 rounded-lg transition-all cursor-pointer backdrop-blur-md ${isLightMode ? 'bg-black/5 text-black/40 hover:text-red-500 hover:bg-black/10' : 'bg-black/60 text-white/70 hover:text-white hover:bg-red-500'}`}
+                                    title="Delete Message"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
                               {msg.text && (
                                 <p className={`text-sm break-words leading-relaxed ${isLightMode ? 'text-black/80' : 'text-white/80'}`}>{msg.text}</p>
                               )}
@@ -1844,5 +1949,60 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
         </>
       )}
     </AnimatePresence>
+
+    <AnimatePresence>
+      {showClearConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className={`fixed inset-0 z-[20000] flex items-center justify-center p-6 backdrop-blur-md transition-colors ${
+              isLightMode ? 'bg-white/40' : 'bg-black/60'
+            }`}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className={`w-full max-w-[320px] rounded-3xl p-8 border transition-all ${
+                isLightMode 
+                  ? 'light-mode-modal-panel' 
+                  : 'bg-[#121212] border-white/10 shadow-2xl'
+              }`}
+            >
+              <div className="flex flex-col items-center text-center gap-6">
+                <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center border border-red-500/20">
+                  <Trash2 className="w-8 h-8 text-red-500" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className={`text-xl font-black uppercase tracking-tight ${isLightMode ? 'text-black' : 'text-white'}`}>Clear History?</h3>
+                  <p className={`text-sm leading-relaxed ${isLightMode ? 'text-black/60' : 'text-white/40'}`}>
+                    {chatTab === 'private' && activeDmUser 
+                      ? `This will permanently erase your conversation with ${activeDmUser.split('@')[0]}.`
+                      : "This will permanently erase ALL public chat history for everyone."}
+                  </p>
+                </div>
+                <div className="flex flex-col w-full gap-3 mt-4">
+                  <button
+                    onClick={confirmClear}
+                    className="w-full py-4 rounded-2xl bg-red-500 hover:bg-red-600 text-white text-sm font-black uppercase tracking-widest transition-all shadow-lg shadow-red-500/20"
+                  >
+                    Yes, Clear Everything
+                  </button>
+                  <button
+                    onClick={() => setShowClearConfirm(false)}
+                    className={`w-full py-4 rounded-2xl text-sm font-black uppercase tracking-widest transition-all border ${
+                      isLightMode ? 'bg-black/5 hover:bg-black/10 border-black/10 text-black' : 'bg-white/5 hover:bg-white/10 border-white/10 text-white'
+                    }`}
+                  >
+                    Go Back
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

@@ -30,6 +30,9 @@ let serverId = crypto.randomUUID();
 console.log(`[SERVER] Instance ID: ${serverId}`);
 
 async function startServer() {
+  // Initialize DB immediately
+  initDb();
+
   const app = express();
   
   app.set('serverId', serverId);
@@ -156,8 +159,34 @@ async function startServer() {
   }
 
   // Configurable limit for chat history to prevent memory issues
-  const MAX_CHAT_HISTORY = 50;
-  const chatHistory: any[] = [];
+  const MAX_CHAT_HISTORY = 100;
+  let chatHistory: any[] = [];
+
+  try {
+    if (db.open) {
+      const history = db.prepare("SELECT * FROM public_messages ORDER BY timestamp DESC LIMIT ?").all(MAX_CHAT_HISTORY) as any[];
+      chatHistory = history.reverse().map(m => {
+        let avatar_url = null;
+        try {
+          const senderAdmin = db.prepare("SELECT photo_url FROM admins WHERE LOWER(username) = ?").get(m.sender.toLowerCase()) as any;
+          if (senderAdmin && senderAdmin.photo_url) {
+            avatar_url = senderAdmin.photo_url;
+          } else {
+            const u = db.prepare("SELECT avatar_url FROM users WHERE username = ?").get(m.sender) as any;
+            if (u) avatar_url = u.avatar_url;
+          }
+        } catch {}
+        return {
+          ...m,
+          user: m.sender,
+          avatar_url: avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${m.sender}`
+        };
+      });
+      console.log(`[Chat] Loaded ${chatHistory.length} messages from database.`);
+    }
+  } catch (err) {
+    console.error("[Chat] Failed to load history from database:", err);
+  }
 
   io.on('connection', (socket) => {
     const emitCounts = () => {
@@ -168,6 +197,66 @@ async function startServer() {
 
     emitCounts();
 
+    socket.on('deleteMessage', (payload: { id: string; user: string; isPrivate: boolean }) => {
+      if (!db.open) return;
+      try {
+        // Authorization check: Only sender or admin can delete
+        const adminCheck = db.prepare("SELECT 1 FROM admins WHERE LOWER(username) = ?").get(payload.user.toLowerCase());
+        const isUserAdmin = !!adminCheck;
+
+        // Verify ownership if not admin
+        if (!isUserAdmin) {
+          const table = payload.isPrivate ? 'private_messages' : 'public_messages';
+          const msg = db.prepare(`SELECT sender FROM ${table} WHERE id = ?`).get(payload.id) as any;
+          if (!msg || msg.sender !== payload.user) {
+            console.warn(`[Delete] Unauthorized delete attempt by ${payload.user} for message ${payload.id}`);
+            return;
+          }
+        }
+
+        if (payload.isPrivate) {
+          db.prepare("DELETE FROM private_messages WHERE id = ?").run(payload.id);
+        } else {
+          db.prepare("DELETE FROM public_messages WHERE id = ?").run(payload.id);
+          // Update memory cache for public messages
+          chatHistory = chatHistory.filter(m => m.id !== payload.id);
+        }
+        
+        // Notify all clients to remove the message from their UI
+        io.emit('messageDeleted', { id: payload.id, isPrivate: payload.isPrivate });
+        console.log(`[Delete] Message ${payload.id} deleted by ${payload.user}`);
+      } catch (err) {
+        console.error("Failed to delete message:", err);
+      }
+    });
+
+    socket.on('clearAllMessages', (payload: { user: string; isPrivate: boolean; targetRecipient?: string }) => {
+      if (!db.open) return;
+      try {
+        const adminCheck = db.prepare("SELECT 1 FROM admins WHERE LOWER(username) = ?").get(payload.user.toLowerCase());
+        if (!adminCheck) {
+          console.warn(`[Clear] Unauthorized clear attempt by ${payload.user}`);
+          return;
+        }
+
+        if (payload.isPrivate) {
+          if (payload.targetRecipient) {
+            // Clear conversation between payload.user and targetRecipient
+            db.prepare("DELETE FROM private_messages WHERE (sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?)")
+              .run(payload.user, payload.targetRecipient, payload.targetRecipient, payload.user);
+            io.emit('messagesCleared', { isPrivate: true, recipient: payload.targetRecipient, sender: payload.user });
+          }
+        } else {
+          db.prepare("DELETE FROM public_messages").run();
+          chatHistory = [];
+          io.emit('messagesCleared', { isPrivate: false });
+        }
+        console.log(`[Clear] Messages cleared by admin ${payload.user}`);
+      } catch (err) {
+        console.error("Failed to clear messages:", err);
+      }
+    });
+
     socket.on('disconnect', () => {
       // Small delay on disconnect helps avoid flickering when refreshing
       setTimeout(emitCounts, 1000);
@@ -175,6 +264,10 @@ async function startServer() {
 
     // Send history on connect
     socket.emit('chatHistory', chatHistory);
+
+    socket.on('getChatHistory', () => {
+      socket.emit('chatHistory', chatHistory);
+    });
 
     socket.on('registerUser', (username) => {
       (socket as any).username = username;
@@ -209,6 +302,7 @@ async function startServer() {
           };
         });
         socket.emit('privateHistory', enrichedHistory);
+        socket.emit('chatHistory', chatHistory);
       } catch (err) {
         console.error("Failed to load private history for registered user:", err);
       }
@@ -239,8 +333,8 @@ async function startServer() {
 
        if (msg.recipient) {
          try {
-           db.prepare("INSERT INTO private_messages (id, sender, recipient, text, imageUrl, imageName, audioUrl, audioName, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-             .run(newMsg.id, msg.user, msg.recipient, msg.text || null, msg.imageUrl || null, msg.imageName || null, msg.audioUrl || null, msg.audioName || null, newMsg.timestamp);
+           db.prepare("INSERT INTO private_messages (id, sender, recipient, text, imageUrl, imageName, audioUrl, audioName, videoUrl, videoName, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+             .run(newMsg.id, msg.user, msg.recipient, msg.text || null, msg.imageUrl || null, msg.imageName || null, msg.audioUrl || null, msg.audioName || null, msg.videoUrl || null, msg.videoName || null, newMsg.timestamp);
          } catch (err) {
            console.error("Failed to save private message:", err);
          }
@@ -262,6 +356,12 @@ async function startServer() {
            }
          }
        } else {
+         try {
+           db.prepare("INSERT INTO public_messages (id, sender, text, imageUrl, imageName, audioUrl, audioName, videoUrl, videoName, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+             .run(newMsg.id, msg.user, msg.text || null, msg.imageUrl || null, msg.imageName || null, msg.audioUrl || null, msg.audioName || null, msg.videoUrl || null, msg.videoName || null, newMsg.timestamp);
+         } catch (err) {
+           console.error("Failed to save public message:", err);
+         }
          chatHistory.push(newMsg);
          
          // Efficiently maintain maximum history size
@@ -286,9 +386,6 @@ async function startServer() {
       }
     }
   }, 30000);
-
-  // Initialize DB
-  initDb();
 
   // Automated Database Backups with Dynamic Frequency
   const performAutoBackup = async () => {
