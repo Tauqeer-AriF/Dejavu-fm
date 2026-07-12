@@ -279,15 +279,15 @@ export default function WatchLive() {
             )}
           </AnimatePresence>
         </div>
-        <div className="hidden md:flex p-4 md:p-6 bg-dark-bg/80 border-t border-white/5 flex-col md:flex-row items-center gap-6">
+        <div className="flex p-4 bg-dark-bg/80 border-t border-white/5 flex-row items-center gap-4">
            {resolveDjImage(onAirInfo?.djPhoto) && (
-             <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl overflow-hidden shadow-2xl border-2 border-neon-purple/30 shrink-0 bg-white/5">
+             <div className="w-16 h-16 rounded-xl overflow-hidden shadow-2xl border-2 border-neon-purple/30 shrink-0 bg-white/5">
                <img src={resolveDjImage(onAirInfo?.djPhoto)} alt={onAirInfo?.djName || "DJ"} className={`w-full h-full ${resolveDjImage(onAirInfo?.djPhoto) === logoUrl && logoUrl ? 'object-contain p-2' : 'object-cover'}`} />
              </div>
            )}
-           <div className="flex-1 text-center md:text-left">
-             <div className="flex items-center justify-center md:justify-start gap-3 mb-1">
-               <h2 className="text-xl md:text-3xl font-black uppercase tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue italic">
+           <div className="flex-1 text-left min-w-0">
+             <div className="flex items-center justify-start gap-2 mb-0.5">
+               <h2 className="text-lg font-black uppercase tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue italic truncate">
                  {onAirInfo?.djName || "DEJAVU FM"}
                </h2>
                <div className="px-2 py-0.5 bg-red-500 rounded flex items-center space-x-1 shadow-[0_0_15px_rgba(239,68,68,0.3)] shrink-0">
@@ -295,10 +295,7 @@ export default function WatchLive() {
                   <span className="text-[8px] font-black uppercase text-white tracking-widest leading-none">Live</span>
                </div>
              </div>
-             <h3 className="text-white/90 font-bold text-sm md:text-lg mb-2">{onAirInfo?.showName || "Global Underground Stream"}</h3>
-             {onAirInfo?.djBio && (
-               <p className="text-white/50 text-xs md:text-sm line-clamp-2 md:line-clamp-none max-w-2xl">{onAirInfo.djBio}</p>
-             )}
+             <h3 className="text-white/90 font-bold text-xs truncate">{onAirInfo?.showName || "Global Underground Stream"}</h3>
            </div>
            
            {(onAirInfo?.instagram || onAirInfo?.soundcloud || onAirInfo?.mixcloud) && (

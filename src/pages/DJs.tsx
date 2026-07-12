@@ -112,9 +112,11 @@ export default function DJs() {
                 
                 <div className="absolute inset-x-0 bottom-0 p-6 md:p-10 space-y-4 md:space-y-6 translate-y-4 group-hover:translate-y-0 transition-transform duration-500 z-40">
                   <div className="space-y-3">
-                    <h3 className="text-4xl md:text-5xl font-display font-black uppercase tracking-tighter leading-[0.9] group-hover:text-neon-blue transition-colors duration-500">
-                      {dj.name}
-                    </h3>
+                    <Link to={`/djs/${dj.id}`}>
+                      <h3 className="text-4xl md:text-5xl font-display font-black uppercase tracking-tighter leading-[0.9] group-hover:text-neon-blue transition-colors duration-500">
+                        {dj.name}
+                      </h3>
+                    </Link>
                     <div className="flex space-x-2">
                       <span className="px-3 py-1 rounded-full bg-neon-purple/20 text-neon-purple text-[10px] font-black uppercase tracking-widest border border-neon-purple/20">Resident</span>
                       <span className="px-3 py-1 rounded-full bg-white/5 text-white/30 text-[10px] font-black uppercase tracking-widest border border-white/5">Underground</span>
