@@ -328,8 +328,22 @@ export function AdminMedia() {
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
         {filteredMedia.length === 0 && !isLoading ? (
-          <div className="rounded-3xl border border-dashed border-white/10 bg-slate-950/60 p-8 text-center text-sm text-white/60 shadow-[0_12px_30px_rgba(0,0,0,0.14)]">
-            No media assets match your search.
+          <div className="col-span-full rounded-3xl border border-dashed border-white/10 bg-slate-950/60 p-12 text-center flex flex-col items-center gap-4 my-8">
+            <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center text-white/30">
+              <ImageIcon className="w-8 h-8" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">No Media Found</h3>
+              <p className="text-sm text-white/50 mt-1 max-w-sm">
+                {search.trim() || filterType !== 'all' ? 'No assets match your current search or filter.' : 'Your media library is empty. Upload your first file to get started.'}
+              </p>
+            </div>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="mt-2 inline-flex items-center justify-center gap-2 rounded-xl bg-neon-purple px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-white transition hover:bg-neon-blue disabled:opacity-50 disabled:cursor-wait">
+              <Upload className="w-4 h-4" />
+              Upload Media
+            </button>
           </div>
         ) : null}
 
