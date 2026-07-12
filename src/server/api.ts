@@ -357,11 +357,41 @@ apiRouter.post("/public/shoutout", shoutoutLimiter, (req, res) => {
     }
   }
 
-  const info = db.prepare("INSERT INTO shoutouts (listener_name, message, type) VALUES (?, ?, ?)").run(email, message, type || 'text');
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const previousDay = (dayOfWeek + 6) % 7;
+  const currentTime = now.toTimeString().split(' ')[0].substring(0, 5);
+  const currentDj = db.prepare(`
+    SELECT s.dj_id, s.show_name, d.name as dj_name
+    FROM schedule s
+    JOIN djs d ON s.dj_id = d.id
+    WHERE (
+      s.day_of_week = ?
+      AND s.start_time <= ?
+      AND (s.end_time > ? OR s.end_time <= s.start_time)
+    ) OR (
+      s.day_of_week = ?
+      AND s.end_time <= s.start_time
+      AND s.end_time > ?
+    )
+    ORDER BY s.start_time DESC
+    LIMIT 1
+  `).get(dayOfWeek, currentTime, currentTime, previousDay, currentTime) as { dj_id: string; show_name: string; dj_name: string } | undefined;
+
+  const info = db.prepare("INSERT INTO shoutouts (listener_name, message, type, dj_id, dj_name, show_name) VALUES (?, ?, ?, ?, ?, ?)")
+    .run(email, message, type || 'text', currentDj?.dj_id || null, currentDj?.dj_name || null, currentDj?.show_name || null);
   
   const io = req.app.get('io');
   if (io) {
-    io.emit('new_shoutout', { id: info.lastInsertRowid, listener_name: email, message, type });
+    io.emit('new_shoutout', {
+      id: info.lastInsertRowid,
+      listener_name: email,
+      message,
+      type,
+      dj_id: currentDj?.dj_id || null,
+      dj_name: currentDj?.dj_name || null,
+      show_name: currentDj?.show_name || null
+    });
   }
   
   res.json({ success: true });

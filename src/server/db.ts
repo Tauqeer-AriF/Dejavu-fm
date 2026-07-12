@@ -266,6 +266,9 @@ export function initDb() {
       listener_name TEXT NOT NULL,
       message TEXT NOT NULL,
       type TEXT DEFAULT 'text',
+      dj_id TEXT,
+      dj_name TEXT,
+      show_name TEXT,
       is_read INTEGER DEFAULT 0,
       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -363,6 +366,7 @@ export function initDb() {
     );
   `);
   runMigration('audit_logs_table', "CREATE TABLE IF NOT EXISTS audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL, role TEXT NOT NULL, action TEXT NOT NULL, resource TEXT NOT NULL, resource_id TEXT, details TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);");
+  runMigration('shoutouts_dj_context_fields', "ALTER TABLE shoutouts ADD COLUMN dj_id TEXT; ALTER TABLE shoutouts ADD COLUMN dj_name TEXT; ALTER TABLE shoutouts ADD COLUMN show_name TEXT;");
   runMigration('correct_rss_endpoint', "UPDATE settings SET value = 'https://dejavufmpodcast.podomatic.com/rss2.xml' WHERE key = 'rss_feed_url' AND value = 'https://dejavufm.podomatic.com/rss2.xml';");
   runMigration('advanced_features_flag', "INSERT OR IGNORE INTO settings (key, value) VALUES ('advanced_features_enabled', '1');");
   runMigration('backup_enabled_flag', "INSERT OR IGNORE INTO settings (key, value) VALUES ('backup_enabled', '1');");

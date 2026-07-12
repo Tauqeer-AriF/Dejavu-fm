@@ -7,11 +7,41 @@ import { useModal } from "../../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
 import { fetchAdmin } from "./adminApi";
 import { ImageUploadField } from "./ImageUploadField";
+import { convertToLocalTime } from "../../lib/timeUtils";
 
 export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
   const [shoutouts, setShoutouts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { showConfirm, showAlert } = useModal();
+  const { data: scheduleData = [] } = useQuery({
+    queryKey: ['schedule'],
+    queryFn: () => fetch("/api/public/schedule").then(res => res.json()),
+    refetchInterval: 30000,
+  });
+
+  const currentShow = useMemo(() => {
+    const schedule = Array.isArray(scheduleData) ? scheduleData : [];
+    const now = new Date();
+    const currentDay = now.getDay();
+    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+    return schedule.find((show: any) => {
+      const start = convertToLocalTime(show.day_of_week, show.start_time);
+      const end = convertToLocalTime(show.day_of_week, show.end_time);
+
+      const crossesMidnight = start.timeStr > end.timeStr;
+      if (!crossesMidnight) {
+        if (start.dayOfWeek !== currentDay) return false;
+        return start.timeStr <= currentTime && end.timeStr > currentTime;
+      }
+
+      return (
+        (start.dayOfWeek === currentDay && currentTime >= start.timeStr) ||
+        (end.dayOfWeek === currentDay && currentTime < end.timeStr)
+      );
+    });
+  }, [scheduleData]);
+
   const load = () => {
     fetchAdmin("/api/admin/shoutouts").then(r => r.json()).then(data => {
       setShoutouts(Array.isArray(data) ? data : []);
@@ -65,11 +95,13 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
       return;
     }
 
-    const headers = ["ID", "Timestamp", "Email", "Message", "Type"];
+    const headers = ["ID", "Timestamp", "Email", "DJ", "Show", "Message", "Type"];
     const rows = shoutouts.map(s => [
       s.id,
       new Date(s.timestamp).toISOString(),
       `"${(s.listener_name || "").replace(/"/g, '""')}"`,
+      `"${(s.dj_name || "Unassigned").replace(/"/g, '""')}"`,
+      `"${(s.show_name || "").replace(/"/g, '""')}"`,
       `"${(s.message || "").replace(/"/g, '""')}"`,
       s.type
     ]);
@@ -129,6 +161,28 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
         </div>
       </div>
 
+      <div className="glass-panel rounded-2xl border border-neon-purple/20 bg-neon-purple/10 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="w-11 h-11 rounded-xl bg-neon-purple/20 border border-neon-purple/30 flex items-center justify-center shrink-0">
+            <Radio className="w-5 h-5 text-neon-purple" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40">DJ playing right now</p>
+            <h4 className="text-xl sm:text-2xl font-display font-black uppercase tracking-tight text-neon-purple truncate">
+              {currentShow?.dj_name || "No scheduled DJ"}
+            </h4>
+          </div>
+        </div>
+        <div className="sm:text-right min-w-0">
+          <p className="text-xs font-bold text-white/70 truncate">{currentShow?.show_name || "Schedule is clear"}</p>
+          {currentShow && (
+            <p className="text-[10px] font-black uppercase tracking-widest text-white/30 mt-1">
+              {currentShow.start_time} - {currentShow.end_time}
+            </p>
+          )}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {shoutouts.length === 0 && !loading && (
           <div className="col-span-full py-20 text-center glass-panel rounded-3xl border-dashed">
@@ -172,6 +226,18 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
                 >
                   <X className="w-4 h-4" />
                 </button>
+              </div>
+
+              <div className="relative z-10 mb-4 flex items-center justify-between gap-3 rounded-xl border border-neon-purple/20 bg-neon-purple/10 px-3 py-2">
+                <div className="min-w-0">
+                  <p className="text-[8px] font-black uppercase tracking-[0.22em] text-white/35">For DJ</p>
+                  <p className="text-xs font-black uppercase tracking-tight text-neon-purple truncate">{s.dj_name || 'Unassigned'}</p>
+                </div>
+                {s.show_name && (
+                  <span className="text-[8px] font-black uppercase tracking-widest text-white/35 truncate max-w-[45%]">
+                    {s.show_name}
+                  </span>
+                )}
               </div>
 
               <div className="relative z-10">
