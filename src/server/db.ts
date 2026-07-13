@@ -319,6 +319,16 @@ export function initDb() {
       position TEXT DEFAULT 'bottom',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS api_keys (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      key_hash TEXT NOT NULL UNIQUE,
+      key_prefix TEXT NOT NULL,
+      description TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_used_at DATETIME
+    );
+    CREATE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys(key_prefix);
   `);
 
   try {
@@ -376,6 +386,7 @@ export function initDb() {
   runMigration('backup_frequency_hours_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('backup_frequency_hours', '24');");
   runMigration('ad_auto_scroll_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('ad_auto_scroll', '1');");
   runMigration('chat_room_retention_settings_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('chat_auto_delete_enabled', '0'), ('chat_auto_delete_hours', '24'), ('chat_auto_delete_last_run', '');");
+  runMigration('shoutout_reply_fields', "ALTER TABLE shoutouts ADD COLUMN reply_text TEXT; ALTER TABLE shoutouts ADD COLUMN replied_by TEXT; ALTER TABLE shoutouts ADD COLUMN replied_at DATETIME;");
   runMigration('user_avatar_field', "ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT NULL;");
   runMigration('user_email_field', "ALTER TABLE users ADD COLUMN email TEXT DEFAULT NULL;");
   runMigration('user_password_plain_field', "ALTER TABLE users ADD COLUMN password_plain TEXT DEFAULT NULL;");

@@ -24,6 +24,7 @@ import { AdminBackup } from "./admin/AdminBackup";
 import { AdminAds } from "./admin/AdminAds";
 import { AdminSEO } from "./admin/AdminSEO";
 import { AdminMedia } from "./admin/AdminMedia";
+import { AdminApiKeys } from "./admin/AdminApiKeys";
 import { useLogo } from "../hooks/useLogo";
 
 export default function Admin() {
@@ -164,6 +165,7 @@ export default function Admin() {
                   <Route path="/chat-room-setting" element={isAdminUser ? <AdminChatRoomSettings /> : <Navigate to="/admin" replace />} />
                   <Route path="/audit-logs" element={isAdminUser ? <AdminAuditLogs /> : <Navigate to="/admin" replace />} />
                   <Route path="/backup" element={isAdminUser ? <AdminBackup /> : <Navigate to="/admin" replace />} />
+                  <Route path="/api-keys" element={isAdminUser ? <AdminApiKeys /> : <Navigate to="/admin" replace />} />
 
                   <Route path="*" element={<Navigate to="/admin" replace />} />
                 </Routes>

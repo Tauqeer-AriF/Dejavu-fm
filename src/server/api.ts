@@ -12,6 +12,7 @@ import multer from "multer";
 import fs from "fs";
 import * as tar from "tar";
 import { parse } from 'csv-parse/sync';
+import { Server } from "socket.io";
 // `sharp` is optional at runtime; dynamically import when needed to avoid startup failure
 
 export const apiRouter = Router();
@@ -1397,6 +1398,45 @@ apiRouter.delete("/admin/shoutouts/:id", (req, res) => {
   res.json({ success: true });
 });
 
+apiRouter.post("/admin/shoutouts/:id/reply", authMiddleware, (req: any, res: any) => {
+  const { id } = req.params;
+  const { reply_text } = req.body;
+
+  if (!reply_text) {
+    return res.status(400).json({ error: "Reply text cannot be empty." });
+  }
+
+  const info = db.prepare(`
+    UPDATE shoutouts 
+    SET reply_text = ?, replied_by = ?, replied_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(reply_text, req.user.username, id);
+
+  const shoutout = db.prepare("SELECT listener_name FROM shoutouts WHERE id = ?").get(id) as { listener_name: string };
+  if (shoutout) {
+    const io = req.app.get('io') as Server;
+    const listenerName = shoutout.listener_name;
+
+    // Senior Dev Fix: The listener_name is an email. We need to find the user's username from that email.
+    const user = db.prepare("SELECT username FROM users WHERE LOWER(email) = ?").get(listenerName.toLowerCase()) as { username: string } | undefined;
+    const targetUsername = user?.username;
+
+    if (targetUsername) {
+      // Now find the socket for that username.
+      for (const [_, socket] of io.sockets.sockets) {
+        const socketUser = (socket as any).username;
+        if (socketUser && socketUser.toLowerCase() === targetUsername.toLowerCase()) {
+          socket.emit('shoutoutReply', { shoutoutId: id, repliedBy: req.user.username, replyText: reply_text });
+          break; // Found the user, no need to continue looping.
+        }
+      }
+    }
+  }
+
+  logAction(req, 'REPLY', 'shoutout', id, { reply_text });
+  res.json({ success: true, changes: info.changes });
+});
+
 apiRouter.put("/admin/settings", authorizeRole('admin'), (req, res) => {
   const updateStmt = db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value");
   
@@ -2250,6 +2290,67 @@ apiRouter.delete("/admin/ads/:id", authMiddleware, authorizeRole('admin'), (req:
   logAction(req, 'DELETE', 'advertisement', req.params.id);
   res.json({ success: true });
 });
+
+// API Key Management
+apiRouter.get("/admin/api-keys", authorizeRole('admin'), (req: any, res: any) => {
+  const keys = db.prepare("SELECT id, key_prefix, description, created_at, last_used_at FROM api_keys ORDER BY created_at DESC").all();
+  res.json(keys);
+});
+
+apiRouter.post("/admin/api-keys", authorizeRole('admin'), (req: any, res: any) => {
+  const { description } = req.body;
+  let apiKey, keyPrefix, keyHash;
+  let attempts = 0;
+  const MAX_ATTEMPTS = 5;
+
+  try {
+    // Senior Dev: Add a retry loop to prevent rare prefix collisions.
+    while (attempts < MAX_ATTEMPTS) {
+      apiKey = `djfm_${crypto.randomBytes(24).toString('hex')}`;
+      keyPrefix = apiKey.substring(0, 8);
+      
+      const existing = db.prepare("SELECT id FROM api_keys WHERE key_prefix = ?").get(keyPrefix);
+      if (!existing) {
+        break; // Unique prefix found
+      }
+      attempts++;
+    }
+
+    if (attempts === MAX_ATTEMPTS) {
+      throw new Error("Failed to generate a unique API key prefix after multiple attempts.");
+    }
+
+    keyHash = bcrypt.hashSync(apiKey, 10);
+    const info = db.prepare("INSERT INTO api_keys (key_hash, key_prefix, description) VALUES (?, ?, ?)")
+      .run(keyHash, keyPrefix, description || "New API Key");
+    
+    logAction(req, 'CREATE', 'api_key', info.lastInsertRowid, { description });
+    
+    // Return the full key ONLY on creation
+    res.status(201).json({ 
+      id: info.lastInsertRowid, 
+      key: apiKey, 
+      key_prefix: keyPrefix,
+      description 
+    });
+  } catch (err) {
+    console.error("[API] Failed to create API key:", err);
+    res.status(500).json({ error: "Failed to create API key. It may already exist." });
+  }
+});
+
+apiRouter.delete("/admin/api-keys/:id", authorizeRole('admin'), (req: any, res: any) => {
+  const { id } = req.params;
+  const info = db.prepare("DELETE FROM api_keys WHERE id = ?").run(id);
+
+  if (info.changes > 0) {
+    logAction(req, 'DELETE', 'api_key', id);
+    res.json({ success: true });
+  } else {
+    res.status(404).json({ error: "API Key not found" });
+  }
+});
+
 
 // Global Error Handler Middleware
 apiRouter.use((err: any, req: Request, res: Response, next: NextFunction) => {

@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useNavigate, Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
-import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles } from "lucide-react";
+import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles, Send, Heart, ThumbsUp, Smile } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { useModal } from "../../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
@@ -13,6 +13,7 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
   const [shoutouts, setShoutouts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { showConfirm, showAlert } = useModal();
+  const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const { data: scheduleData = [] } = useQuery({
     queryKey: ['schedule'],
     queryFn: () => fetch("/api/public/schedule").then(res => res.json()),
@@ -199,6 +200,7 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9, x: 20 }}
+              layout
               className="glass-panel p-4 sm:p-6 rounded-[2rem] border border-white/5 transition-all relative group overflow-hidden hover:border-neon-purple/30"
             >
               <motion.div
@@ -250,6 +252,29 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
                 )}
               </div>
 
+              {s.reply_text ? (
+                <div className="relative z-10 mt-4 p-3 bg-neon-blue/10 border border-neon-blue/20 rounded-xl text-xs italic">
+                  <p className="text-white/80">"{s.reply_text}"</p>
+                  <p className="text-right text-[10px] font-bold uppercase tracking-widest text-neon-blue/60 mt-2">
+                    - Replied by {s.replied_by}
+                  </p>
+                </div>
+              ) : replyingTo === s.id ? (
+                <ReplyForm shoutoutId={s.id} onReplied={() => { setReplyingTo(null); load(); }} onCancel={() => setReplyingTo(null)} />
+              ) : (
+                <div className="relative z-10 mt-4 animate-in fade-in">
+                  <button
+                    onClick={() => setReplyingTo(s.id)}
+                    className="w-full flex items-center justify-center gap-2 py-2 bg-white/5 hover:bg-neon-purple/20 border border-white/10 hover:border-neon-purple/30 rounded-xl text-xs font-bold uppercase tracking-widest text-white/60 hover:text-white transition-all"
+                  >
+                    <Send className="w-3 h-3" />
+                    Reply to Shoutout
+                  </button>
+                </div>
+              )
+              }
+
+
               <div className="mt-6 flex items-center justify-between relative z-10">
                 <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded ${s.type === 'reaction' ? 'bg-neon-blue/20 text-neon-blue' : 'bg-neon-purple/20 text-neon-purple'}`}>
                   {s.type}
@@ -261,5 +286,53 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
         </AnimatePresence>
       </div>
     </div>
+  );
+}
+
+function ReplyForm({ shoutoutId, onReplied, onCancel }: { shoutoutId: number, onReplied: () => void, onCancel: () => void }) {
+  const [replyText, setReplyText] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const { showAlert } = useModal();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyText.trim()) return;
+
+    setIsSaving(true);
+    try {
+      const res = await fetchAdmin(`/api/admin/shoutouts/${shoutoutId}/reply`, {
+        method: 'POST',
+        body: { reply_text: replyText }
+      });
+      if (res.ok) {
+        onReplied();
+      } else {
+        showAlert({ title: "Error", message: "Failed to send reply.", style: "danger" });
+      }
+    } catch (err) {
+      showAlert({ title: "Error", message: "Network error.", style: "danger" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="relative z-10 mt-4 space-y-2 animate-in fade-in">
+      <textarea
+        value={replyText}
+        onChange={(e) => setReplyText(e.target.value)}
+        placeholder="Write a reply..."
+        rows={2}
+        className="w-full bg-dark-bg border border-white/10 rounded-xl p-2 text-xs focus:outline-none focus:border-neon-purple transition-colors"
+        autoFocus
+      />
+      <div className="flex justify-end gap-2">
+        <button type="button" onClick={onCancel} className="px-3 py-1 bg-white/5 text-white/50 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-white/10">Cancel</button>
+        <button type="submit" disabled={isSaving || !replyText.trim()} className="px-3 py-1 bg-neon-purple text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-neon-blue disabled:opacity-50 flex items-center gap-1.5">
+          <Send className="w-3 h-3" />
+          {isSaving ? 'Sending...' : 'Reply'}
+        </button>
+      </div>
+    </form>
   );
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Send, Heart, Flame, X, User, Sparkles, Mic2, Radio } from 'lucide-react';
+import { Send, Heart, Flame, X, User, Sparkles, Mic2, Radio, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean }) {
@@ -77,6 +77,30 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
     const handleRemoteOpen = () => setIsOpen(true);
     window.addEventListener('open-shoutout', handleRemoteOpen);
     return () => window.removeEventListener('open-shoutout', handleRemoteOpen);
+  }, []);
+
+
+  // Listen for direct replies to the user's shoutouts
+  useEffect(() => {
+    const socket = (window as any).socket;
+    if (socket) {
+      const handleReply = (data: { shoutoutId: string; repliedBy: string; replyText: string }) => {
+        const replyShoutout = {
+          id: `reply-${data.shoutoutId}-${Date.now()}`,
+          isReply: true,
+          listener_name: data.repliedBy,
+          message: `"${data.replyText}"`,
+        };
+
+        setRecentShoutouts(prev => {
+          if (prev.some(s => s.id === replyShoutout.id)) return prev;
+          return [replyShoutout, ...prev].slice(0, 3);
+        });
+      };
+
+      socket.on('shoutoutReply', handleReply);
+      return () => { socket.off('shoutoutReply', handleReply); };
+    }
   }, []);
 
   useEffect(() => {
@@ -198,14 +222,22 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
             initial={{ opacity: 0, x: 50, scale: 0.9 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 20, scale: 0.5 }}
-            className="hidden sm:flex bg-black/60 backdrop-blur-2xl border-l-4 border-l-neon-purple border-y border-r border-white/10 px-5 py-3 rounded-2xl shadow-2xl items-center space-x-4 pointer-events-auto max-w-[280px] sm:max-w-[320px]"
+            className="flex bg-black/60 backdrop-blur-2xl border-l-4 border-l-neon-purple border-y border-r border-white/10 px-5 py-3 rounded-2xl shadow-2xl items-center space-x-4 pointer-events-auto max-w-[280px] sm:max-w-[320px]"
           >
-             <div className="w-10 h-10 bg-neon-purple/10 rounded-xl flex items-center justify-center shrink-0 border border-neon-purple/20">
-                <Radio className="w-5 h-5 text-neon-purple" />
+             <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${s.isReply ? 'bg-neon-blue/10 border-neon-blue/20' : 'bg-neon-purple/10 border-neon-purple/20'}`}>
+                {s.isReply ? (
+                  <MessageSquare className="w-5 h-5 text-neon-blue" />
+                ) : (
+                  <Radio className="w-5 h-5 text-neon-purple" />
+                )}
              </div>
              <div className="min-w-0 flex-1">
-                <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] mb-0.5">Broadcast Alert</p>
-                <p className="text-[11px] font-bold text-neon-purple truncate tracking-tight mb-1">{s.listener_name}</p>
+                <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] mb-0.5">
+                  {s.isReply ? 'Reply from DJ' : 'Broadcast Alert'}
+                </p>
+                <p className={`text-[11px] font-bold truncate tracking-tight mb-1 ${s.isReply ? 'text-neon-blue' : 'text-neon-purple'}`}>
+                  {s.listener_name}
+                </p>
                 <p className="text-xs text-white/90 line-clamp-2 font-medium leading-relaxed italic">"{s.message}"</p>
              </div>
           </motion.div>

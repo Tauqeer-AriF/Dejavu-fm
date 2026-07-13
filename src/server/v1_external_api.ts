@@ -4,20 +4,32 @@ import { randomUUID } from "crypto";
 import path from "path";
 import fs from "fs";
 import { db, getUploadsDir } from "./db.ts";
+import bcrypt from "bcryptjs";
 
 export const externalApiRouter = Router();
 
 // Middleware for API Key Authentication
 const authenticateApiKey = (req: any, res: any, next: any) => {
   const apiKey = req.headers["x-api-key"];
-  
-  // In a real application, you might check this against a database of valid keys
-  const validKey = process.env.EXTERNAL_API_KEY || "dejavu-hub-secret-key-2024";
-  
-  if (!apiKey || apiKey !== validKey) {
+  if (!apiKey || typeof apiKey !== 'string' || !apiKey.startsWith('djfm_')) {
     return res.status(401).json({ error: "Unauthorized: Invalid or missing API Key" });
   }
-  next();
+
+  try {
+    const keyPrefix = apiKey.substring(0, 8);
+    const keyRecord = db.prepare("SELECT key_hash, description FROM api_keys WHERE key_prefix = ?").get(keyPrefix) as { key_hash: string, description: string } | undefined;
+
+    if (keyRecord && bcrypt.compareSync(apiKey, keyRecord.key_hash)) {
+      req.apiKeyMeta = { prefix: keyPrefix, description: keyRecord.description };
+      db.prepare("UPDATE api_keys SET last_used_at = CURRENT_TIMESTAMP WHERE key_prefix = ?").run(keyPrefix);
+      return next();
+    }
+  } catch (err) {
+    console.error('[External API] Key auth error:', err);
+    return res.status(500).json({ error: 'Server error during authentication' });
+  }
+
+  return res.status(401).json({ error: "Unauthorized: Invalid API Key" });
 };
 
 externalApiRouter.use(authenticateApiKey);
@@ -61,6 +73,46 @@ externalApiRouter.post("/media/upload", upload.single("file"), (req: any, res: a
     console.error("[External API] Media upload error:", error);
     res.status(500).json({ error: "Internal server error during upload" });
   }
+});
+
+// Endpoint: POST /api/v1/chat/messages
+externalApiRouter.post("/chat/messages", (req: any, res: any) => {
+  const { text, sender, imageUrl, audioUrl, videoUrl } = req.body;
+
+  if (!text && !imageUrl && !audioUrl && !videoUrl) {
+    return res.status(400).json({ error: "Message must contain text or a media URL" });
+  }
+
+  const io = req.app.get('io');
+  if (!io) {
+    return res.status(503).json({ error: "Chat service is currently unavailable" });
+  }
+
+  // Use the API key's description as the sender, or a fallback.
+  const senderName = sender || req.apiKeyMeta?.description || "API Client";
+
+  const newMsg = {
+    id: randomUUID(),
+    user: senderName,
+    text: text || null,
+    imageUrl: imageUrl || null,
+    audioUrl: audioUrl || null,
+    videoUrl: videoUrl || null,
+    timestamp: Date.now(),
+    isSystem: false,
+    // We can add a special property to identify API-sent messages
+    via: 'api' 
+  };
+
+  // The main server `chatMessage` handler will persist this to the DB and broadcast it.
+  // This keeps logic centralized.
+  io.emit('chatMessage', newMsg);
+
+  res.status(202).json({ 
+    success: true, 
+    message: "Message accepted for delivery",
+    messageId: newMsg.id
+  });
 });
 
 // Endpoint: POST /api/v1/messages

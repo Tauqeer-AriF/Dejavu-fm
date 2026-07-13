@@ -10,6 +10,7 @@ import http from "http";
 import { Server as SocketIOServer } from "socket.io";
 import crypto from "crypto";
 import helmet from "helmet";
+import bcrypt from "bcryptjs";
 import rateLimit from "express-rate-limit";
 
 let __filename = "";
@@ -304,6 +305,36 @@ async function startServer() {
     }
   };
 
+  // API Key authentication middleware for Socket.IO
+  io.use((socket, next) => {
+    const apiKey = socket.handshake.auth.apiKey;
+    if (!apiKey) {
+      // This is a regular user connection, not an API connection
+      return next();
+    }
+
+    if (typeof apiKey !== 'string' || !apiKey.startsWith('djfm_')) {
+      return next(new Error('Invalid API Key format'));
+    }
+
+    try {
+      const keyPrefix = apiKey.substring(0, 8);
+      const keyRecord = db.prepare("SELECT key_hash FROM api_keys WHERE key_prefix = ?").get(keyPrefix) as { key_hash: string } | undefined;
+
+      if (keyRecord && bcrypt.compareSync(apiKey, keyRecord.key_hash)) {
+        (socket as any).isApiClient = true;
+        console.log(`[Socket.IO] API Client authenticated successfully with key prefix: ${keyPrefix}`);
+        db.prepare("UPDATE api_keys SET last_used_at = CURRENT_TIMESTAMP WHERE key_prefix = ?").run(keyPrefix);
+        return next();
+      }
+    } catch (err) {
+      console.error('[Socket.IO] API Key auth error:', err);
+      return next(new Error('Server error during authentication'));
+    }
+
+    return next(new Error('Authentication error: Invalid API Key'));
+  });
+
   io.on('connection', (socket) => {
     const emitCounts = () => {
       const count = io.sockets.sockets.size;
@@ -492,7 +523,12 @@ async function startServer() {
            chatHistory.shift();
          }
          
-         io.emit('chatMessage', newMsg);
+         // Broadcast to all regular users
+         io.except('api_clients').emit('chatMessage', newMsg);
+         // Broadcast to all authenticated API clients
+         for (const [_, s] of io.sockets.sockets) {
+           if ((s as any).isApiClient) s.emit('message', newMsg);
+         }
        }
     });
   });
