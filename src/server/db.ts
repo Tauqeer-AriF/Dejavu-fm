@@ -73,7 +73,7 @@ const configureDb = (connection: any) => {
       console.warn('[DB] Failed to set WAL mode, falling back to default:', e);
     }
     connection.pragma('busy_timeout = 5000');
-    connection.pragma('synchronous = OFF'); // Faster for SSDs, though less crash-safe. 'NORMAL' is safer.
+    connection.pragma('synchronous = NORMAL'); // 'NORMAL' is a safer default than 'OFF'.
     connection.pragma('cache_size = 10000');
     connection.pragma('foreign_keys = ON');
   } catch (err) {
@@ -270,6 +270,9 @@ export function initDb() {
       dj_name TEXT,
       show_name TEXT,
       is_read INTEGER DEFAULT 0,
+      imageUrl TEXT,
+      audioUrl TEXT,
+      videoUrl TEXT,
       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -388,6 +391,7 @@ export function initDb() {
   runMigration('chat_room_retention_settings_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('chat_auto_delete_enabled', '0'), ('chat_auto_delete_hours', '24'), ('chat_auto_delete_last_run', '');");
   runMigration('shoutout_reply_fields', "ALTER TABLE shoutouts ADD COLUMN reply_text TEXT; ALTER TABLE shoutouts ADD COLUMN replied_by TEXT; ALTER TABLE shoutouts ADD COLUMN replied_at DATETIME;");
   runMigration('user_avatar_field', "ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT NULL;");
+  runMigration('shoutout_media_fields_v1', "ALTER TABLE shoutouts ADD COLUMN imageUrl TEXT; ALTER TABLE shoutouts ADD COLUMN audioUrl TEXT; ALTER TABLE shoutouts ADD COLUMN videoUrl TEXT;");
   runMigration('user_email_field', "ALTER TABLE users ADD COLUMN email TEXT DEFAULT NULL;");
   runMigration('user_password_plain_field', "ALTER TABLE users ADD COLUMN password_plain TEXT DEFAULT NULL;");
   runMigration('admin_email_field', "ALTER TABLE admins ADD COLUMN email TEXT;");

@@ -155,14 +155,13 @@ const attachmentUpload = multer({
 });
 
 // Specific Limiters for high-value targets
-const authLimiter = (req: Request, res: Response, next: NextFunction) => next(); // Disabled for diagnostics
-/*
 const authLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 20, // Limit to 20 attempts per hour
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Limit each IP to 10 login requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
   message: { error: "Too many login attempts. Please try again in an hour." }
 });
-*/
 
 const shoutoutLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
@@ -358,41 +357,24 @@ apiRouter.post("/public/shoutout", shoutoutLimiter, (req, res) => {
     }
   }
 
-  const now = new Date();
-  const dayOfWeek = now.getDay();
-  const previousDay = (dayOfWeek + 6) % 7;
-  const currentTime = now.toTimeString().split(' ')[0].substring(0, 5);
-  const currentDj = db.prepare(`
-    SELECT s.dj_id, s.show_name, d.name as dj_name
-    FROM schedule s
-    JOIN djs d ON s.dj_id = d.id
-    WHERE (
-      s.day_of_week = ?
-      AND s.start_time <= ?
-      AND (s.end_time > ? OR s.end_time <= s.start_time)
-    ) OR (
-      s.day_of_week = ?
-      AND s.end_time <= s.start_time
-      AND s.end_time > ?
-    )
-    ORDER BY s.start_time DESC
-    LIMIT 1
-  `).get(dayOfWeek, currentTime, currentTime, previousDay, currentTime) as { dj_id: string; show_name: string; dj_name: string } | undefined;
-
-  const info = db.prepare("INSERT INTO shoutouts (listener_name, message, type, dj_id, dj_name, show_name) VALUES (?, ?, ?, ?, ?, ?)")
-    .run(email, message, type || 'text', currentDj?.dj_id || null, currentDj?.dj_name || null, currentDj?.show_name || null);
-  
-  const io = req.app.get('io');
-  if (io) {
-    io.emit('new_shoutout', {
-      id: info.lastInsertRowid,
+  // Use the centralized function from server.ts
+  const processAndBroadcastShoutout = req.app.get('processAndBroadcastShoutout');
+  if (processAndBroadcastShoutout) {
+    processAndBroadcastShoutout({
       listener_name: email,
-      message,
-      type,
-      dj_id: currentDj?.dj_id || null,
-      dj_name: currentDj?.dj_name || null,
-      show_name: currentDj?.show_name || null
+      message: message,
+      type: type || 'text'
     });
+  } else {
+    // Fallback in case the function isn't registered, though it should be.
+    console.error("[API] processAndBroadcastShoutout function not found on app context.");
+    const info = db.prepare("INSERT INTO shoutouts (listener_name, message, type) VALUES (?, ?, ?)")
+      .run(email, message, type || 'text');
+    const io = req.app.get('io') as Server;
+    const newShoutout = { id: info.lastInsertRowid, listener_name: email, message, type, timestamp: Date.now() };
+    io.emit('new_shoutout', newShoutout);
+
+    io.to('api_clients').emit('new_shoutout', newShoutout);
   }
   
   res.json({ success: true });

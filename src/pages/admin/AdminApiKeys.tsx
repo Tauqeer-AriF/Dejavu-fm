@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchAdmin } from "./adminApi";
 import { useModal } from "../../context/ModalContext";
-import { Key, Plus, Trash2, Copy, Code, Terminal, Send, Wifi, X } from "lucide-react";
+import { Key, Plus, Trash2, Copy, Code, Terminal, Send, Wifi, X, Mic2 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -136,10 +136,36 @@ sendMessage({ text: "Hello from my external app!" });
 // sendMessage({ 
 //   text: "Check out this picture!",
 //   imageUrl: "https://example.com/image.jpg" 
-// });
-`;
+// });`
+  
+  const nodeJsShoutoutExample = `const fetch = require('node-fetch');
 
-  const socketIoListenExample = `const { io } = require("socket.io-client");
+const API_KEY = "${generatedKey || 'YOUR_API_KEY'}";
+const API_URL = "${window.location.origin}/api/v1/shoutouts";
+
+async function sendShoutout(message, from) {
+  const response = await fetch(API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': API_KEY
+    },
+    body: JSON.stringify({ message: message, listener_name: from })
+  });
+  console.log(await response.json());
+}
+
+// Example 1: Sending a text shoutout
+sendShoutout("This is a test shoutout from my app!", "App User");
+
+// Example 2: Sending a shoutout with an image
+// sendShoutout({
+//   message: "Check out this pic!",
+//   listener_name: "VisualVibes",
+//   imageUrl: "https://example.com/shoutout.jpg"
+// });`;
+
+  const chatReceiveExample = `const { io } = require("socket.io-client");
 
 const API_KEY = "${generatedKey || 'YOUR_API_KEY'}";
 const SOCKET_URL = "${window.location.origin}";
@@ -148,19 +174,52 @@ const socket = io(SOCKET_URL, {
   auth: { apiKey: API_KEY }
 });
 
-socket.on('connect', () => {
-  console.log('Connected to chat stream via API key!');
+socket.on('connect', () => console.log('Connected to API stream!'));
+
+// Listen for new chat messages
+socket.on('chatMessage', (message) => {
+  console.log('New Chat Message Received:', message);
 });
 
-socket.on('message', (message) => {
-  // Receives all public chat messages
-  console.log('New Message:', message);
+socket.on('disconnect', () => console.log('Disconnected.'));`;
+
+  const shoutoutReceiveExample = `const { io } = require("socket.io-client");
+
+const API_KEY = "${generatedKey || 'YOUR_API_KEY'}";
+const SOCKET_URL = "${window.location.origin}";
+
+const socket = io(SOCKET_URL, {
+  auth: { apiKey: API_KEY }
 });
 
-socket.on('disconnect', () => {
-  console.log('Disconnected from chat stream.');
-});`;
+socket.on('connect', () => console.log('Connected to API stream!'));
 
+// Listen for new shoutouts
+socket.on('new_shoutout', (shoutout) => {
+  console.log('New Shoutout Received:', shoutout);
+});
+
+socket.on('disconnect', () => console.log('Disconnected.'));`;
+
+const SkeletonKey = () => (
+    <div className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl animate-pulse">
+      <div className="space-y-2">
+        <div className="h-4 bg-white/10 rounded w-32"></div>
+        <div className="h-3 bg-white/10 rounded w-48"></div>
+        <div className="h-2 bg-white/10 rounded w-40"></div>
+      </div>
+      <div className="w-8 h-8 bg-white/10 rounded-lg"></div>
+    </div>
+  );
+
+  const LoadingSkeleton = () => (
+    <div className="space-y-4">
+      <SkeletonKey />
+      <SkeletonKey />
+    </div>
+  );
+
+  
   return (
     <div className="space-y-8">
       <AnimatePresence>
@@ -243,7 +302,7 @@ socket.on('disconnect', () => {
 
       <div className="bg-dark-bg/50 border border-white/10 rounded-2xl p-6">
         <div className="space-y-4">
-          {isLoading && <p>Loading keys...</p>}
+          {isLoading && <LoadingSkeleton />}
           {error && <p className="text-red-500">Error: {error.message}</p>}
           {!isLoading && !error && Array.isArray(apiKeys) && apiKeys.length === 0 && (
             <p className="text-center text-white/50 py-4">No API keys have been generated yet.</p>
@@ -283,7 +342,15 @@ socket.on('disconnect', () => {
           </h3>
 
           <div className="space-y-2">
-            <h4 className="font-bold text-lg flex items-center gap-2"><Send className="w-5 h-5 text-neon-purple" /> Sending Messages (Node.js)</h4>
+            <h4 className="font-bold text-lg flex items-center gap-2"><Wifi className="w-5 h-5 text-neon-blue" /> 1. Chat Room Receiving</h4>
+            <p className="text-sm text-white/60">
+              Connect to the Socket.IO server to subscribe to the real-time public chat message stream.
+            </p>
+            <CodeBlock code={chatReceiveExample} language="javascript" />
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-bold text-lg flex items-center gap-2"><Send className="w-5 h-5 text-neon-purple" /> 2. Chat Room Sending</h4>
             <p className="text-sm text-white/60">
               Make a <code className="bg-white/10 px-1.5 py-0.5 rounded-md font-mono text-xs">POST</code> request to <code className="bg-white/10 px-1.5 py-0.5 rounded-md font-mono text-xs">/api/v1/chat/messages</code> with your key in the <code className="bg-white/10 px-1.5 py-0.5 rounded-md font-mono text-xs">X-API-Key</code> header.
             </p>
@@ -291,11 +358,19 @@ socket.on('disconnect', () => {
           </div>
 
           <div className="space-y-2">
-            <h4 className="font-bold text-lg flex items-center gap-2"><Wifi className="w-5 h-5 text-neon-blue" /> Receiving Messages (Node.js)</h4>
+            <h4 className="font-bold text-lg flex items-center gap-2"><Wifi className="w-5 h-5 text-neon-blue" /> 3. Shout Out Receiving</h4>
             <p className="text-sm text-white/60">
-              Connect to the Socket.IO server and provide your API key in the <code className="bg-white/10 px-1.5 py-0.5 rounded-md font-mono text-xs">auth</code> object to subscribe to the real-time message stream.
+              Connect to the Socket.IO server to subscribe to the real-time shoutout stream.
             </p>
-            <CodeBlock code={socketIoListenExample} language="javascript" />
+            <CodeBlock code={shoutoutReceiveExample} language="javascript" />
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-bold text-lg flex items-center gap-2"><Mic2 className="w-5 h-5 text-neon-purple" /> 4. Shout Out Sending</h4>
+            <p className="text-sm text-white/60">
+              Make a <code className="bg-white/10 px-1.5 py-0.5 rounded-md font-mono text-xs">POST</code> request to <code className="bg-white/10 px-1.5 py-0.5 rounded-md font-mono text-xs">/api/v1/shoutouts</code> with your key in the <code className="bg-white/10 px-1.5 py-0.5 rounded-md font-mono text-xs">X-API-Key</code> header.
+            </p>
+            <CodeBlock code={nodeJsShoutoutExample} language="javascript" />
           </div>
         </div>
       )}

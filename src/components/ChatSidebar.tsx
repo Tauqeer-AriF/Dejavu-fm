@@ -347,7 +347,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
         if (newArr.length > 100) newArr.shift();
         return newArr;
       });
-      if (msg.user !== loggedInUser && soundEnabledRef.current) {
+      if (msg.user !== loggedInUser && soundEnabledRef.current && document.visibilityState === 'visible') {
         playNotificationSound();
       }
     });
@@ -382,7 +382,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
           toast.info(`New message from ${msg.user.split('@')[0]}: ${msg.text ? (msg.text.length > 25 ? msg.text.substring(0, 25) + '...' : msg.text) : '🎵 Voice note or audio'}`);
         }
 
-        if (soundEnabledRef.current) {
+        if (soundEnabledRef.current && document.visibilityState === 'visible') {
           playNotificationSound();
         }
       }

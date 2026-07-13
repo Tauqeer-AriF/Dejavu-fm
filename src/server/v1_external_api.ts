@@ -9,7 +9,7 @@ import bcrypt from "bcryptjs";
 export const externalApiRouter = Router();
 
 // Middleware for API Key Authentication
-const authenticateApiKey = (req: any, res: any, next: any) => {
+const authenticateApiKey = async (req: any, res: any, next: any) => {
   const apiKey = req.headers["x-api-key"];
   if (!apiKey || typeof apiKey !== 'string' || !apiKey.startsWith('djfm_')) {
     return res.status(401).json({ error: "Unauthorized: Invalid or missing API Key" });
@@ -18,11 +18,13 @@ const authenticateApiKey = (req: any, res: any, next: any) => {
   try {
     const keyPrefix = apiKey.substring(0, 8);
     const keyRecord = db.prepare("SELECT key_hash, description FROM api_keys WHERE key_prefix = ?").get(keyPrefix) as { key_hash: string, description: string } | undefined;
-
-    if (keyRecord && bcrypt.compareSync(apiKey, keyRecord.key_hash)) {
-      req.apiKeyMeta = { prefix: keyPrefix, description: keyRecord.description };
-      db.prepare("UPDATE api_keys SET last_used_at = CURRENT_TIMESTAMP WHERE key_prefix = ?").run(keyPrefix);
-      return next();
+    if (keyRecord) {
+        const match = await bcrypt.compare(apiKey, keyRecord.key_hash);
+        if (match) {
+          req.apiKeyMeta = { prefix: keyPrefix, description: keyRecord.description };
+          db.prepare("UPDATE api_keys SET last_used_at = CURRENT_TIMESTAMP WHERE key_prefix = ?").run(keyPrefix);
+          return next();
+        }
     }
   } catch (err) {
     console.error('[External API] Key auth error:', err);
@@ -83,8 +85,8 @@ externalApiRouter.post("/chat/messages", (req: any, res: any) => {
     return res.status(400).json({ error: "Message must contain text or a media URL" });
   }
 
-  const io = req.app.get('io');
-  if (!io) {
+  const processAndBroadcastChatMessage = req.app.get('processAndBroadcastChatMessage');
+  if (!processAndBroadcastChatMessage) {
     return res.status(503).json({ error: "Chat service is currently unavailable" });
   }
 
@@ -106,7 +108,7 @@ externalApiRouter.post("/chat/messages", (req: any, res: any) => {
 
   // The main server `chatMessage` handler will persist this to the DB and broadcast it.
   // This keeps logic centralized.
-  io.emit('chatMessage', newMsg);
+  processAndBroadcastChatMessage(newMsg);
 
   res.status(202).json({ 
     success: true, 
@@ -114,6 +116,43 @@ externalApiRouter.post("/chat/messages", (req: any, res: any) => {
     messageId: newMsg.id
   });
 });
+
+// Endpoint: POST /api/v1/shoutouts
+externalApiRouter.post("/shoutouts", (req: any, res: any) => {
+  const { message, listener_name, type, imageUrl, audioUrl, videoUrl } = req.body;
+
+  if (!listener_name || (!message && !imageUrl && !audioUrl && !videoUrl)) {
+    return res.status(400).json({ error: "A listener_name and either a message or a media URL are required" });
+  }
+
+  const processAndBroadcastShoutout = req.app.get('processAndBroadcastShoutout');
+  if (!processAndBroadcastShoutout) {
+    return res.status(503).json({ error: "Interaction service is currently unavailable" });
+  }
+
+  // This uses the same logic as the public shoutout endpoint to assign it to the current DJ
+  const shoutoutData = {
+    id: 0, // Will be assigned by the database
+    listener_name: listener_name,
+    message: message,
+    type: type || 'text',
+    imageUrl: imageUrl || null,
+    audioUrl: audioUrl || null,
+    videoUrl: videoUrl || null,
+    // We can add a special property to identify API-sent shoutouts
+    via: 'api' 
+  };
+
+  // The main server `new_shoutout` handler will persist this to the DB and broadcast it.
+  // This keeps logic centralized.
+  processAndBroadcastShoutout(shoutoutData);
+
+  res.status(202).json({ 
+    success: true, 
+    message: "Shoutout accepted for delivery"
+  });
+});
+
 
 // Endpoint: POST /api/v1/messages
 externalApiRouter.post("/messages", (req: any, res: any) => {

@@ -70,8 +70,29 @@ async function startServer() {
 
   // Security Headers
   app.use(helmet({
-    contentSecurityPolicy: false, 
-    crossOriginEmbedderPolicy: false,
+    crossOriginEmbedderPolicy: false, // Keep this false if you need to embed content that doesn't support COEP
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'", // Required for Vite's client in dev and some inline scripts. Review for production.
+          "https://dejavufmstore.secure-decoration.com",
+          "https://player.twitch.tv",
+        ],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        imgSrc: ["'self'", "data:", "https:", "http:"], // Allows images from any http/https source, data URIs, and self.
+        fontSrc: ["'self'", "https:", "data:"],
+        connectSrc: [
+          "'self'",
+          "ws:", // Allow websocket connections for Vite HMR
+          "wss:", // Allow secure websocket connections for Socket.IO
+          "https://*.dicebear.com",
+          "http://ip-api.com",
+        ],
+        frameSrc: ["'self'", "https://player.twitch.tv"],
+      },
+    },
   }));
 
   const io = new SocketIOServer(server, {
@@ -271,6 +292,55 @@ async function startServer() {
 
   app.set('clearChatRoomData', clearAllChatRoomData);
 
+  /**
+   * Centralized function to process, save, and broadcast a new chat message.
+   * This is used by both the internal chat and the external API.
+   */
+  const processAndBroadcastChatMessage = (msg: any) => {
+    if (!db.open) return;    
+    const io = app.get('io');
+
+    let avatar_url = null;
+    try {
+      const senderAdmin = db.prepare("SELECT photo_url FROM admins WHERE LOWER(username) = ?").get(msg.user.toLowerCase()) as any;
+      if (senderAdmin && senderAdmin.photo_url) {
+        avatar_url = senderAdmin.photo_url;
+      } else {
+        const user = db.prepare("SELECT avatar_url FROM users WHERE username = ?").get(msg.user) as any;
+        if (user) avatar_url = user.avatar_url;
+      }
+    } catch (err) {
+      console.error("Failed to query user avatar for chat:", err);
+    }
+
+    const newMsg = { 
+      ...msg, 
+      id: crypto.randomUUID(),
+      timestamp: Date.now(),
+      avatar_url: avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${msg.user}`
+    };
+
+    try {
+      db.prepare("INSERT INTO public_messages (id, sender, text, imageUrl, imageName, audioUrl, audioName, videoUrl, videoName, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        .run(newMsg.id, newMsg.user, newMsg.text || null, newMsg.imageUrl || null, newMsg.imageName || null, newMsg.audioUrl || null, newMsg.audioName || null, newMsg.videoUrl || null, newMsg.videoName || null, newMsg.timestamp);
+      emitChatRoomCounts();
+    } catch (err) {
+      console.error("Failed to save public message:", err);
+    }
+
+    chatHistory.push(newMsg);
+    dispatchWebhook(newMsg).catch(console.error);
+    
+    // Efficiently maintain maximum history size
+    while (chatHistory.length > MAX_CHAT_HISTORY) {
+      chatHistory.shift();
+    }
+    
+    // Broadcast to all clients
+    io.emit('chatMessage', newMsg);
+  };
+  app.set('processAndBroadcastChatMessage', processAndBroadcastChatMessage);
+
   const dispatchWebhook = async (msg: any) => {
     const webhookUrl = process.env.HUB_WEBHOOK_URL;
     if (!webhookUrl) return;
@@ -306,14 +376,14 @@ async function startServer() {
   };
 
   // API Key authentication middleware for Socket.IO
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
     const apiKey = socket.handshake.auth.apiKey;
     if (!apiKey) {
       // This is a regular user connection, not an API connection
       return next();
     }
 
-    if (typeof apiKey !== 'string' || !apiKey.startsWith('djfm_')) {
+    if (typeof apiKey !== 'string' || !apiKey.startsWith('djfm_')) { // Corrected from djfm_ to djfm_
       return next(new Error('Invalid API Key format'));
     }
 
@@ -321,11 +391,15 @@ async function startServer() {
       const keyPrefix = apiKey.substring(0, 8);
       const keyRecord = db.prepare("SELECT key_hash FROM api_keys WHERE key_prefix = ?").get(keyPrefix) as { key_hash: string } | undefined;
 
-      if (keyRecord && bcrypt.compareSync(apiKey, keyRecord.key_hash)) {
+      if (keyRecord) {
+        const match = await bcrypt.compare(apiKey, keyRecord.key_hash);
+        if (match) {
         (socket as any).isApiClient = true;
         console.log(`[Socket.IO] API Client authenticated successfully with key prefix: ${keyPrefix}`);
+        socket.join('api_clients'); // Add the client to a dedicated room
         db.prepare("UPDATE api_keys SET last_used_at = CURRENT_TIMESTAMP WHERE key_prefix = ?").run(keyPrefix);
         return next();
+        }
       }
     } catch (err) {
       console.error('[Socket.IO] API Key auth error:', err);
@@ -460,29 +534,10 @@ async function startServer() {
     });
 
     socket.on('chatMessage', (msg) => {
-       if (!db.open) return;
-       let avatar_url = null;
-       try {
-         const senderAdmin = db.prepare("SELECT photo_url FROM admins WHERE LOWER(username) = ?").get(msg.user.toLowerCase()) as any;
-         if (senderAdmin && senderAdmin.photo_url) {
-           avatar_url = senderAdmin.photo_url;
-         } else {
-           const user = db.prepare("SELECT avatar_url FROM users WHERE username = ?").get(msg.user) as any;
-           if (user) {
-             avatar_url = user.avatar_url;
-           }
-         }
-       } catch (err) {
-         console.error("Failed to query user avatar for chat:", err);
-       }
-       const newMsg = { 
-         ...msg, 
-         avatar_url: avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${msg.user}`,
-         timestamp: Date.now(), 
-         id: crypto.randomUUID() 
-       };
-
        if (msg.recipient) {
+         // Private message logic remains here as it's not part of the public API endpoint
+         if (!db.open) return;
+         const newMsg = { ...msg, id: crypto.randomUUID(), timestamp: Date.now() }; // Simplified for PM
          try {
            db.prepare("INSERT INTO private_messages (id, sender, recipient, text, imageUrl, imageName, audioUrl, audioName, videoUrl, videoName, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
              .run(newMsg.id, msg.user, msg.recipient, msg.text || null, msg.imageUrl || null, msg.imageName || null, msg.audioUrl || null, msg.audioName || null, msg.videoUrl || null, msg.videoName || null, newMsg.timestamp);
@@ -490,7 +545,6 @@ async function startServer() {
          } catch (err) {
            console.error("Failed to save private message:", err);
          }
-
          // Emit to matching sockets (sender, recipient, and any admins)
          for (const [_, s] of io.sockets.sockets) {
            const socketUser = (s as any).username;
@@ -508,29 +562,55 @@ async function startServer() {
            }
          }
        } else {
-         try {
-           db.prepare("INSERT INTO public_messages (id, sender, text, imageUrl, imageName, audioUrl, audioName, videoUrl, videoName, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-             .run(newMsg.id, msg.user, msg.text || null, msg.imageUrl || null, msg.imageName || null, msg.audioUrl || null, msg.audioName || null, msg.videoUrl || null, msg.videoName || null, newMsg.timestamp);
-           emitChatRoomCounts();
-         } catch (err) {
-           console.error("Failed to save public message:", err);
-         }
-         chatHistory.push(newMsg);
-         dispatchWebhook(newMsg).catch(console.error);
-         
-         // Efficiently maintain maximum history size
-         while (chatHistory.length > MAX_CHAT_HISTORY) {
-           chatHistory.shift();
-         }
-         
-         // Broadcast to all regular users
-         io.except('api_clients').emit('chatMessage', newMsg);
-         // Broadcast to all authenticated API clients
-         for (const [_, s] of io.sockets.sockets) {
-           if ((s as any).isApiClient) s.emit('message', newMsg);
-         }
+         // Public messages are now handled by the centralized function
+         processAndBroadcastChatMessage(msg);
        }
     });
+
+     /**
+   * Centralized function to process, save, and broadcast a new shoutout.
+   * This is used by both the public widget and the external API.
+   */
+  const processAndBroadcastShoutout = (shoutoutData: { listener_name: string; message: string; type?: string; imageUrl?: string; audioUrl?: string; videoUrl?: string; }) => {
+    if (!db.open) return;
+
+    try {
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const previousDay = (dayOfWeek + 6) % 7;
+      const currentTime = now.toTimeString().split(' ')[0].substring(0, 5);
+      const currentDj = db.prepare(`
+        SELECT s.dj_id, s.show_name, d.name as dj_name
+        FROM schedule s
+        JOIN djs d ON s.dj_id = d.id
+        WHERE (
+          s.day_of_week = ? AND s.start_time <= ? AND (s.end_time > ? OR s.end_time <= s.start_time)
+        ) OR (
+          s.day_of_week = ? AND s.end_time <= s.start_time AND s.end_time > ?
+        )
+        ORDER BY s.start_time DESC LIMIT 1
+      `).get(dayOfWeek, currentTime, currentTime, previousDay, currentTime) as { dj_id: string; show_name: string; dj_name: string } | undefined;
+
+      const info = db.prepare("INSERT INTO shoutouts (listener_name, message, type, imageUrl, audioUrl, videoUrl, dj_id, dj_name, show_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        .run(shoutoutData.listener_name, shoutoutData.message, shoutoutData.type || 'text', shoutoutData.imageUrl || null, shoutoutData.audioUrl || null, shoutoutData.videoUrl || null, currentDj?.dj_id || null, currentDj?.dj_name || null, currentDj?.show_name || null);
+
+      const newShoutout = {
+        id: info.lastInsertRowid,
+        ...shoutoutData,
+        dj_id: currentDj?.dj_id || null,
+        dj_name: currentDj?.dj_name || null,
+        show_name: currentDj?.show_name || null,
+        timestamp: Date.now()
+      };
+
+      // Broadcast to all clients (dashboard, public widget, and API clients)
+      io.emit('new_shoutout', newShoutout);
+    } catch (err) {
+      console.error("[Shoutout] Failed to process and broadcast shoutout:", err);
+    }
+  };
+  app.set('processAndBroadcastShoutout', processAndBroadcastShoutout);
+
   });
 
   // Periodically broadcast counts to ensure all clients are synced

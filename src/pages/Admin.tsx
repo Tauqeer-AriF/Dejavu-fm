@@ -30,7 +30,7 @@ import { useLogo } from "../hooks/useLogo";
 export default function Admin() {
   const [isLogged, setIsLogged] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [isAdminUser, setIsAdminUser] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -41,9 +41,7 @@ export default function Admin() {
         if (res.ok) {
           const data = await res.json();
           setIsLogged(true);
-          if (data.user?.role === "admin") {
-            setIsAdminUser(true);
-          }
+          setUserRole(data.user?.role || null);
         }
       } catch (err) {
         console.error("[Admin Auth] Session check failed:", err);
@@ -59,7 +57,7 @@ export default function Admin() {
     fetchAdmin("/api/admin/logout", { method: "POST" }).then(() => {
       localStorage.removeItem("admin_token");
       setIsLogged(false);
-      setIsAdminUser(false);
+      setUserRole(null);
       navigate("/admin");
     });
   };
@@ -90,7 +88,7 @@ export default function Admin() {
         onPass={() => setIsLogged(false)}
         onLogin={(user) => {
           setIsLogged(true);
-          if (user?.role === "admin") setIsAdminUser(true);
+          setUserRole(user?.role || null);
         }}
       />
     );
@@ -109,7 +107,7 @@ export default function Admin() {
           transition={{ duration: 0.6 }}
           className="flex-1"
         >
-          <h1 className={`text-5xl md:text-5xl lg:text-5xl font-display font-black uppercase tracking-tighter leading-none ${isAdminUser ? 'text-[var(--theme-text)]' : 'text-white'}`}>
+          <h1 className={`text-5xl md:text-5xl lg:text-5xl font-display font-black uppercase tracking-tighter leading-none ${userRole === 'admin' ? 'text-[var(--theme-text)]' : 'text-white'}`}>
             Creator <span className="text-neon-purple">Dashboard</span>
           </h1>
           <div className="flex items-center space-x-4 mt-4">
@@ -131,7 +129,7 @@ export default function Admin() {
       </div>
 
       <div className="glass-panel min-h-[80vh] rounded-3xl flex flex-col md:flex-row overflow-hidden shadow-2xl relative z-10">
-        <AdminSidebar onLogout={handleLogout} isAdminUser={isAdminUser} />
+        <AdminSidebar onLogout={handleLogout} isAdminUser={userRole === 'admin'} />
         <div className="flex-1 p-4 md:p-8 lg:p-12 overflow-y-auto">
           <AnimatePresence mode="wait">
             <motion.div
@@ -144,28 +142,28 @@ export default function Admin() {
             >
               <Suspense fallback={<LoadingFallback />}>
                 <Routes location={location}>
-                  <Route path="/" element={<AdminAnalytics isAdminUser={isAdminUser} />} />
+                  <Route path="/" element={<AdminAnalytics isAdminUser={userRole === 'admin'} />} />
                   <Route path="/live-tools" element={<AdminLiveTools />} />
                   <Route path="/djs" element={<AdminDJs />} />
                   <Route path="/features" element={<AdminFeatures />} />
                   <Route path="/popup" element={<AdminPopup />} />
                   <Route path="/ads" element={<AdminAds />} />
-                  <Route path="/shoutouts" element={<AdminShoutouts isAdminUser={isAdminUser} />} />
+                  <Route path="/shoutouts" element={<AdminShoutouts isAdminUser={userRole === 'admin'} />} />
                   <Route path="/bookings" element={<AdminBookings />} />
                   <Route path="/schedule" element={<AdminSchedule />} />
                   <Route path="/profile" element={<AdminProfile />} />
 
-                  <Route path="/settings" element={isAdminUser ? <AdminSettings /> : <Navigate to="/admin" replace />} />
-                  <Route path="/seo" element={isAdminUser ? <AdminSEO /> : <Navigate to="/admin" replace />} />
-                  <Route path="/media" element={isAdminUser ? <AdminMedia /> : <Navigate to="/admin" replace />} />
-                  <Route path="/advanced" element={isAdminUser ? <AdminAdvanced /> : <Navigate to="/admin" replace />} />
-                  <Route path="/branding" element={isAdminUser ? <AdminBranding /> : <Navigate to="/admin" replace />} />
-                  <Route path="/users" element={isAdminUser ? <AdminUsers isAdminUser={isAdminUser} /> : <Navigate to="/admin" replace />} />
-                  <Route path="/chat-users" element={isAdminUser ? <AdminChatUsers isAdminUser={isAdminUser} /> : <Navigate to="/admin" replace />} />
-                  <Route path="/chat-room-setting" element={isAdminUser ? <AdminChatRoomSettings /> : <Navigate to="/admin" replace />} />
-                  <Route path="/audit-logs" element={isAdminUser ? <AdminAuditLogs /> : <Navigate to="/admin" replace />} />
-                  <Route path="/backup" element={isAdminUser ? <AdminBackup /> : <Navigate to="/admin" replace />} />
-                  <Route path="/api-keys" element={isAdminUser ? <AdminApiKeys /> : <Navigate to="/admin" replace />} />
+                  <Route path="/settings" element={userRole === 'admin' ? <AdminSettings /> : <Navigate to="/admin" replace />} />
+                  <Route path="/seo" element={userRole === 'admin' ? <AdminSEO /> : <Navigate to="/admin" replace />} />
+                  <Route path="/media" element={userRole === 'admin' ? <AdminMedia /> : <Navigate to="/admin" replace />} />
+                  <Route path="/advanced" element={userRole === 'admin' ? <AdminAdvanced /> : <Navigate to="/admin" replace />} />
+                  <Route path="/branding" element={userRole === 'admin' ? <AdminBranding /> : <Navigate to="/admin" replace />} />
+                  <Route path="/users" element={userRole === 'admin' ? <AdminUsers isAdminUser={userRole === 'admin'} /> : <Navigate to="/admin" replace />} />
+                  <Route path="/chat-users" element={userRole === 'admin' ? <AdminChatUsers isAdminUser={userRole === 'admin'} /> : <Navigate to="/admin" replace />} />
+                  <Route path="/chat-room-setting" element={userRole === 'admin' ? <AdminChatRoomSettings /> : <Navigate to="/admin" replace />} />
+                  <Route path="/audit-logs" element={userRole === 'admin' ? <AdminAuditLogs /> : <Navigate to="/admin" replace />} />
+                  <Route path="/backup" element={userRole === 'admin' ? <AdminBackup /> : <Navigate to="/admin" replace />} />
+                  <Route path="/api-keys" element={userRole === 'admin' ? <AdminApiKeys /> : <Navigate to="/admin" replace />} />
 
                   <Route path="*" element={<Navigate to="/admin" replace />} />
                 </Routes>
