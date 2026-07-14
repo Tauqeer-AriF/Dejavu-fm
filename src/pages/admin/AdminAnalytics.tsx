@@ -55,7 +55,7 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
         setError(errData.error || "Failed to fetch analytics data");
       }
     } catch (err) {
-      console.error("Failed to fetch analytics", err);
+      console.warn("Failed to fetch analytics (likely network error or blocked by ad-blocker).");
       setError("Network error: Could not reach the server");
     } finally {
       setLoading(false);

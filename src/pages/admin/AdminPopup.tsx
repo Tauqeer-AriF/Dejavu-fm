@@ -29,7 +29,7 @@ export function AdminPopup() {
   }, []);
 
   const loadPopups = () => {
-    fetchAdmin("/api/admin/popups").then(r => r.json()).then(setPopups);
+    fetchAdmin("/api/admin/site-alerts").then(r => r.json()).then(setPopups);
   };
 
   const loadSettings = () => {
@@ -59,7 +59,7 @@ export function AdminPopup() {
   const handleSave = async (e: any) => {
     e.preventDefault();
     try {
-      const res = await fetchAdmin("/api/admin/popups", {
+      const res = await fetchAdmin("/api/admin/site-alerts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -106,7 +106,7 @@ export function AdminPopup() {
   };
 
   const handleDelete = async (id: string) => {
-    const res = await fetchAdmin(`/api/admin/popups/${id}`, { method: "DELETE" });
+    const res = await fetchAdmin(`/api/admin/site-alerts/${id}`, { method: "DELETE" });
     if (res.ok) {
       showAlert({ title: "Deleted", message: "Pop-up removed.", style: "success" });
       loadPopups();

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Play, Calendar, Share2, Copy, Twitter, Facebook, X, Check } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
+import { useAudio } from "../context/AudioContext";
 
 function ShareModal({ podcast, isOpen, onClose }: { podcast: any, isOpen: boolean, onClose: () => void }) {
   const [copied, setCopied] = useState(false);
@@ -96,6 +97,7 @@ function ShareModal({ podcast, isOpen, onClose }: { podcast: any, isOpen: boolea
 }
 
 export default function PodcastDetail() {
+  const { isPlaying, togglePlay } = useAudio();
   const { id } = useParams();
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
@@ -222,6 +224,7 @@ export default function PodcastDetail() {
                   <audio 
                     controls 
                     onPlay={() => {
+                      if (isPlaying) togglePlay();
                       fetch('/api/public/analytics/podcast-play', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },

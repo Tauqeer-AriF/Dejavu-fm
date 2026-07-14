@@ -44,7 +44,7 @@ export default function Admin() {
           setUserRole(data.user?.role || null);
         }
       } catch (err) {
-        console.error("[Admin Auth] Session check failed:", err);
+        console.warn("[Admin Auth] Session check failed (likely network error or unauthenticated).");
       } finally {
         setLoading(false);
       }

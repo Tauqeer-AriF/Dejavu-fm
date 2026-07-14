@@ -44,6 +44,10 @@ function HeroVisualizer({ isPlaying, isLightMode }: { isPlaying: boolean; isLigh
     const render = () => {
       animationRef.current = requestAnimationFrame(render);
       const analyser = getAnalyser();
+      const style = getComputedStyle(document.documentElement);
+      const primaryColor = style.getPropertyValue('--color-neon-purple').trim() || '#b026ff';
+      const secondaryColor = style.getPropertyValue('--color-neon-blue').trim() || '#00d2ff';
+
       const width = canvas.width;
       const height = canvas.height;
       if (width === 0 || height === 0) return;
@@ -60,7 +64,7 @@ function HeroVisualizer({ isPlaying, isLightMode }: { isPlaying: boolean; isLigh
       
       ctx.beginPath();
       ctx.lineWidth = 1.5;
-      ctx.strokeStyle = 'color-mix(in srgb, var(--color-neon-purple) 40%, transparent)';
+      ctx.strokeStyle = primaryColor + '66'; // 40% opacity
       
       // Outer subtle ring
       ctx.arc(centerX, centerY, baseSize * 1.4, 0, Math.PI * 2);
@@ -69,7 +73,7 @@ function HeroVisualizer({ isPlaying, isLightMode }: { isPlaying: boolean; isLigh
       ctx.beginPath();
       ctx.lineWidth = 3;
       ctx.strokeStyle = isPlaying 
-        ? 'color-mix(in srgb, var(--color-neon-purple) 60%, transparent)' 
+        ? primaryColor + '99' // 60% opacity
         : isLightMode 
           ? 'rgba(0, 0, 0, 0.6)' 
           : 'rgba(255, 255, 255, 0.6)';
@@ -101,11 +105,11 @@ function HeroVisualizer({ isPlaying, isLightMode }: { isPlaying: boolean; isLigh
         const dotY = centerY + Math.sin(orbitAngle) * orbitRadius;
         
         ctx.beginPath();
-        ctx.fillStyle = i === 0 ? 'var(--color-neon-purple)' : 'var(--color-neon-blue)';
+        ctx.fillStyle = i === 0 ? primaryColor : secondaryColor;
         ctx.arc(dotX, dotY, 3, 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowBlur = 15;
-        ctx.shadowColor = i === 0 ? 'var(--color-neon-purple)' : 'var(--color-neon-blue)';
+        ctx.shadowColor = i === 0 ? primaryColor : secondaryColor;
       }
       ctx.shadowBlur = 0;
 
@@ -114,7 +118,7 @@ function HeroVisualizer({ isPlaying, isLightMode }: { isPlaying: boolean; isLigh
       const glowScale = 1 + (avg / 255) * 0.5;
       
       const gradient = ctx.createRadialGradient(centerX, centerY, 50, centerX, centerY, baseSize * 1.2 * glowScale);
-      gradient.addColorStop(0, 'color-mix(in srgb, var(--color-neon-purple) 10%, transparent)');
+      gradient.addColorStop(0, primaryColor + '1a'); // 10% opacity
       gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
       
       ctx.fillStyle = gradient;

@@ -54,7 +54,7 @@ function getEmbedUrl(url: string | null) {
         const uniqueParents = Array.from(new Set([...parents, ...existingParents].filter(Boolean)));
         const parentParams = uniqueParents.map(p => `parent=${p}`).join('&');
         
-        return `https://player.twitch.tv/?autoplay=true&muted=true&channel=${channel}&${parentParams}`;
+        return `https://player.twitch.tv/?autoplay=true&muted=false&channel=${channel}&${parentParams}`;
       }
     }
     
@@ -114,10 +114,18 @@ export default function WatchLive() {
     refetchInterval: 3000,
   });
 
-  const { onAirInfo } = useAudio();
+  const { onAirInfo, isPlaying, togglePlay } = useAudio();
 
   const studioVideoUrl = settings?.studio_video_url || studioVideoUrlState;
   const featChat = settings?.feat_chat !== '0';
+
+  useEffect(() => {
+    // Pause background radio if it's playing so the video audio can be heard
+    if (isPlaying) {
+      togglePlay();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     // Check initial auth state

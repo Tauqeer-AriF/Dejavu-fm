@@ -19,7 +19,7 @@ export function SitePopup() {
           if (settings.popup_delay) delay = parseInt(settings.popup_delay);
         }
 
-        const res = await fetch("/api/public/popups");
+        const res = await fetch("/api/public/site-alerts");
         if (!res.ok) return;
         const contentType = res.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
@@ -38,7 +38,7 @@ export function SitePopup() {
           }, delay);
         }
       } catch (err) {
-        console.error("Popup fetch failed", err);
+        console.warn("Site alerts fetch failed (likely network error).");
       }
     };
     
