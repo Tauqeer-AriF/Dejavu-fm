@@ -12,6 +12,25 @@ import { useLogo } from "../../hooks/useLogo";
 export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
   const { isLightMode } = useLogo();
   const [stats, setStats] = useState<any>(null);
+  const { data: settings = {} } = useQuery({
+    queryKey: ['settings'],
+    queryFn: () => fetch('/api/public/settings').then(res => res.json()),
+  });
+
+  const primaryColor = settings?.primary_color || '#b026ff';
+  const secondaryColor = settings?.secondary_color || '#00d2ff';
+
+  const getBrandColor = (index: number) => {
+    const colors = [
+      primaryColor,
+      secondaryColor,
+      '#facc15', // yellow
+      '#10b981', // emerald
+      '#6b7280'  // grey
+    ];
+    return colors[index % colors.length];
+  };
+
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState("all");
   const { showAlert, showConfirm } = useModal();
@@ -278,8 +297,8 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
                 <AreaChart data={stats.retentionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorListeners" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#00d2ff" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#00d2ff" stopOpacity={0}/>
+                      <stop offset="5%" stopColor={secondaryColor} stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor={secondaryColor} stopOpacity={0}/>
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke={isLightMode ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.05)"} />
@@ -292,9 +311,9 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
                       borderRadius: '12px',
                       color: isLightMode ? '#111827' : '#ffffff'
                     }}
-                    itemStyle={{ color: '#00d2ff' }}
+                    itemStyle={{ color: secondaryColor }}
                   />
-                  <Area type="monotone" dataKey="listeners" stroke="#00d2ff" fillOpacity={1} fill="url(#colorListeners)" strokeWidth={3} />
+                  <Area type="monotone" dataKey="listeners" stroke={secondaryColor} fillOpacity={1} fill="url(#colorListeners)" strokeWidth={3} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -326,7 +345,7 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
                       dataKey="value"
                     >
                       {stats.geoData.map((entry: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                        <Cell key={`cell-${index}`} fill={getBrandColor(index)} stroke="none" />
                       ))}
                     </Pie>
                     <Tooltip />
@@ -334,10 +353,10 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
                 </ResponsiveContainer>
               </div>
               <div className="flex-1 space-y-4 w-full">
-                {stats.geoData.map((g: any) => (
+                {stats.geoData.map((g: any, index: number) => (
                   <div key={g.name} className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: g.color }} />
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: getBrandColor(index) }} />
                       <span className={`text-sm font-semibold ${isLightMode ? 'text-black' : 'text-white'}`}>{g.name}</span>
                     </div>
                     <span className={`text-sm ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>{g.value}%</span>
@@ -385,7 +404,7 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
                   />
                   <Bar dataKey="plays" radius={[0, 4, 4, 0]} barSize={24}>
                     {stats.topPodcasts.map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                      <Cell key={`cell-${index}`} fill={getBrandColor(index)} />
                     ))}
                   </Bar>
                 </BarChart>

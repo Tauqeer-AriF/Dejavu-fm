@@ -60,7 +60,7 @@ function HeroVisualizer({ isPlaying, isLightMode }: { isPlaying: boolean; isLigh
       
       ctx.beginPath();
       ctx.lineWidth = 1.5;
-      ctx.strokeStyle = 'rgba(176, 38, 255, 0.4)';
+      ctx.strokeStyle = 'color-mix(in srgb, var(--color-neon-purple) 40%, transparent)';
       
       // Outer subtle ring
       ctx.arc(centerX, centerY, baseSize * 1.4, 0, Math.PI * 2);
@@ -68,7 +68,11 @@ function HeroVisualizer({ isPlaying, isLightMode }: { isPlaying: boolean; isLigh
 
       ctx.beginPath();
       ctx.lineWidth = 3;
-      ctx.strokeStyle = `rgba(${isPlaying ? '176, 38, 255' : isLightMode ? '0, 0, 0' : '255, 255, 255'}, 0.6)`;
+      ctx.strokeStyle = isPlaying 
+        ? 'color-mix(in srgb, var(--color-neon-purple) 60%, transparent)' 
+        : isLightMode 
+          ? 'rgba(0, 0, 0, 0.6)' 
+          : 'rgba(255, 255, 255, 0.6)';
       
       for (let i = 0; i < dataArray.length; i += 4) {
         const value = dataArray[i];
@@ -97,11 +101,11 @@ function HeroVisualizer({ isPlaying, isLightMode }: { isPlaying: boolean; isLigh
         const dotY = centerY + Math.sin(orbitAngle) * orbitRadius;
         
         ctx.beginPath();
-        ctx.fillStyle = i === 0 ? '#b026ff' : '#00d2ff';
+        ctx.fillStyle = i === 0 ? 'var(--color-neon-purple)' : 'var(--color-neon-blue)';
         ctx.arc(dotX, dotY, 3, 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowBlur = 15;
-        ctx.shadowColor = ctx.fillStyle as string;
+        ctx.shadowColor = i === 0 ? 'var(--color-neon-purple)' : 'var(--color-neon-blue)';
       }
       ctx.shadowBlur = 0;
 
@@ -110,7 +114,7 @@ function HeroVisualizer({ isPlaying, isLightMode }: { isPlaying: boolean; isLigh
       const glowScale = 1 + (avg / 255) * 0.5;
       
       const gradient = ctx.createRadialGradient(centerX, centerY, 50, centerX, centerY, baseSize * 1.2 * glowScale);
-      gradient.addColorStop(0, 'rgba(176, 38, 255, 0.1)');
+      gradient.addColorStop(0, 'color-mix(in srgb, var(--color-neon-purple) 10%, transparent)');
       gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
       
       ctx.fillStyle = gradient;

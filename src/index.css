@@ -386,11 +386,11 @@ button:not(.absolute) {
 }
 
 .admin-light-mode .admin-page-wrapper .text-neon-purple {
-  color: #b026ff !important;
+  color: var(--color-neon-purple) !important;
 }
 
 .admin-light-mode .admin-page-wrapper .text-neon-blue {
-  color: #00d2ff !important;
+  color: var(--color-neon-blue) !important;
 }
 
 /* Prevent text color change on buttons/elements with solid brand/status backgrounds */
@@ -494,8 +494,8 @@ button:not(.absolute) {
 .admin-light-mode .admin-dashboard-container input:not([type="checkbox"]):not([type="radio"]):focus,
 .admin-light-mode .admin-dashboard-container select:focus,
 .admin-light-mode .admin-dashboard-container textarea:focus {
-  border-color: #b026ff !important;
-  box-shadow: 0 0 0 1px #b026ff !important;
+  border-color: var(--color-neon-purple) !important;
+  box-shadow: 0 0 0 1px var(--color-neon-purple) !important;
 }
 
 .admin-light-mode .admin-dashboard-container input::placeholder,
@@ -512,16 +512,16 @@ button:not(.absolute) {
 
 /* Ensure the sidebar toggle remains fully visible with high contrast */
 .admin-sidebar-toggle {
-  background-color: #b026ff !important;
+  background-color: var(--color-neon-purple) !important;
   border-color: rgba(255, 255, 255, 0.3) !important;
   color: #ffffff !important;
-  box-shadow: 0 4px 12px rgba(176, 38, 255, 0.3) !important;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-neon-purple) 30%, transparent) !important;
 }
 .admin-sidebar-toggle * {
   color: #ffffff !important;
 }
 .admin-sidebar-toggle:hover {
-  background-color: #9d13f0 !important;
+  background-color: color-mix(in srgb, var(--color-neon-purple) 85%, #000000) !important;
   transform: scale(1.1);
 }
 
@@ -550,9 +550,9 @@ button:not(.absolute) {
 
 /* Active Sidebar Navigation Links */
 .admin-light-mode .admin-dashboard-container a[class*="bg-neon-purple\/20"] {
-  background-color: rgba(176, 38, 255, 0.1) !important;
-  color: #9333ea !important;
-  box-shadow: inset 0 0 12px rgba(176, 38, 255, 0.08) !important;
+  background-color: color-mix(in srgb, var(--color-neon-purple) 10%, transparent) !important;
+  color: var(--color-neon-purple) !important;
+  box-shadow: inset 0 0 12px color-mix(in srgb, var(--color-neon-purple) 8%, transparent) !important;
 }
 
 /* Table styling */

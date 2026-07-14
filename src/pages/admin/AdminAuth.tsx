@@ -138,7 +138,7 @@ function AdminLogin({ onLogin }: { onLogin: (user?: any) => void }) {
             </button>
           </div>
         </div>
-        <button type="submit" className="w-full bg-neon-purple text-white font-bold py-3 rounded hover:bg-neon-blue hover:shadow-[0_0_15px_#00d2ff] transition-all">
+        <button type="submit" className="w-full bg-neon-purple text-white font-bold py-3 rounded hover:bg-neon-blue hover:shadow-[0_0_15px_var(--color-neon-blue)] transition-all">
           Login
         </button>
         <div className="pt-2 text-center">

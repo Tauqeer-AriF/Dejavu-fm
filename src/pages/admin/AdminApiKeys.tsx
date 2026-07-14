@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchAdmin } from "./adminApi";
 import { useModal } from "../../context/ModalContext";
-import { Key, Plus, Trash2, Copy, Code, Terminal, Send, Wifi, X, Mic2, Play, Cpu, Sparkles, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Upload, CheckCircle2, AlertCircle } from "lucide-react";
+import { Key, Plus, Trash2, Copy, Code, Terminal, Send, Wifi, X, Mic2, Play, Cpu, Sparkles, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Upload, CheckCircle2, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLogo } from "../../hooks/useLogo";
@@ -28,6 +28,7 @@ export function AdminApiKeys() {
 
   // API Key Testing and Validation Panel State
   const [testKey, setTestKey] = useState("");
+  const [showTestKey, setShowTestKey] = useState(false);
   const [testEndpoint, setTestEndpoint] = useState<"chat" | "shoutout">("chat");
   const [testSender, setTestSender] = useState("API Tester");
   const [testText, setTestText] = useState("Checking the API key and media file delivery! 🔥🎧");
@@ -652,17 +653,23 @@ const SkeletonKey = () => (
               </label>
               <div className="relative">
                 <input
-                  type="password"
+                  type={showTestKey ? "text" : "password"}
                   value={testKey}
                   onChange={e => setTestKey(e.target.value)}
                   placeholder="djfm_..."
-                  className={`w-full font-mono text-xs rounded-xl px-4 py-3.5 border focus:outline-none focus:border-neon-purple transition-all ${
+                  className={`w-full font-mono text-xs rounded-xl pl-4 pr-12 py-3.5 border focus:outline-none focus:border-neon-purple transition-all ${
                     isLightMode ? 'bg-black/5 border-black/15 text-black' : 'bg-white/5 border-white/10 text-white'
                   }`}
                 />
-                <div className="absolute right-3.5 top-3.5 flex items-center">
-                  <Key className="w-4 h-4 text-white/30" />
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowTestKey(!showTestKey)}
+                  className={`absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors focus:outline-none ${
+                    isLightMode ? 'text-black/50 hover:text-black' : 'text-white/50 hover:text-white'
+                  }`}
+                >
+                  {showTestKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
               <p className={`text-[10px] ${isLightMode ? 'text-black/40' : 'text-white/35'}`}>
                 {generatedKey ? "✅ Automatically matched with your newly generated API Key." : "ℹ️ Paste a generated API Key (starting with 'djfm_') to begin."}
