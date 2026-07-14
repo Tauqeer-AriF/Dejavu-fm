@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAudio } from "../context/AudioContext";
 import { useLogo } from "../hooks/useLogo";
-import { Play, Pause, Mic2, Tv, Clock, X, MessageSquare } from "lucide-react";
+import { Play, Pause, Mic2, Tv, Clock, X, MessageSquare, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { io } from "socket.io-client";
 import { convertToLocalTime } from "../lib/timeUtils";
@@ -232,7 +232,7 @@ export default function Home() {
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       className="flex flex-col space-y-8 md:space-y-12 pb-40 md:pb-64"
     >
-      <div className="flex flex-col lg:flex-row items-center justify-center lg:justify-between min-h-[calc(100vh-80px)] pb-32 lg:pb-0 lg:min-h-[75vh] gap-8 md:gap-12 relative px-4">
+      <div className="flex flex-col lg:flex-row items-center justify-center lg:justify-between min-h-[calc(100vh-80px)] lg:min-h-[calc(100vh-160px)] pb-32 lg:pb-0 gap-8 md:gap-12 relative px-4">
         <div className="hidden lg:flex flex-1 space-y-6 md:space-y-8 z-10 w-full flex-col items-center lg:items-start pt-4 lg:pt-0">
           <div className="space-y-4 md:space-y-6 flex flex-col items-center lg:items-start text-center lg:text-left">
             <motion.div 
@@ -374,10 +374,22 @@ export default function Home() {
             )}
           </button>
         </motion.div>
+
+        {/* Elegant Scroll Indicator */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 hidden lg:flex flex-col items-center space-y-1 opacity-30 hover:opacity-70 transition-opacity duration-300">
+          <span className="text-[9px] font-mono uppercase tracking-[0.3em] text-white/40">Scroll to explore</span>
+          <motion.div 
+            animate={{ y: [0, 6, 0] }}
+            transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+            className="w-5 h-5 flex items-center justify-center"
+          >
+            <ChevronDown className="w-4 h-4 text-white/50" />
+          </motion.div>
+        </div>
       </div>
 
       {nextShow && (
-        <div className="w-full px-4 sm:px-6 xl:px-12 pb-16 mt-24 md:-mt-12 relative z-20">
+        <div className="w-full px-4 sm:px-6 xl:px-12 pb-16 mt-24 md:mt-16 lg:mt-24 relative z-20">
           <div className="max-w-[1400px] mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}

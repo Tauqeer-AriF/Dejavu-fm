@@ -9,21 +9,48 @@ export function useLogo() {
 
   const [isLightMode, setIsLightMode] = useState(() => {
     if (typeof window !== 'undefined') {
+      const isAdmin = window.location.pathname.startsWith('/admin');
+      if (isAdmin) {
+        return localStorage.getItem('dashboard_theme') === 'light';
+      }
       return localStorage.getItem('theme') === 'light' || document.documentElement.classList.contains('light');
     }
     return false;
   });
 
   useEffect(() => {
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.attributeName === 'class') {
-          setIsLightMode(document.documentElement.classList.contains('light'));
+    if (typeof window === 'undefined') return;
+
+    const isAdmin = window.location.pathname.startsWith('/admin');
+
+    if (isAdmin) {
+      const handleThemeChange = () => {
+        setIsLightMode(localStorage.getItem('dashboard_theme') === 'light');
+      };
+      window.addEventListener('dashboard-theme-change', handleThemeChange);
+      
+      const handleStorageChange = (e: StorageEvent) => {
+        if (e.key === 'dashboard_theme') {
+          setIsLightMode(e.newValue === 'light');
         }
+      };
+      window.addEventListener('storage', handleStorageChange);
+
+      return () => {
+        window.removeEventListener('dashboard-theme-change', handleThemeChange);
+        window.removeEventListener('storage', handleStorageChange);
+      };
+    } else {
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.attributeName === 'class') {
+            setIsLightMode(document.documentElement.classList.contains('light'));
+          }
+        });
       });
-    });
-    observer.observe(document.documentElement, { attributes: true });
-    return () => observer.disconnect();
+      observer.observe(document.documentElement, { attributes: true });
+      return () => observer.disconnect();
+    }
   }, []);
 
   const logoUrlRaw = isLightMode 

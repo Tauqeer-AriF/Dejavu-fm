@@ -150,7 +150,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                 )}
               </div>
               {appTagline && appTagline.trim() !== "" && (
-                <span className="text-[8px] md:text-[10px] uppercase tracking-[0.4em] font-black text-white/30 block">{appTagline}</span>
+                <span className="text-[8px] md:text-[10px] uppercase tracking-[0.4em] font-black text-white/30 hidden md:block">{appTagline}</span>
               )}
             </div>
           )}
@@ -614,6 +614,7 @@ function MainLayout() {
   }, []);
 
   const appName = settings?.app_name || "DejavuFM";
+  const appTagline = settings?.app_tagline !== undefined ? settings.app_tagline : "Underground Gold Since 2005";
 
   const hasTracked = useRef(false);
   useEffect(() => {
@@ -809,7 +810,7 @@ function MainLayout() {
         </div>
         <div className="flex flex-col items-center md:items-end space-y-2 text-center md:text-right">
           <p className="font-black uppercase tracking-[0.2em] text-[10px]">© {new Date().getFullYear()} {appName}. All rights reserved.</p>
-          <p className="text-[10px] uppercase tracking-[0.4em] opacity-30 italic text-center md:text-right">Handcrafted for the underground since 2005</p>
+          <p className="text-[10px] uppercase tracking-[0.4em] opacity-30 italic text-center md:text-right">{appTagline}</p>
         </div>
       </footer>
       

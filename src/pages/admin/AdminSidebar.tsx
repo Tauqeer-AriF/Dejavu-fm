@@ -197,11 +197,11 @@ export function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; 
       </AnimatePresence>
 
       {/* Desktop Sidebar (Structural precision intact, beautifully styled) */}
-      <div className={`hidden md:flex flex-col w-full ${isCollapsed ? 'md:w-20' : 'md:w-64'} border-b md:border-b-0 md:border-r relative z-10 transition-all duration-300 ease-in-out ${isLightMode ? 'bg-[#fcfcfc] border-black/10' : 'bg-dark-bg/50 border-white/10'}`}>
+      <div className={`hidden md:flex flex-col w-full ${isCollapsed ? 'md:w-20' : 'md:w-64'} border-b md:border-b-0 md:border-r relative z-10 transition-all duration-300 ease-in-out ${isLightMode ? 'bg-[#fcfcfc] border-black/10' : 'bg-dark-bg/50 border-white/10'} admin-sidebar`}>
         {/* Toggle Button for Desktop */}
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="hidden md:flex absolute -right-3 top-6 w-6 h-6 bg-neon-purple rounded-full items-center justify-center text-white border border-white/20 shadow-lg z-30 hover:scale-110 transition-transform"
+          className="hidden md:flex absolute -right-3 top-6 w-6 h-6 bg-neon-purple rounded-full items-center justify-center text-white border border-white/20 shadow-lg z-30 hover:scale-110 transition-transform admin-sidebar-toggle"
           title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
         >
           {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}

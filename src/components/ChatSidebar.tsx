@@ -1171,13 +1171,19 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                                   alt={msg.imageName || "Attached Image"} 
                                   className="max-h-60 object-contain mx-auto" 
                                   referrerPolicy="no-referrer"
+                                  onError={(e) => {
+                                    const target = e.currentTarget;
+                                    if (target.src !== msg.imageUrl) {
+                                      target.src = msg.imageUrl || "";
+                                    }
+                                  }}
                                 />
                               </div>
                             )}
                             {msg.videoUrl && (
                               <div className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
                                 <video 
-                                  src={getSecureImageUrl(msg.videoUrl)} 
+                                  src={msg.videoUrl} 
                                   controls
                                   preload="metadata"
                                   playsInline
@@ -1198,7 +1204,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                                   </p>
                                 )}
                                 <audio 
-                                  src={getSecureImageUrl(msg.audioUrl)} 
+                                  src={msg.audioUrl} 
                                   controls 
                                   className="w-full h-8 accent-neon-purple rounded" 
                                 />
@@ -1271,6 +1277,9 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                               src={getSecureImageUrl((msg as any).avatar_url) || `https://api.dicebear.com/7.x/bottts/svg?seed=${msg.user}`}
                               alt={msg.user}
                               className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/bottts/svg?seed=${msg.user}`;
+                              }}
                             />
                           </div>
                           <div className="flex-1 min-w-0">
@@ -1319,13 +1328,19 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                                     alt={msg.imageName || "Attached Image"} 
                                     className="max-h-60 object-contain mx-auto" 
                                     referrerPolicy="no-referrer"
+                                    onError={(e) => {
+                                      const target = e.currentTarget;
+                                      if (target.src !== msg.imageUrl) {
+                                        target.src = msg.imageUrl || "";
+                                      }
+                                    }}
                                   />
                                 </div>
                               )}
                               {msg.videoUrl && (
                                 <div className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
                                   <video 
-                                    src={getSecureImageUrl(msg.videoUrl)} 
+                                    src={msg.videoUrl} 
                                     controls
                                     preload="metadata"
                                     playsInline
@@ -1346,7 +1361,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                                     </p>
                                   )}
                                   <audio 
-                                    src={getSecureImageUrl(msg.audioUrl)} 
+                                    src={msg.audioUrl} 
                                     controls 
                                     className="w-full h-8 accent-neon-purple rounded" 
                                   />

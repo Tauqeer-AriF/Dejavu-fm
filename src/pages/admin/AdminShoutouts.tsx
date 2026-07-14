@@ -267,13 +267,19 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
                       alt="Attached Image" 
                       className="max-h-48 object-contain mx-auto w-full cursor-pointer hover:opacity-95 transition-opacity" 
                       referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        if (target.src !== s.imageUrl) {
+                          target.src = s.imageUrl || "";
+                        }
+                      }}
                     />
                   </div>
                 )}
                 {s.videoUrl && (
                   <div className="relative mt-3 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
                     <video 
-                      src={getSecureImageUrl(s.videoUrl)} 
+                      src={s.videoUrl} 
                       controls
                       preload="metadata"
                       playsInline
@@ -287,7 +293,7 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
                       🎵 Attached Audio
                     </p>
                     <audio 
-                      src={getSecureImageUrl(s.audioUrl)} 
+                      src={s.audioUrl} 
                       controls 
                       className="w-full h-8 accent-neon-purple rounded" 
                     />

@@ -30,6 +30,8 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
   const [showBoothClear, setShowBoothClear] = useState(false);
   const prevCountRef = useRef(0);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isMediaPlaying, setIsMediaPlaying] = useState(false);
 
   // Check auth status on mount and when modal opens
   const checkAuth = async () => {
@@ -138,6 +140,7 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
   // Auto-hide shoutouts with dynamic duration based on screen size
   useEffect(() => {
     if (recentShoutouts.length === 0) return;
+    if (isHovered || isMediaPlaying) return; // Pause dismissal if hovered or playing media
 
     // Check for small screens (Tailwind's sm breakpoint is 640px)
     const duration = isMobile ? 4000 : 8000; 
@@ -147,7 +150,7 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
     }, duration);
 
     return () => clearTimeout(timer);
-  }, [recentShoutouts, isMobile]);
+  }, [recentShoutouts, isMobile, isHovered, isMediaPlaying]);
 
   // Handle "Booth Clear" temporary visibility logic
   useEffect(() => {
@@ -230,6 +233,8 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
             initial={{ opacity: 0, x: 50, scale: 0.9 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 20, scale: 0.5 }}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
             className="flex bg-black/60 backdrop-blur-2xl border-l-4 border-l-neon-purple border-y border-r border-white/10 px-5 py-3 rounded-2xl shadow-2xl items-center space-x-4 pointer-events-auto max-w-[280px] sm:max-w-[320px]"
           >
              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${s.isReply ? 'bg-neon-blue/10 border-neon-blue/20' : 'bg-neon-purple/10 border-neon-purple/20'}`}>
@@ -254,29 +259,42 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
                     <img 
                       src={getSecureImageUrl(s.imageUrl)} 
                       alt="Attached Image" 
-                      className="max-h-24 w-full object-cover" 
+                      className="max-h-32 object-contain mx-auto w-full cursor-pointer" 
                       referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        if (target.src !== s.imageUrl) {
+                          target.src = s.imageUrl || "";
+                        }
+                      }}
                     />
                   </div>
                 )}
                 {s.videoUrl && (
                   <div className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
                     <video 
-                      src={getSecureImageUrl(s.videoUrl)} 
-                      className="max-h-24 w-full object-cover bg-black" 
+                      src={s.videoUrl} 
+                      className="max-h-32 w-full object-contain bg-black" 
                       autoPlay 
                       muted 
                       loop 
+                      controls
                       playsInline
+                      onPlay={() => setIsMediaPlaying(true)}
+                      onPause={() => setIsMediaPlaying(false)}
+                      onEnded={() => setIsMediaPlaying(false)}
                     />
                   </div>
                 )}
                 {s.audioUrl && (
                   <div className="mt-2 w-full p-1.5 rounded-lg bg-black/30 border border-white/5">
                     <audio 
-                      src={getSecureImageUrl(s.audioUrl)} 
+                      src={s.audioUrl} 
                       controls 
                       className="w-full h-6 accent-neon-purple" 
+                      onPlay={() => setIsMediaPlaying(true)}
+                      onPause={() => setIsMediaPlaying(false)}
+                      onEnded={() => setIsMediaPlaying(false)}
                     />
                   </div>
                 )}
