@@ -1,0 +1,166 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { useAudio } from '../context/AudioContext';
+import { X, Maximize2, Minimize2 } from 'lucide-react';
+
+export function CinematicVisualizer({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { getAnalyser, isPlaying, currentTrack, onAirInfo } = useAudio();
+  const animationRef = useRef<number>();
+  const [pulseScale, setPulseScale] = useState(1);
+
+  // Fallback metadata formatting
+  const title = currentTrack && currentTrack !== "Dejavu FM Live" ? currentTrack : (onAirInfo?.showName || "Dejavu FM Live");
+  const artist = onAirInfo ? (onAirInfo.djName || "Dejavu FM") : "Dejavu FM";
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const analyser = getAnalyser();
+    if (!analyser) return;
+
+    // Use full width and height
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+    let lastTime = performance.now();
+    let smoothedBass = 0;
+
+    const render = (time: number) => {
+      animationRef.current = requestAnimationFrame(render);
+      const dt = time - lastTime;
+      lastTime = time;
+
+      const width = canvas.width;
+      const height = canvas.height;
+      const cx = width / 2;
+      const cy = height / 2;
+
+      ctx.fillStyle = 'rgba(10, 10, 15, 0.2)'; // fade effect
+      ctx.fillRect(0, 0, width, height);
+
+      if (!isPlaying) {
+        setPulseScale(1);
+        return;
+      }
+
+      analyser.getByteFrequencyData(dataArray);
+
+      // Calculate bass energy (first few bins)
+      let bassSum = 0;
+      const bassBins = 8;
+      for (let i = 0; i < bassBins; i++) {
+        bassSum += dataArray[i];
+      }
+      const bassAvg = bassSum / bassBins;
+      
+      // Smooth bass for scaling the circle (pulse)
+      smoothedBass = smoothedBass * 0.8 + bassAvg * 0.2;
+      const scale = 1 + (smoothedBass / 255) * 0.15;
+      setPulseScale(scale); // animate UI elements based on bass
+
+      const count = analyser.frequencyBinCount / 4; // Use lower half of freq
+      const radius = Math.min(width, height) * 0.25;
+
+      ctx.beginPath();
+      // Draw circular waves
+      for (let i = 0; i < count; i++) {
+        const val = dataArray[i];
+        const barHeight = (val / 255) * (Math.min(width, height) * 0.3);
+        const angle = (i * 2 * Math.PI) / count;
+
+        const x1 = cx + Math.cos(angle) * (radius + barHeight * 0.05);
+        const y1 = cy + Math.sin(angle) * (radius + barHeight * 0.05);
+        const x2 = cx + Math.cos(angle) * (radius + barHeight);
+        const y2 = cy + Math.sin(angle) * (radius + barHeight);
+
+        // Calculate dynamic color based on freq bin and amplitude
+        const hue = (i / count) * 360 + (time * 0.05);
+        ctx.strokeStyle = `hsla(${hue}, 100%, 65%, ${0.5 + (val / 255) * 0.5})`;
+        ctx.lineWidth = 4 + (val / 255) * 6;
+        ctx.lineCap = 'round';
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+      
+      // Draw outer secondary rings
+      const outerCount = analyser.frequencyBinCount / 2;
+      for (let i = 0; i < outerCount; i += 2) {
+        const val = dataArray[i];
+        if (val < 100) continue;
+        const angle = -(i * 2 * Math.PI) / outerCount + (time * 0.001);
+        const dist = radius + (val / 255) * radius * 1.5;
+        
+        const px = cx + Math.cos(angle) * dist;
+        const py = cy + Math.sin(angle) * dist;
+        
+        ctx.fillStyle = `hsla(${(i / outerCount) * 360 + (time * 0.1)}, 100%, 75%, ${val / 255})`;
+        ctx.beginPath();
+        ctx.arc(px, py, 2 + (val / 255) * 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    };
+
+    animationRef.current = requestAnimationFrame(render);
+
+    return () => {
+      window.removeEventListener('resize', resizeCanvas);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [getAnalyser, isPlaying, isOpen]);
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 1.05 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          className="fixed inset-0 z-[20000] bg-[#0a0a0f] flex items-center justify-center overflow-hidden"
+        >
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0 w-full h-full"
+            style={{ filter: 'blur(1px)' }}
+          />
+          
+          <button
+            onClick={onClose}
+            className="absolute top-8 right-8 z-10 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-md transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+
+          <motion.div
+            className="absolute bottom-16 left-0 right-0 flex flex-col items-center pointer-events-none"
+            style={{ scale: pulseScale }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          >
+            <div className="bg-black/40 backdrop-blur-xl px-12 py-8 rounded-5xl border border-white/10 shadow-2xl text-center max-w-2xl px-6">
+              <h2 className="text-4xl md:text-5xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-neon-blue via-neon-purple to-neon-pink tracking-tight mb-4">{title}</h2>
+              <p className="text-xl md:text-2xl text-white/70 font-medium uppercase tracking-[0.2em]">{artist}</p>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}

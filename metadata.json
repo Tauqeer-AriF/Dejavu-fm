@@ -1,0 +1,6 @@
+{
+  "name": "Dejavu FM",
+  "description": "Premium Radio Station Platform with lives stream, DJ schedules, and podcasts.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
