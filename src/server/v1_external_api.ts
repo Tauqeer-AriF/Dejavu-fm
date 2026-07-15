@@ -170,6 +170,42 @@ externalApiRouter.post("/shoutouts", (req: any, res: any) => {
   });
 });
 
+// Endpoint: GET /api/v1/shoutouts
+externalApiRouter.get("/shoutouts", (req: any, res: any) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 50;
+    const shoutouts = db.prepare(`
+      SELECT id, listener_name as username, message, type, dj_id, dj_name, show_name, imageUrl, audioUrl, videoUrl, timestamp
+      FROM shoutouts
+      ORDER BY timestamp DESC
+      LIMIT ?
+    `).all(limit);
+
+    res.status(200).json(shoutouts);
+  } catch (error) {
+    console.error("[External API] Error fetching shoutouts:", error);
+    res.status(500).json({ error: "Internal server error fetching shoutouts" });
+  }
+});
+
+// Endpoint: GET /api/v1/chat/messages
+externalApiRouter.get("/chat/messages", (req: any, res: any) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 50;
+    const messages = db.prepare(`
+      SELECT id, sender as username, text, imageUrl, audioUrl, videoUrl, timestamp
+      FROM public_messages
+      ORDER BY timestamp DESC
+      LIMIT ?
+    `).all(limit);
+
+    res.status(200).json(messages);
+  } catch (error) {
+    console.error("[External API] Error fetching public chat messages:", error);
+    res.status(500).json({ error: "Internal server error fetching chat messages" });
+  }
+});
+
 
 // Endpoint: POST /api/v1/messages
 externalApiRouter.post("/messages", (req: any, res: any) => {
@@ -227,7 +263,7 @@ externalApiRouter.get("/messages/:roomId", (req: any, res: any) => {
     const limit = parseInt(req.query.limit as string) || 50;
 
     const messages = db.prepare(`
-      SELECT id, room_id, sender_name, text, image_url, audio_url, video_url, created_at
+      SELECT id, room_id, sender_name as username, text, image_url, audio_url, video_url, created_at
       FROM room_messages
       WHERE room_id = ?
       ORDER BY created_at DESC

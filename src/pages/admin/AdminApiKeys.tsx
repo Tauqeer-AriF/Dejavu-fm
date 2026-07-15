@@ -232,6 +232,28 @@ socket.on('new_shoutout', (shoutout) => {
 
 socket.on('disconnect', () => console.log('Disconnected.'));`;
 
+  const fetchChatMessagesExample = `async function getChatMessages() {
+  const response = await fetch("${window.location.origin}/api/v1/chat/messages?limit=20", {
+    headers: { 'X-API-Key': "${generatedKey || 'YOUR_API_KEY'}" }
+  });
+  const messages = await response.json();
+  console.log('Fetched Messages:', messages);
+  // Access username via: messages[0].username
+}
+
+getChatMessages();`;
+
+  const fetchShoutoutsExample = `async function getShoutouts() {
+  const response = await fetch("${window.location.origin}/api/v1/shoutouts?limit=20", {
+    headers: { 'X-API-Key': "${generatedKey || 'YOUR_API_KEY'}" }
+  });
+  const shoutouts = await response.json();
+  console.log('Fetched Shoutouts:', shoutouts);
+  // Access username via: shoutouts[0].username
+}
+
+getShoutouts();`;
+
 const SkeletonKey = () => (
     <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl border animate-pulse gap-4 ${isLightMode ? 'bg-black/5 border-black/10' : 'bg-white/5 border-white/10'}`}>
       <div className="space-y-2 w-full">
@@ -618,6 +640,22 @@ const SkeletonKey = () => (
               Make a <code className={`${isLightMode ? 'bg-black/10' : 'bg-white/10'} px-1.5 py-0.5 rounded-md font-mono text-xs`}>POST</code> request to <code className={`${isLightMode ? 'bg-black/10' : 'bg-white/10'} px-1.5 py-0.5 rounded-md font-mono text-xs`}>/api/v1/shoutouts</code> with your key in the <code className={`${isLightMode ? 'bg-black/10' : 'bg-white/10'} px-1.5 py-0.5 rounded-md font-mono text-xs`}>X-API-Key</code> header.
             </p>
             <CodeBlock code={nodeJsShoutoutExample} language="javascript" />
+          </div>
+
+          <div className="space-y-2">
+            <h4 className={`font-bold text-lg flex items-center gap-2 ${isLightMode ? 'text-black' : 'text-white'}`}><Upload className="w-5 h-5 text-neon-blue" /> 5. Fetching Public Chat</h4>
+            <p className={`text-sm ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>
+              Make a <code className={`${isLightMode ? 'bg-black/10' : 'bg-white/10'} px-1.5 py-0.5 rounded-md font-mono text-xs`}>GET</code> request to <code className={`${isLightMode ? 'bg-black/10' : 'bg-white/10'} px-1.5 py-0.5 rounded-md font-mono text-xs`}>/api/v1/chat/messages</code>. The username is returned in the <code className={`${isLightMode ? 'bg-black/10' : 'bg-white/10'} px-1.5 py-0.5 rounded-md font-mono text-xs`}>username</code> field.
+            </p>
+            <CodeBlock code={fetchChatMessagesExample} language="javascript" />
+          </div>
+
+          <div className="space-y-2">
+            <h4 className={`font-bold text-lg flex items-center gap-2 ${isLightMode ? 'text-black' : 'text-white'}`}><ImageIcon className="w-5 h-5 text-neon-purple" /> 6. Fetching Shoutouts</h4>
+            <p className={`text-sm ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>
+              Make a <code className={`${isLightMode ? 'bg-black/10' : 'bg-white/10'} px-1.5 py-0.5 rounded-md font-mono text-xs`}>GET</code> request to <code className={`${isLightMode ? 'bg-black/10' : 'bg-white/10'} px-1.5 py-0.5 rounded-md font-mono text-xs`}>/api/v1/shoutouts</code>. The listener's name is returned in the <code className={`${isLightMode ? 'bg-black/10' : 'bg-white/10'} px-1.5 py-0.5 rounded-md font-mono text-xs`}>username</code> field.
+            </p>
+            <CodeBlock code={fetchShoutoutsExample} language="javascript" />
           </div>
         </div>
       )}

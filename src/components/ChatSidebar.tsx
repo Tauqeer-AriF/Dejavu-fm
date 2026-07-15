@@ -5,7 +5,6 @@ import { Send, User, LogOut, Loader2, X, MessageSquare, Users, Ban, ShieldAlert,
 import { toast } from 'sonner';
 import { useModal } from '../context/ModalContext';
 import { useLogo } from '../hooks/useLogo';
-import { ExternalSecureImage } from './ExternalSecureImage';
 
 interface ChatMessage {
   id: string;
@@ -1167,7 +1166,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                             )}
                             {msg.imageUrl && (
                               <div className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
-                                <ExternalSecureImage 
+                                <img 
                                   src={msg.imageUrl} 
                                   alt={msg.imageName || "Attached Image"} 
                                   className="max-h-60 object-contain mx-auto" 
@@ -1317,7 +1316,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                               )}
                               {msg.imageUrl && (
                                 <div className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
-                                  <ExternalSecureImage 
+                                  <img 
                                     src={msg.imageUrl} 
                                     alt={msg.imageName || "Attached Image"} 
                                     className="max-h-60 object-contain mx-auto" 
