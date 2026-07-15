@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { fetchAdmin } from "./adminApi";
 import { ImageUploadField } from "./ImageUploadField";
 import { convertToLocalTime } from "../../lib/timeUtils";
+import { ExternalSecureImage } from "../../components/ExternalSecureImage";
 
 const getSecureImageUrl = (url?: string) => {
   if (!url) return undefined;
@@ -262,17 +263,11 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
                 {/* Media Previews */}
                 {s.imageUrl && (
                   <div className="relative mt-3 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
-                    <img 
-                      src={getSecureImageUrl(s.imageUrl)} 
+                    <ExternalSecureImage 
+                      src={s.imageUrl} 
                       alt="Attached Image" 
                       className="max-h-48 object-contain mx-auto w-full cursor-pointer hover:opacity-95 transition-opacity" 
-                      referrerPolicy="no-referrer"
-                      onError={(e) => {
-                        const target = e.currentTarget;
-                        if (target.src !== s.imageUrl) {
-                          target.src = s.imageUrl || "";
-                        }
-                      }}
+                      maxHeight="max-h-48"
                     />
                   </div>
                 )}

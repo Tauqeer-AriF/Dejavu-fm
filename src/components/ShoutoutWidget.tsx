@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Send, Heart, Flame, X, User, Sparkles, Mic2, Radio, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
+import { ExternalSecureImage } from './ExternalSecureImage';
 
 const getSecureImageUrl = (url?: string) => {
   if (!url) return undefined;
@@ -256,17 +257,11 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
                 {/* Media Content */}
                 {s.imageUrl && (
                   <div className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
-                    <img 
-                      src={getSecureImageUrl(s.imageUrl)} 
+                    <ExternalSecureImage 
+                      src={s.imageUrl} 
                       alt="Attached Image" 
                       className="max-h-32 object-contain mx-auto w-full cursor-pointer" 
-                      referrerPolicy="no-referrer"
-                      onError={(e) => {
-                        const target = e.currentTarget;
-                        if (target.src !== s.imageUrl) {
-                          target.src = s.imageUrl || "";
-                        }
-                      }}
+                      maxHeight="max-h-32"
                     />
                   </div>
                 )}

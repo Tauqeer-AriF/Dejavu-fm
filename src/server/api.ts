@@ -650,7 +650,12 @@ apiRouter.get("/public/proxy-image", async (req: any, res: any) => {
       throw new Error(`Failed to fetch image, status: ${response.status}`);
     }
 
-    const contentType = response.headers.get('content-type');
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('text/html') || response.redirected || response.url.includes('cookie_check') || response.url.includes('applet-auth-bridge')) {
+      console.warn(`[API] Proxy image: Upstream returned HTML/redirect for ${imageUrl} (probably auth gate)`);
+      return res.status(403).json({ error: "Upstream image requires authentication" });
+    }
+
     if (contentType) {
       res.setHeader('Content-Type', contentType);
     }
