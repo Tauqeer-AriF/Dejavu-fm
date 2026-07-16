@@ -17,24 +17,28 @@ export interface ShowTime {
  * @param londonTime "HH:mm" scale
  */
 export function convertToLocalTime(londonDay: number, londonTime: string) {
-  const [h, m] = londonTime.split(':').map(Number);
-  const now = new Date();
-
-  // Calculate the current offset between London and Local time
-  const londonNow = new Date(now.toLocaleString('en-US', { timeZone: LONDON_TIMEZONE }));
-  const localNow = new Date(now.toLocaleString('en-US'));
-  const offsetMs = localNow.getTime() - londonNow.getTime();
-
-  // Create a target date representing the show start in London
-  const londonShowDate = new Date(londonNow);
-  londonShowDate.setHours(h, m, 0, 0);
-
-  // Adjust for the specific day of the week requested
-  const dayShift = londonDay - londonNow.getDay();
-  londonShowDate.setDate(londonShowDate.getDate() + dayShift);
-
-  // Apply the timezone offset to find the Local date
-  const localShowDate = new Date(londonShowDate.getTime() + offsetMs);
+  // Create a date object representing now in London time.
+  const nowInLondon = new Date(new Date().toLocaleString('en-US', { timeZone: LONDON_TIMEZONE }));
+  
+  // Get the current day of the week in London.
+  const currentLondonDay = nowInLondon.getDay();
+  
+  // Calculate the difference in days to the target show day.
+  let dayDifference = londonDay - currentLondonDay;
+  
+  // Create a new date object for the show.
+  const showDateInLondon = new Date(nowInLondon.getTime());
+  
+  // Set the date to the correct day.
+  showDateInLondon.setDate(nowInLondon.getDate() + dayDifference);
+  
+  // Set the time for the show.
+  const [hours, minutes] = londonTime.split(':').map(Number);
+  showDateInLondon.setHours(hours, minutes, 0, 0);
+  
+  // The browser will automatically convert this London-based date object
+  // to the user's local time when we extract parts from it.
+  const localShowDate = showDateInLondon;
 
   return {
     dayOfWeek: localShowDate.getDay(),

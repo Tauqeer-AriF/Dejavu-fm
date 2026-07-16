@@ -1,7 +1,7 @@
 import React, { useState, useEffect, Suspense } from "react";
-import { useNavigate, Routes, Route, useLocation, Navigate } from "react-router-dom";
+import { useNavigate, Routes, Route, useLocation, Navigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, Radio, LogOut } from "lucide-react";
 import { fetchAdmin } from "./admin/adminApi";
 import { LoadingFallback } from "./admin/LoadingFallback";
 import { AdminSecretGate } from "./admin/AdminAuth";
@@ -24,6 +24,7 @@ import { AdminBackup } from "./admin/AdminBackup";
 import { AdminAds } from "./admin/AdminAds";
 import { AdminSEO } from "./admin/AdminSEO";
 import { AdminMedia } from "./admin/AdminMedia";
+import { AdminStudio } from "./admin/AdminStudio";
 import { AdminApiKeys } from "./admin/AdminApiKeys";
 import { useLogo } from "../hooks/useLogo";
 
@@ -124,6 +125,14 @@ export default function Admin() {
     );
   }
 
+  // Render the Studio page as a full-screen, standalone component if the path matches
+  if (location.pathname.startsWith('/admin/studio')) {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <AdminStudio onLogout={handleLogout} />
+      </Suspense>
+    );
+  }
   return (
     <div className={dashboardTheme === 'light' ? 'light' : 'dark'}>
       <motion.div
@@ -149,14 +158,24 @@ export default function Admin() {
             </div>
           </motion.div>
 
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="inline-flex items-center justify-center min-h-[3rem] min-w-[3rem] rounded-full border border-white/10 bg-white/5 text-white/80 transition hover:bg-white/10 hover:text-white admin-theme-toggle-btn"
-            title="Toggle theme"
-          >
-            {dashboardTheme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-          </button>
+          <div className="flex items-center gap-3">
+            <Link
+              to="/admin/studio"
+              className="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-full border border-neon-purple/30 bg-neon-purple/10 text-neon-purple font-bold uppercase text-xs tracking-widest transition hover:bg-neon-purple hover:text-white hover:shadow-lg hover:shadow-neon-purple/20"
+              title="Go to Live Studio Tools"
+            >
+              <Radio className="w-4 h-4" />
+              Studio
+            </Link>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="inline-flex items-center justify-center min-h-[3rem] min-w-[3rem] rounded-full border border-white/10 bg-white/5 text-white/80 transition hover:bg-white/10 hover:text-white admin-theme-toggle-btn"
+              title="Toggle theme"
+            >
+              {dashboardTheme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
 
         <div className="glass-panel admin-dashboard-container min-h-[80vh] rounded-3xl flex flex-col md:flex-row overflow-hidden shadow-2xl relative z-10">

@@ -499,6 +499,11 @@ async function startServer() {
               .run(payload.user, payload.targetRecipient, payload.targetRecipient, payload.user);
             io.emit('messagesCleared', { isPrivate: true, recipient: payload.targetRecipient, sender: payload.user });
             emitChatRoomCounts();
+          } else {
+            // Clear ALL private messages
+            db.prepare("DELETE FROM private_messages").run();
+            io.emit('messagesCleared', { isPrivate: true, all: true });
+            emitChatRoomCounts();
           }
         } else {
           db.prepare("DELETE FROM public_messages").run();
@@ -509,6 +514,45 @@ async function startServer() {
         console.log(`[Clear] Messages cleared by admin ${payload.user}`);
       } catch (err) {
         console.error("Failed to clear messages:", err);
+      }
+    });
+
+    socket.on('clearUserThread', (payload: { adminUser: string; targetUser: string }) => {
+      if (!db.open) return;
+      try {
+        const adminCheck = db.prepare("SELECT 1 FROM admins WHERE LOWER(username) = ?").get(payload.adminUser.toLowerCase());
+        if (!adminCheck) {
+          console.warn(`[Clear Thread] Unauthorized attempt by ${payload.adminUser}`);
+          return;
+        }
+
+        const publicInfo = db.prepare("DELETE FROM public_messages WHERE LOWER(sender) = ?").run(payload.targetUser.toLowerCase());
+        const shoutoutInfo = db.prepare("DELETE FROM shoutouts WHERE LOWER(listener_name) = ?").run(payload.targetUser.toLowerCase());
+
+        chatHistory = chatHistory.filter(m => m.user.toLowerCase() !== payload.targetUser.toLowerCase());
+
+        io.emit('userThreadCleared', { username: payload.targetUser });
+        emitChatRoomCounts();
+        console.log(`[Clear Thread] Cleared thread for ${payload.targetUser} by ${payload.adminUser}. Public: ${publicInfo.changes}, Shoutouts: ${shoutoutInfo.changes}`);
+      } catch (err) {
+        console.error("Failed to clear user thread:", err);
+      }
+    });
+
+    socket.on('clearAllShoutouts', (payload: { user: string }) => {
+      if (!db.open) return;
+      try {
+        const adminCheck = db.prepare("SELECT 1 FROM admins WHERE LOWER(username) = ?").get(payload.user.toLowerCase());
+        if (!adminCheck) {
+          console.warn(`[Clear Shoutouts] Unauthorized attempt by ${payload.user}`);
+          return;
+        }
+
+        db.prepare("DELETE FROM shoutouts").run();
+        io.emit('shoutouts_cleared');
+        console.log(`[Clear Shoutouts] All shoutouts cleared by admin ${payload.user}`);
+      } catch (err) {
+        console.error("Failed to clear shoutouts:", err);
       }
     });
 
