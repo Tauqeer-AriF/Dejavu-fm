@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Send, Heart, Flame, X, User, Sparkles, Mic2, Radio, MessageSquare } from 'lucide-react';
+import { Send, Heart, Flame, X, User, Sparkles, Mic2, Radio, MessageSquare, Paperclip } from 'lucide-react';
 import { toast } from 'sonner';
 
 
@@ -25,6 +25,43 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
   const [isHovered, setIsHovered] = useState(false);
   const [isMediaPlaying, setIsMediaPlaying] = useState(false);
+
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
+  const [attachmentType, setAttachmentType] = useState<'image' | 'audio' | 'video' | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    let mediaType: 'image' | 'audio' | 'video' | null = null;
+    if (file.type.startsWith('image/')) mediaType = 'image';
+    else if (file.type.startsWith('audio/')) mediaType = 'audio';
+    else if (file.type.startsWith('video/')) mediaType = 'video';
+
+    if (!mediaType) {
+      toast.error("Unsupported file type. Use images, audio, or video.");
+      return;
+    }
+
+    setAttachment(file);
+    setAttachmentType(mediaType);
+    setAttachmentPreview(URL.createObjectURL(file));
+  };
+
+  const removeAttachment = () => {
+    setAttachment(null);
+    setAttachmentType(null);
+    if (attachmentPreview) {
+      URL.revokeObjectURL(attachmentPreview);
+      setAttachmentPreview(null);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   // Check auth status on mount and when modal opens
   const checkAuth = async () => {
@@ -164,24 +201,61 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
 
   const sendShoutout = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!email.trim() || !message.trim()) return;
+    if (!email.trim()) {
+      toast.error('Please enter your email.');
+      return;
+    }
+    if (!message.trim() && !attachment) {
+      toast.warning('Please enter a message or select an attachment.');
+      return;
+    }
 
     setIsSending(true);
+    setIsUploading(true);
+    let mediaUrl: string | null = null;
+    let mediaType: 'image' | 'audio' | 'video' | null = attachmentType;
+
     try {
+      if (attachment) {
+        const formData = new FormData();
+        formData.append('file', attachment);
+
+        const uploadRes = await fetch('/api/public/chat/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok) throw new Error(uploadData.error || 'Upload failed');
+        mediaUrl = uploadData.url;
+        mediaType = uploadData.type;
+      }
+
       const res = await fetch('/api/public/shoutout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, message, type })
+        body: JSON.stringify({
+          email,
+          message,
+          type,
+          imageUrl: mediaType === 'image' ? mediaUrl : null,
+          audioUrl: mediaType === 'audio' ? mediaUrl : null,
+          videoUrl: mediaType === 'video' ? mediaUrl : null,
+        })
       });
       if (res.ok) {
         toast.success('Shoutout sent to studio!');
         setMessage('');
+        removeAttachment();
         setIsOpen(false);
+      } else {
+        throw new Error('Shoutout submission failed.');
       }
     } catch (err) {
+      console.error("Shoutout send error:", err);
       toast.error('Failed to reach studio.');
     } finally {
       setIsSending(false);
+      setIsUploading(false);
     }
   };
 
@@ -413,18 +487,86 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
                      rows={3}
                    />
                 </div>
+
+                {/* Attachment Preview */}
+                {attachmentPreview && (
+                  <div className="relative p-2.5 bg-white/5 border border-white/10 rounded-xl flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {attachmentType === 'image' && (
+                        <img src={attachmentPreview} className="w-10 h-10 rounded-lg object-cover bg-black/40 border border-white/10" alt="Preview" />
+                      )}
+                      {attachmentType === 'audio' && (
+                        <div className="w-10 h-10 rounded-lg bg-neon-purple/10 border border-neon-purple/20 flex items-center justify-center shrink-0">
+                          <Mic2 className="w-4 h-4 text-neon-purple" />
+                        </div>
+                      )}
+                      {attachmentType === 'video' && (
+                        <div className="w-10 h-10 rounded-lg bg-neon-blue/10 border border-neon-blue/20 flex items-center justify-center shrink-0">
+                          <Radio className="w-4 h-4 text-neon-blue" />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold text-white truncate max-w-[180px]">{attachment?.name}</p>
+                        <p className="text-[8px] font-bold uppercase tracking-wider text-white/30 font-mono">
+                          {attachmentType} • {(attachment!.size / (1024 * 1024)).toFixed(2)} MB
+                        </p>
+                      </div>
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={removeAttachment} 
+                      className="p-1 rounded-lg bg-white/5 hover:bg-red-500/10 text-white/40 hover:text-red-400 transition-all shrink-0"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Attachment Actions */}
+                <div className="flex items-center justify-between px-1">
+                  <div className="text-[9px] font-bold text-white/30 uppercase tracking-widest flex items-center gap-1.5">
+                    <Sparkles className="w-3 h-3 text-neon-purple animate-pulse" />
+                    <span>Rich Media</span>
+                  </div>
+                  
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-[10px] font-bold uppercase tracking-wider text-white/80 hover:text-white transition-all"
+                  >
+                    <Paperclip className="w-3.5 h-3.5" />
+                    <span>Attach</span>
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,audio/*,video/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </div>
+
                 <motion.button 
-                  disabled={isSending}
+                  disabled={isSending || isUploading}
                   whileHover="hover"
-                  className="w-full bg-white text-dark-bg py-4 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl hover:shadow-neon-purple/20 transition-all flex items-center justify-center space-x-3 relative overflow-hidden"
+                  className="w-full bg-white text-dark-bg py-4 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl hover:shadow-neon-purple/20 transition-all flex items-center justify-center space-x-3 relative overflow-hidden disabled:opacity-50 disabled:pointer-events-none"
                 >
                   <motion.div
                     className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-dark-bg/5 to-transparent -skew-x-12"
                     variants={{ hover: { x: ['-150%', '150%'] } }}
                     transition={{ duration: 0.75, ease: "easeInOut" }}
                   />
-                  <Send className="w-4 h-4 relative z-10" />
-                  <span className="relative z-10">Transmit to Studio</span>
+                  {isSending || isUploading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-4 h-4 border-2 border-t-[#0D0F1D] border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin" />
+                      <span>Transmitting...</span>
+                    </span>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 relative z-10" />
+                      <span className="relative z-10">Transmit to Studio</span>
+                    </>
+                  )}
                 </motion.button>
              </form>
             </motion.div>

@@ -391,6 +391,8 @@ export function initDb() {
   runMigration('chat_room_retention_settings_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('chat_auto_delete_enabled', '0'), ('chat_auto_delete_hours', '24'), ('chat_auto_delete_last_run', '');");
   runMigration('popup_delay_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('popup_delay', '10000');");
   runMigration('popups_delay_column', "ALTER TABLE popups ADD COLUMN delay_ms INTEGER DEFAULT 10000;");
+  runMigration('studio_profile_name', "INSERT OR IGNORE INTO settings (key, value) VALUES ('studio_name', 'DejavuFM Studio');");
+  runMigration('studio_profile_image', "INSERT OR IGNORE INTO settings (key, value) VALUES ('studio_image', '/icon.svg');");
   runMigration('shoutout_reply_fields', "ALTER TABLE shoutouts ADD COLUMN reply_text TEXT; ALTER TABLE shoutouts ADD COLUMN replied_by TEXT; ALTER TABLE shoutouts ADD COLUMN replied_at DATETIME;");
   runMigration('user_avatar_field', "ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT NULL;");
   runMigration('shoutout_media_fields_v1', "ALTER TABLE shoutouts ADD COLUMN imageUrl TEXT; ALTER TABLE shoutouts ADD COLUMN audioUrl TEXT; ALTER TABLE shoutouts ADD COLUMN videoUrl TEXT;");
@@ -461,6 +463,8 @@ export function initDb() {
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('chat_auto_delete_hours', '24');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('chat_auto_delete_last_run', '');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('popup_delay', '10000');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('studio_name', 'DejavuFM Studio');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('studio_image', '/icon.svg');
   }
 
   // Ensure admin secret exists

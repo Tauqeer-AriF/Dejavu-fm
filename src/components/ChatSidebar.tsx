@@ -134,7 +134,6 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
   }, [soundEnabled]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [inputText, setInputText] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [emojiSearch, setEmojiSearch] = useState('');
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
@@ -166,6 +165,40 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
   const [privateMessages, setPrivateMessages] = useState<ChatMessage[]>([]);
   const [activeDmUser, setActiveDmUser] = useState<string | null>(null);
   const [chatTab, setChatTab] = useState<'public' | 'private'>('public');
+
+  const [drafts, setDrafts] = useState<Record<string, string>>(() => {
+    try {
+      const saved = localStorage.getItem('dejavu_chat_drafts_map');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const [inputText, setInputText] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dejavu_chat_drafts_map');
+      const parsed = saved ? JSON.parse(saved) : {};
+      return parsed['public'] || '';
+    } catch {
+      return '';
+    }
+  });
+
+  const handleInputChange = (text: string) => {
+    setInputText(text);
+    const currentKey = chatTab === 'public' ? 'public' : `private_${activeDmUser || 'list'}`;
+    setDrafts(prev => {
+      const updated = { ...prev, [currentKey]: text };
+      localStorage.setItem('dejavu_chat_drafts_map', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  useEffect(() => {
+    const currentKey = chatTab === 'public' ? 'public' : `private_${activeDmUser || 'list'}`;
+    setInputText(drafts[currentKey] || '');
+  }, [chatTab, activeDmUser]);
   const [allUsers, setAllUsers] = useState<{ username: string; avatar_url: string | null }[]>([]);
   const [searchUserQuery, setSearchUserQuery] = useState('');
   const [unreadDms, setUnreadDms] = useState<Set<string>>(new Set<string>());
@@ -276,14 +309,14 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
   const insertEmoji = (emoji: string) => {
     const input = inputRef.current;
     if (!input) {
-      setInputText(prev => prev + emoji);
+      handleInputChange(inputText + emoji);
       return;
     }
 
     const start = input.selectionStart ?? inputText.length;
     const end = input.selectionEnd ?? inputText.length;
     const nextText = inputText.substring(0, start) + emoji + inputText.substring(end);
-    setInputText(nextText);
+    handleInputChange(nextText);
 
     setTimeout(() => {
       input.focus();
@@ -414,8 +447,8 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
       }
 
       if (isPrivate) {
-        // If it's a private chat clear, we only clear if it involves the current user
-        if (loggedInUser === recipient || loggedInUser === sender) {
+        // If it's a private chat clear, we clear all if no recipient specified, or if it involves the current user
+        if (!recipient || loggedInUser === recipient || loggedInUser === sender) {
           setPrivateMessages([]);
         }
       } else {
@@ -447,11 +480,96 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     };
   }, [isOpen, loggedInUser]);
 
+  const hasRestoredScrollRef = useRef(false);
+  const prevMessagesLengthRef = useRef(0);
+  const prevPrivateMessagesLengthRef = useRef(0);
+
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    hasRestoredScrollRef.current = false;
+  }, [chatTab, activeDmUser]);
+
+  useEffect(() => {
+    const messagesLoaded = chatTab === 'public' ? messages.length > 0 : privateMessages.length > 0;
+    if (messagesLoaded && scrollRef.current && !hasRestoredScrollRef.current) {
+      const storageKey = chatTab === 'public' 
+        ? 'dejavu_chat_scroll_public' 
+        : `dejavu_chat_scroll_private_${activeDmUser || 'list'}`;
+      
+      const savedScrollTop = localStorage.getItem(storageKey);
+      if (savedScrollTop !== null) {
+        const parsed = parseFloat(savedScrollTop);
+        if (!isNaN(parsed)) {
+          setTimeout(() => {
+            if (scrollRef.current) {
+              scrollRef.current.scrollTop = parsed;
+              hasRestoredScrollRef.current = true;
+            }
+          }, 60);
+          return;
+        }
+      }
+      
+      setTimeout(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+          hasRestoredScrollRef.current = true;
+        }
+      }, 60);
     }
-  }, [messages, isOpen]);
+  }, [messages, privateMessages, chatTab, activeDmUser, isOpen]);
+
+  useEffect(() => {
+    if (hasRestoredScrollRef.current && scrollRef.current) {
+      const isNewMessage = messages.length > prevMessagesLengthRef.current;
+      if (isNewMessage) {
+        const lastMsg = messages[messages.length - 1];
+        const sentByMe = lastMsg && lastMsg.user === loggedInUser;
+        
+        const container = scrollRef.current;
+        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+        
+        if (sentByMe || isNearBottom) {
+          setTimeout(() => {
+            if (scrollRef.current) {
+              scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+            }
+          }, 50);
+        }
+      }
+    }
+    prevMessagesLengthRef.current = messages.length;
+  }, [messages, loggedInUser]);
+
+  useEffect(() => {
+    if (hasRestoredScrollRef.current && scrollRef.current) {
+      const isNewMessage = privateMessages.length > prevPrivateMessagesLengthRef.current;
+      if (isNewMessage) {
+        const lastMsg = privateMessages[privateMessages.length - 1];
+        const sentByMe = lastMsg && lastMsg.user === loggedInUser;
+        
+        const container = scrollRef.current;
+        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+        
+        if (sentByMe || isNearBottom) {
+          setTimeout(() => {
+            if (scrollRef.current) {
+              scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+            }
+          }, 50);
+        }
+      }
+    }
+    prevPrivateMessagesLengthRef.current = privateMessages.length;
+  }, [privateMessages, loggedInUser]);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (!hasRestoredScrollRef.current) return;
+    const target = e.currentTarget;
+    const storageKey = chatTab === 'public' 
+      ? 'dejavu_chat_scroll_public' 
+      : `dejavu_chat_scroll_private_${activeDmUser || 'list'}`;
+    localStorage.setItem(storageKey, target.scrollTop.toString());
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -811,6 +929,12 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
 
     socketRef.current.emit('chatMessage', messagePayload);
     setInputText('');
+    const currentKey = chatTab === 'public' ? 'public' : `private_${activeDmUser || 'list'}`;
+    setDrafts(prev => {
+      const updated = { ...prev, [currentKey]: '' };
+      localStorage.setItem('dejavu_chat_drafts_map', JSON.stringify(updated));
+      return updated;
+    });
     setPendingAttachment(null);
   };
 
@@ -820,7 +944,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
   };
 
   const handleResendMessage = (msg: ChatMessage) => {
-    setInputText(msg.text || '');
+    handleInputChange(msg.text || '');
     if (msg.imageUrl || msg.audioUrl || msg.videoUrl) {
       setPendingAttachment({
         url: (msg.imageUrl || msg.audioUrl || msg.videoUrl)!,
@@ -1064,7 +1188,11 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin" ref={scrollRef}>
+            <div 
+              className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin" 
+              ref={scrollRef}
+              onScroll={handleScroll}
+            >
               {chatTab === 'public' ? (
                 // Public layout
                 visibleMessages.length === 0 ? (
@@ -1451,13 +1579,18 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                                     )}
                                   </div>
                                   <div className="min-w-0 flex-1">
-                                    <div className="flex items-baseline justify-between mb-0.5">
+                                    <div className="flex items-baseline justify-between mb-0.5 gap-2">
                                       <span className="text-xs font-black uppercase tracking-widest text-neon-blue truncate">
                                         {username.includes('@') ? username.split('@')[0] : username}
                                       </span>
-                                      <span className={`text-[8px] font-bold uppercase ${isLightMode ? 'text-black/30' : 'text-white/20'}`}>
-                                        {new Date(latestMsg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                      </span>
+                                      <div className="flex flex-col items-end gap-1 shrink-0">
+                                        <span className={`text-[8px] font-bold uppercase ${isLightMode ? 'text-black/30' : 'text-white/20'}`}>
+                                          {new Date(latestMsg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                        <span className="inline-flex items-center px-1 py-0.5 rounded text-[7px] font-mono font-bold uppercase tracking-wider bg-neon-purple/10 border border-neon-purple/20 text-neon-purple">
+                                          Private DM
+                                        </span>
+                                      </div>
                                     </div>
                                     <p className={`text-[11px] truncate ${isUnread ? 'text-white font-bold' : (isLightMode ? 'text-black/60' : 'text-white/40')}`}>
                                       {latestMsg.user === loggedInUser ? 'You: ' : ''}
@@ -1741,7 +1874,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                           ref={inputRef}
                           type="text"
                           value={inputText}
-                          onChange={(e) => setInputText(e.target.value)}
+                          onChange={(e) => handleInputChange(e.target.value)}
                           placeholder="Say something to the station..."
                           className={`w-full ${isLightMode ? 'bg-[#ffffff]/80 border-black/10 text-black placeholder-black/40' : 'bg-black/50 border-white/10 placeholder-white/20'} border rounded-2xl pl-[88px] pr-24 py-4 text-sm focus:outline-none focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/50 transition-all`}
                         />
@@ -1851,19 +1984,19 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                   
                   <div className="flex gap-2 justify-center">
                     <button 
-                      onClick={() => setInputText('🔥 BIG CHUNE!')}
+                      onClick={() => handleInputChange('🔥 BIG CHUNE!')}
                       className={`text-[10px] font-black uppercase px-3 py-1 rounded-full transition-all border ${isLightMode ? 'bg-black/5 border-black/5 hover:bg-black/10' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
                     >
                       🔥
                     </button>
                     <button 
-                      onClick={() => setInputText('BIG UP! 🙌')}
+                      onClick={() => handleInputChange('BIG UP! 🙌')}
                       className={`text-[10px] font-black uppercase px-3 py-1 rounded-full transition-all border ${isLightMode ? 'bg-black/5 border-black/5 hover:bg-black/10' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
                     >
                       🙌
                     </button>
                     <button 
-                      onClick={() => setInputText('[REQUEST] ')}
+                      onClick={() => handleInputChange('[REQUEST] ')}
                       className={`text-[10px] font-black uppercase px-3 py-1 rounded-full transition-all border ${isLightMode ? 'bg-black/5 border-black/5 hover:bg-black/10 text-black/80' : 'bg-white/5 border-white/5 hover:bg-white/10 text-white'}`}
                     >
                       Request

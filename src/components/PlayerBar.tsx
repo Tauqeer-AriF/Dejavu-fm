@@ -148,6 +148,22 @@ export function PlayerBar() {
   const [isMinimized, setIsMinimized] = useState(true);
   const socketRef = useRef<any>(null);
 
+  const [dragConstraints, setDragConstraints] = useState({ left: -800, right: 50, top: -600, bottom: 50 });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setDragConstraints({
+        left: -window.innerWidth + 150,
+        right: 50,
+        top: -window.innerHeight + 150,
+        bottom: 50
+      });
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   useEffect(() => {
     const socket = (window as any).socket;
     if (!socket) return;
@@ -290,7 +306,11 @@ export function PlayerBar() {
           initial={{ scale: 0, opacity: 0, x: 50 }}
           animate={{ scale: 1, opacity: 1, x: 0 }}
           exit={{ scale: 0, opacity: 0, x: 50 }}
-          className="hidden sm:flex fixed bottom-[104px] sm:bottom-[112px] xl:bottom-8 right-4 sm:right-8 z-50 flex items-center space-x-3"
+          className="hidden sm:flex fixed bottom-[104px] sm:bottom-[112px] xl:bottom-8 right-4 sm:right-8 z-50 flex items-center space-x-3 cursor-grab active:cursor-grabbing touch-none select-none"
+          drag
+          dragConstraints={dragConstraints}
+          dragElastic={0.1}
+          dragMomentum={false}
         >
           <div className="bg-dark-bg/80 backdrop-blur-3xl border border-white/10 rounded-full p-1.5 flex items-center shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
              <button 

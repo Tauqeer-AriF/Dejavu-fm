@@ -778,7 +778,7 @@ function MainLayout() {
         {isAppLoading && <PremiumLoader onComplete={() => setIsAppLoading(false)} />}
       </AnimatePresence>
       
-      <div className={`min-h-screen pb-40 md:pb-32 flex flex-col relative overflow-hidden bg-dark-bg selection:bg-neon-purple selection:text-white transition-opacity duration-1000 ${isAppLoading ? 'opacity-0' : 'opacity-100'}`}>
+      <div className={`min-h-screen ${location.pathname.startsWith('/admin') ? '' : 'pb-40 md:pb-32'} flex flex-col relative overflow-hidden bg-dark-bg selection:bg-neon-purple selection:text-white transition-opacity duration-1000 ${isAppLoading ? 'opacity-0' : 'opacity-100'}`}>
       {/* Premium Moving Mesh Background */}
       <div className="fixed inset-0 z-0 pointer-events-none opacity-40">
         <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-neon-purple/20 rounded-full blur-[120px] animate-[pulse_10s_ease-in-out_infinite]"></div>
@@ -791,9 +791,9 @@ function MainLayout() {
       <SitePopup />
       <NotificationManager />
       {featChat && <ChatSidebar isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />}
-      {featShoutouts && <ShoutoutWidget isChatOpen={isChatOpen} />}
+      {featShoutouts && !location.pathname.startsWith('/admin') && <ShoutoutWidget isChatOpen={isChatOpen} />}
       
-      <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 relative">
+      <main className={location.pathname.startsWith('/admin/studio') ? "flex-1 w-full relative" : "flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 relative"}>
         {!location.pathname.startsWith('/admin') && <AdvertisementSliders position="top" />}
         <ErrorBoundary key={location.pathname}>
           <AnimatedRoutes />
@@ -801,18 +801,20 @@ function MainLayout() {
         {!location.pathname.startsWith('/admin') && <AdvertisementSliders position="bottom" />}
       </main>
 
-      <footer className="w-full max-w-7xl mx-auto p-4 md:p-8 pt-24 border-t border-white/5 relative flex flex-col md:flex-row items-center justify-between gap-10 text-white/40 text-sm mb-40 md:mb-32">
-        <div className="flex flex-wrap justify-center md:justify-start items-center gap-x-8 gap-y-6">
-          <Link to="/about" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">About</Link>
-          <Link to="/contact" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">Advertising</Link>
-          <Link to="/schedule" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">Schedule</Link>
-          <Link to="/features" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">Features</Link>
-        </div>
-        <div className="flex flex-col items-center md:items-end space-y-2 text-center md:text-right">
-          <p className="font-black uppercase tracking-[0.2em] text-[10px]">© {new Date().getFullYear()} {appName}. All rights reserved.</p>
-          <p className="text-[10px] uppercase tracking-[0.4em] opacity-30 italic text-center md:text-right">{appTagline}</p>
-        </div>
-      </footer>
+      {!location.pathname.startsWith('/admin') && (
+        <footer className="w-full max-w-7xl mx-auto p-4 md:p-8 pt-24 border-t border-white/5 relative flex flex-col md:flex-row items-center justify-between gap-10 text-white/40 text-sm mb-40 md:mb-32">
+          <div className="flex flex-wrap justify-center md:justify-start items-center gap-x-8 gap-y-6">
+            <Link to="/about" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">About</Link>
+            <Link to="/contact" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">Advertising</Link>
+            <Link to="/schedule" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">Schedule</Link>
+            <Link to="/features" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">Features</Link>
+          </div>
+          <div className="flex flex-col items-center md:items-end space-y-2 text-center md:text-right">
+            <p className="font-black uppercase tracking-[0.2em] text-[10px]">© {new Date().getFullYear()} {appName}. All rights reserved.</p>
+            <p className="text-[10px] uppercase tracking-[0.4em] opacity-30 italic text-center md:text-right">{appTagline}</p>
+          </div>
+        </footer>
+      )}
       
       {!location.pathname.startsWith('/admin') && <MobileBottomBar featLiveTools={featLiveTools} />}
       <PlayerBar />
@@ -823,45 +825,12 @@ function MainLayout() {
   );
 }
 
-function RoutePersister() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const isFirstMount = useRef(true);
-
-  useEffect(() => {
-    if (isFirstMount.current) {
-      isFirstMount.current = false;
-      
-      // If we explicitly request station view, clear the saved path and don't redirect
-      const queryParams = new URLSearchParams(location.search);
-      if (queryParams.get('view') === 'station') {
-        localStorage.removeItem('dejavufm_last_path');
-        return;
-      }
-
-      // Only restore if we land on the root path
-      if (location.pathname === '/' || location.pathname === '') {
-        const savedPath = localStorage.getItem('dejavufm_last_path');
-        if (savedPath && savedPath !== '/' && savedPath !== '') {
-          navigate(savedPath, { replace: true });
-          return;
-        }
-      }
-    }
-    // Save current route change to localStorage
-    localStorage.setItem('dejavufm_last_path', location.pathname + location.search);
-  }, [location.pathname, location.search, navigate]);
-
-  return null;
-}
-
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ModalProvider>
         <AudioProvider>
           <Router>
-            <RoutePersister />
             <Toaster theme="dark" position="bottom-right" toastOptions={{ style: { background: '#09090b', borderColor: 'var(--color-neon-purple)', color: 'white' } }} />
             <MainLayout />
           </Router>

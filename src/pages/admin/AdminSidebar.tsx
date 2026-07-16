@@ -156,7 +156,6 @@ export function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; 
               <div className="pt-4 mt-4 border-t border-dashed border-neon-purple/20 space-y-2">
                 <button
                   onClick={() => {
-                    localStorage.removeItem('dejavufm_last_path');
                     window.open('/', '_blank', 'noopener,noreferrer');
                     setIsOpen(false);
                   }}
@@ -223,7 +222,6 @@ export function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; 
             <button
               onClick={() => {
                 // Clear any saved admin path so the new tab opens the true home page
-                localStorage.removeItem('dejavufm_last_path');
                 window.open('/', '_blank', 'noopener,noreferrer');
               }}
               className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0' : 'justify-between px-4'} py-3 rounded-xl border transition-all duration-300 shadow-sm group mb-2 ${isLightMode ? 'bg-cyan-50 border-cyan-200 text-cyan-700 hover:bg-cyan-600 hover:text-white' : 'bg-neon-blue/10 border-neon-blue/30 text-neon-blue hover:bg-neon-blue hover:text-dark-bg shadow-[0_0_15px_rgba(0,210,255,0.1)]'}`}

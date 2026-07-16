@@ -284,8 +284,55 @@ async function startServer() {
     io.emit('chatCountsUpdated', getChatRoomCounts());
   };
 
+  const deleteMessageFiles = (messages: any[]) => {
+    try {
+      const uploadsDir = getUploadsDir();
+      messages.forEach(msg => {
+        ['imageUrl', 'audioUrl', 'videoUrl'].forEach(key => {
+          const url = msg[key];
+          if (typeof url === 'string') {
+            let filename = '';
+            if (url.includes('/uploads/')) {
+              filename = url.split('/uploads/').pop() || '';
+            } else if (!url.startsWith('http') && !url.startsWith('https') && url.trim() !== '') {
+              filename = url;
+            }
+            if (filename) {
+              filename = filename.split('?')[0].split('#')[0];
+              const filePath = path.join(uploadsDir, filename);
+              try {
+                if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+                  fs.unlinkSync(filePath);
+                  console.log(`[Media Delete] Deleted media file: ${filePath}`);
+                }
+              } catch (err) {
+                console.error(`[Media Delete] Failed to delete file: ${filePath}`, err);
+              }
+            }
+          }
+        });
+      });
+    } catch (e) {
+      console.error("[Media Cleanup] Error in deleteMessageFiles helper:", e);
+    }
+  };
+
   const clearAllChatRoomData = (reason = "manual") => {
     if (!db.open) return { publicDeleted: 0, privateDeleted: 0 };
+
+    try {
+      const publicMsgs = db.prepare("SELECT imageUrl, audioUrl, videoUrl FROM public_messages WHERE imageUrl IS NOT NULL OR audioUrl IS NOT NULL OR videoUrl IS NOT NULL").all() as any[];
+      deleteMessageFiles(publicMsgs);
+    } catch (err) {
+      console.error("[Media Cleanup] Failed to cleanup public_messages files:", err);
+    }
+
+    try {
+      const privateMsgs = db.prepare("SELECT imageUrl, audioUrl, videoUrl FROM private_messages WHERE imageUrl IS NOT NULL OR audioUrl IS NOT NULL OR videoUrl IS NOT NULL").all() as any[];
+      deleteMessageFiles(privateMsgs);
+    } catch (err) {
+      console.error("[Media Cleanup] Failed to cleanup private_messages files:", err);
+    }
 
     const publicInfo = db.prepare("DELETE FROM public_messages").run();
     const privateInfo = db.prepare("DELETE FROM private_messages").run();
@@ -466,6 +513,17 @@ async function startServer() {
           }
         }
 
+        // Clean up media file from disk
+        try {
+          const table = payload.isPrivate ? 'private_messages' : 'public_messages';
+          const msg = db.prepare(`SELECT imageUrl, audioUrl, videoUrl FROM ${table} WHERE id = ?`).get(payload.id) as any;
+          if (msg) {
+            deleteMessageFiles([msg]);
+          }
+        } catch (err) {
+          console.error("[Media Cleanup] Failed to cleanup single deleted message file:", err);
+        }
+
         if (payload.isPrivate) {
           db.prepare("DELETE FROM private_messages WHERE id = ?").run(payload.id);
         } else {
@@ -495,17 +553,39 @@ async function startServer() {
         if (payload.isPrivate) {
           if (payload.targetRecipient) {
             // Clear conversation between payload.user and targetRecipient
+            try {
+              const msgs = db.prepare("SELECT imageUrl, audioUrl, videoUrl FROM private_messages WHERE ((sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?)) AND (imageUrl IS NOT NULL OR audioUrl IS NOT NULL OR videoUrl IS NOT NULL)").all(payload.user, payload.targetRecipient, payload.targetRecipient, payload.user) as any[];
+              deleteMessageFiles(msgs);
+            } catch (err) {
+              console.error("[Media Cleanup] Failed to cleanup private thread files:", err);
+            }
+
             db.prepare("DELETE FROM private_messages WHERE (sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?)")
               .run(payload.user, payload.targetRecipient, payload.targetRecipient, payload.user);
             io.emit('messagesCleared', { isPrivate: true, recipient: payload.targetRecipient, sender: payload.user });
             emitChatRoomCounts();
           } else {
             // Clear ALL private messages
+            try {
+              const msgs = db.prepare("SELECT imageUrl, audioUrl, videoUrl FROM private_messages WHERE imageUrl IS NOT NULL OR audioUrl IS NOT NULL OR videoUrl IS NOT NULL").all() as any[];
+              deleteMessageFiles(msgs);
+            } catch (err) {
+              console.error("[Media Cleanup] Failed to cleanup all private files:", err);
+            }
+
             db.prepare("DELETE FROM private_messages").run();
             io.emit('messagesCleared', { isPrivate: true, all: true });
             emitChatRoomCounts();
           }
         } else {
+          // Clear ALL public messages
+          try {
+            const msgs = db.prepare("SELECT imageUrl, audioUrl, videoUrl FROM public_messages WHERE imageUrl IS NOT NULL OR audioUrl IS NOT NULL OR videoUrl IS NOT NULL").all() as any[];
+            deleteMessageFiles(msgs);
+          } catch (err) {
+            console.error("[Media Cleanup] Failed to cleanup all public files:", err);
+          }
+
           db.prepare("DELETE FROM public_messages").run();
           chatHistory = [];
           io.emit('messagesCleared', { isPrivate: false });
@@ -526,6 +606,14 @@ async function startServer() {
           return;
         }
 
+        // Clean up public messages files for this user
+        try {
+          const msgs = db.prepare("SELECT imageUrl, audioUrl, videoUrl FROM public_messages WHERE LOWER(sender) = ? AND (imageUrl IS NOT NULL OR audioUrl IS NOT NULL OR videoUrl IS NOT NULL)").all(payload.targetUser.toLowerCase()) as any[];
+          deleteMessageFiles(msgs);
+        } catch (err) {
+          console.error("[Media Cleanup] Failed to cleanup user thread public files:", err);
+        }
+
         const publicInfo = db.prepare("DELETE FROM public_messages WHERE LOWER(sender) = ?").run(payload.targetUser.toLowerCase());
         const shoutoutInfo = db.prepare("DELETE FROM shoutouts WHERE LOWER(listener_name) = ?").run(payload.targetUser.toLowerCase());
 
@@ -536,6 +624,23 @@ async function startServer() {
         console.log(`[Clear Thread] Cleared thread for ${payload.targetUser} by ${payload.adminUser}. Public: ${publicInfo.changes}, Shoutouts: ${shoutoutInfo.changes}`);
       } catch (err) {
         console.error("Failed to clear user thread:", err);
+      }
+    });
+
+    socket.on('deleteShoutout', (payload: { id: number; user: string }) => {
+      if (!db.open) return;
+      try {
+        const adminCheck = db.prepare("SELECT 1 FROM admins WHERE LOWER(username) = ?").get(payload.user.toLowerCase());
+        if (!adminCheck) {
+          console.warn(`[Delete Shoutout] Unauthorized delete attempt by ${payload.user}`);
+          return;
+        }
+
+        db.prepare("DELETE FROM shoutouts WHERE id = ?").run(payload.id);
+        io.emit('shoutoutDeleted', { id: payload.id });
+        console.log(`[Delete Shoutout] Shoutout ${payload.id} deleted by ${payload.user}`);
+      } catch (err) {
+        console.error("Failed to delete shoutout:", err);
       }
     });
 

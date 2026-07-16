@@ -215,7 +215,6 @@ export function AdminBackup() {
         const isUp = await waitForServer(50, oldServerId);
         if (isUp) {
           toast.success('Database restored successfully! Reconnecting...');
-          localStorage.removeItem('dejavufm_last_path'); // Clear stale nav state
           setTimeout(() => window.location.reload(), 800);
         } else {
           throw new Error('Server reboot timed out. The database might still be restoring. Please refresh manually in a moment.');
@@ -335,7 +334,6 @@ export function AdminBackup() {
       const isUp = await waitForServer(60, oldServerId);
       if (isUp) {
         toast.success('Database restored successfully! Reconnecting...');
-        localStorage.removeItem('dejavufm_last_path'); // Clear stale nav state
         setTimeout(() => window.location.reload(), 800);
       } else {
         throw new Error('Server reboot timed out. The system might still be processing. Please refresh manually.');

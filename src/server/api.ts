@@ -324,7 +324,7 @@ apiRouter.post("/public/book-artist", (req, res) => {
 });
 
 apiRouter.post("/public/shoutout", shoutoutLimiter, (req, res) => {
-  let { email, message, type } = req.body;
+  let { email, message, type, imageUrl, audioUrl, videoUrl } = req.body;
   let isLoggedIn = false;
 
   const token = req.cookies?.user_token;
@@ -366,15 +366,18 @@ apiRouter.post("/public/shoutout", shoutoutLimiter, (req, res) => {
     processAndBroadcastShoutout({
       listener_name: email,
       message: message,
-      type: type || 'text'
+      type: type || 'text',
+      imageUrl,
+      audioUrl,
+      videoUrl
     });
   } else {
     // Fallback in case the function isn't registered, though it should be.
     console.error("[API] processAndBroadcastShoutout function not found on app context.");
-    const info = db.prepare("INSERT INTO shoutouts (listener_name, message, type) VALUES (?, ?, ?)")
-      .run(email, message, type || 'text');
+    const info = db.prepare("INSERT INTO shoutouts (listener_name, message, type, imageUrl, audioUrl, videoUrl) VALUES (?, ?, ?, ?, ?, ?)")
+      .run(email, message, type || 'text', imageUrl || null, audioUrl || null, videoUrl || null);
     const io = req.app.get('io') as Server;
-    const newShoutout = { id: info.lastInsertRowid, listener_name: email, message, type, timestamp: Date.now() };
+    const newShoutout = { id: info.lastInsertRowid, listener_name: email, message, type, imageUrl, audioUrl, videoUrl, timestamp: Date.now() };
     io.emit('new_shoutout', newShoutout);
 
     io.to('api_clients').emit('new_shoutout', newShoutout);
@@ -600,7 +603,8 @@ apiRouter.post("/public/user/upload-avatar", upload.single("avatar"), (req: any,
 });
 
 apiRouter.post("/public/chat/upload", (req: any, res: any) => {
-  const token = req.cookies.user_token;
+  const authHeader = req.headers.authorization;
+  const token = req.cookies.user_token || req.cookies.admin_token || (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null);
   if (!token) return res.status(401).json({ error: "Unauthorized" });
 
   try {
@@ -1409,13 +1413,25 @@ apiRouter.post("/admin/shoutouts/:id/reply", authMiddleware, (req: any, res: any
     return res.status(400).json({ error: "Reply text cannot be empty." });
   }
 
+  // Get dynamic studio details
+  let studioName = "DejavuFM Studio";
+  let studioImage = "/icon.svg";
+  try {
+    const sName = db.prepare("SELECT value FROM settings WHERE key = 'studio_name'").get() as { value: string } | undefined;
+    const sImage = db.prepare("SELECT value FROM settings WHERE key = 'studio_image'").get() as { value: string } | undefined;
+    if (sName?.value) studioName = sName.value;
+    if (sImage?.value) studioImage = sImage.value;
+  } catch (err) {
+    console.error("Error retrieving studio settings:", err);
+  }
+
   const info = db.prepare(`
     UPDATE shoutouts 
     SET reply_text = ?, replied_by = ?, replied_at = CURRENT_TIMESTAMP
     WHERE id = ?
-  `).run(reply_text, req.user.username, id);
+  `).run(reply_text, studioName, id);
 
-  const shoutout = db.prepare("SELECT listener_name FROM shoutouts WHERE id = ?").get(id) as { listener_name: string };
+  const shoutout = db.prepare("SELECT listener_name, message FROM shoutouts WHERE id = ?").get(id) as { listener_name: string, message: string } | undefined;
   if (shoutout) {
     const io = req.app.get('io') as Server;
     const listenerName = shoutout.listener_name;
@@ -1424,15 +1440,29 @@ apiRouter.post("/admin/shoutouts/:id/reply", authMiddleware, (req: any, res: any
     const user = db.prepare("SELECT username FROM users WHERE LOWER(email) = ?").get(listenerName.toLowerCase()) as { username: string } | undefined;
     const targetUsername = user?.username;
 
+    // Emit shoutoutReply to the user's specific socket if connected
     if (targetUsername) {
-      // Now find the socket for that username.
       for (const [_, socket] of io.sockets.sockets) {
         const socketUser = (socket as any).username;
         if (socketUser && socketUser.toLowerCase() === targetUsername.toLowerCase()) {
-          socket.emit('shoutoutReply', { shoutoutId: id, repliedBy: req.user.username, replyText: reply_text });
+          socket.emit('shoutoutReply', { shoutoutId: id, repliedBy: studioName, replyText: reply_text });
           break; // Found the user, no need to continue looping.
         }
       }
+    }
+
+    // Also broadcast the reply to all connected users so it updates in their widgets too
+    io.emit('shoutoutReply', { shoutoutId: id, repliedBy: studioName, replyText: reply_text });
+
+    // Also post a public chat room message from the studio so replies appear in the chat room too!
+    const processAndBroadcastChatMessage = req.app.get('processAndBroadcastChatMessage');
+    if (processAndBroadcastChatMessage) {
+      processAndBroadcastChatMessage({
+        user: studioName,
+        avatar_url: studioImage,
+        text: `REPLY to @${targetUsername || listenerName} ("${shoutout.message}"): ${reply_text}`,
+        timestamp: Date.now()
+      });
     }
   }
 
@@ -1450,7 +1480,7 @@ apiRouter.put("/admin/settings", authorizeRole('admin'), (req, res) => {
     "secondary_color", "feat_chat", "feat_shoutouts", "feat_cinematic", 
     "feat_pwa", "feat_bookings", "feat_live_tools", "feat_stream_quality",
     "logo_dark", "logo_light", "logo_shape", "favicon", "backup_retention_days",
-    "backup_frequency_hours", "backup_enabled", "popup_delay"
+    "backup_frequency_hours", "backup_enabled", "popup_delay", "studio_name", "studio_image"
   ];
   
   for (const key of allowedKeys) {
