@@ -22,8 +22,14 @@ try {
   __dirname = path.dirname(__filename);
 } catch (e) {
   // Fallback for CommonJS/Bundled environments
-  __filename = (global as any).__filename || "";
-  __dirname = (global as any).__dirname || process.cwd();
+  // In CJS, these are available in the module scope but not on global
+  try {
+    __filename = __filename || "";
+    __dirname = __dirname || process.cwd();
+  } catch (err) {
+    __filename = "";
+    __dirname = process.cwd();
+  }
 }
 
 import fs from "fs";

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --external:better-sqlite3 --external:bcryptjs --external:express --external:cookie-parser --external:jsonwebtoken --external:socket.io --external:helmet --external:express-rate-limit --external:multer --external:tar --external:rss-parser --external:csv-parse --external:dotenv --external:esbuild --external:@google/genai --sourcemap --outfile=dist/server.cjs",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --define:__dirname=__dirname --define:__filename=__filename --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
     "preview": "node dist/server.cjs",
     "clean": "rm -rf dist",
