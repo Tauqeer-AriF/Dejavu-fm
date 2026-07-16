@@ -120,51 +120,65 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
   }, []);
 
 
-  // Listen for direct replies to the user's shoutouts
+  // Consolidate socket listeners
   useEffect(() => {
     const socket = (window as any).socket;
-    if (socket) {
-      const handleReply = (data: { shoutoutId: string; repliedBy: string; replyText: string }) => {
+    if (!socket) return;
+
+    const handleReply = (data: { 
+      shoutoutId: string; 
+      repliedBy: string; 
+      replyText: string;
+      replyImageUrl?: string;
+      replyAudioUrl?: string;
+      replyVideoUrl?: string;
+    }) => {
+      // Robust deduplication: check if we already have a reply for this shoutout with this message
+      setRecentShoutouts(prev => {
+        // If we already have this exact reply (same shoutoutId and message), don't add it again
+        const isDuplicate = prev.some(s => 
+          s.isReply && 
+          s.shoutoutId === data.shoutoutId && 
+          s.message === data.replyText
+        );
+        if (isDuplicate) return prev;
+
         const replyShoutout = {
-          id: `reply-${data.shoutoutId}-${Date.now()}`,
+          // Use a combination of ID, timestamp, and random string to ensure absolute uniqueness for React keys
+          id: `reply-${data.shoutoutId}-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+          shoutoutId: data.shoutoutId, // Store original ID for deduplication
           isReply: true,
           listener_name: data.repliedBy,
-          message: `"${data.replyText}"`,
+          message: data.replyText,
+          imageUrl: data.replyImageUrl,
+          audioUrl: data.replyAudioUrl,
+          videoUrl: data.replyVideoUrl,
         };
 
-        setRecentShoutouts(prev => {
-          if (prev.some(s => s.id === replyShoutout.id)) return prev;
-          return [replyShoutout, ...prev].slice(0, 3);
-        });
-      };
+        return [replyShoutout, ...prev].slice(0, 3);
+      });
+    };
 
-      socket.on('shoutoutReply', handleReply);
-      return () => { socket.off('shoutoutReply', handleReply); };
-    }
-  }, []);
+    const handleNewShoutout = (shoutout: any) => {
+      setRecentShoutouts(prev => {
+        if (prev.some(s => s.id === shoutout.id)) return prev;
+        return [shoutout, ...prev].slice(0, 3);
+      });
+    };
 
-  useEffect(() => {
-    const socket = (window as any).socket;
-    if (socket) {
-      const handler = (shoutout: any) => {
-        setRecentShoutouts(prev => {
-          // Guard against duplicates
-          if (prev.some(s => s.id === shoutout.id)) return prev;
-          return [shoutout, ...prev].slice(0, 3);
-        });
-      };
-      const onCleared = () => {
-        setRecentShoutouts([]);
-      };
-      
-      socket.on('new_shoutout', handler);
-      socket.on('shoutouts_cleared', onCleared);
-      
-      return () => {
-        socket.off('new_shoutout', handler);
-        socket.off('shoutouts_cleared', onCleared);
-      };
-    }
+    const onCleared = () => {
+      setRecentShoutouts([]);
+    };
+
+    socket.on('shoutoutReply', handleReply);
+    socket.on('new_shoutout', handleNewShoutout);
+    socket.on('shoutouts_cleared', onCleared);
+
+    return () => {
+      socket.off('shoutoutReply', handleReply);
+      socket.off('new_shoutout', handleNewShoutout);
+      socket.off('shoutouts_cleared', onCleared);
+    };
   }, []);
 
   // Auto-hide shoutouts with dynamic duration based on screen size
@@ -220,7 +234,7 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
         const formData = new FormData();
         formData.append('file', attachment);
 
-        const uploadRes = await fetch('/api/public/chat/upload', {
+        const uploadRes = await fetch('/api/public/shoutout/upload', {
           method: 'POST',
           body: formData,
         });
@@ -248,11 +262,12 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
         removeAttachment();
         setIsOpen(false);
       } else {
-        throw new Error('Shoutout submission failed.');
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Shoutout submission failed.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Shoutout send error:", err);
-      toast.error('Failed to reach studio.');
+      toast.error(err.message || 'Failed to reach studio.');
     } finally {
       setIsSending(false);
       setIsUploading(false);
@@ -302,62 +317,67 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
             exit={{ opacity: 0, x: 20, scale: 0.5 }}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            className="flex bg-black/60 backdrop-blur-2xl border-l-4 border-l-neon-purple border-y border-r border-white/10 px-5 py-3 rounded-2xl shadow-2xl items-center space-x-4 pointer-events-auto max-w-[280px] sm:max-w-[320px]"
+            className={`flex flex-col bg-black/60 backdrop-blur-2xl border-y border-r border-white/10 rounded-2xl shadow-2xl pointer-events-auto max-w-[280px] sm:max-w-[320px] transition-all duration-300 overflow-hidden ${s.isReply ? 'border-l-4 border-l-neon-blue ring-1 ring-neon-blue/20' : 'border-l-4 border-l-neon-purple'}`}
+            style={s.isReply ? { zIndex: 10025 } : {}}
           >
-             <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${s.isReply ? 'bg-neon-blue/10 border-neon-blue/20' : 'bg-neon-purple/10 border-neon-purple/20'}`}>
-                {s.isReply ? (
-                  <MessageSquare className="w-5 h-5 text-neon-blue" />
-                ) : (
-                  <Radio className="w-5 h-5 text-neon-purple" />
-                )}
-             </div>
-             <div className="min-w-0 flex-1">
-                <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] mb-0.5">
-                  {s.isReply ? 'Reply from DJ' : 'Broadcast Alert'}
-                </p>
-                <p className={`text-[11px] font-bold truncate tracking-tight mb-1 ${s.isReply ? 'text-neon-blue' : 'text-neon-purple'}`}>
-                  {s.listener_name}
-                </p>
-                <p className="text-xs text-white/90 line-clamp-2 font-medium leading-relaxed italic mb-2">"{s.message}"</p>
-                
-                {/* Media Content */}
-                {s.imageUrl && (
-                  <div className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
-                    <img 
-                      src={s.imageUrl} 
-                      alt="Attached Image" 
-                      className="max-h-32 object-contain mx-auto w-full cursor-pointer" 
-                    />
-                  </div>
-                )}
-                {s.videoUrl && (
-                  <div className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
-                    <video 
-                      src={s.videoUrl} 
-                      className="max-h-32 w-full object-contain bg-black" 
-                      autoPlay 
-                      muted 
-                      loop 
-                      controls
-                      playsInline
-                      onPlay={() => setIsMediaPlaying(true)}
-                      onPause={() => setIsMediaPlaying(false)}
-                      onEnded={() => setIsMediaPlaying(false)}
-                    />
-                  </div>
-                )}
-                {s.audioUrl && (
-                  <div className="mt-2 w-full p-1.5 rounded-lg bg-black/30 border border-white/5">
-                    <audio 
-                      src={s.audioUrl} 
-                      controls 
-                      className="w-full h-6 accent-neon-purple" 
-                      onPlay={() => setIsMediaPlaying(true)}
-                      onPause={() => setIsMediaPlaying(false)}
-                      onEnded={() => setIsMediaPlaying(false)}
-                    />
-                  </div>
-                )}
+             {/* Rich Media at the top */}
+             {(s.imageUrl || s.videoUrl) && (
+               <div className="w-full relative overflow-hidden bg-black/40 border-b border-white/5 group/media">
+                 {s.imageUrl && (
+                   <img 
+                     src={s.imageUrl} 
+                     alt="Attached Image" 
+                     className="w-full h-auto max-h-48 object-cover transition-transform duration-700 group-hover/media:scale-110" 
+                   />
+                 )}
+                 {s.videoUrl && (
+                   <video 
+                     src={s.videoUrl} 
+                     className="w-full h-auto max-h-48 object-cover bg-black" 
+                     autoPlay 
+                     muted 
+                     loop 
+                     playsInline
+                     onPlay={() => setIsMediaPlaying(true)}
+                     onPause={() => setIsMediaPlaying(false)}
+                     onEnded={() => setIsMediaPlaying(false)}
+                   />
+                 )}
+                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60" />
+               </div>
+             )}
+
+             <div className="flex items-start space-x-4 px-5 py-4">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border mt-1 ${s.isReply ? 'bg-neon-blue/10 border-neon-blue/20' : 'bg-neon-purple/10 border-neon-purple/20'}`}>
+                   {s.isReply ? (
+                     <MessageSquare className="w-5 h-5 text-neon-blue" />
+                   ) : (
+                     <Radio className="w-5 h-5 text-neon-purple" />
+                   )}
+                </div>
+                <div className="min-w-0 flex-1">
+                   <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] mb-0.5">
+                     {s.isReply ? 'Reply from DJ' : 'Broadcast Alert'}
+                   </p>
+                   <p className={`text-[11px] font-bold truncate tracking-tight mb-1 ${s.isReply ? 'text-neon-blue' : 'text-neon-purple'}`}>
+                     {s.listener_name}
+                   </p>
+                   <p className="text-xs text-white/90 line-clamp-3 font-medium leading-relaxed italic mb-2">"{s.message}"</p>
+                   
+                   {/* Audio Content remains below text as it's a control bar */}
+                   {s.audioUrl && (
+                     <div className="mt-2 w-full p-1.5 rounded-lg bg-black/30 border border-white/5">
+                       <audio 
+                         src={s.audioUrl} 
+                         controls 
+                         className={`w-full h-6 ${s.isReply ? 'accent-neon-blue' : 'accent-neon-purple'}`} 
+                         onPlay={() => setIsMediaPlaying(true)}
+                         onPause={() => setIsMediaPlaying(false)}
+                         onEnded={() => setIsMediaPlaying(false)}
+                       />
+                     </div>
+                   )}
+                </div>
              </div>
           </motion.div>
         ))}

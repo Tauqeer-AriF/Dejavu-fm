@@ -37,6 +37,7 @@ export function AdminMedia() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('all');
+  const [showOrphanedOnly, setShowOrphanedOnly] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -112,7 +113,11 @@ export function AdminMedia() {
     let filtered = media;
 
     if (filterType !== 'all') {
-      filtered = filtered.filter(item => item.type === filterType);
+      if (filterType === 'orphaned') {
+        filtered = filtered.filter(item => item.usages.length === 0);
+      } else {
+        filtered = filtered.filter(item => item.type === filterType);
+      }
     }
 
     if (!query) return filtered;
@@ -134,6 +139,7 @@ export function AdminMedia() {
     video: media.filter((item: any) => item.type === 'video').length,
     audio: media.filter((item: any) => item.type === 'audio').length,
     other: media.filter((item: any) => item.type === 'other').length,
+    orphaned: media.filter((item: any) => item.usages.length === 0).length,
   }), [media]);
 
   const totalPages = Math.ceil(filteredMedia.length / itemsPerPage);
@@ -212,6 +218,13 @@ export function AdminMedia() {
               <p className="text-[10px] uppercase tracking-widest text-white/40">Audio</p>
             </div>
           </div>
+          <div className="flex items-center gap-4 rounded-3xl border border-white/10 bg-dark-bg/50 p-4">
+            <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-400 shrink-0"><Trash2 className="w-5 h-5" /></div>
+            <div className="flex-1 min-w-0">
+              <p className="text-2xl font-bold truncate">{counts.orphaned}</p>
+              <p className="text-[10px] uppercase tracking-widest text-white/40">Orphaned Assets</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -236,6 +249,7 @@ export function AdminMedia() {
             <option value="image">Images</option>
             <option value="video">Videos</option>
             <option value="audio">Audio</option>
+            <option value="orphaned">Orphaned Assets</option>
             <option value="other">Other</option>
           </select>
           <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />

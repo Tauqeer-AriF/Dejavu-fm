@@ -269,14 +269,32 @@ async function startServer() {
   }
 
   const getChatRoomCounts = () => {
-    if (!db.open) return { publicMessages: 0, privateMessages: 0 };
+    if (!db.open) return { publicMessages: 0, privateMessages: 0, shoutouts: 0, imageCount: 0, audioCount: 0, videoCount: 0 };
 
     const publicCount = db.prepare("SELECT COUNT(*) as count FROM public_messages").get() as { count: number };
     const privateCount = db.prepare("SELECT COUNT(*) as count FROM private_messages").get() as { count: number };
+    const shoutoutCount = db.prepare("SELECT COUNT(*) as count FROM shoutouts").get() as { count: number };
+
+    const mediaCounts = db.prepare(`
+      SELECT 
+        (SELECT COUNT(*) FROM public_messages WHERE imageUrl IS NOT NULL) + 
+        (SELECT COUNT(*) FROM private_messages WHERE imageUrl IS NOT NULL) +
+        (SELECT COUNT(*) FROM shoutouts WHERE imageUrl IS NOT NULL OR replyImageUrl IS NOT NULL) as images,
+        (SELECT COUNT(*) FROM public_messages WHERE audioUrl IS NOT NULL) + 
+        (SELECT COUNT(*) FROM private_messages WHERE audioUrl IS NOT NULL) +
+        (SELECT COUNT(*) FROM shoutouts WHERE audioUrl IS NOT NULL OR replyAudioUrl IS NOT NULL) as audios,
+        (SELECT COUNT(*) FROM public_messages WHERE videoUrl IS NOT NULL) + 
+        (SELECT COUNT(*) FROM private_messages WHERE videoUrl IS NOT NULL) +
+        (SELECT COUNT(*) FROM shoutouts WHERE videoUrl IS NOT NULL OR replyVideoUrl IS NOT NULL) as videos
+    `).get() as { images: number; audios: number; videos: number };
 
     return {
       publicMessages: publicCount?.count || 0,
-      privateMessages: privateCount?.count || 0
+      privateMessages: privateCount?.count || 0,
+      shoutoutCount: shoutoutCount?.count || 0,
+      imageCount: mediaCounts?.images || 0,
+      audioCount: mediaCounts?.audios || 0,
+      videoCount: mediaCounts?.videos || 0
     };
   };
 
@@ -318,7 +336,7 @@ async function startServer() {
   };
 
   const clearAllChatRoomData = (reason = "manual") => {
-    if (!db.open) return { publicDeleted: 0, privateDeleted: 0 };
+    if (!db.open) return { publicDeleted: 0, privateDeleted: 0, shoutoutsDeleted: 0 };
 
     try {
       const publicMsgs = db.prepare("SELECT imageUrl, audioUrl, videoUrl FROM public_messages WHERE imageUrl IS NOT NULL OR audioUrl IS NOT NULL OR videoUrl IS NOT NULL").all() as any[];
@@ -334,8 +352,21 @@ async function startServer() {
       console.error("[Media Cleanup] Failed to cleanup private_messages files:", err);
     }
 
+    try {
+      const shoutoutMsgs = db.prepare("SELECT imageUrl, audioUrl, videoUrl, replyImageUrl, replyAudioUrl, replyVideoUrl FROM shoutouts WHERE imageUrl IS NOT NULL OR audioUrl IS NOT NULL OR videoUrl IS NOT NULL OR replyImageUrl IS NOT NULL OR replyAudioUrl IS NOT NULL OR replyVideoUrl IS NOT NULL").all() as any[];
+      // Need to handle both normal and reply media for shoutouts
+      const normalizedShoutoutMsgs = shoutoutMsgs.flatMap(s => [
+        { imageUrl: s.imageUrl, audioUrl: s.audioUrl, videoUrl: s.videoUrl },
+        { imageUrl: s.replyImageUrl, audioUrl: s.replyAudioUrl, videoUrl: s.replyVideoUrl }
+      ]);
+      deleteMessageFiles(normalizedShoutoutMsgs);
+    } catch (err) {
+      console.error("[Media Cleanup] Failed to cleanup shoutout files:", err);
+    }
+
     const publicInfo = db.prepare("DELETE FROM public_messages").run();
     const privateInfo = db.prepare("DELETE FROM private_messages").run();
+    const shoutoutInfo = db.prepare("DELETE FROM shoutouts").run();
     chatHistory = [];
 
     const clearedAt = new Date().toISOString();
@@ -344,10 +375,12 @@ async function startServer() {
 
     io.emit('messagesCleared', { isPrivate: false, allChatData: true, reason, clearedAt });
     io.emit('messagesCleared', { isPrivate: true, allChatData: true, reason, clearedAt });
+    io.emit('shoutouts_cleared');
     emitChatRoomCounts();
-    console.log(`[Chat Retention] Cleared chat room data (${reason}). Public: ${publicInfo.changes}, Private: ${privateInfo.changes}`);
 
-    return { publicDeleted: publicInfo.changes, privateDeleted: privateInfo.changes, clearedAt };
+    console.log(`[Chat Retention] Cleared chat room data (${reason}). Public: ${publicInfo.changes}, Private: ${privateInfo.changes}, Shoutouts: ${shoutoutInfo.changes}`);
+
+    return { publicDeleted: publicInfo.changes, privateDeleted: privateInfo.changes, shoutoutsDeleted: shoutoutInfo.changes, clearedAt };
   };
 
   app.set('clearChatRoomData', clearAllChatRoomData);
@@ -707,6 +740,15 @@ async function startServer() {
         });
         socket.emit('privateHistory', enrichedHistory);
         socket.emit('chatHistory', chatHistory);
+
+        if (isUserAdmin) {
+          try {
+            const shoutoutHistory = db.prepare("SELECT * FROM shoutouts ORDER BY timestamp ASC").all() as any[];
+            socket.emit('shoutoutHistory', shoutoutHistory);
+          } catch (shoutoutErr) {
+            console.error("Failed to load shoutout history for admin:", shoutoutErr);
+          }
+        }
       } catch (err) {
         console.error("Failed to load private history for registered user:", err);
       }

@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useNavigate, Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
-import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles, Send, Heart, ThumbsUp, Smile } from "lucide-react";
+import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles, Send, Heart, ThumbsUp, Smile, Paperclip } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { useModal } from "../../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
@@ -290,6 +290,38 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
               {s.reply_text ? (
                 <div className="relative z-10 mt-4 p-3 bg-neon-blue/10 border border-neon-blue/20 rounded-xl text-xs italic">
                   <p className="text-white/80">"{s.reply_text}"</p>
+                  
+                  {/* Reply Media Previews */}
+                  {s.replyImageUrl && (
+                    <div className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
+                      <img 
+                        src={s.replyImageUrl} 
+                        alt="Reply Image Attachment" 
+                        className="max-h-32 object-contain mx-auto w-full cursor-pointer hover:opacity-95 transition-opacity" 
+                      />
+                    </div>
+                  )}
+                  {s.replyVideoUrl && (
+                    <div className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
+                      <video 
+                        src={s.replyVideoUrl} 
+                        className="max-h-32 w-full object-contain mx-auto bg-black" 
+                        controls
+                        preload="metadata"
+                        playsInline
+                      />
+                    </div>
+                  )}
+                  {s.replyAudioUrl && (
+                    <div className="mt-2 w-full p-1.5 rounded-lg bg-black/30 border border-white/5 flex flex-col gap-1">
+                      <audio 
+                        src={s.replyAudioUrl} 
+                        controls 
+                        className="w-full h-8 accent-neon-blue rounded" 
+                      />
+                    </div>
+                  )}
+
                   <p className="text-right text-[10px] font-bold uppercase tracking-widest text-neon-blue/60 mt-2">
                     - Replied by {s.replied_by}
                   </p>
@@ -327,43 +359,136 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
 function ReplyForm({ shoutoutId, onReplied, onCancel }: { shoutoutId: number, onReplied: () => void, onCancel: () => void }) {
   const [replyText, setReplyText] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { showAlert } = useModal();
+
+  useEffect(() => {
+    if (!attachment) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(attachment);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [attachment]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!replyText.trim()) return;
+    if (!replyText.trim() && !attachment) return;
 
     setIsSaving(true);
+    let mediaUrl: string | null = null;
+    let mediaType: string | null = null;
+
     try {
+      if (attachment) {
+        const formData = new FormData();
+        formData.append('file', attachment);
+        const uploadRes = await fetchAdmin('/api/public/chat/upload', {
+          method: 'POST',
+          body: formData
+        });
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok) throw new Error(uploadData.error || 'Upload failed');
+        mediaUrl = uploadData.url;
+        mediaType = uploadData.type;
+      }
+
       const res = await fetchAdmin(`/api/admin/shoutouts/${shoutoutId}/reply`, {
         method: 'POST',
-        body: { reply_text: replyText }
+        body: { 
+          reply_text: replyText,
+          replyImageUrl: mediaType === 'image' ? mediaUrl : null,
+          replyAudioUrl: mediaType === 'audio' ? mediaUrl : null,
+          replyVideoUrl: mediaType === 'video' ? mediaUrl : null
+        }
       });
       if (res.ok) {
         onReplied();
       } else {
         showAlert({ title: "Error", message: "Failed to send reply.", style: "danger" });
       }
-    } catch (err) {
-      showAlert({ title: "Error", message: "Network error.", style: "danger" });
+    } catch (err: any) {
+      showAlert({ title: "Error", message: err.message || "Network error.", style: "danger" });
     } finally {
       setIsSaving(false);
     }
   };
 
+  const fileType = attachment?.type.split('/')[0];
+
   return (
-    <form onSubmit={handleSubmit} className="relative z-10 mt-4 space-y-2 animate-in fade-in">
-      <textarea
-        value={replyText}
-        onChange={(e) => setReplyText(e.target.value)}
-        placeholder="Write a reply..."
-        rows={2}
-        className="w-full bg-dark-bg border border-white/10 rounded-xl p-2 text-xs focus:outline-none focus:border-neon-purple transition-colors"
-        autoFocus
-      />
+    <form onSubmit={handleSubmit} className="relative z-10 mt-4 space-y-3 animate-in fade-in">
+      <div className="relative">
+        <textarea
+          value={replyText}
+          onChange={(e) => setReplyText(e.target.value)}
+          placeholder="Write a reply with an option to attach media..."
+          rows={2}
+          className="w-full bg-black/40 border border-white/10 rounded-xl p-3 pr-10 text-xs focus:outline-none focus:border-neon-purple transition-colors placeholder-white/30"
+          autoFocus
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="absolute right-3 top-3 p-1.5 hover:bg-white/5 text-white/40 hover:text-white rounded-lg transition-colors"
+          title="Attach media (Image, Audio, Video)"
+        >
+          <Paperclip className="w-3.5 h-3.5" />
+        </button>
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) setAttachment(file);
+          }} 
+          accept="image/*,audio/*,video/*" 
+          className="hidden" 
+        />
+      </div>
+
+      {/* Attachment Preview Panel */}
+      {attachment && (
+        <div className="relative group p-2 bg-black/30 rounded-xl border border-white/10 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            {previewUrl && fileType === 'image' && (
+              <img src={previewUrl} alt="Preview" className="w-10 h-10 object-cover rounded-lg shrink-0 border border-white/10" />
+            )}
+            {previewUrl && fileType === 'video' && (
+              <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center shrink-0 border border-white/10">
+                <video src={previewUrl} className="w-full h-full object-cover rounded-lg" />
+              </div>
+            )}
+            {previewUrl && fileType === 'audio' && (
+              <div className="w-10 h-10 bg-neon-purple/10 border border-neon-purple/20 rounded-lg flex items-center justify-center shrink-0">
+                <span className="text-xs">🎵</span>
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold text-white/80 truncate">{attachment.name}</p>
+              <p className="text-[9px] text-white/40">{(attachment.size / 1024 / 1024).toFixed(2)} MB</p>
+            </div>
+          </div>
+          <button 
+            type="button" 
+            onClick={() => setAttachment(null)} 
+            className="p-1 hover:bg-red-500/20 text-white/40 hover:text-red-400 rounded-md transition-colors shrink-0"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onCancel} className="px-3 py-1 bg-white/5 text-white/50 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-white/10">Cancel</button>
-        <button type="submit" disabled={isSaving || !replyText.trim()} className="px-3 py-1 bg-neon-purple text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-neon-blue disabled:opacity-50 flex items-center gap-1.5">
+        <button type="button" onClick={onCancel} className="px-3 py-1.5 bg-white/5 text-white/50 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-white/10 transition-colors">Cancel</button>
+        <button 
+          type="submit" 
+          disabled={isSaving || (!replyText.trim() && !attachment)} 
+          className="px-4 py-1.5 bg-neon-purple hover:bg-neon-blue text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-40 disabled:hover:bg-neon-purple flex items-center gap-1.5 transition-colors"
+        >
           <Send className="w-3 h-3" />
           {isSaving ? 'Sending...' : 'Reply'}
         </button>

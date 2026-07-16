@@ -331,16 +331,36 @@ apiRouter.post("/public/shoutout", shoutoutLimiter, (req, res) => {
   if (token) {
     try {
       const decoded = jwt.verify(token, ACTUAL_SECRET) as any;
-      const user = db.prepare("SELECT username, email FROM users WHERE username = ?").get(decoded.username) as any;
-      if (user) {
-        email = user.email || user.username;
-        isLoggedIn = true;
+      if (decoded.isAdmin || (typeof decoded.userId === 'string' && decoded.userId.startsWith('admin_'))) {
+        const admin = db.prepare("SELECT username, email FROM admins WHERE LOWER(username) = ?").get(decoded.username.toLowerCase()) as any;
+        if (admin) {
+          email = admin.email || admin.username;
+          isLoggedIn = true;
+        }
+      } else {
+        const user = db.prepare("SELECT username, email FROM users WHERE username = ?").get(decoded.username) as any;
+        if (user) {
+          email = user.email || user.username;
+          isLoggedIn = true;
+        }
       }
     } catch (e) {}
   }
 
-  if (!email || !message) {
-    return res.status(400).json({ error: "Email and message required" });
+  if (!email) {
+    return res.status(400).json({ error: "Email required" });
+  }
+
+  if (!message && !imageUrl && !audioUrl && !videoUrl) {
+    return res.status(400).json({ error: "Message or media attachment required" });
+  }
+
+  // Supply a descriptive fallback if message is empty but media is present
+  if (!message) {
+    if (imageUrl) message = "Shared an image";
+    else if (audioUrl) message = "Shared an audio clip";
+    else if (videoUrl) message = "Shared a video clip";
+    else message = "";
   }
 
   // Only enforce valid email format if not logged in
@@ -350,7 +370,8 @@ apiRouter.post("/public/shoutout", shoutoutLimiter, (req, res) => {
 
   // Automatically save shoutout users as chat users if they don't exist
   const existingUser = db.prepare("SELECT id FROM users WHERE username = ? OR email = ?").get(email, email);
-  if (!existingUser) {
+  const existingAdmin = db.prepare("SELECT username FROM admins WHERE LOWER(username) = ? OR LOWER(email) = ?").get(email.toLowerCase(), email.toLowerCase());
+  if (!existingUser && !existingAdmin && !isLoggedIn) {
     try {
       const placeholderPass = crypto.randomBytes(16).toString('hex');
       const hash = bcrypt.hashSync(placeholderPass, 10);
@@ -613,6 +634,26 @@ apiRouter.post("/public/chat/upload", (req: any, res: any) => {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
+  attachmentUpload.single("file")(req, res, (err: any) => {
+    if (err) {
+      return res.status(400).json({ error: err.message || "Failed to upload file" });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: "No file was uploaded" });
+    }
+
+    const fileUrl = `/uploads/${req.file.filename}`;
+    const fileType = req.file.mimetype.startsWith("audio/") ? "audio" : req.file.mimetype.startsWith("video/") ? "video" : "image";
+    res.json({
+      success: true,
+      url: fileUrl,
+      type: fileType,
+      filename: req.file.originalname
+    });
+  });
+});
+
+apiRouter.post("/public/shoutout/upload", shoutoutLimiter, (req: any, res: any) => {
   attachmentUpload.single("file")(req, res, (err: any) => {
     if (err) {
       return res.status(400).json({ error: err.message || "Failed to upload file" });
@@ -937,6 +978,19 @@ const searchMediaUsages = (filename: string) => {
   findMatches('SELECT id, image_url FROM advertisements WHERE image_url LIKE ? OR image_url LIKE ?', [pattern, filenamePattern], 'advertisements', ['image_url']);
   findMatches('SELECT id, avatar_url FROM users WHERE avatar_url LIKE ? OR avatar_url LIKE ?', [pattern, filenamePattern], 'users', ['avatar_url']);
   findMatches('SELECT username, photo_url FROM admins WHERE photo_url LIKE ? OR photo_url LIKE ?', [pattern, filenamePattern], 'admins', ['photo_url']);
+  findMatches('SELECT id, image_url, audio_url, video_url FROM room_messages WHERE image_url LIKE ? OR image_url LIKE ? OR audio_url LIKE ? OR audio_url LIKE ? OR video_url LIKE ? OR video_url LIKE ?', [pattern, filenamePattern, pattern, filenamePattern, pattern, filenamePattern], 'room_messages', ['image_url', 'audio_url', 'video_url']);
+
+  const shoutoutMatches = db.prepare(
+    `SELECT id, imageUrl, audioUrl, videoUrl, replyImageUrl, replyAudioUrl, replyVideoUrl FROM shoutouts WHERE imageUrl LIKE ? OR imageUrl LIKE ? OR audioUrl LIKE ? OR audioUrl LIKE ? OR videoUrl LIKE ? OR videoUrl LIKE ? OR replyImageUrl LIKE ? OR replyImageUrl LIKE ? OR replyAudioUrl LIKE ? OR replyAudioUrl LIKE ? OR replyVideoUrl LIKE ? OR replyVideoUrl LIKE ?`
+  ).all(pattern, filenamePattern, pattern, filenamePattern, pattern, filenamePattern, pattern, filenamePattern, pattern, filenamePattern, pattern, filenamePattern) as any[];
+  shoutoutMatches.forEach((row) => {
+    if (row.imageUrl && String(row.imageUrl).toLowerCase().includes(filename.toLowerCase())) pushUsage('shoutouts', 'imageUrl', row.id);
+    if (row.audioUrl && String(row.audioUrl).toLowerCase().includes(filename.toLowerCase())) pushUsage('shoutouts', 'audioUrl', row.id);
+    if (row.videoUrl && String(row.videoUrl).toLowerCase().includes(filename.toLowerCase())) pushUsage('shoutouts', 'videoUrl', row.id);
+    if (row.replyImageUrl && String(row.replyImageUrl).toLowerCase().includes(filename.toLowerCase())) pushUsage('shoutouts', 'replyImageUrl', row.id);
+    if (row.replyAudioUrl && String(row.replyAudioUrl).toLowerCase().includes(filename.toLowerCase())) pushUsage('shoutouts', 'replyAudioUrl', row.id);
+    if (row.replyVideoUrl && String(row.replyVideoUrl).toLowerCase().includes(filename.toLowerCase())) pushUsage('shoutouts', 'replyVideoUrl', row.id);
+  });
 
   const commentMatches = db.prepare(
     `SELECT id, imageUrl, audioUrl, videoUrl FROM public_messages WHERE imageUrl LIKE ? OR imageUrl LIKE ? OR audioUrl LIKE ? OR audioUrl LIKE ? OR videoUrl LIKE ? OR videoUrl LIKE ?`
@@ -985,6 +1039,15 @@ const clearMediaReferences = (filename: string) => {
   deleteRefs('UPDATE private_messages SET imageUrl = ? WHERE imageUrl LIKE ? OR imageUrl LIKE ?', ['', pattern, filenamePattern], 'private_messages.imageUrl');
   deleteRefs('UPDATE private_messages SET audioUrl = ? WHERE audioUrl LIKE ? OR audioUrl LIKE ?', ['', pattern, filenamePattern], 'private_messages.audioUrl');
   deleteRefs('UPDATE private_messages SET videoUrl = ? WHERE videoUrl LIKE ? OR videoUrl LIKE ?', ['', pattern, filenamePattern], 'private_messages.videoUrl');
+  deleteRefs('UPDATE room_messages SET image_url = ? WHERE image_url LIKE ? OR image_url LIKE ?', ['', pattern, filenamePattern], 'room_messages.image_url');
+  deleteRefs('UPDATE room_messages SET audio_url = ? WHERE audio_url LIKE ? OR audio_url LIKE ?', ['', pattern, filenamePattern], 'room_messages.audio_url');
+  deleteRefs('UPDATE room_messages SET video_url = ? WHERE video_url LIKE ? OR video_url LIKE ?', ['', pattern, filenamePattern], 'room_messages.video_url');
+  deleteRefs('UPDATE shoutouts SET imageUrl = ? WHERE imageUrl LIKE ? OR imageUrl LIKE ?', ['', pattern, filenamePattern], 'shoutouts.imageUrl');
+  deleteRefs('UPDATE shoutouts SET audioUrl = ? WHERE audioUrl LIKE ? OR audioUrl LIKE ?', ['', pattern, filenamePattern], 'shoutouts.audioUrl');
+  deleteRefs('UPDATE shoutouts SET videoUrl = ? WHERE videoUrl LIKE ? OR videoUrl LIKE ?', ['', pattern, filenamePattern], 'shoutouts.videoUrl');
+  deleteRefs('UPDATE shoutouts SET replyImageUrl = ? WHERE replyImageUrl LIKE ? OR replyImageUrl LIKE ?', ['', pattern, filenamePattern], 'shoutouts.replyImageUrl');
+  deleteRefs('UPDATE shoutouts SET replyAudioUrl = ? WHERE replyAudioUrl LIKE ? OR replyAudioUrl LIKE ?', ['', pattern, filenamePattern], 'shoutouts.replyAudioUrl');
+  deleteRefs('UPDATE shoutouts SET replyVideoUrl = ? WHERE replyVideoUrl LIKE ? OR replyVideoUrl LIKE ?', ['', pattern, filenamePattern], 'shoutouts.replyVideoUrl');
   deleteRefs('UPDATE settings SET value = ? WHERE value LIKE ? OR value LIKE ?', ['', pattern, filenamePattern], 'settings');
 
   return results;
@@ -1407,10 +1470,10 @@ apiRouter.delete("/admin/shoutouts/:id", (req, res) => {
 
 apiRouter.post("/admin/shoutouts/:id/reply", authMiddleware, (req: any, res: any) => {
   const { id } = req.params;
-  const { reply_text } = req.body;
+  const { reply_text, replyImageUrl, replyAudioUrl, replyVideoUrl } = req.body;
 
-  if (!reply_text) {
-    return res.status(400).json({ error: "Reply text cannot be empty." });
+  if (!reply_text && !replyImageUrl && !replyAudioUrl && !replyVideoUrl) {
+    return res.status(400).json({ error: "Reply cannot be empty." });
   }
 
   // Get dynamic studio details
@@ -1425,49 +1488,42 @@ apiRouter.post("/admin/shoutouts/:id/reply", authMiddleware, (req: any, res: any
     console.error("Error retrieving studio settings:", err);
   }
 
-  const info = db.prepare(`
-    UPDATE shoutouts 
-    SET reply_text = ?, replied_by = ?, replied_at = CURRENT_TIMESTAMP
-    WHERE id = ?
-  `).run(reply_text, studioName, id);
+  try {
+    const info = db.prepare(`
+      UPDATE shoutouts 
+      SET reply_text = ?, replied_by = ?, replyImageUrl = ?, replyAudioUrl = ?, replyVideoUrl = ?, replied_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(reply_text || null, studioName, replyImageUrl || null, replyAudioUrl || null, replyVideoUrl || null, id);
 
-  const shoutout = db.prepare("SELECT listener_name, message FROM shoutouts WHERE id = ?").get(id) as { listener_name: string, message: string } | undefined;
-  if (shoutout) {
-    const io = req.app.get('io') as Server;
-    const listenerName = shoutout.listener_name;
-
-    // Senior Dev Fix: The listener_name is an email. We need to find the user's username from that email.
-    const user = db.prepare("SELECT username FROM users WHERE LOWER(email) = ?").get(listenerName.toLowerCase()) as { username: string } | undefined;
-    const targetUsername = user?.username;
-
-    // Emit shoutoutReply to the user's specific socket if connected
-    if (targetUsername) {
-      for (const [_, socket] of io.sockets.sockets) {
-        const socketUser = (socket as any).username;
-        if (socketUser && socketUser.toLowerCase() === targetUsername.toLowerCase()) {
-          socket.emit('shoutoutReply', { shoutoutId: id, repliedBy: studioName, replyText: reply_text });
-          break; // Found the user, no need to continue looping.
-        }
-      }
+    if (info.changes === 0) {
+      console.warn(`[Shoutout Reply] No shoutout found with ID: ${id}`);
+      return res.status(404).json({ error: "Shoutout not found." });
     }
 
-    // Also broadcast the reply to all connected users so it updates in their widgets too
-    io.emit('shoutoutReply', { shoutoutId: id, repliedBy: studioName, replyText: reply_text });
+    const shoutout = db.prepare("SELECT listener_name, message FROM shoutouts WHERE id = ?").get(id) as { listener_name: string, message: string } | undefined;
+    if (shoutout) {
+      const io = req.app.get('io') as Server;
+      const listenerName = shoutout.listener_name;
 
-    // Also post a public chat room message from the studio so replies appear in the chat room too!
-    const processAndBroadcastChatMessage = req.app.get('processAndBroadcastChatMessage');
-    if (processAndBroadcastChatMessage) {
-      processAndBroadcastChatMessage({
-        user: studioName,
-        avatar_url: studioImage,
-        text: `REPLY to @${targetUsername || listenerName} ("${shoutout.message}"): ${reply_text}`,
-        timestamp: Date.now()
+      // Broadcast the reply to all connected users so it updates in their widgets too
+      // Everyone (including the recipient) will receive this exactly once.
+      io.emit('shoutoutReply', { 
+        shoutoutId: id, 
+        repliedBy: studioName, 
+        replyText: reply_text,
+        replyImageUrl,
+        replyAudioUrl,
+        replyVideoUrl,
+        listenerName
       });
     }
-  }
 
-  logAction(req, 'REPLY', 'shoutout', id, { reply_text });
-  res.json({ success: true, changes: info.changes });
+    logAction(req, 'REPLY', 'shoutout', id, { reply_text, replyImageUrl, replyAudioUrl, replyVideoUrl });
+    res.json({ success: true, changes: info.changes });
+  } catch (err) {
+    console.error("[Shoutout Reply] Error processing reply:", err);
+    res.status(500).json({ error: "Internal server error." });
+  }
 });
 
 apiRouter.put("/admin/settings", authorizeRole('admin'), (req, res) => {
@@ -1512,13 +1568,31 @@ apiRouter.get("/admin/chat-room-settings", authorizeRole('admin'), (req, res) =>
 
   const publicCount = db.prepare("SELECT COUNT(*) as count FROM public_messages").get() as { count: number };
   const privateCount = db.prepare("SELECT COUNT(*) as count FROM private_messages").get() as { count: number };
+  const shoutoutCount = db.prepare("SELECT COUNT(*) as count FROM shoutouts").get() as { count: number };
+
+  const mediaCounts = db.prepare(`
+    SELECT 
+      (SELECT COUNT(*) FROM public_messages WHERE imageUrl IS NOT NULL) + 
+      (SELECT COUNT(*) FROM private_messages WHERE imageUrl IS NOT NULL) +
+      (SELECT COUNT(*) FROM shoutouts WHERE imageUrl IS NOT NULL OR replyImageUrl IS NOT NULL) as images,
+      (SELECT COUNT(*) FROM public_messages WHERE audioUrl IS NOT NULL) + 
+      (SELECT COUNT(*) FROM private_messages WHERE audioUrl IS NOT NULL) +
+      (SELECT COUNT(*) FROM shoutouts WHERE audioUrl IS NOT NULL OR replyAudioUrl IS NOT NULL) as audios,
+      (SELECT COUNT(*) FROM public_messages WHERE videoUrl IS NOT NULL) + 
+      (SELECT COUNT(*) FROM private_messages WHERE videoUrl IS NOT NULL) +
+      (SELECT COUNT(*) FROM shoutouts WHERE videoUrl IS NOT NULL OR replyVideoUrl IS NOT NULL) as videos
+  `).get() as { images: number; audios: number; videos: number };
 
   res.json({
     enabled: settings.chat_auto_delete_enabled === '1',
     hours: parseInt(settings.chat_auto_delete_hours || "24", 10) || 24,
     lastRun: settings.chat_auto_delete_last_run || "",
     publicMessages: publicCount?.count || 0,
-    privateMessages: privateCount?.count || 0
+    privateMessages: privateCount?.count || 0,
+    shoutoutCount: shoutoutCount?.count || 0,
+    imageCount: mediaCounts?.images || 0,
+    audioCount: mediaCounts?.audios || 0,
+    videoCount: mediaCounts?.videos || 0
   });
 });
 
@@ -1546,14 +1620,21 @@ apiRouter.put("/admin/chat-room-settings", authorizeRole('admin'), (req, res) =>
 });
 
 apiRouter.delete("/admin/chat-room-settings/data", authorizeRole('admin'), (req, res) => {
-  const clearChatRoomData = req.app.get('clearChatRoomData') as ((reason?: string) => { publicDeleted: number; privateDeleted: number; clearedAt?: string }) | undefined;
+  const clearChatRoomData = req.app.get('clearChatRoomData') as ((reason?: string) => { publicDeleted: number; privateDeleted: number; shoutoutsDeleted: number; clearedAt?: string }) | undefined;
 
-  let result = { publicDeleted: 0, privateDeleted: 0, clearedAt: new Date().toISOString() };
+  let result = { publicDeleted: 0, privateDeleted: 0, shoutoutsDeleted: 0, clearedAt: new Date().toISOString() };
   if (clearChatRoomData) {
-    result = clearChatRoomData("manual") as typeof result;
+    const clearResult = clearChatRoomData("manual");
+    result = {
+      publicDeleted: clearResult.publicDeleted,
+      privateDeleted: clearResult.privateDeleted,
+      shoutoutsDeleted: clearResult.shoutoutsDeleted,
+      clearedAt: clearResult.clearedAt || result.clearedAt
+    };
   } else {
     const publicInfo = db.prepare("DELETE FROM public_messages").run();
     const privateInfo = db.prepare("DELETE FROM private_messages").run();
+    const shoutoutInfo = db.prepare("DELETE FROM shoutouts").run();
     db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
       .run("chat_auto_delete_last_run", result.clearedAt);
 
@@ -1561,10 +1642,11 @@ apiRouter.delete("/admin/chat-room-settings/data", authorizeRole('admin'), (req,
     if (io) {
       io.emit('messagesCleared', { isPrivate: false, allChatData: true, reason: "manual", clearedAt: result.clearedAt });
       io.emit('messagesCleared', { isPrivate: true, allChatData: true, reason: "manual", clearedAt: result.clearedAt });
-      io.emit('chatCountsUpdated', { publicMessages: 0, privateMessages: 0 });
+      io.emit('shoutouts_cleared');
+      io.emit('chatCountsUpdated', { publicMessages: 0, privateMessages: 0, shoutoutCount: 0, imageCount: 0, audioCount: 0, videoCount: 0 });
     }
 
-    result = { publicDeleted: publicInfo.changes, privateDeleted: privateInfo.changes, clearedAt: result.clearedAt };
+    result = { publicDeleted: publicInfo.changes, privateDeleted: privateInfo.changes, shoutoutsDeleted: shoutoutInfo.changes, clearedAt: result.clearedAt };
   }
 
   logAction(req, 'PURGE', 'chat_room_data', null, result);

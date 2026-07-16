@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Clock, MessageSquare, RefreshCw, Save, Trash2 } from "lucide-react";
+import { Clock, MessageSquare, RefreshCw, Save, Trash2, Image as ImageIcon, Music, Video } from "lucide-react";
 import { useModal } from "../../context/ModalContext";
 import { fetchAdmin } from "./adminApi";
 import { useLogo } from "../../hooks/useLogo";
@@ -10,6 +10,10 @@ type ChatRoomSettings = {
   lastRun: string;
   publicMessages: number;
   privateMessages: number;
+  shoutoutCount: number;
+  imageCount: number;
+  audioCount: number;
+  videoCount: number;
 };
 
 const DEFAULT_SETTINGS: ChatRoomSettings = {
@@ -18,6 +22,10 @@ const DEFAULT_SETTINGS: ChatRoomSettings = {
   lastRun: "",
   publicMessages: 0,
   privateMessages: 0,
+  shoutoutCount: 0,
+  imageCount: 0,
+  audioCount: 0,
+  videoCount: 0,
 };
 
 const TIMER_PRESETS = [
@@ -70,11 +78,22 @@ export function AdminChatRoomSettings() {
     const socket = (window as any).socket;
     if (!socket) return;
 
-    const handleCountsUpdated = (counts: { publicMessages?: number; privateMessages?: number }) => {
+    const handleCountsUpdated = (counts: { 
+      publicMessages?: number; 
+      privateMessages?: number;
+      shoutoutCount?: number;
+      imageCount?: number;
+      audioCount?: number;
+      videoCount?: number;
+    }) => {
       setSettings(prev => ({
         ...prev,
         publicMessages: counts.publicMessages ?? prev.publicMessages,
         privateMessages: counts.privateMessages ?? prev.privateMessages,
+        shoutoutCount: counts.shoutoutCount ?? prev.shoutoutCount,
+        imageCount: counts.imageCount ?? prev.imageCount,
+        audioCount: counts.audioCount ?? prev.audioCount,
+        videoCount: counts.videoCount ?? prev.videoCount,
       }));
     };
 
@@ -111,12 +130,12 @@ export function AdminChatRoomSettings() {
         body: { enabled, hours },
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to save chat room settings");
+      if (!res.ok) throw new Error(data.error || "Failed to save chat settings");
 
-      showAlert({ title: "Saved", message: "Chat room auto-delete settings updated.", style: "success" });
+      showAlert({ title: "Saved", message: "Chat auto-delete settings updated.", style: "success" });
       await loadSettings();
     } catch (err: any) {
-      showAlert({ title: "Error", message: err.message || "Failed to save chat room settings.", style: "danger" });
+      showAlert({ title: "Error", message: err.message || "Failed to save chat settings.", style: "danger" });
     } finally {
       setSaving(false);
     }
@@ -124,7 +143,7 @@ export function AdminChatRoomSettings() {
 
   const purgeNow = async () => {
     const confirmed = await showConfirm({
-      title: "Delete Chat Room Data",
+      title: "Delete Chat Data",
       message: "This will permanently delete all public chat messages and all private chat conversations. Chat user accounts will remain.",
       style: "danger",
       confirmText: "Delete All Chat Data",
@@ -135,7 +154,7 @@ export function AdminChatRoomSettings() {
     try {
       const res = await fetchAdmin("/api/admin/chat-room-settings/data", { method: "DELETE" });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to delete chat room data");
+      if (!res.ok) throw new Error(data.error || "Failed to delete chat data");
 
       showAlert({
         title: "Deleted",
@@ -144,7 +163,7 @@ export function AdminChatRoomSettings() {
       });
       await loadSettings();
     } catch (err: any) {
-      showAlert({ title: "Error", message: err.message || "Failed to delete chat room data.", style: "danger" });
+      showAlert({ title: "Error", message: err.message || "Failed to delete chat data.", style: "danger" });
     } finally {
       setPurging(false);
     }
@@ -155,7 +174,7 @@ export function AdminChatRoomSettings() {
       <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b pb-4 transition-colors ${isLightMode ? 'border-black/10' : 'border-white/10'}`}>
         <h3 className={`text-xl sm:text-2xl font-bold flex items-center gap-3 ${isLightMode ? 'text-black' : 'text-white'}`}>
           <MessageSquare className="w-6 h-6 sm:w-7 sm:h-7 text-neon-purple" />
-          Chat Room Setting
+          Chat Settings
         </h3>
         <button
           type="button"
@@ -170,14 +189,48 @@ export function AdminChatRoomSettings() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
         <div className={`border rounded-2xl p-5 transition-colors ${isLightMode ? 'bg-white border-black/10 shadow-sm' : 'bg-dark-bg/40 border-white/10'}`}>
-          <p className={`text-[10px] uppercase tracking-widest font-bold ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Public messages</p>
-          <p className="text-3xl font-black mt-2 text-neon-purple">{settings.publicMessages}</p>
+          <div className="flex items-center gap-2 mb-2">
+            <MessageSquare className="w-3 h-3 text-neon-purple" />
+            <p className={`text-[10px] uppercase tracking-widest font-bold ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Public messages</p>
+          </div>
+          <p className="text-3xl font-black text-neon-purple">{settings.publicMessages}</p>
         </div>
         <div className={`border rounded-2xl p-5 transition-colors ${isLightMode ? 'bg-white border-black/10 shadow-sm' : 'bg-dark-bg/40 border-white/10'}`}>
-          <p className={`text-[10px] uppercase tracking-widest font-bold ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Private messages</p>
-          <p className="text-3xl font-black mt-2 text-neon-blue">{settings.privateMessages}</p>
+          <div className="flex items-center gap-2 mb-2">
+            <MessageSquare className="w-3 h-3 text-neon-blue" />
+            <p className={`text-[10px] uppercase tracking-widest font-bold ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Private messages</p>
+          </div>
+          <p className="text-3xl font-black text-neon-blue">{settings.privateMessages}</p>
+        </div>
+        <div className={`border rounded-2xl p-5 transition-colors ${isLightMode ? 'bg-white border-black/10 shadow-sm' : 'bg-dark-bg/40 border-white/10'}`}>
+          <div className="flex items-center gap-2 mb-2">
+            <RefreshCw className="w-3 h-3 text-pink-400" />
+            <p className={`text-[10px] uppercase tracking-widest font-bold ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Shout-outs</p>
+          </div>
+          <p className="text-3xl font-black text-pink-400">{settings.shoutoutCount}</p>
+        </div>
+        <div className={`border rounded-2xl p-5 transition-colors ${isLightMode ? 'bg-white border-black/10 shadow-sm' : 'bg-dark-bg/40 border-white/10'}`}>
+          <div className="flex items-center gap-2 mb-2">
+            <ImageIcon className="w-3 h-3 text-emerald-400" />
+            <p className={`text-[10px] uppercase tracking-widest font-bold ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Images</p>
+          </div>
+          <p className="text-3xl font-black text-emerald-400">{settings.imageCount}</p>
+        </div>
+        <div className={`border rounded-2xl p-5 transition-colors ${isLightMode ? 'bg-white border-black/10 shadow-sm' : 'bg-dark-bg/40 border-white/10'}`}>
+          <div className="flex items-center gap-2 mb-2">
+            <Music className="w-3 h-3 text-amber-400" />
+            <p className={`text-[10px] uppercase tracking-widest font-bold ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Audio</p>
+          </div>
+          <p className="text-3xl font-black text-amber-400">{settings.audioCount}</p>
+        </div>
+        <div className={`border rounded-2xl p-5 transition-colors ${isLightMode ? 'bg-white border-black/10 shadow-sm' : 'bg-dark-bg/40 border-white/10'}`}>
+          <div className="flex items-center gap-2 mb-2">
+            <Video className="w-3 h-3 text-rose-400" />
+            <p className={`text-[10px] uppercase tracking-widest font-bold ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Videos</p>
+          </div>
+          <p className="text-3xl font-black text-rose-400">{settings.videoCount}</p>
         </div>
       </div>
 

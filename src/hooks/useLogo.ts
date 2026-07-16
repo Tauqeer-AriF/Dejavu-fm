@@ -53,6 +53,20 @@ export function useLogo() {
     }
   }, []);
 
+  useEffect(() => {
+    if (settings?.favicon) {
+      const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+      if (link) {
+        link.href = settings.favicon;
+      } else {
+        const newLink = document.createElement('link');
+        newLink.rel = 'icon';
+        newLink.href = settings.favicon;
+        document.head.appendChild(newLink);
+      }
+    }
+  }, [settings?.favicon]);
+
   const logoUrlRaw = isLightMode 
     ? (settings?.logo_light || settings?.logo_url || undefined)
     : (settings?.logo_dark || settings?.logo_url || undefined);

@@ -448,19 +448,38 @@ button:not(.absolute) {
 .admin-light-mode .admin-dashboard-container [class*="bg-[#060814]"],
 .admin-light-mode .admin-dashboard-container [class*="bg-[#0b0f17]"],
 .admin-light-mode .admin-dashboard-container [class*="bg-[#0c0e17]"],
-.admin-light-mode .admin-dashboard-container [class*="bg-[#121624]"] {
+.admin-light-mode .admin-dashboard-container [class*="bg-[#121624]"],
+.admin-light-mode .admin-dashboard-container [class*="bg-[#090b15]"],
+.admin-light-mode .admin-dashboard-container [class*="bg-[#090B15]"],
+.admin-light-mode .admin-dashboard-container [class*="bg-[#0a0c16]"],
+.admin-light-mode .admin-dashboard-container [class*="bg-[#0A0C16]"],
+.admin-light-mode .admin-dashboard-container [class*="bg-[#0d0f1d]"],
+.admin-light-mode .admin-dashboard-container [class*="bg-[#0D0F1D]"],
+.admin-light-mode .admin-dashboard-container aside,
+.admin-light-mode .admin-dashboard-container header {
   background-color: #ffffff !important;
   border-color: rgba(0, 0, 0, 0.08) !important;
   color: #111827 !important;
   box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04) !important;
 }
 
+.admin-light-mode .admin-dashboard-container [class*="bg-[#070913]"],
+.admin-light-mode .admin-dashboard-container [class*="bg-[#080911]"],
+.admin-light-mode .admin-dashboard-container main,
+.admin-light-mode .admin-dashboard-container [class*="from-[#080911]"] {
+  background: #f8fafc !important;
+  background-color: #f8fafc !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: #111827 !important;
+}
+
 /* Nested sub-panels or secondary containers should have a beautiful very soft grey bg */
 .admin-light-mode .admin-dashboard-container .bg-black\/5,
 .admin-light-mode .admin-dashboard-container .bg-white\/5:hover,
 .admin-light-mode .admin-dashboard-container .bg-white\/10:hover,
-.admin-light-mode .admin-dashboard-container .bg-dark-bg\/30 .bg-black\/5 {
-  background-color: rgba(0, 0, 0, 0.02) !important;
+.admin-light-mode .admin-dashboard-container .bg-dark-bg\/30 .bg-black\/5,
+.admin-light-mode .admin-dashboard-container [class*="bg-white/"] {
+  background-color: rgba(0, 0, 0, 0.03) !important;
   border-color: rgba(0, 0, 0, 0.06) !important;
 }
 
@@ -595,7 +614,7 @@ button:not(.absolute) {
 .admin-light-mode .admin-dashboard-container .text-slate-400,
 .admin-light-mode .admin-dashboard-container .text-zinc-400,
 .admin-light-mode .admin-dashboard-container .text-gray-400 {
-  color: rgba(17, 24, 39, 0.6) !important;
+  color: rgba(17, 24, 39, 0.65) !important;
 }
 
 .admin-light-mode .admin-dashboard-container .text-white\/50,
@@ -603,14 +622,46 @@ button:not(.absolute) {
 .admin-light-mode .admin-dashboard-container .text-slate-500,
 .admin-light-mode .admin-dashboard-container .text-zinc-500,
 .admin-light-mode .admin-dashboard-container .text-gray-500 {
-  color: rgba(17, 24, 39, 0.4) !important;
+  color: rgba(17, 24, 39, 0.55) !important;
 }
 
 .admin-light-mode .admin-dashboard-container .text-white\/30,
 .admin-light-mode .admin-dashboard-container .text-white\/20,
 .admin-light-mode .admin-dashboard-container .text-slate-600,
 .admin-light-mode .admin-dashboard-container .text-zinc-600 {
-  color: rgba(17, 24, 39, 0.25) !important;
+  color: rgba(17, 24, 39, 0.42) !important;
+}
+
+/* Pristine high contrast text protection for solid colored or gradient elements in Light Mode */
+.admin-light-mode .admin-dashboard-container [class*="bg-gradient-to-r"].text-white,
+.admin-light-mode .admin-dashboard-container [class*="bg-gradient-to-r"].text-white *,
+.admin-light-mode .admin-dashboard-container [class*="bg-gradient-to-br"].text-white,
+.admin-light-mode .admin-dashboard-container [class*="bg-gradient-to-br"].text-white *,
+.admin-light-mode .admin-dashboard-container [class*="from-[#7C3AED]"],
+.admin-light-mode .admin-dashboard-container [class*="from-[#7C3AED]"] *,
+.admin-light-mode .admin-dashboard-container [class*="from-[#7c3aed]"],
+.admin-light-mode .admin-dashboard-container [class*="from-[#7c3aed]"] *,
+.admin-light-mode .admin-dashboard-container [class*="bg-[#7C3AED]"],
+.admin-light-mode .admin-dashboard-container [class*="bg-[#7C3AED]"] *,
+.admin-light-mode .admin-dashboard-container [class*="bg-[#5B21B6]"],
+.admin-light-mode .admin-dashboard-container [class*="bg-[#5B21B6]"] *,
+.admin-light-mode .admin-dashboard-container button[class*="bg-gradient-to-"],
+.admin-light-mode .admin-dashboard-container button[class*="bg-gradient-to-"] *,
+.admin-light-mode .admin-dashboard-container [class*="from-violet-600"],
+.admin-light-mode .admin-dashboard-container [class*="from-violet-600"] *,
+.admin-light-mode .admin-dashboard-container [class*="from-emerald-500"],
+.admin-light-mode .admin-dashboard-container [class*="from-emerald-500"] *,
+.admin-light-mode .admin-dashboard-container [class*="bg-neon-purple"].text-white,
+.admin-light-mode .admin-dashboard-container [class*="bg-neon-purple"].text-white * {
+  color: #ffffff !important;
+}
+
+/* Prevent chat panel background gradient from fading to black in Light Mode */
+.admin-light-mode .admin-dashboard-container [class*="from-[#080911]"][class*="to-[#06070D]"],
+.admin-light-mode .admin-dashboard-container .bg-gradient-to-b.from-\[\#080911\] {
+  background-image: none !important;
+  background-color: #f8fafc !important;
+  background: #f8fafc !important;
 }
 
 /* Label styling fallback */

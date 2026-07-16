@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { LogOut, Send, Paperclip, X, Maximize, Mic, MessageSquare, Search, ArrowLeft, Image as ImageIcon, Music, Video, Volume2, VolumeX, Ban, Trash2, Eraser, ShieldAlert, MailX, PlusCircle, Square, Pin, CheckSquare, MailOpen, Mail, Trash, Eye, EyeOff, Settings, Link2, Globe, RefreshCw, Download, Phone, Facebook, Instagram, Twitch, Activity, CheckCircle, AlertTriangle, Camera, Check } from "lucide-react";
+import { LogOut, Send, Paperclip, X, Maximize, Mic, MessageSquare, Search, ArrowLeft, Image as ImageIcon, Music, Video, Volume2, VolumeX, Ban, Trash2, Eraser, ShieldAlert, MailX, PlusCircle, Square, Pin, CheckSquare, MailOpen, Mail, Trash, Eye, EyeOff, Settings, Link2, Globe, RefreshCw, Download, Phone, Facebook, Instagram, Twitch, Activity, CheckCircle, AlertTriangle, Camera, Check, Sun, Moon } from "lucide-react";
 import { toast } from "sonner";
 import { fetchAdmin } from "./adminApi";
 import { useModal } from "../../context/ModalContext";
@@ -101,13 +101,20 @@ const getThreadSource = (thread: UserThread): string => {
   const messages = thread.messages;
   if (!messages || messages.length === 0) return 'public_chat';
 
-  // Look at the last message to see what its type is
-  const lastMsg = messages[messages.length - 1];
-  if (lastMsg.type === 'shoutout') {
+  // Find the last message sent by the user (not an admin/studio reply)
+  const userMessages = messages.filter(
+    msg => msg.user && thread.user && msg.user.toLowerCase() === thread.user.toLowerCase()
+  );
+
+  const referenceMsg = userMessages.length > 0 
+    ? userMessages[userMessages.length - 1] 
+    : messages[messages.length - 1];
+
+  if (referenceMsg.type === 'shoutout') {
     return 'shoutout';
   }
   
-  if (lastMsg.recipient) {
+  if (referenceMsg.recipient) {
     return 'private_dm';
   }
   
@@ -282,6 +289,13 @@ const getThreadUserAndKey = (
         const targetUser = match[1];
         return { user: targetUser, key: targetUser.toLowerCase() };
       }
+
+      // Handle "REPLY to @user" pattern from shoutout broadcasts
+      const shoutoutMatch = msg.text.match(/^REPLY to @([a-zA-Z0-9_\-\.@]+)/);
+      if (shoutoutMatch) {
+        const targetUser = shoutoutMatch[1];
+        return { user: targetUser, key: targetUser.toLowerCase() };
+      }
     }
     // If it doesn't start with @username, we ignore/skip creating a separate "DejavuFM Studio" thread
     return null;
@@ -294,6 +308,22 @@ const getThreadUserAndKey = (
 export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   const { isLightMode } = useLogo();
   const { showConfirm } = useModal();
+  const [studioTheme, setStudioTheme] = useState<'dark' | 'light'>(() => {
+    try {
+      const saved = localStorage.getItem('studio_theme');
+      if (saved === 'light' || saved === 'dark') return saved;
+      return localStorage.getItem('dashboard_theme') === 'light' ? 'light' : 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+
+  const toggleStudioTheme = () => {
+    const nextTheme = studioTheme === 'dark' ? 'light' : 'dark';
+    setStudioTheme(nextTheme);
+    localStorage.setItem('studio_theme', nextTheme);
+    toast.success(`Switched to ${nextTheme === 'light' ? 'Light' : 'Dark'} mode`);
+  };
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
     try {
       return JSON.parse(localStorage.getItem('studio_sound_enabled') || 'true');
@@ -339,6 +369,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
   const chatHistoryReceivedRef = useRef(false);
   const privateHistoryReceivedRef = useRef(false);
+  const shoutoutHistoryReceivedRef = useRef(false);
   const [replyText, setReplyText] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
   const [isSending, setIsSending] = useState(false);
@@ -910,6 +941,75 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       });
     };
 
+    const handleShoutoutHistory = (history: any[]) => {
+      if (shoutoutHistoryReceivedRef.current) return;
+      shoutoutHistoryReceivedRef.current = true;
+
+      setThreads(prev => {
+        const nextThreads = { ...prev };
+        history.forEach(shoutout => {
+          let ts = shoutout.timestamp;
+          if (typeof ts === 'string') {
+            const parsed = Date.parse(ts);
+            ts = isNaN(parsed) ? Date.now() : parsed;
+          } else if (!ts) {
+            ts = Date.now();
+          }
+
+          const incomingMessage: Message = {
+            id: String(shoutout.id),
+            type: 'shoutout',
+            user: shoutout.listener_name || shoutout.user || 'Shoutout',
+            avatar: shoutout.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(shoutout.listener_name || shoutout.user || 'shoutout')}`,
+            text: shoutout.message || '',
+            timestamp: ts,
+            imageUrl: shoutout.imageUrl,
+            audioUrl: shoutout.audioUrl,
+            videoUrl: shoutout.videoUrl,
+          };
+
+          const threadInfo = getThreadUserAndKey(incomingMessage, adminUsername);
+          if (!threadInfo) return;
+
+          const { user, key: userKey } = threadInfo;
+          const existing = nextThreads[userKey];
+
+          const threadMessages = existing
+            ? mergeMessages(existing.messages, [incomingMessage])
+            : [incomingMessage];
+
+          const isSelected = selectedUserRef.current?.toLowerCase() === userKey;
+          const oldUnreadCount = existing?.unreadCount ?? 0;
+
+          const lastRead = lastReadTimestampsRef.current[userKey] ?? Date.now();
+          const isMsgUnread = ts > lastRead;
+
+          let finalUnreadCount = oldUnreadCount;
+          if (existing) {
+            const isDuplicate = existing.messages.some(m => isSameMessage(m, incomingMessage));
+            if (!isDuplicate && isMsgUnread) {
+              finalUnreadCount += 1;
+            }
+          } else {
+            finalUnreadCount = isMsgUnread ? 1 : 0;
+          }
+
+          if (isSelected) {
+            finalUnreadCount = 0;
+          }
+
+          nextThreads[userKey] = {
+            user: user,
+            avatar: existing?.avatar || shoutout.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user)}`,
+            messages: threadMessages,
+            lastMessageTimestamp: ts,
+            unreadCount: finalUnreadCount,
+          };
+        });
+        return nextThreads;
+      });
+    };
+
     const handleChatMessage = (msg: any) => {
       if (msg.isStudioReply) {
         return;
@@ -1076,8 +1176,32 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       });
     };
 
+    const handleShoutoutReply = (data: any) => {
+      // Mapping shoutoutReply to chat message for consistency in the studio thread
+      const incomingMessage: Message = {
+        id: `reply-${data.shoutoutId}-${Date.now()}`,
+        type: 'chat',
+        user: data.repliedBy,
+        avatar: studioImage, // Local studio image
+        text: data.replyText,
+        timestamp: Date.now(),
+        imageUrl: data.replyImageUrl,
+        audioUrl: data.replyAudioUrl,
+        videoUrl: data.replyVideoUrl,
+      };
+
+      // Use listenerName (email/username) if provided to map to the correct thread
+      if (data.listenerName) {
+        addMessageToThread({
+          ...incomingMessage,
+          recipient: data.listenerName // This will help getThreadUserAndKey find the right thread
+        });
+      }
+    };
+
     socket.on('chatHistory', handleChatHistory);
     socket.on('privateHistory', handlePrivateHistory);
+    socket.on('shoutoutHistory', handleShoutoutHistory);
     socket.on('chatMessage', handleChatMessage);
     socket.on('privateMessage', handlePrivateMessage);
     socket.on('new_shoutout', handleNewShoutout);
@@ -1086,6 +1210,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     socket.on('userThreadCleared', handleUserThreadCleared);
     socket.on('messageDeleted', handleMessageDeleted);
     socket.on('shoutoutDeleted', handleShoutoutDeleted);
+    socket.on('shoutoutReply', handleShoutoutReply);
 
     if (adminUsername) {
       socket.emit('registerUser', adminUsername);
@@ -1094,6 +1219,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     return () => {
       socket.off('chatHistory', handleChatHistory);
       socket.off('privateHistory', handlePrivateHistory);
+      socket.off('shoutoutHistory', handleShoutoutHistory);
       socket.off('chatMessage', handleChatMessage);
       socket.off('privateMessage', handlePrivateMessage);
       socket.off('new_shoutout', handleNewShoutout);
@@ -1102,6 +1228,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       socket.off('userThreadCleared', handleUserThreadCleared);
       socket.off('messageDeleted', handleMessageDeleted);
       socket.off('shoutoutDeleted', handleShoutoutDeleted);
+      socket.off('shoutoutReply', handleShoutoutReply);
     };
   }, [adminUsername]);
 
@@ -1318,10 +1445,28 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         mediaType = data.type;
       }
 
-      const lastMessage = threads[selectedUser.toLowerCase()]?.messages.slice(-1)[0];
-      if (!lastMessage) throw new Error("No message to reply to.");
+      const thread = threads[selectedUser.toLowerCase()];
+      if (!thread || thread.messages.length === 0) throw new Error("No messages to reply to.");
 
-      if (lastMessage.type === 'chat') {
+      const source = getThreadSource(thread);
+      const lastMessage = thread.messages[thread.messages.length - 1];
+      const isShoutout = source === 'shoutout';
+
+      if (isShoutout) {
+        const shoutoutMessage = [...thread.messages].reverse().find(m => m.type === 'shoutout');
+        const shoutoutId = shoutoutMessage ? shoutoutMessage.id : lastMessage.id;
+
+        const res = await fetchAdmin(`/api/admin/shoutouts/${shoutoutId}/reply`, {
+          method: 'POST',
+          body: { 
+            reply_text: replyText,
+            replyImageUrl: mediaType === 'image' ? mediaUrl : null,
+            replyAudioUrl: mediaType === 'audio' ? mediaUrl : null,
+            replyVideoUrl: mediaType === 'video' ? mediaUrl : null
+          }
+        });
+        if (!res.ok) throw new Error("Failed to send shoutout reply.");
+      } else {
         const chatPayload = {
           user: studioName,
           text: `@${selectedUser} ${replyText}`,
@@ -1333,34 +1478,31 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         // A public message has no recipient. The server will broadcast it to everyone.
         // The isStudioReply flag prevents the studio from receiving its own message back in a loop.
         socketRef.current?.emit('chatMessage', { ...chatPayload, isStudioReply: true });
-      } else if (lastMessage.type === 'shoutout') {
-        const res = await fetchAdmin(`/api/admin/shoutouts/${lastMessage.id}/reply`, {
-          method: 'POST',
-          body: { reply_text: replyText }
-        });
-        if (!res.ok) throw new Error("Failed to send shoutout reply.");
       }
 
       // Manually add the reply to the local state for immediate feedback
-      const replyMessage: Message = {
-        id: `reply-${lastMessage.id}-${Date.now()}`,
-        type: 'chat', // Treat replies as chat messages for styling
-        user: studioName,
-        avatar: studioImage,
-        text: lastMessage.type === 'chat' ? `@${selectedUser} ${replyText}` : replyText,
-        timestamp: Date.now(),
-        imageUrl: mediaType === 'image' && mediaUrl ? mediaUrl : undefined,
-        audioUrl: mediaType === 'audio' && mediaUrl ? mediaUrl : undefined,
-        videoUrl: mediaType === 'video' && mediaUrl ? mediaUrl : undefined,
-      };
-      setThreads(prev => ({
-        ...prev,
-        [selectedUser.toLowerCase()]: {
-          ...prev[selectedUser.toLowerCase()],
-          messages: [...prev[selectedUser.toLowerCase()].messages, replyMessage],
-          lastMessageTimestamp: replyMessage.timestamp,
-        }
-      }));
+      // For shoutouts, we rely on the socket broadcast to avoid duplication
+      if (!isShoutout) {
+        const replyMessage: Message = {
+          id: `reply-${lastMessage.id}-${Date.now()}`,
+          type: 'chat', // Treat replies as chat messages for styling
+          user: studioName,
+          avatar: studioImage,
+          text: `@${selectedUser} ${replyText}`,
+          timestamp: Date.now(),
+          imageUrl: mediaType === 'image' && mediaUrl ? mediaUrl : undefined,
+          audioUrl: mediaType === 'audio' && mediaUrl ? mediaUrl : undefined,
+          videoUrl: mediaType === 'video' && mediaUrl ? mediaUrl : undefined,
+        };
+        setThreads(prev => ({
+          ...prev,
+          [selectedUser.toLowerCase()]: {
+            ...prev[selectedUser.toLowerCase()],
+            messages: [...prev[selectedUser.toLowerCase()].messages, replyMessage],
+            lastMessageTimestamp: replyMessage.timestamp,
+          }
+        }));
+      }
 
       setReplyText("");
       setAttachment(null);
@@ -1921,23 +2063,23 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
   if (isInitialLoading) {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#070913] text-white">
+      <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center font-sans transition-colors duration-300 ${studioTheme === 'light' ? 'bg-[#f3f4f6] text-[#111827]' : 'bg-[#070913] text-white'}`}>
         <div className="relative flex items-center justify-center w-24 h-24">
           <div className="absolute inset-0 rounded-full bg-neon-purple/20 blur-xl animate-pulse" />
           <div className="absolute w-20 h-20 rounded-full border-2 border-t-neon-purple border-r-transparent border-b-transparent border-l-transparent animate-spin" style={{ animationDuration: '1s' }} />
           <div className="absolute w-24 h-24 rounded-full border-2 border-b-neon-blue border-l-transparent border-t-transparent border-r-transparent animate-spin" style={{ animationDuration: '1.5s', animationDirection: 'reverse' }} />
-          <div className="z-10 flex items-center justify-center w-16 h-16 rounded-full bg-[#0D0F1D] border border-white/10 shadow-[0_0_20px_rgba(176,38,255,0.3)]">
+          <div className={`z-10 flex items-center justify-center w-16 h-16 rounded-full border shadow-[0_0_20px_rgba(176,38,255,0.3)] ${studioTheme === 'light' ? 'bg-white border-black/10' : 'bg-[#0D0F1D] border-white/10'}`}>
             <Mic className="w-6 h-6 text-neon-purple animate-pulse" />
           </div>
         </div>
         <div className="mt-8 text-center space-y-2">
-          <h2 className="text-sm font-bold uppercase tracking-[0.25em] text-white/90">DEJAVU FM STUDIO</h2>
+          <h2 className={`text-sm font-bold uppercase tracking-[0.25em] ${studioTheme === 'light' ? 'text-black/80' : 'text-white/90'}`}>DEJAVU FM STUDIO</h2>
           <div className="flex items-center justify-center gap-2">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-            <span className="text-[10px] text-white/40 uppercase tracking-[0.15em] font-mono">Initializing Stream Desk</span>
+            <span className={`text-[10px] uppercase tracking-[0.15em] font-mono ${studioTheme === 'light' ? 'text-black/40' : 'text-white/40'}`}>Initializing Stream Desk</span>
           </div>
         </div>
       </div>
@@ -1945,15 +2087,26 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   }
 
   return (
-    <div className={`h-screen max-h-screen overflow-hidden w-full flex flex-col bg-[#070913] text-white font-sans ${isLightMode ? 'admin-light-mode' : ''}`}>
+    <div className={`w-full h-screen max-h-screen overflow-hidden ${studioTheme === 'light' ? 'admin-light-mode' : ''}`}>
+      <div className="h-full w-full flex flex-col bg-[#070913] text-white font-sans admin-dashboard-container">
       <header className="flex items-center justify-between p-4 sm:px-6 sm:py-5 border-b border-white/5 bg-[#0D0F1D]/60 backdrop-blur-2xl shrink-0 z-10 shadow-[0_4px_30px_rgba(0,0,0,0.4)]">
         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
           <div className="w-10 h-10 sm:w-11 sm:h-11 bg-gradient-to-tr from-neon-purple/20 to-neon-blue/20 rounded-xl flex items-center justify-center border border-white/10 shadow-[0_0_15px_rgba(176,38,255,0.2)] shrink-0">
             <Mic className="w-5 h-5 text-neon-purple" />
           </div>
           <div className="min-w-0 hidden sm:block">
-            <h1 className="text-sm sm:text-base font-bold uppercase tracking-[0.15em] bg-clip-text text-transparent bg-gradient-to-r from-white via-white/90 to-white/70 whitespace-nowrap">Studio Inbox</h1>
-            <p className="text-[9px] sm:text-[10px] text-white/40 uppercase tracking-widest font-semibold whitespace-nowrap">Live Chat & Shoutouts</p>
+            <h1 className={`text-sm sm:text-base font-bold uppercase tracking-[0.15em] bg-clip-text text-transparent bg-gradient-to-r whitespace-nowrap ${
+              studioTheme === 'light' 
+                ? 'from-slate-900 via-slate-800 to-slate-700' 
+                : 'from-white via-white/90 to-white/70'
+            }`}>
+              Studio Inbox
+            </h1>
+            <p className={`text-[9px] sm:text-[10px] uppercase tracking-widest font-bold whitespace-nowrap mt-0.5 ${
+              studioTheme === 'light' ? 'text-slate-500' : 'text-white/40'
+            }`}>
+              Live Broadcast & Listener Control Desk
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -1961,6 +2114,9 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             <ArrowLeft className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Dashboard</span>
           </Link>
+          <button onClick={toggleStudioTheme} className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] transition-all text-white/60 hover:text-white border border-white/5" title={`Switch to ${studioTheme === 'light' ? 'Dark' : 'Light'} Mode`}>
+            {studioTheme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+          </button>
           <button onClick={toggleSound} className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] transition-all text-white/60 hover:text-white border border-white/5" title="Toggle notification sounds">
             {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
           </button>
@@ -2178,12 +2334,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                         <PlatformBadge platform={currentThread.platform} thread={currentThread} />
                       </div>
                     </div>
-                    <div className="flex items-center">
-                      <div className="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/15 text-[9px] font-mono font-bold uppercase tracking-wider whitespace-nowrap">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                        Active Session
-                      </div>
-                    </div>
+
                   </div>
                 </div>
                 
@@ -2253,12 +2404,26 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                           )}
 
                           {isAdmin && (
-                            <div className={`pt-2 mt-2 border-t border-white/5 opacity-0 group-hover/msg:opacity-100 transition-opacity flex ${isAdminReply ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`pt-2 mt-2 border-t border-white/5 flex items-center gap-2 ${isAdminReply ? 'justify-end' : 'justify-start'}`}>
+                              {msg.text && (
+                                <button
+                                  onClick={() => {
+                                    const cleanText = msg.text.replace(/^@\w+\s/, "");
+                                    setReplyText(cleanText);
+                                    toast.success("Loaded into reply input");
+                                  }}
+                                  className="flex items-center justify-center p-1 rounded-md bg-white/[0.03] hover:bg-white/[0.08] text-white/50 hover:text-neon-blue border border-white/5 transition-all"
+                                  title="Load message to resend"
+                                >
+                                  <RefreshCw className="w-3 h-3" />
+                                </button>
+                              )}
                               <button
                                 onClick={() => handleDeleteMessage(msg)}
-                                className="flex items-center gap-1 text-red-400/60 hover:text-red-400 text-[9px] font-bold uppercase tracking-wider transition-colors"
+                                className="flex items-center justify-center p-1 rounded-md bg-red-500/5 hover:bg-red-500/15 text-red-400/60 hover:text-red-400 border border-red-500/10 transition-all"
+                                title="Delete Message"
                               >
-                                <Trash2 className="w-3 h-3" /> Remove Message
+                                <Trash2 className="w-3 h-3" />
                               </button>
                             </div>
                           )}
@@ -2521,6 +2686,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           </div>
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 }

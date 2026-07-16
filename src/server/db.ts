@@ -399,6 +399,7 @@ export function initDb() {
   runMigration('user_email_field', "ALTER TABLE users ADD COLUMN email TEXT DEFAULT NULL;");
   runMigration('user_password_plain_field', "ALTER TABLE users ADD COLUMN password_plain TEXT DEFAULT NULL;");
   runMigration('admin_email_field', "ALTER TABLE admins ADD COLUMN email TEXT;");
+  runMigration('shoutout_reply_media_fields_v1', "ALTER TABLE shoutouts ADD COLUMN replyImageUrl TEXT; ALTER TABLE shoutouts ADD COLUMN replyAudioUrl TEXT; ALTER TABLE shoutouts ADD COLUMN replyVideoUrl TEXT;");
   runMigration('private_messages_table', "CREATE TABLE IF NOT EXISTS private_messages (id TEXT PRIMARY KEY, sender TEXT NOT NULL, recipient TEXT NOT NULL, text TEXT, imageUrl TEXT, imageName TEXT, audioUrl TEXT, audioName TEXT, timestamp INTEGER NOT NULL); CREATE INDEX IF NOT EXISTS idx_private_messages_participants ON private_messages(sender, recipient);");
   runMigration('private_messages_video_fields', "ALTER TABLE private_messages ADD COLUMN videoUrl TEXT; ALTER TABLE private_messages ADD COLUMN videoName TEXT;");
   runMigration('public_messages_table_v1', "CREATE TABLE IF NOT EXISTS public_messages (id TEXT PRIMARY KEY, sender TEXT NOT NULL, text TEXT, imageUrl TEXT, imageName TEXT, audioUrl TEXT, audioName TEXT, videoUrl TEXT, videoName TEXT, timestamp INTEGER NOT NULL); CREATE INDEX IF NOT EXISTS idx_public_messages_timestamp ON public_messages(timestamp);");

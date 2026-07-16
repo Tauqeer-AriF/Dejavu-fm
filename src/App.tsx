@@ -831,7 +831,7 @@ export default function App() {
       <ModalProvider>
         <AudioProvider>
           <Router>
-            <Toaster theme="dark" position="bottom-right" toastOptions={{ style: { background: '#09090b', borderColor: 'var(--color-neon-purple)', color: 'white' } }} />
+            <Toaster closeButton theme="dark" position="bottom-right" toastOptions={{ style: { background: '#09090b', borderColor: 'var(--color-neon-purple)', color: 'white' } }} />
             <MainLayout />
           </Router>
         </AudioProvider>
