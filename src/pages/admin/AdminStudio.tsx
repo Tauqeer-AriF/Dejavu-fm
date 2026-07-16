@@ -27,6 +27,25 @@ interface UserThread {
   unreadCount: number;
 }
 
+const normalizeThreads = (threads: Record<string, UserThread>) => {
+  const normalized: Record<string, UserThread> = {};
+  Object.entries(threads).forEach(([key, thread]) => {
+    const seenIds = new Set<string>();
+    const filtered = thread.messages.filter(message => {
+      if (seenIds.has(message.id)) return false;
+      seenIds.add(message.id);
+      return true;
+    });
+
+    normalized[key] = {
+      ...thread,
+      messages: filtered,
+      lastMessageTimestamp: filtered.length ? filtered[filtered.length - 1].timestamp : thread.lastMessageTimestamp,
+    };
+  });
+  return normalized;
+};
+
 const AttachmentPreview = ({ file, onRemove }: { file: File; onRemove: () => void }) => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileType = file.type.split('/')[0];
@@ -93,13 +112,15 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   const [threads, setThreads] = useState<Record<string, UserThread>>(() => {
     try {
       const saved = sessionStorage.getItem('dejavu_studio_threads');
-      return saved ? JSON.parse(saved) : {};
+      return saved ? normalizeThreads(JSON.parse(saved)) : {};
     } catch {
       return {};
     }
   });
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const selectedUserRef = useRef<string | null>(null);
+  const chatHistoryReceivedRef = useRef(false);
+  const privateHistoryReceivedRef = useRef(false);
   const [replyText, setReplyText] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
   const [isSending, setIsSending] = useState(false);
@@ -168,6 +189,20 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     selectedUserRef.current = selectedUser;
   }, [selectedUser]);
 
+  const mergeMessages = (existing: Message[], incoming: Message[]) => {
+    const seenIds = new Set<string>();
+    const merged: Message[] = [];
+
+    [...existing, ...incoming].forEach(message => {
+      if (!seenIds.has(message.id)) {
+        seenIds.add(message.id);
+        merged.push(message);
+      }
+    });
+
+    return merged;
+  };
+
   const addMessageToThread = (message: Message) => {
     const userKey = message.user.toLowerCase();
     const selectedKey = selectedUserRef.current?.toLowerCase();
@@ -197,12 +232,15 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     socketRef.current = socket;
 
     const handleChatHistory = (history: any[]) => {
+      if (chatHistoryReceivedRef.current) return;
+      chatHistoryReceivedRef.current = true;
+
       setThreads(prev => {
         const nextThreads = { ...prev };
         history.forEach(msg => {
           const userKey = msg.user.toLowerCase();
           const existing = nextThreads[userKey];
-          const threadMessages = existing ? [...existing.messages, {
+          const incomingMessage: Message = {
             id: msg.id,
             type: 'chat',
             user: msg.user,
@@ -212,24 +250,21 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             imageUrl: msg.imageUrl,
             audioUrl: msg.audioUrl,
             videoUrl: msg.videoUrl,
-          }] : [{
-            id: msg.id,
-            type: 'chat',
-            user: msg.user,
-            avatar: msg.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(msg.user)}`,
-            text: msg.text || '',
-            timestamp: msg.timestamp,
-            imageUrl: msg.imageUrl,
-            audioUrl: msg.audioUrl,
-            videoUrl: msg.videoUrl,
-          }];
+          };
+
+          const threadMessages = existing
+            ? mergeMessages(existing.messages, [incomingMessage])
+            : [incomingMessage];
+
+          const isSelected = selectedUserRef.current?.toLowerCase() === userKey;
+          const oldUnreadCount = existing?.unreadCount ?? 0;
 
           nextThreads[userKey] = {
             user: msg.user,
             avatar: msg.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(msg.user)}`,
             messages: threadMessages,
             lastMessageTimestamp: msg.timestamp,
-            unreadCount: selectedUserRef.current?.toLowerCase() === userKey ? 0 : threadMessages.length,
+            unreadCount: isSelected ? 0 : oldUnreadCount + 1,
           };
         });
         return nextThreads;
@@ -237,12 +272,15 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     };
 
     const handlePrivateHistory = (history: any[]) => {
+      if (privateHistoryReceivedRef.current) return;
+      privateHistoryReceivedRef.current = true;
+
       setThreads(prev => {
         const nextThreads = { ...prev };
         history.forEach(msg => {
           const userKey = msg.user.toLowerCase();
           const existing = nextThreads[userKey];
-          const threadMessages = existing ? [...existing.messages, {
+          const incomingMessage: Message = {
             id: msg.id,
             type: 'chat',
             user: msg.user,
@@ -252,24 +290,21 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             imageUrl: msg.imageUrl,
             audioUrl: msg.audioUrl,
             videoUrl: msg.videoUrl,
-          }] : [{
-            id: msg.id,
-            type: 'chat',
-            user: msg.user,
-            avatar: msg.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(msg.user)}`,
-            text: msg.text || '',
-            timestamp: msg.timestamp,
-            imageUrl: msg.imageUrl,
-            audioUrl: msg.audioUrl,
-            videoUrl: msg.videoUrl,
-          }];
+          };
+
+          const threadMessages = existing
+            ? mergeMessages(existing.messages, [incomingMessage])
+            : [incomingMessage];
+
+          const isSelected = selectedUserRef.current?.toLowerCase() === userKey;
+          const oldUnreadCount = existing?.unreadCount ?? 0;
 
           nextThreads[userKey] = {
             user: msg.user,
             avatar: msg.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(msg.user)}`,
             messages: threadMessages,
             lastMessageTimestamp: msg.timestamp,
-            unreadCount: selectedUserRef.current?.toLowerCase() === userKey ? 0 : threadMessages.length,
+            unreadCount: isSelected ? 0 : oldUnreadCount + 1,
           };
         });
         return nextThreads;
@@ -280,7 +315,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       if (msg.isStudioReply) {
         return;
       }
-      addMessageToThread({
+      const incomingMessage: Message = {
         id: msg.id,
         type: 'chat',
         user: msg.user,
@@ -290,11 +325,13 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         imageUrl: msg.imageUrl,
         audioUrl: msg.audioUrl,
         videoUrl: msg.videoUrl,
-      });
+      };
+
+      addMessageToThread(incomingMessage);
     };
 
     const handlePrivateMessage = (msg: any) => {
-      addMessageToThread({
+      const incomingMessage: Message = {
         id: msg.id,
         type: 'chat',
         user: msg.user,
@@ -304,7 +341,8 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         imageUrl: msg.imageUrl,
         audioUrl: msg.audioUrl,
         videoUrl: msg.videoUrl,
-      });
+      };
+      addMessageToThread(incomingMessage);
     };
 
     const handleNewShoutout = (shoutout: any) => {
@@ -324,7 +362,8 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     const handleShoutoutsCleared = () => {
       setThreads(prev => {
         const nextThreads: Record<string, UserThread> = {};
-        Object.entries(prev).forEach(([key, thread]) => {
+        const entries = Object.entries(prev) as [string, UserThread][];
+        entries.forEach(([key, thread]) => {
           const filtered = thread.messages.filter(msg => msg.type !== 'shoutout');
           if (filtered.length > 0) {
             nextThreads[key] = {
