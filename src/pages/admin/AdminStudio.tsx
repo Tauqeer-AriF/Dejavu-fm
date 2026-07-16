@@ -99,6 +99,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     }
   });
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const selectedUserRef = useRef<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
   const [isSending, setIsSending] = useState(false);
@@ -164,6 +165,29 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   }, [threads, selectedUser]);
 
   useEffect(() => {
+    selectedUserRef.current = selectedUser;
+  }, [selectedUser]);
+
+  const addMessageToThread = (message: Message) => {
+    const userKey = message.user.toLowerCase();
+    const selectedKey = selectedUserRef.current?.toLowerCase();
+    setThreads(prev => {
+      const existing = prev[userKey];
+      const newMessages = existing ? [...existing.messages, message] : [message];
+      return {
+        ...prev,
+        [userKey]: {
+          user: message.user,
+          avatar: message.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(message.user)}`,
+          messages: newMessages,
+          lastMessageTimestamp: message.timestamp,
+          unreadCount: selectedKey === userKey ? 0 : (existing?.unreadCount || 0) + 1,
+        },
+      };
+    });
+  };
+
+  useEffect(() => {
     const socket = (window as any).socket;
     if (!socket) {
       console.warn("AdminStudio: socket not ready yet");
@@ -171,6 +195,148 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     }
 
     socketRef.current = socket;
+
+    const handleChatHistory = (history: any[]) => {
+      setThreads(prev => {
+        const nextThreads = { ...prev };
+        history.forEach(msg => {
+          const userKey = msg.user.toLowerCase();
+          const existing = nextThreads[userKey];
+          const threadMessages = existing ? [...existing.messages, {
+            id: msg.id,
+            type: 'chat',
+            user: msg.user,
+            avatar: msg.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(msg.user)}`,
+            text: msg.text || '',
+            timestamp: msg.timestamp,
+            imageUrl: msg.imageUrl,
+            audioUrl: msg.audioUrl,
+            videoUrl: msg.videoUrl,
+          }] : [{
+            id: msg.id,
+            type: 'chat',
+            user: msg.user,
+            avatar: msg.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(msg.user)}`,
+            text: msg.text || '',
+            timestamp: msg.timestamp,
+            imageUrl: msg.imageUrl,
+            audioUrl: msg.audioUrl,
+            videoUrl: msg.videoUrl,
+          }];
+
+          nextThreads[userKey] = {
+            user: msg.user,
+            avatar: msg.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(msg.user)}`,
+            messages: threadMessages,
+            lastMessageTimestamp: msg.timestamp,
+            unreadCount: selectedUserRef.current?.toLowerCase() === userKey ? 0 : threadMessages.length,
+          };
+        });
+        return nextThreads;
+      });
+    };
+
+    const handlePrivateHistory = (history: any[]) => {
+      setThreads(prev => {
+        const nextThreads = { ...prev };
+        history.forEach(msg => {
+          const userKey = msg.user.toLowerCase();
+          const existing = nextThreads[userKey];
+          const threadMessages = existing ? [...existing.messages, {
+            id: msg.id,
+            type: 'chat',
+            user: msg.user,
+            avatar: msg.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(msg.user)}`,
+            text: msg.text || '',
+            timestamp: msg.timestamp,
+            imageUrl: msg.imageUrl,
+            audioUrl: msg.audioUrl,
+            videoUrl: msg.videoUrl,
+          }] : [{
+            id: msg.id,
+            type: 'chat',
+            user: msg.user,
+            avatar: msg.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(msg.user)}`,
+            text: msg.text || '',
+            timestamp: msg.timestamp,
+            imageUrl: msg.imageUrl,
+            audioUrl: msg.audioUrl,
+            videoUrl: msg.videoUrl,
+          }];
+
+          nextThreads[userKey] = {
+            user: msg.user,
+            avatar: msg.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(msg.user)}`,
+            messages: threadMessages,
+            lastMessageTimestamp: msg.timestamp,
+            unreadCount: selectedUserRef.current?.toLowerCase() === userKey ? 0 : threadMessages.length,
+          };
+        });
+        return nextThreads;
+      });
+    };
+
+    const handleChatMessage = (msg: any) => {
+      if (msg.isStudioReply) {
+        return;
+      }
+      addMessageToThread({
+        id: msg.id,
+        type: 'chat',
+        user: msg.user,
+        avatar: msg.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(msg.user)}`,
+        text: msg.text || '',
+        timestamp: msg.timestamp,
+        imageUrl: msg.imageUrl,
+        audioUrl: msg.audioUrl,
+        videoUrl: msg.videoUrl,
+      });
+    };
+
+    const handlePrivateMessage = (msg: any) => {
+      addMessageToThread({
+        id: msg.id,
+        type: 'chat',
+        user: msg.user,
+        avatar: msg.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(msg.user)}`,
+        text: msg.text || '',
+        timestamp: msg.timestamp,
+        imageUrl: msg.imageUrl,
+        audioUrl: msg.audioUrl,
+        videoUrl: msg.videoUrl,
+      });
+    };
+
+    const handleNewShoutout = (shoutout: any) => {
+      addMessageToThread({
+        id: String(shoutout.id),
+        type: 'shoutout',
+        user: shoutout.listener_name || shoutout.user || 'Shoutout',
+        avatar: shoutout.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(shoutout.listener_name || shoutout.user || 'shoutout')}`,
+        text: shoutout.message || '',
+        timestamp: shoutout.timestamp || Date.now(),
+        imageUrl: shoutout.imageUrl,
+        audioUrl: shoutout.audioUrl,
+        videoUrl: shoutout.videoUrl,
+      });
+    };
+
+    const handleShoutoutsCleared = () => {
+      setThreads(prev => {
+        const nextThreads: Record<string, UserThread> = {};
+        Object.entries(prev).forEach(([key, thread]) => {
+          const filtered = thread.messages.filter(msg => msg.type !== 'shoutout');
+          if (filtered.length > 0) {
+            nextThreads[key] = {
+              ...thread,
+              messages: filtered,
+              lastMessageTimestamp: filtered[filtered.length - 1].timestamp,
+            };
+          }
+        });
+        return nextThreads;
+      });
+    };
 
     const handleUserThreadCleared = ({ username }: { username: string }) => {
       setThreads(prev => {
@@ -181,18 +347,34 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         return newThreads;
       });
 
-      if (selectedUser?.toLowerCase() === username.toLowerCase()) {
+      if (selectedUserRef.current?.toLowerCase() === username.toLowerCase()) {
         setSelectedUser(null);
       }
       setSelectedThreads(prev => prev.filter(userKey => userKey !== username.toLowerCase()));
     };
 
+    socket.on('chatHistory', handleChatHistory);
+    socket.on('privateHistory', handlePrivateHistory);
+    socket.on('chatMessage', handleChatMessage);
+    socket.on('privateMessage', handlePrivateMessage);
+    socket.on('new_shoutout', handleNewShoutout);
+    socket.on('shoutouts_cleared', handleShoutoutsCleared);
     socket.on('userThreadCleared', handleUserThreadCleared);
 
+    if (adminUsername) {
+      socket.emit('registerUser', adminUsername);
+    }
+
     return () => {
+      socket.off('chatHistory', handleChatHistory);
+      socket.off('privateHistory', handlePrivateHistory);
+      socket.off('chatMessage', handleChatMessage);
+      socket.off('privateMessage', handlePrivateMessage);
+      socket.off('new_shoutout', handleNewShoutout);
+      socket.off('shoutouts_cleared', handleShoutoutsCleared);
       socket.off('userThreadCleared', handleUserThreadCleared);
     };
-  }, []);
+  }, [adminUsername]);
 
   useEffect(() => {
     try {
