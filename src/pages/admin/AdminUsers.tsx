@@ -8,11 +8,18 @@ interface AdminUser {
   username: string;
   email?: string;
   role: "admin" | "dj";
+  dj_profile_id?: string;
+}
+
+interface DJProfile {
+  id: string;
+  name: string;
 }
 
 export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
   const { isLightMode } = useLogo();
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [djs, setDjs] = useState<DJProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -23,6 +30,7 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState<"admin" | "dj">("dj");
+  const [newDjProfileId, setNewDjProfileId] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
 
@@ -50,8 +58,21 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
     }
   };
 
+  const loadDjs = async () => {
+    try {
+      const res = await fetch("/api/public/djs");
+      if (res.ok) {
+        const data = await res.json();
+        setDjs(data);
+      }
+    } catch (e) {
+      console.error("Failed to load DJs for linkage:", e);
+    }
+  };
+
   useEffect(() => {
     loadUsers();
+    loadDjs();
   }, []);
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -75,6 +96,7 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
           email: trimmedEmail,
           password: newPassword,
           role: newRole,
+          dj_profile_id: newDjProfileId || null,
         },
       });
 
@@ -84,6 +106,7 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
         setNewEmail("");
         setNewPassword("");
         setNewRole("dj");
+        setNewDjProfileId("");
         setIsCreating(false);
         loadUsers();
       } else {
@@ -288,6 +311,24 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
                   <option value="admin" className={isLightMode ? "bg-white text-slate-900" : "bg-[#121212] text-white"}>Administrator</option>
                 </select>
               </div>
+
+              <div>
+                <label className={`block text-[10px] uppercase font-black tracking-widest mb-2 ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>
+                  Linked Public DJ Profile
+                </label>
+                <select
+                  value={newDjProfileId}
+                  onChange={(e) => setNewDjProfileId(e.target.value)}
+                  className={`w-full border rounded-xl px-4 py-3 focus:border-neon-purple focus:outline-none transition-all ${isLightMode ? 'bg-black/5 border-black/15 text-slate-900' : 'bg-black/40 border-white/10 text-white'}`}
+                >
+                  <option value="" className={isLightMode ? "bg-white text-slate-900" : "bg-[#121212] text-white"}>-- None / Not a DJ --</option>
+                  {djs.map((dj) => (
+                    <option key={dj.id} value={dj.id} className={isLightMode ? "bg-white text-slate-900" : "bg-[#121212] text-white"}>
+                      {dj.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="flex justify-end pt-2">
@@ -349,12 +390,52 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
                           {user.email}
                         </span>
                       )}
+                      {user.dj_profile_id && (
+                        <span className={`text-xs inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full ${isLightMode ? 'bg-black/5 text-black/60' : 'bg-white/5 text-white/60'}`}>
+                          <User className="w-3 h-3 text-neon-blue" />
+                          Linked DJ: {djs.find(d => d.id === user.dj_profile_id)?.name || "Unknown DJ"}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
 
                 {/* Account Controls */}
                 <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-2 mr-2">
+                    <span className={`text-[10px] uppercase font-bold tracking-wider ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Link DJ:</span>
+                    <select
+                      value={user.dj_profile_id || ""}
+                      onChange={async (e) => {
+                        const newId = e.target.value || null;
+                        try {
+                          setError("");
+                          setSuccess("");
+                          const res = await fetchAdmin(`/api/admin/users/${user.username}`, {
+                            method: "PUT",
+                            body: { dj_profile_id: newId }
+                          });
+                          if (res.ok) {
+                            setSuccess(`Successfully updated DJ profile link for ${user.username}`);
+                            loadUsers();
+                          } else {
+                            setError("Failed to update DJ profile link");
+                          }
+                        } catch (err) {
+                          setError("Failed to update link");
+                        }
+                      }}
+                      className={`text-xs border rounded-xl px-3 py-1.5 outline-none transition-all ${isLightMode ? 'bg-black/5 border-black/15 text-slate-900' : 'bg-black/40 border-white/10 text-white'}`}
+                    >
+                      <option value="" className={isLightMode ? "bg-white text-slate-900" : "bg-[#121212] text-white"}>-- None --</option>
+                      {djs.map((dj) => (
+                        <option key={dj.id} value={dj.id} className={isLightMode ? "bg-white text-slate-900" : "bg-[#121212] text-white"}>
+                          {dj.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   {editingUsername === user.username ? (
                     <div className={`flex items-center gap-2 border p-1.5 rounded-xl ${isLightMode ? 'bg-black/5 border-black/15' : 'bg-black/40 border-white/10'}`}>
                       <div className="relative w-44">

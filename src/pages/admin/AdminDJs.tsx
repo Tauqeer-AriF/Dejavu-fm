@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useNavigate, Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
-import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles } from "lucide-react";
+import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles, AlertTriangle } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { useModal } from "../../context/ModalContext";
 import { useLogo } from "../../hooks/useLogo";
@@ -21,23 +21,54 @@ export function AdminDJs() {
     queryFn: () => fetch("/api/public/djs?t=" + Date.now()).then(r => r.json()),
   });
 
-  const handleDelete = async (id: string) => {
-    const confirmed = await showConfirm({
-      title: "Delete DJ",
-      message: "Are you sure you want to delete this DJ and all their schedules?",
-      style: "danger",
-      confirmText: "Delete"
-    });
-    if (confirmed) {
-      const res = await fetchAdmin(`/api/admin/djs/${id}`, { method: "DELETE" });
+  // Deletion helper states
+  const [deleteCandidate, setDeleteCandidate] = useState<{ id: string; name: string } | null>(null);
+  const [associatedStaff, setAssociatedStaff] = useState<string | null>(null);
+  const [alsoDeleteStaff, setAlsoDeleteStaff] = useState<boolean>(true);
+  const [checkingStaff, setCheckingStaff] = useState<boolean>(false);
+
+  const startDeleteFlow = async (id: string, name: string) => {
+    setDeleteCandidate({ id, name });
+    setAssociatedStaff(null);
+    setAlsoDeleteStaff(true);
+    setCheckingStaff(true);
+    try {
+      const res = await fetchAdmin("/api/admin/users");
       if (res.ok) {
-        showAlert({ title: "Success", message: "DJ deleted from the database.", style: "success" });
-        queryClient.invalidateQueries({ queryKey: ['djs'] });
-        queryClient.invalidateQueries({ queryKey: ['schedule'] });
-      } else {
-        showAlert({ title: "Error", message: "Failed to delete DJ", style: "danger" });
+        const staff = await res.json();
+        const matched = staff.find((u: any) => u.dj_profile_id === id || u.username.trim().toLowerCase() === name.trim().toLowerCase());
+        if (matched && matched.username.toLowerCase() !== 'admin') {
+          setAssociatedStaff(matched.username);
+        }
       }
+    } catch (e) {
+      console.error("Failed to check associated staff:", e);
+    } finally {
+      setCheckingStaff(false);
     }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteCandidate) return;
+    const { id, name } = deleteCandidate;
+    
+    const url = `/api/admin/djs/${id}?deleteStaff=${associatedStaff && alsoDeleteStaff ? "true" : "false"}`;
+    const res = await fetchAdmin(url, { method: "DELETE" });
+    if (res.ok) {
+      showAlert({ 
+        title: "Success", 
+        message: associatedStaff && alsoDeleteStaff 
+          ? `DJ "${name}" and associated staff account "${associatedStaff}" deleted.` 
+          : `DJ "${name}" deleted from the database.`, 
+        style: "success" 
+      });
+      queryClient.invalidateQueries({ queryKey: ['djs'] });
+      queryClient.invalidateQueries({ queryKey: ['schedule'] });
+    } else {
+      showAlert({ title: "Error", message: "Failed to delete DJ", style: "danger" });
+    }
+    setDeleteCandidate(null);
+    setAssociatedStaff(null);
   };
 
   return (
@@ -82,7 +113,7 @@ export function AdminDJs() {
                 </div>
                 <div className="flex space-x-4 mt-2 sm:mt-0">
                   <button onClick={() => setEditingId(dj.id)} className="text-neon-blue hover:text-white transition-colors text-sm px-2 py-1">Edit</button>
-                  <button onClick={() => handleDelete(dj.id)} className="text-red-500 hover:text-red-400 text-sm px-2 py-1">Delete</button>
+                  <button onClick={() => startDeleteFlow(dj.id, dj.name)} className="text-red-500 hover:text-red-400 text-sm px-2 py-1">Delete</button>
                 </div>
               </div>
             )}
@@ -92,6 +123,81 @@ export function AdminDJs() {
       <AddDJForm onAdd={() => {
         queryClient.invalidateQueries({ queryKey: ['djs'] });
       }} />
+
+      {/* Deletion Overlay Modal */}
+      <AnimatePresence>
+        {deleteCandidate && (
+          <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDeleteCandidate(null)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            
+            {/* Modal Box */}
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              className="relative w-full max-w-md bg-[#121212] border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4 text-white z-10"
+            >
+              <div className="flex items-start gap-3">
+                <div className="p-3 bg-red-500/10 text-red-500 rounded-xl">
+                  <X className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="text-lg font-bold uppercase tracking-wider">Delete DJ Profile?</h4>
+                  <p className="text-sm text-white/60 mt-1">
+                    Are you sure you want to delete <span className="font-bold text-white">"{deleteCandidate.name}"</span> and all their schedules?
+                  </p>
+                </div>
+              </div>
+
+              {checkingStaff ? (
+                <div className="flex items-center gap-2 text-xs text-white/40">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Checking associated staff accounts...
+                </div>
+              ) : associatedStaff ? (
+                <div className="bg-red-500/5 border border-red-500/20 p-4 rounded-xl space-y-3 mt-4">
+                  <div className="flex items-center gap-2 text-red-400 font-bold text-xs uppercase tracking-wider">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0" /> Staff Login Account Linked
+                  </div>
+                  <p className="text-xs text-white/70">
+                    This DJ is linked to the staff login account: <span className="font-mono text-neon-blue font-bold">"{associatedStaff}"</span>.
+                  </p>
+                  <label className="flex items-center gap-3 cursor-pointer select-none text-white pt-1">
+                    <input 
+                      type="checkbox" 
+                      checked={alsoDeleteStaff} 
+                      onChange={(e) => setAlsoDeleteStaff(e.target.checked)} 
+                      className="rounded border-white/20 text-neon-purple focus:ring-0 focus:ring-offset-0 bg-transparent w-4 h-4"
+                    />
+                    <span className="text-xs font-bold text-white/90">Also delete staff login account "{associatedStaff}"</span>
+                  </label>
+                </div>
+              ) : null}
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/5">
+                <button
+                  onClick={() => setDeleteCandidate(null)}
+                  className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-white/60 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmDelete}
+                  className="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-colors shadow-lg shadow-red-600/20"
+                >
+                  {associatedStaff && alsoDeleteStaff ? "Delete DJ & Account" : "Delete DJ Profile Only"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

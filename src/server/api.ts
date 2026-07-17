@@ -1526,6 +1526,21 @@ apiRouter.put("/admin/profile", (req: any, res: any) => {
     db.prepare("UPDATE admins SET bio=?, photo_url=?, email=? WHERE username=?")
       .run(bio || "", photo_url || "", email || "", req.user.username);
   }
+
+  // Senior Dev: Seamlessly sync profile photo and bio changes downstream to the public 'djs' database entry
+  try {
+    const admin = db.prepare("SELECT dj_profile_id FROM admins WHERE username = ?").get(req.user.username) as any;
+    if (admin && admin.dj_profile_id) {
+      db.prepare("UPDATE djs SET bio = ?, image_url = ? WHERE id = ?")
+        .run(bio || "", photo_url || "", admin.dj_profile_id);
+    } else {
+      db.prepare("UPDATE djs SET bio = ?, image_url = ? WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))")
+        .run(bio || "", photo_url || "", req.user.username);
+    }
+  } catch (syncErr) {
+    console.error("[Sync] Failed to sync admin profile to public djs table:", syncErr);
+  }
+
   logAction(req, 'UPDATE_PROFILE', 'admins', req.user.username);
   res.json({ success: true });
 });
@@ -1540,6 +1555,15 @@ apiRouter.post("/admin/djs", (req, res) => {
   const id = crypto.randomUUID();
   db.prepare("INSERT INTO djs (id, name, bio, image_url, instagram, soundcloud, mixcloud) VALUES (?, ?, ?, ?, ?, ?, ?)")
     .run(id, name, bio, image_url, instagram, soundcloud, mixcloud);
+  
+  // Auto-link staff account if username matches the DJ name
+  try {
+    db.prepare("UPDATE admins SET dj_profile_id = ? WHERE LOWER(TRIM(username)) = LOWER(TRIM(?)) AND dj_profile_id IS NULL")
+      .run(id, name);
+  } catch (e) {
+    console.error("[Link] Auto-linking new DJ to staff account failed:", e);
+  }
+
   logAction(req, 'CREATE', 'dj', id, { name });
   res.json({ success: true, id });
 });
@@ -1563,6 +1587,23 @@ apiRouter.delete("/admin/djs/:id", (req, res) => {
         if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       } catch (e) {
         console.error("[API] Failed to cleanup DJ image on deletion:", e);
+      }
+    }
+
+    // Delete associated staff/admin account if requested
+    const deleteStaff = req.query.deleteStaff === 'true';
+    if (deleteStaff) {
+      try {
+        const associatedAdmin = db.prepare("SELECT username FROM admins WHERE dj_profile_id = ? OR LOWER(TRIM(username)) = (SELECT LOWER(TRIM(name)) FROM djs WHERE id = ?)").get(id, id) as any;
+        if (associatedAdmin) {
+          const adminUsername = associatedAdmin.username;
+          if (adminUsername.toLowerCase() !== 'admin') {
+            db.prepare("DELETE FROM admins WHERE LOWER(TRIM(username)) = LOWER(TRIM(?))").run(adminUsername);
+            logAction(req, 'DELETE', 'admin_user', adminUsername, { reason: 'Deleted with public DJ profile' });
+          }
+        }
+      } catch (e) {
+        console.error("[API] Failed to delete associated staff account:", e);
       }
     }
 
@@ -2021,8 +2062,55 @@ apiRouter.post("/admin/podcasts/refresh", (req, res) => {
   res.json({ success: true });
 });
 
+function checkScheduleOverlap(day_of_week: number, start_time: string, end_time: string, exclude_id?: string | number): string | null {
+  if (!start_time || !end_time) return "Start time and end time are required";
+  
+  const toMins = (t: string) => {
+    const parts = t.split(':');
+    if (parts.length !== 2) return 0;
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    return (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
+  };
+
+  const start1 = toMins(start_time);
+  const end1 = toMins(end_time);
+
+  if (start1 >= end1) {
+    return "Start time must be before end time.";
+  }
+
+  // Fetch existing schedules for the same day
+  let query = "SELECT id, start_time, end_time, show_name FROM schedule WHERE day_of_week = ?";
+  let params: any[] = [day_of_week];
+  if (exclude_id !== undefined) {
+    query += " AND id != ?";
+    params.push(exclude_id);
+  }
+
+  const existingSlots = db.prepare(query).all(...params) as any[];
+
+  for (const slot of existingSlots) {
+    const start2 = toMins(slot.start_time);
+    const end2 = toMins(slot.end_time);
+
+    // Overlap condition: start1 < end2 && start2 < end1
+    if (start1 < end2 && start2 < end1) {
+      return `This time slot overlaps with an existing show: "${slot.show_name}" (${slot.start_time} - ${slot.end_time})`;
+    }
+  }
+
+  return null;
+}
+
 apiRouter.post("/admin/schedule", (req, res) => {
   const { dj_id, day_of_week, start_time, end_time, show_name } = req.body;
+  
+  const overlapError = checkScheduleOverlap(Number(day_of_week), start_time, end_time);
+  if (overlapError) {
+    return res.status(400).json({ error: overlapError });
+  }
+
   const info = db.prepare("INSERT INTO schedule (dj_id, day_of_week, start_time, end_time, show_name) VALUES (?, ?, ?, ?, ?)").run(
     dj_id, day_of_week, start_time, end_time, show_name
   );
@@ -2032,6 +2120,12 @@ apiRouter.post("/admin/schedule", (req, res) => {
 
 apiRouter.put("/admin/schedule/:id", (req, res) => {
   const { dj_id, day_of_week, start_time, end_time, show_name } = req.body;
+
+  const overlapError = checkScheduleOverlap(Number(day_of_week), start_time, end_time, req.params.id);
+  if (overlapError) {
+    return res.status(400).json({ error: overlapError });
+  }
+
   db.prepare("UPDATE schedule SET dj_id=?, day_of_week=?, start_time=?, end_time=?, show_name=? WHERE id=?").run(
     dj_id, day_of_week, start_time, end_time, show_name, req.params.id
   );
@@ -2069,20 +2163,20 @@ apiRouter.post("/admin/push-track", (req, res) => {
 });
 
 apiRouter.get("/admin/users", authMiddleware, authorizeRole('admin'), (req, res) => {
-  const users = db.prepare("SELECT username, email, role FROM admins").all();
+  const users = db.prepare("SELECT username, email, role, dj_profile_id FROM admins").all();
   res.json(users);
 });
 
 apiRouter.post("/admin/users", authMiddleware, authorizeRole('admin'), (req: Request, res: Response) => {
-  const { username, email, password, role } = req.body;
+  const { username, email, password, role, dj_profile_id } = req.body;
   if (!username || !password) return res.status(400).json({ error: "Username and password required" });
   if (!['admin', 'dj'].includes(role)) return res.status(400).json({ error: "Invalid role specified" });
   const trimmedUsername = username.trim();
   const trimmedEmail = email ? email.trim() : null;
   const hash = bcrypt.hashSync(password, 10);
   try {
-    db.prepare("INSERT INTO admins (username, email, password_hash, role) VALUES (?, ?, ?, ?)").run(trimmedUsername, trimmedEmail, hash, role);
-    logAction(req, 'CREATE', 'admin_user', trimmedUsername, { role, email: trimmedEmail });
+    db.prepare("INSERT INTO admins (username, email, password_hash, role, dj_profile_id) VALUES (?, ?, ?, ?, ?)").run(trimmedUsername, trimmedEmail, hash, role, dj_profile_id || null);
+    logAction(req, 'CREATE', 'admin_user', trimmedUsername, { role, email: trimmedEmail, dj_profile_id });
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ error: "Username might already exist" });
@@ -2090,7 +2184,7 @@ apiRouter.post("/admin/users", authMiddleware, authorizeRole('admin'), (req: Req
 });
 
 apiRouter.put("/admin/users/:username", authorizeRole('admin'), (req, res) => {
-  const { password, email, role } = req.body;
+  const { password, email, role, dj_profile_id } = req.body;
   const targetUsername = req.params.username.trim();
   
   try {
@@ -2106,7 +2200,10 @@ apiRouter.put("/admin/users/:username", authorizeRole('admin'), (req, res) => {
       if (!['admin', 'dj'].includes(role)) return res.status(400).json({ error: "Invalid role specified" });
       db.prepare("UPDATE admins SET role = ? WHERE LOWER(TRIM(username)) = LOWER(TRIM(?))").run(role, targetUsername);
     }
-    logAction(req, 'UPDATE', 'admin_user', targetUsername, { email, role });
+    if (dj_profile_id !== undefined) {
+      db.prepare("UPDATE admins SET dj_profile_id = ? WHERE LOWER(TRIM(username)) = LOWER(TRIM(?))").run(dj_profile_id || null, targetUsername);
+    }
+    logAction(req, 'UPDATE', 'admin_user', targetUsername, { email, role, dj_profile_id });
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ error: "Update failed" });

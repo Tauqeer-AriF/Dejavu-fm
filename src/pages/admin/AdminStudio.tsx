@@ -2822,70 +2822,65 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       {activeTab === 'profile' && renderProfileView()}
 
       {/* Fixed Bottom Tab Bar for Mobile App View */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0D0F1D]/90 backdrop-blur-xl border-t border-white/10 px-4 py-2 flex items-center justify-around shadow-[0_-8px_30px_rgba(0,0,0,0.6)]">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0D0F1D]/90 backdrop-blur-xl border-t border-white/10 px-4 py-3 flex items-center justify-around shadow-[0_-8px_30px_rgba(0,0,0,0.6)]">
         <button
           onClick={() => setActiveTab('chats')}
-          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all duration-200 ${
+          className={`flex items-center justify-center p-2.5 rounded-full transition-all duration-200 ${
             activeTab === 'chats'
-              ? 'text-neon-purple font-bold'
-              : 'text-white/40 hover:text-white/80'
+              ? 'text-neon-purple bg-white/5 font-bold'
+              : 'text-white/40 hover:text-white/80 hover:bg-white/5'
           }`}
         >
-          <MessageSquare className="w-5 h-5" />
-          <span className="text-[10px] uppercase tracking-wider font-semibold">Chat</span>
+          <MessageSquare className="w-6 h-6" />
         </button>
 
         <button
           onClick={() => setActiveTab('connections')}
-          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all duration-200 ${
+          className={`flex items-center justify-center p-2.5 rounded-full transition-all duration-200 ${
             activeTab === 'connections'
-              ? 'text-neon-blue font-bold'
-              : 'text-white/40 hover:text-white/80'
+              ? 'text-neon-blue bg-white/5 font-bold'
+              : 'text-white/40 hover:text-white/80 hover:bg-white/5'
           }`}
         >
           <div className="relative">
-            <Link2 className="w-5 h-5" />
+            <Link2 className="w-6 h-6" />
             {Object.values(connectedPlatforms).filter(Boolean).length > 0 && (
               <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             )}
           </div>
-          <span className="text-[10px] uppercase tracking-wider font-semibold">Hub</span>
         </button>
 
         <button
           onClick={() => setActiveTab('broadcast')}
-          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all duration-200 ${
+          className={`flex items-center justify-center p-2.5 rounded-full transition-all duration-200 ${
             activeTab === 'broadcast'
-              ? 'text-neon-blue font-bold'
-              : 'text-white/40 hover:text-white/80'
+              ? 'text-neon-blue bg-white/5 font-bold'
+              : 'text-white/40 hover:text-white/80 hover:bg-white/5'
           }`}
         >
-          <Radio className="w-5 h-5" />
-          <span className="text-[10px] uppercase tracking-wider font-semibold">Blast</span>
+          <Radio className="w-6 h-6" />
         </button>
 
         <button
           onClick={() => setActiveTab('profile')}
-          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all duration-200 ${
+          className={`flex items-center justify-center p-2.5 rounded-full transition-all duration-200 ${
             activeTab === 'profile'
-              ? 'text-neon-purple font-bold'
-              : 'text-white/40 hover:text-white/80'
+              ? 'text-neon-purple bg-white/5 font-bold'
+              : 'text-white/40 hover:text-white/80 hover:bg-white/5'
           }`}
         >
-          <Camera className="w-5 h-5" />
-          <span className="text-[10px] uppercase tracking-wider font-semibold">Profile</span>
+          <Camera className="w-6 h-6" />
         </button>
 
         <button
           onClick={() => setActiveTab('settings')}
-          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all duration-200 ${
+          className={`flex items-center justify-center p-2.5 rounded-full transition-all duration-200 ${
             activeTab === 'settings'
-              ? 'text-amber-400 font-bold'
-              : 'text-white/40 hover:text-white/80'
+              ? 'text-amber-400 bg-white/5 font-bold'
+              : 'text-white/40 hover:text-white/80 hover:bg-white/5'
           }`}
         >
-          <Settings className="w-5 h-5" />
-          <span className="text-[10px] uppercase tracking-wider font-semibold">Settings</span>
+          <Settings className="w-6 h-6" />
         </button>
       </div>
 
