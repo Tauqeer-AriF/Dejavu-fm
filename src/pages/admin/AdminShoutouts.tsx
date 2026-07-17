@@ -8,9 +8,11 @@ import { motion, AnimatePresence } from "motion/react";
 import { fetchAdmin } from "./adminApi";
 import { ImageUploadField } from "./ImageUploadField";
 import { convertToLocalTime } from "../../lib/timeUtils";
+import { useLogo } from "../../hooks/useLogo";
 
 
 export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
+  const { isLightMode } = useLogo();
   const [shoutouts, setShoutouts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { showConfirm, showAlert } = useModal();
@@ -122,15 +124,15 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/10 pb-6 gap-6 sm:gap-0">
+      <div className={`flex flex-col sm:flex-row sm:items-center justify-between border-b pb-6 gap-6 sm:gap-0 ${isLightMode ? 'border-black/10' : 'border-white/10'}`}>
         <div className="text-center sm:text-left">
-          <h3 className="text-2xl sm:text-3xl md:text-4xl font-display font-black uppercase tracking-tighter italic leading-none">Station <span className="text-neon-purple not-italic">Interactions</span></h3>
-          <p className="text-white/40 text-[10px] sm:text-xs mt-2 uppercase tracking-[0.2em] font-black">Live Listener Pulse</p>
+          <h3 className={`text-2xl sm:text-3xl md:text-4xl font-display font-black uppercase tracking-tighter italic leading-none ${isLightMode ? 'text-slate-900' : 'text-white'}`}>Station <span className="text-neon-purple not-italic">Interactions</span></h3>
+          <p className={`text-[10px] sm:text-xs mt-2 uppercase tracking-[0.2em] font-black ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Live Listener Pulse</p>
         </div>
         <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3 sm:gap-4 mt-2 sm:mt-0">
           <button 
             onClick={exportToCSV}
-            className="flex-1 sm:flex-none px-4 py-2.5 bg-white/5 hover:bg-neon-blue/20 border border-white/10 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap text-neon-blue"
+            className={`flex-1 sm:flex-none px-4 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap text-neon-blue border ${isLightMode ? 'bg-black/5 hover:bg-neon-blue/10 border-black/10' : 'bg-white/5 hover:bg-neon-blue/20 border-white/10'}`}
           >
             Export CSV
           </button>
@@ -151,7 +153,7 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
                   load();
                 }
               }} // Changed to use custom modal
-              className="flex-1 sm:flex-none px-4 py-2.5 bg-white/5 hover:bg-red-500/20 border border-white/10 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap"
+              className={`flex-1 sm:flex-none px-4 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap border ${isLightMode ? 'bg-black/5 hover:bg-red-500/10 border-black/10 text-red-600' : 'bg-white/5 hover:bg-red-500/20 border-white/10 text-white'}`}
             >
               Purge Deck
             </button>
@@ -163,22 +165,22 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
         </div>
       </div>
 
-      <div className="glass-panel rounded-2xl border border-neon-purple/20 bg-neon-purple/10 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className={`rounded-2xl border p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 ${isLightMode ? 'bg-white border-black/10 shadow-sm' : 'glass-panel border-neon-purple/20 bg-neon-purple/10'}`}>
         <div className="flex items-center gap-4 min-w-0">
           <div className="w-11 h-11 rounded-xl bg-neon-purple/20 border border-neon-purple/30 flex items-center justify-center shrink-0">
             <Radio className="w-5 h-5 text-neon-purple" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40">DJ playing right now</p>
+            <p className={`text-[10px] font-black uppercase tracking-[0.25em] ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>DJ playing right now</p>
             <h4 className="text-xl sm:text-2xl font-display font-black uppercase tracking-tight text-neon-purple truncate">
               {currentShow?.dj_name || "No scheduled DJ"}
             </h4>
           </div>
         </div>
         <div className="sm:text-right min-w-0">
-          <p className="text-xs font-bold text-white/70 truncate">{currentShow?.show_name || "Schedule is clear"}</p>
+          <p className={`text-xs font-bold truncate ${isLightMode ? 'text-slate-800' : 'text-white/70'}`}>{currentShow?.show_name || "Schedule is clear"}</p>
           {currentShow && (
-            <p className="text-[10px] font-black uppercase tracking-widest text-white/30 mt-1">
+            <p className={`text-[10px] font-black uppercase tracking-widest mt-1 ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>
               {currentShow.start_time} - {currentShow.end_time}
             </p>
           )}
@@ -187,9 +189,9 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {shoutouts.length === 0 && !loading && (
-          <div className="col-span-full py-20 text-center glass-panel rounded-3xl border-dashed">
-            <Ghost className="w-12 h-12 text-white/10 mx-auto mb-4" />
-            <p className="text-white/30 uppercase font-black tracking-widest text-xs">No activity yet. Promoting the station might help!</p>
+          <div className={`col-span-full py-20 text-center rounded-3xl border border-dashed ${isLightMode ? 'bg-white border-black/15 shadow-sm text-slate-800' : 'glass-panel border-white/10'}`}>
+            <Ghost className={`w-12 h-12 mx-auto mb-4 ${isLightMode ? 'text-black/20' : 'text-white/10'}`} />
+            <p className={`uppercase font-black tracking-widest text-xs ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>No activity yet. Promoting the station might help!</p>
           </div>
         )}
         
@@ -202,7 +204,7 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9, x: 20 }}
               layout
-              className="glass-panel p-4 sm:p-6 rounded-[2rem] border border-white/5 transition-all relative group overflow-hidden hover:border-neon-purple/30"
+              className={`p-4 sm:p-6 rounded-[2rem] border transition-all relative group overflow-hidden ${isLightMode ? 'bg-white border-black/10 shadow-sm hover:border-neon-purple/40' : 'glass-panel border-white/5 hover:border-neon-purple/30'}`}
             >
               <motion.div
                 className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 z-0"
@@ -214,30 +216,30 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
               
               <div className="flex justify-between items-start mb-4 relative z-10 gap-3">
                 <div className="flex items-center space-x-3 min-w-0">
-                  <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center shrink-0">
-                    <User className="w-5 h-5 text-white/40" />
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isLightMode ? 'bg-black/5' : 'bg-white/5'}`}>
+                    <User className={`w-5 h-5 ${isLightMode ? 'text-black/40' : 'text-white/40'}`} />
                   </div>
                   <div className="min-w-0">
-                    <h4 className="font-bold text-xs text-white truncate tracking-tight">{s.listener_name}</h4>
-                    <p className="text-[10px] text-white/30">{new Date(s.timestamp).toLocaleTimeString()}</p>
+                    <h4 className={`font-bold text-xs truncate tracking-tight ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{s.listener_name}</h4>
+                    <p className={`text-[10px] ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>{new Date(s.timestamp).toLocaleTimeString()}</p>
                   </div>
                 </div>
                 <button 
                   onClick={() => deleteShoutout(s.id)}
-                  className="p-2 hover:bg-red-500/20 rounded-lg text-white/20 hover:text-red-500 transition-all"
+                  className={`p-2 hover:bg-red-500/20 rounded-lg transition-all ${isLightMode ? 'text-black/20 hover:text-red-600' : 'text-white/20 hover:text-red-500'}`}
                   title="Permanent Delete"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="relative z-10 mb-4 flex items-center justify-between gap-3 rounded-xl border border-neon-purple/20 bg-neon-purple/10 px-3 py-2">
+              <div className={`relative z-10 mb-4 flex items-center justify-between gap-3 rounded-xl border px-3 py-2 ${isLightMode ? 'border-neon-purple/20 bg-neon-purple/5' : 'border-neon-purple/20 bg-neon-purple/10'}`}>
                 <div className="min-w-0">
-                  <p className="text-[8px] font-black uppercase tracking-[0.22em] text-white/35">For DJ</p>
+                  <p className={`text-[8px] font-black uppercase tracking-[0.22em] ${isLightMode ? 'text-slate-900/40' : 'text-white/35'}`}>For DJ</p>
                   <p className="text-xs font-black uppercase tracking-tight text-neon-purple truncate">{s.dj_name || 'Unassigned'}</p>
                 </div>
                 {s.show_name && (
-                  <span className="text-[8px] font-black uppercase tracking-widest text-white/35 truncate max-w-[45%]">
+                  <span className={`text-[8px] font-black uppercase tracking-widest truncate max-w-[45%] ${isLightMode ? 'text-slate-900/40' : 'text-white/35'}`}>
                     {s.show_name}
                   </span>
                 )}
@@ -249,12 +251,12 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
                     {s.message}
                   </div>
                 ) : (
-                  <p className="text-sm text-white/80 leading-relaxed font-medium italic">"{s.message}"</p>
+                  <p className={`text-sm leading-relaxed font-medium italic ${isLightMode ? 'text-slate-800' : 'text-white/80'}`}>"{s.message}"</p>
                 )}
 
                 {/* Media Previews */}
                 {s.imageUrl && (
-                  <div className="relative mt-3 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
+                  <div className={`relative mt-3 max-w-full rounded-lg overflow-hidden border ${isLightMode ? 'border-black/10 bg-black/5' : 'border-white/10 bg-black/40'}`}>
                     <img 
                       src={s.imageUrl} 
                       alt="Attached Image" 
@@ -263,7 +265,7 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
                   </div>
                 )}
                 {s.videoUrl && (
-                  <div className="relative mt-3 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
+                  <div className={`relative mt-3 max-w-full rounded-lg overflow-hidden border ${isLightMode ? 'border-black/10 bg-black/5' : 'border-white/10 bg-black/40'}`}>
                     <video 
                       src={s.videoUrl} 
                       controls
@@ -274,8 +276,8 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
                   </div>
                 )}
                 {s.audioUrl && (
-                  <div className="mt-3 w-full p-2 rounded-xl bg-black/30 border border-white/5 flex flex-col gap-1">
-                    <p className="text-[9px] font-bold text-white/50 uppercase tracking-wider truncate mb-1">
+                  <div className={`mt-3 w-full p-2 rounded-xl flex flex-col gap-1 border ${isLightMode ? 'bg-black/5 border-black/5' : 'bg-black/30 border-white/5'}`}>
+                    <p className={`text-[9px] font-bold uppercase tracking-wider truncate mb-1 ${isLightMode ? 'text-black/60' : 'text-white/50'}`}>
                       🎵 Attached Audio
                     </p>
                     <audio 
@@ -288,12 +290,12 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
               </div>
 
               {s.reply_text ? (
-                <div className="relative z-10 mt-4 p-3 bg-neon-blue/10 border border-neon-blue/20 rounded-xl text-xs italic">
-                  <p className="text-white/80">"{s.reply_text}"</p>
+                <div className={`relative z-10 mt-4 p-3 border rounded-xl text-xs italic ${isLightMode ? 'bg-neon-blue/5 border-neon-blue/20' : 'bg-neon-blue/10 border-neon-blue/20'}`}>
+                  <p className={isLightMode ? 'text-slate-800' : 'text-white/80'}>"{s.reply_text}"</p>
                   
                   {/* Reply Media Previews */}
                   {s.replyImageUrl && (
-                    <div className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
+                    <div className={`relative mt-2 max-w-full rounded-lg overflow-hidden border ${isLightMode ? 'border-black/10 bg-black/5' : 'border-white/10 bg-black/40'}`}>
                       <img 
                         src={s.replyImageUrl} 
                         alt="Reply Image Attachment" 
@@ -302,7 +304,7 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
                     </div>
                   )}
                   {s.replyVideoUrl && (
-                    <div className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
+                    <div className={`relative mt-2 max-w-full rounded-lg overflow-hidden border ${isLightMode ? 'border-black/10 bg-black/5' : 'border-white/10 bg-black/40'}`}>
                       <video 
                         src={s.replyVideoUrl} 
                         className="max-h-32 w-full object-contain mx-auto bg-black" 
@@ -313,7 +315,7 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
                     </div>
                   )}
                   {s.replyAudioUrl && (
-                    <div className="mt-2 w-full p-1.5 rounded-lg bg-black/30 border border-white/5 flex flex-col gap-1">
+                    <div className={`mt-2 w-full p-1.5 rounded-lg flex flex-col gap-1 border ${isLightMode ? 'bg-black/5 border-black/5' : 'bg-black/30 border-white/5'}`}>
                       <audio 
                         src={s.replyAudioUrl} 
                         controls 
@@ -322,17 +324,17 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
                     </div>
                   )}
 
-                  <p className="text-right text-[10px] font-bold uppercase tracking-widest text-neon-blue/60 mt-2">
+                  <p className={`text-right text-[10px] font-bold uppercase tracking-widest mt-2 ${isLightMode ? 'text-cyan-600' : 'text-neon-blue/60'}`}>
                     - Replied by {s.replied_by}
                   </p>
                 </div>
               ) : replyingTo === s.id ? (
-                <ReplyForm shoutoutId={s.id} onReplied={() => { setReplyingTo(null); load(); }} onCancel={() => setReplyingTo(null)} />
+                <ReplyForm shoutoutId={s.id} onReplied={() => { setReplyingTo(null); load(); }} onCancel={() => setReplyingTo(null)} isLightMode={isLightMode} />
               ) : (
                 <div className="relative z-10 mt-4 animate-in fade-in">
                   <button
                     onClick={() => setReplyingTo(s.id)}
-                    className="w-full flex items-center justify-center gap-2 py-2 bg-white/5 hover:bg-neon-purple/20 border border-white/10 hover:border-neon-purple/30 rounded-xl text-xs font-bold uppercase tracking-widest text-white/60 hover:text-white transition-all"
+                    className={`w-full flex items-center justify-center gap-2 py-2 border rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${isLightMode ? 'bg-black/5 hover:bg-neon-purple/10 border-black/10 hover:border-neon-purple/20 text-black/60 hover:text-neon-purple' : 'bg-white/5 hover:bg-neon-purple/20 border-white/10 hover:border-neon-purple/30 text-white/60 hover:text-white'}`}
                   >
                     <Send className="w-3 h-3" />
                     Reply to Shoutout
@@ -346,7 +348,7 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
                 <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded ${s.type === 'reaction' ? 'bg-neon-blue/20 text-neon-blue' : 'bg-neon-purple/20 text-neon-purple'}`}>
                   {s.type}
                 </span>
-                <span className="text-[8px] text-white/20 font-black uppercase">{s.id}</span>
+                <span className={`text-[8px] font-black uppercase ${isLightMode ? 'text-black/30' : 'text-white/20'}`}>{s.id}</span>
               </div>
             </motion.div>
           ))}
@@ -356,7 +358,7 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
   );
 }
 
-function ReplyForm({ shoutoutId, onReplied, onCancel }: { shoutoutId: number, onReplied: () => void, onCancel: () => void }) {
+function ReplyForm({ shoutoutId, onReplied, onCancel, isLightMode }: { shoutoutId: number, onReplied: () => void, onCancel: () => void, isLightMode: boolean }) {
   const [replyText, setReplyText] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [attachment, setAttachment] = useState<File | null>(null);
@@ -427,13 +429,13 @@ function ReplyForm({ shoutoutId, onReplied, onCancel }: { shoutoutId: number, on
           onChange={(e) => setReplyText(e.target.value)}
           placeholder="Write a reply with an option to attach media..."
           rows={2}
-          className="w-full bg-black/40 border border-white/10 rounded-xl p-3 pr-10 text-xs focus:outline-none focus:border-neon-purple transition-colors placeholder-white/30"
+          className={`w-full rounded-xl p-3 pr-10 text-xs focus:outline-none focus:border-neon-purple transition-colors border ${isLightMode ? 'bg-black/5 border-black/15 text-slate-900 placeholder-black/30' : 'bg-black/40 border-white/10 text-white placeholder-white/30'}`}
           autoFocus
         />
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="absolute right-3 top-3 p-1.5 hover:bg-white/5 text-white/40 hover:text-white rounded-lg transition-colors"
+          className={`absolute right-3 top-3 p-1.5 rounded-lg transition-colors ${isLightMode ? 'hover:bg-black/5 text-black/40 hover:text-black' : 'hover:bg-white/5 text-white/40 hover:text-white'}`}
           title="Attach media (Image, Audio, Video)"
         >
           <Paperclip className="w-3.5 h-3.5" />
@@ -452,13 +454,13 @@ function ReplyForm({ shoutoutId, onReplied, onCancel }: { shoutoutId: number, on
 
       {/* Attachment Preview Panel */}
       {attachment && (
-        <div className="relative group p-2 bg-black/30 rounded-xl border border-white/10 flex items-center justify-between gap-3">
+        <div className={`relative group p-2 rounded-xl border flex items-center justify-between gap-3 ${isLightMode ? 'bg-black/5 border-black/10' : 'bg-black/30 border-white/10'}`}>
           <div className="flex items-center gap-3 min-w-0">
             {previewUrl && fileType === 'image' && (
-              <img src={previewUrl} alt="Preview" className="w-10 h-10 object-cover rounded-lg shrink-0 border border-white/10" />
+              <img src={previewUrl} alt="Preview" className={`w-10 h-10 object-cover rounded-lg shrink-0 border ${isLightMode ? 'border-black/10' : 'border-white/10'}`} />
             )}
             {previewUrl && fileType === 'video' && (
-              <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center shrink-0 border border-white/10">
+              <div className={`w-10 h-10 bg-black rounded-lg flex items-center justify-center shrink-0 border ${isLightMode ? 'border-black/10' : 'border-white/10'}`}>
                 <video src={previewUrl} className="w-full h-full object-cover rounded-lg" />
               </div>
             )}
@@ -468,14 +470,14 @@ function ReplyForm({ shoutoutId, onReplied, onCancel }: { shoutoutId: number, on
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-[10px] font-bold text-white/80 truncate">{attachment.name}</p>
-              <p className="text-[9px] text-white/40">{(attachment.size / 1024 / 1024).toFixed(2)} MB</p>
+              <p className={`text-[10px] font-bold truncate ${isLightMode ? 'text-slate-800' : 'text-white/80'}`}>{attachment.name}</p>
+              <p className={`text-[9px] ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>{(attachment.size / 1024 / 1024).toFixed(2)} MB</p>
             </div>
           </div>
           <button 
             type="button" 
             onClick={() => setAttachment(null)} 
-            className="p-1 hover:bg-red-500/20 text-white/40 hover:text-red-400 rounded-md transition-colors shrink-0"
+            className={`p-1 rounded-md transition-colors shrink-0 ${isLightMode ? 'hover:bg-red-500/10 text-black/40 hover:text-red-600' : 'hover:bg-red-500/20 text-white/40 hover:text-red-400'}`}
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -483,7 +485,7 @@ function ReplyForm({ shoutoutId, onReplied, onCancel }: { shoutoutId: number, on
       )}
 
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onCancel} className="px-3 py-1.5 bg-white/5 text-white/50 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-white/10 transition-colors">Cancel</button>
+        <button type="button" onClick={onCancel} className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-colors ${isLightMode ? 'bg-black/5 text-slate-600 hover:bg-black/10' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}>Cancel</button>
         <button 
           type="submit" 
           disabled={isSaving || (!replyText.trim() && !attachment)} 

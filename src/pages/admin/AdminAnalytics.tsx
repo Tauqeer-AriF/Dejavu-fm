@@ -1,8 +1,8 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useNavigate, Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
-import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
+import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles, Clock, MapPin, Headphones, Download } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, LineChart, Line, Legend } from 'recharts';
 import { useModal } from "../../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
 import { fetchAdmin } from "./adminApi";
@@ -94,6 +94,88 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
     }
   };
 
+  const handleExportAllCSV = () => {
+    if (!stats) {
+      showAlert({
+        title: "No Data",
+        message: "No analytics data available to export.",
+        style: "warning"
+      });
+      return;
+    }
+
+    const sections: string[] = [];
+
+    // Header section
+    sections.push("=== DEJAVU FM SYSTEM ANALYTICS REPORT ===");
+    sections.push(`Generated On,${new Date().toISOString().replace('T', ' ').split('.')[0]}`);
+    sections.push(`Selected Range,${range.toUpperCase()}`);
+    sections.push("");
+
+    // Overview Metrics Section
+    sections.push("--- OVERVIEW METRICS ---");
+    sections.push("Metric,Value");
+    sections.push(`Real-time Listeners,${stats.realtimeListeners || 0}`);
+    sections.push(`Monthly/Range Listeners,${stats.monthlyListeners || 0}`);
+    sections.push(`Total Podcast Plays,${stats.totalPodcastPlays || 0}`);
+    sections.push(`Peak Listener Time,"${stats.peakListenerTime || 'N/A'}"`);
+    sections.push(`Top Listener Location,"${stats.topLocation || 'N/A'}"`);
+    sections.push(`Most Popular Resident,"${stats.mostListenedDj || 'N/A'}"`);
+    sections.push("");
+
+    // 24-Hour Trends Section
+    sections.push("--- 24-HOUR LISTENER TRENDS ---");
+    sections.push("Hour,Real-time Peak,Historical Average");
+    if (stats.trendData && stats.trendData.length > 0) {
+      stats.trendData.forEach((item: any) => {
+        sections.push(`${item.hour || ""},${item.peak !== undefined ? item.peak : 0},${item.average !== undefined ? item.average : 0}`);
+      });
+    } else {
+      sections.push("No trend data available,,");
+    }
+    sections.push("");
+
+    // Global Reach Section
+    sections.push("--- GLOBAL REACH (GEO DISTRIBUTION) ---");
+    sections.push("Country,Reach Percentage");
+    if (stats.geoData && stats.geoData.length > 0) {
+      stats.geoData.forEach((item: any) => {
+        sections.push(`"${item.name || ""}",${item.value !== undefined ? item.value : 0}%`);
+      });
+    } else {
+      sections.push("No geographic data available,");
+    }
+    sections.push("");
+
+    // Top Performing Podcasts Section
+    sections.push("--- TOP PERFORMING CATCH UPS (PODCAST PLAYS) ---");
+    sections.push("Podcast Title,Plays");
+    if (stats.topPodcasts && stats.topPodcasts.length > 0) {
+      stats.topPodcasts.forEach((item: any) => {
+        sections.push(`"${item.name || ""}",${item.plays !== undefined ? item.plays : 0}`);
+      });
+    } else {
+      sections.push("No podcast data available,");
+    }
+
+    const csvContent = sections.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `system_analytics_${range}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    showAlert({
+      title: "Export Success",
+      message: "Comprehensive system analytics CSV report downloaded successfully.",
+      style: "success"
+    });
+  };
+
   useEffect(() => {
     fetchStats(range);
     
@@ -156,8 +238,9 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
   ];
 
   return (
-    <div className="space-y-8 pb-12">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+    <div className="space-y-6 pb-12">
+      {/* Header section with heading, filters, and buttons vertically integrated */}
+      <div className="space-y-4">
         <div>
           <h3 className={`text-3xl font-black font-display uppercase tracking-tight ${isLightMode ? 'text-black' : 'text-white'}`}>
             System <span className="text-neon-purple">Analytics</span>
@@ -166,11 +249,12 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
             Performance and listener insights.
           </p>
         </div>
-        <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
+        
+        <div className="flex flex-wrap items-center gap-3 pt-1">
           {isAdminUser && (
             <button 
               onClick={purgeAnalytics}
-              className={`flex items-center space-x-2 px-4 py-2 border text-[10px] font-black uppercase tracking-widest rounded-full transition-all shrink-0 ${
+              className={`flex items-center space-x-2 px-4 py-2 border text-[10px] font-black uppercase tracking-widest rounded-full transition-all shrink-0 cursor-pointer ${
                 isLightMode 
                   ? 'bg-red-500/10 hover:bg-red-500/20 border-red-500/20 text-red-600' 
                   : 'bg-red-500/10 hover:bg-red-500/20 border-red-500/20 text-red-500'
@@ -181,7 +265,19 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
             </button>
           )}
           
-          <div className={`flex rounded-full p-1 h-fit w-full sm:w-auto shrink-0 order-last sm:order-none border ${
+          <button
+            onClick={handleExportAllCSV}
+            className={`flex items-center space-x-2 px-4 py-2 border text-[10px] font-black uppercase tracking-widest rounded-full transition-all shrink-0 cursor-pointer ${
+              isLightMode 
+                ? 'bg-slate-900 hover:bg-slate-800 border-slate-950 text-white' 
+                : 'bg-white/10 hover:bg-white/20 border-white/20 text-white'
+            }`}
+          >
+            <Download className="w-3 h-3" />
+            <span>Export CSV</span>
+          </button>
+          
+          <div className={`flex rounded-full p-1 h-fit w-fit border ${
             isLightMode ? 'bg-black/5 border-black/10' : 'bg-white/5 border-white/10'
           }`}>
             {ranges.map((r) => (
@@ -191,7 +287,7 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
                   setLoading(true);
                   setRange(r.value);
                 }}
-                className={`flex-1 sm:flex-none px-2 sm:px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${
+                className={`px-3 sm:px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
                   range === r.value 
                     ? "bg-neon-purple text-white shadow-lg shadow-neon-purple/20" 
                     : isLightMode 
@@ -203,6 +299,7 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
               </button>
             ))}
           </div>
+          
           <div className={`flex items-center space-x-2 px-4 py-2 rounded-full h-fit shrink-0 border ${
             isLightMode ? 'bg-red-500/10 border-red-500/20 text-red-600' : 'bg-red-500/5 border-red-500/20 text-red-500'
           }`}>
@@ -213,7 +310,7 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
       </div>
 
       {/* Hero Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <motion.div 
           whileHover="hover" 
           className={`p-6 rounded-3xl group hover:border-neon-purple/50 transition-colors shadow-xl relative overflow-hidden border ${
@@ -282,44 +379,153 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
             {(stats.totalPodcastPlays || 0).toLocaleString()}
           </p>
         </motion.div>
+
+        {/* Peak Listener Time */}
+        <motion.div 
+          whileHover="hover" 
+          className={`p-6 rounded-3xl group hover:border-orange-500/50 transition-colors shadow-xl relative overflow-hidden border ${
+            isLightMode ? 'bg-white border-black/10' : 'bg-white/5 border-white/10'
+          }`}
+        >
+          <motion.div
+            className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12"
+            variants={{ hover: { x: ['-150%', '150%'] } }}
+            transition={{ duration: 0.75, ease: "easeInOut" }}
+            initial={{ x: '-150%' }}
+          />
+          <div className="p-3 bg-orange-500/10 rounded-2xl w-fit mb-4 relative z-10">
+            <Clock className="w-6 h-6 text-orange-500" />
+          </div>
+          <p className={`text-xs uppercase tracking-widest font-bold relative z-10 ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
+            Peak Listener Time
+          </p>
+          <p className={`text-xl font-black mt-1.5 relative z-10 tracking-tight truncate ${isLightMode ? 'text-black' : 'text-white'}`} title={stats.peakListenerTime}>
+            {stats.peakListenerTime || "N/A"}
+          </p>
+        </motion.div>
+
+        {/* Top Location */}
+        <motion.div 
+          whileHover="hover" 
+          className={`p-6 rounded-3xl group hover:border-emerald-500/50 transition-colors shadow-xl relative overflow-hidden border ${
+            isLightMode ? 'bg-white border-black/10' : 'bg-white/5 border-white/10'
+          }`}
+        >
+          <motion.div
+            className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12"
+            variants={{ hover: { x: ['-150%', '150%'] } }}
+            transition={{ duration: 0.75, ease: "easeInOut" }}
+            initial={{ x: '-150%' }}
+          />
+          <div className="p-3 bg-emerald-500/10 rounded-2xl w-fit mb-4 relative z-10">
+            <MapPin className="w-6 h-6 text-emerald-500" />
+          </div>
+          <p className={`text-xs uppercase tracking-widest font-bold relative z-10 ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
+            Top Listener Location
+          </p>
+          <p className={`text-2xl font-black mt-1 relative z-10 tracking-tight truncate ${isLightMode ? 'text-black' : 'text-white'}`}>
+            {stats.topLocation || "N/A"}
+          </p>
+        </motion.div>
+
+        {/* Most Listened DJ */}
+        <motion.div 
+          whileHover="hover" 
+          className={`p-6 rounded-3xl group hover:border-pink-500/50 transition-colors shadow-xl relative overflow-hidden border ${
+            isLightMode ? 'bg-white border-black/10' : 'bg-white/5 border-white/10'
+          }`}
+        >
+          <motion.div
+            className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12"
+            variants={{ hover: { x: ['-150%', '150%'] } }}
+            transition={{ duration: 0.75, ease: "easeInOut" }}
+            initial={{ x: '-150%' }}
+          />
+          <div className="p-3 bg-pink-500/10 rounded-2xl w-fit mb-4 relative z-10">
+            <Headphones className="w-6 h-6 text-pink-500" />
+          </div>
+          <p className={`text-xs uppercase tracking-widest font-bold relative z-10 ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
+            Most Popular Resident
+          </p>
+          <p className={`text-2xl font-black mt-1 relative z-10 tracking-tight truncate ${isLightMode ? 'text-black' : 'text-white'}`}>
+            {stats.mostListenedDj || "None yet"}
+          </p>
+        </motion.div>
       </div>
 
       <div className="grid grid-cols-1 gap-8">
-        {/* Retention / Hourly Pattern */}
-        <div className={`p-6 rounded-3xl border ${isLightMode ? 'bg-white border-black/10 shadow-sm' : 'bg-white/5 border-white/10 backdrop-blur-md'}`}>
-          <h4 className={`text-lg font-bold mb-6 flex items-center space-x-2 ${isLightMode ? 'text-black' : 'text-white'}`}>
-            <Calendar className="w-5 h-5 text-neon-blue" />
-            <span>Listener Activity ({range === 'all' ? 'Historical' : range})</span>
-          </h4>
-          {stats.retentionData && stats.retentionData.length > 0 ? (
-            <div className="h-[250px] w-full">
+        {/* 24-Hour Comparative Listener Trends Line Chart */}
+        <div id="listener-trends-panel" className={`p-6 rounded-3xl border ${isLightMode ? 'bg-white border-black/10 shadow-sm' : 'bg-white/5 border-white/10 backdrop-blur-md'}`}>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div>
+              <h4 className={`text-lg font-bold flex items-center space-x-2 ${isLightMode ? 'text-black' : 'text-white'}`}>
+                <TrendingUp className="w-5 h-5 text-neon-purple" />
+                <span>24-Hour Comparative Trends</span>
+              </h4>
+              <p className={`text-xs mt-1 ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
+                Comparing real-time active peak listeners against previous historical averages.
+              </p>
+            </div>
+          </div>
+          {stats.trendData && stats.trendData.length > 0 ? (
+            <div className="h-[280px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={stats.retentionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorListeners" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={secondaryColor} stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor={secondaryColor} stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
+                <LineChart data={stats.trendData} margin={{ top: 15, right: 15, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={isLightMode ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.05)"} />
-                  <XAxis dataKey="time" stroke={isLightMode ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.3)"} fontSize={10} tickLine={false} axisLine={false} minTickGap={30} />
-                  <YAxis stroke={isLightMode ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.3)"} fontSize={10} tickLine={false} axisLine={false} />
+                  <XAxis 
+                    dataKey="hour" 
+                    stroke={isLightMode ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.3)"} 
+                    fontSize={10} 
+                    tickLine={false} 
+                    axisLine={false} 
+                    minTickGap={20} 
+                  />
+                  <YAxis 
+                    stroke={isLightMode ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.3)"} 
+                    fontSize={10} 
+                    tickLine={false} 
+                    axisLine={false} 
+                  />
                   <Tooltip 
                     contentStyle={{ 
                       backgroundColor: isLightMode ? '#ffffff' : '#18181b', 
                       border: isLightMode ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.1)', 
                       borderRadius: '12px',
-                      color: isLightMode ? '#111827' : '#ffffff'
+                      color: isLightMode ? '#111827' : '#ffffff',
+                      fontSize: '12px'
                     }}
-                    itemStyle={{ color: secondaryColor }}
                   />
-                  <Area type="monotone" dataKey="listeners" stroke={secondaryColor} fillOpacity={1} fill="url(#colorListeners)" strokeWidth={3} />
-                </AreaChart>
+                  <Legend 
+                    verticalAlign="top" 
+                    height={36} 
+                    iconType="circle" 
+                    iconSize={8}
+                    wrapperStyle={{ fontSize: '11px', fontWeight: 'bold' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="peak" 
+                    name="Real-time Peak" 
+                    stroke={primaryColor} 
+                    strokeWidth={3} 
+                    activeDot={{ r: 6 }} 
+                    dot={false}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="average" 
+                    name="Historical Average" 
+                    stroke={secondaryColor} 
+                    strokeWidth={2} 
+                    strokeDasharray="4 4" 
+                    dot={false}
+                  />
+                </LineChart>
               </ResponsiveContainer>
             </div>
           ) : (
-            <div className={`h-[100px] flex items-center justify-center border border-dashed rounded-2xl ${isLightMode ? 'border-black/10' : 'border-white/10'}`}>
-              <p className={`text-sm ${isLightMode ? 'text-black/30' : 'text-white/30'}`}>Collecting hourly pattern data...</p>
+            <div className={`h-[150px] flex items-center justify-center border border-dashed rounded-2xl ${isLightMode ? 'border-black/10' : 'border-white/10'}`}>
+              <p className={`text-sm ${isLightMode ? 'text-black/30' : 'text-white/30'}`}>Generating trend comparison data...</p>
             </div>
           )}
         </div>

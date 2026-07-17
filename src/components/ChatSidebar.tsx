@@ -1067,7 +1067,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                   <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base sm:text-lg leading-tight uppercase tracking-widest">Chat Room</h3>
+                  <h3 className="font-black font-display text-base sm:text-lg leading-tight uppercase tracking-widest">Chat Room</h3>
                   <div className="flex items-center gap-2 sm:gap-4">
                     {blockedUsers.length > 0 && (
                       <button 

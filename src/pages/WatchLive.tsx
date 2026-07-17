@@ -351,7 +351,7 @@ export default function WatchLive() {
           <div className={`px-4 py-3 border-b ${isLightMode ? 'border-black/5 bg-black/5' : 'border-white/5 bg-black/20'} flex items-center justify-between shrink-0`}>
             <div className="flex items-center space-x-2">
               <MessageSquare className="w-4 h-4 text-neon-purple" />
-              <span className={`text-sm font-black uppercase tracking-wider ${isLightMode ? 'text-black' : 'text-white'}`}>Live Studio Chat</span>
+              <span className={`text-sm font-black font-display uppercase tracking-wider ${isLightMode ? 'text-black' : 'text-white'}`}>Live Studio Chat</span>
             </div>
           </div>
 

@@ -13,6 +13,7 @@ export function AdminSecretGate({ onPass, onLogin }: { onPass: () => void; onLog
   const { isLightMode } = useLogo();
   const [passedSecret, setPassedSecret] = useState(() => sessionStorage.getItem('admin_secret_passed') === 'true');
   const [answer, setAnswer] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const navigate = useNavigate();
 
@@ -60,22 +61,31 @@ export function AdminSecretGate({ onPass, onLogin }: { onPass: () => void; onLog
             <label className={`text-[10px] uppercase font-black tracking-widest ml-4 ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>Authorized Name</label>
             <div className="relative">
               <input
-                type="text"
+                type={showPassword ? "text" : "password"}
                 autoComplete="off"
                 spellCheck="false"
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
                 placeholder="Who are you?"
-                className={`w-full border focus:border-neon-purple focus:ring-1 focus:ring-neon-purple rounded-2xl px-6 py-4 transition-all outline-none ${isLightMode ? 'bg-black/5 border-black/10 text-black placeholder:text-black/30' : 'bg-white/5 border-white/10 text-white placeholder:text-white/10'}`}
+                className={`w-full border focus:border-neon-purple focus:ring-1 focus:ring-neon-purple rounded-2xl px-6 py-4 transition-all outline-none pr-24 ${isLightMode ? 'bg-black/5 border-black/10 text-black placeholder:text-black/30' : 'bg-white/5 border-white/10 text-white placeholder:text-white/10'}`}
               />
-              <button
-                type="submit"
-                disabled={isVerifying || !answer.trim()}
-                className={`absolute right-2 top-2 bottom-2 px-4 rounded-xl font-bold transition-all hover:scale-105 active:scale-95 disabled:opacity-40 ${isLightMode ? 'bg-white text-black border border-black/10 shadow-sm hover:bg-gray-50' : 'bg-white text-dark-bg disabled:grayscale'}`}
-                style={isLightMode ? { backgroundColor: '#ffffff' } : {}}
-              >
-                {isVerifying ? <div className={`w-5 h-5 border-2 border-t-transparent animate-spin rounded-full ${isLightMode ? 'border-black' : 'border-white'}`} /> : <Shield className={`w-5 h-5 ${isLightMode ? 'text-black/80' : ''}`} />}
-              </button>
+              <div className="absolute right-2 top-2 bottom-2 flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className={`p-2.5 rounded-xl transition-colors focus:outline-none ${isLightMode ? 'text-black/40 hover:text-black hover:bg-black/5' : 'text-white/30 hover:text-white hover:bg-white/5'}`}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+                <button
+                  type="submit"
+                  disabled={isVerifying || !answer.trim()}
+                  className={`px-4 h-full rounded-xl font-bold transition-all hover:scale-105 active:scale-95 disabled:opacity-40 ${isLightMode ? 'bg-white text-black border border-black/10 shadow-sm hover:bg-gray-50' : 'bg-white text-dark-bg disabled:grayscale'}`}
+                  style={isLightMode ? { backgroundColor: '#ffffff' } : {}}
+                >
+                  {isVerifying ? <div className={`w-5 h-5 border-2 border-t-transparent animate-spin rounded-full ${isLightMode ? 'border-black' : 'border-white'}`} /> : <Shield className={`w-5 h-5 ${isLightMode ? 'text-black/80' : ''}`} />}
+                </button>
+              </div>
             </div>
           </div>
           <div className="pt-2">

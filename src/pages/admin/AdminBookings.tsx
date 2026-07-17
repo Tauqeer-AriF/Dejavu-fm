@@ -7,8 +7,10 @@ import { useModal } from "../../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
 import { fetchAdmin } from "./adminApi";
 import { ImageUploadField } from "./ImageUploadField";
+import { useLogo } from "../../hooks/useLogo";
 
 export function AdminBookings() {
+  const { isLightMode } = useLogo();
   const [bookings, setBookings] = useState<any[]>([]);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const { showAlert, showConfirm } = useModal();
@@ -53,13 +55,13 @@ export function AdminBookings() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/10 pb-6 gap-6 sm:gap-0">
+      <div className={`flex flex-col sm:flex-row sm:items-center justify-between border-b pb-6 gap-6 sm:gap-0 ${isLightMode ? 'border-black/10' : 'border-white/10'}`}>
         <div className="text-center sm:text-left">
-          <h3 className="text-2xl sm:text-3xl md:text-4xl font-display font-black uppercase tracking-tighter italic leading-none">Agency <span className="text-neon-blue not-italic">Desk</span></h3>
-          <p className="text-white/40 text-[10px] sm:text-xs mt-2 uppercase tracking-[0.2em] font-black">Professional Inquiries & Bookings</p>
+          <h3 className={`text-2xl sm:text-3xl md:text-4xl font-display font-black uppercase tracking-tighter italic leading-none ${isLightMode ? 'text-slate-900' : 'text-white'}`}>Agency <span className="text-neon-blue not-italic">Desk</span></h3>
+          <p className={`text-[10px] sm:text-xs mt-2 uppercase tracking-[0.2em] font-black ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Professional Inquiries & Bookings</p>
         </div>
         <div className="flex items-center justify-center sm:justify-end">
-          <div className="flex items-center space-x-2 px-4 py-2.5 bg-neon-blue/20 border border-neon-blue/30 rounded-xl">
+          <div className={`flex items-center space-x-2 px-4 py-2.5 border rounded-xl ${isLightMode ? 'bg-neon-blue/10 border-neon-blue/20' : 'bg-neon-blue/20 border-neon-blue/30'}`}>
             <div className="w-2 h-2 bg-neon-blue rounded-full animate-pulse"></div>
             <span className="text-[10px] font-black uppercase text-neon-blue tracking-widest whitespace-nowrap">Agent Active</span>
           </div>
@@ -67,38 +69,38 @@ export function AdminBookings() {
       </div>
 
       {/* Desktop Table View */}
-      <div className="hidden md:block overflow-hidden rounded-[2rem] border border-white/5 bg-white/5">
+      <div className={`hidden md:block overflow-hidden rounded-[2rem] border ${isLightMode ? 'border-black/10 bg-white shadow-sm' : 'border-white/5 bg-white/5'}`}>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-white/10 bg-white/5">
-                <th className="p-6 text-[10px] font-black uppercase tracking-widest text-white/40">Artist</th>
-                <th className="p-6 text-[10px] font-black uppercase tracking-widest text-white/40">Client</th>
-                <th className="p-6 text-[10px] font-black uppercase tracking-widest text-white/40">Event Date</th>
-                <th className="p-6 text-[10px] font-black uppercase tracking-widest text-white/40">Status</th>
-                <th className="p-6 text-[10px] font-black uppercase tracking-widest text-white/40 text-right">Actions</th>
+              <tr className={`border-b ${isLightMode ? 'border-black/10 bg-black/[0.02]' : 'border-white/10 bg-white/5'}`}>
+                <th className={`p-6 text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Artist</th>
+                <th className={`p-6 text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Client</th>
+                <th className={`p-6 text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Event Date</th>
+                <th className={`p-6 text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Status</th>
+                <th className={`p-6 text-[10px] font-black uppercase tracking-widest text-right ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className={`divide-y ${isLightMode ? 'divide-black/10' : 'divide-white/5'}`}>
               {bookings.map(b => (
-                <tr key={b.id} className="hover:bg-white/5 transition-colors group">
+                <tr key={b.id} className={`transition-colors group ${isLightMode ? 'hover:bg-black/[0.01] text-slate-800' : 'hover:bg-white/5 text-white'}`}>
                   <td className="p-6">
                     <span className="font-black text-neon-purple uppercase text-xs tracking-wider">{b.dj_name}</span>
                   </td>
                   <td className="p-6">
                     <div className="flex flex-col">
-                      <span className="text-sm font-bold tracking-tight">{b.client_name}</span>
-                      <span className="text-[10px] text-white/40 font-mono italic">{b.client_email}</span>
+                      <span className={`text-sm font-bold tracking-tight ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{b.client_name}</span>
+                      <span className={`text-[10px] font-mono italic ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>{b.client_email}</span>
                     </div>
                   </td>
                   <td className="p-6">
-                    <span className="text-xs font-mono text-white/60">{b.event_date || 'TBD'}</span>
+                    <span className={`text-xs font-mono ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>{b.event_date || 'TBD'}</span>
                   </td>
                   <td className="p-6">
                     <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border ${
-                      b.status === 'confirmed' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-                      b.status === 'rejected' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-                      'bg-neon-blue/10 text-neon-blue border-neon-blue/20 animate-pulse'
+                      b.status === 'confirmed' ? (isLightMode ? 'bg-green-50 text-green-600 border-green-200' : 'bg-green-500/10 text-green-400 border-green-500/20') :
+                      b.status === 'rejected' ? (isLightMode ? 'bg-red-50 text-red-600 border-red-200' : 'bg-red-500/10 text-red-400 border-red-500/20') :
+                      (isLightMode ? 'bg-cyan-50 text-cyan-600 border-cyan-200 animate-pulse' : 'bg-neon-blue/10 text-neon-blue border-neon-blue/20 animate-pulse')
                     }`}>
                       {b.status}
                     </span>
@@ -107,28 +109,28 @@ export function AdminBookings() {
                     <div className="flex items-center justify-end space-x-2">
                       <button 
                         onClick={() => setSelectedBooking(b)} 
-                        className="p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/60 hover:text-white transition-all transform hover:scale-105"
+                        className={`p-2.5 border rounded-xl transition-all transform hover:scale-105 ${isLightMode ? 'bg-black/5 hover:bg-black/10 border-black/10 text-black/60 hover:text-black' : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/60 hover:text-white'}`}
                         title="View Details"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
                       <button 
                         onClick={() => updateStatus(b.id, 'confirmed')} 
-                        className="p-2.5 bg-green-500/5 hover:bg-green-500/10 border border-green-500/10 rounded-xl text-green-400/60 hover:text-green-400 transition-all transform hover:scale-105"
+                        className={`p-2.5 border rounded-xl transition-all transform hover:scale-105 ${isLightMode ? 'bg-green-500/5 hover:bg-green-500/10 border-green-500/10 text-green-600/70 hover:text-green-600' : 'bg-green-500/5 hover:bg-green-500/10 border-green-500/10 text-green-400/60 hover:text-green-400'}`}
                         title="Confirm Booking"
                       >
                         <MessageSquare className="w-4 h-4" />
                       </button>
                       <button 
                         onClick={() => updateStatus(b.id, 'rejected')} 
-                        className="p-2.5 bg-yellow-500/5 hover:bg-yellow-500/10 border border-yellow-500/10 rounded-xl text-yellow-500/60 hover:text-yellow-500 transition-all transform hover:scale-105"
+                        className={`p-2.5 border rounded-xl transition-all transform hover:scale-105 ${isLightMode ? 'bg-yellow-500/5 hover:bg-yellow-500/10 border-yellow-500/10 text-yellow-600/70 hover:text-yellow-600' : 'bg-yellow-500/5 hover:bg-yellow-500/10 border-yellow-500/10 text-yellow-500/60 hover:text-yellow-500'}`}
                         title="Reject Booking"
                       >
                         <LogOut className="w-4 h-4 rotate-90" />
                       </button>
                       <button 
                         onClick={() => handleDelete(b.id, b.client_name)} 
-                        className="p-2.5 bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 rounded-xl text-red-500/60 hover:text-red-500 transition-all transform hover:scale-105"
+                        className={`p-2.5 border rounded-xl transition-all transform hover:scale-105 ${isLightMode ? 'bg-red-500/5 hover:bg-red-500/10 border-red-500/10 text-red-600/70 hover:text-red-600' : 'bg-red-500/5 hover:bg-red-500/10 border-red-500/10 text-red-500/60 hover:text-red-500'}`}
                         title="Delete Booking"
                       >
                         <X className="w-4 h-4" />
@@ -149,37 +151,37 @@ export function AdminBookings() {
             key={b.id}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="glass-panel p-5 rounded-[2rem] border border-white/5 space-y-4"
+            className={`p-5 rounded-[2rem] border space-y-4 ${isLightMode ? 'bg-white border-black/10 shadow-sm text-slate-800' : 'glass-panel border-white/5 text-white'}`}
           >
             <div className="flex justify-between items-start">
               <div>
                 <span className="text-[10px] font-black uppercase tracking-widest text-neon-purple block mb-1">Artist</span>
-                <p className="font-black text-lg text-white tracking-tighter italic">{b.dj_name}</p>
+                <p className={`font-black text-lg tracking-tighter italic ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{b.dj_name}</p>
               </div>
               <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
-                b.status === 'confirmed' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-                b.status === 'rejected' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-                'bg-neon-blue/10 text-neon-blue border-neon-blue/20 animate-pulse'
+                b.status === 'confirmed' ? (isLightMode ? 'bg-green-50 text-green-600 border-green-200' : 'bg-green-500/10 text-green-400 border-green-500/20') :
+                b.status === 'rejected' ? (isLightMode ? 'bg-red-50 text-red-600 border-red-200' : 'bg-red-500/10 text-red-400 border-red-500/20') :
+                (isLightMode ? 'bg-cyan-50 text-cyan-600 border-cyan-200 animate-pulse' : 'bg-neon-blue/10 text-neon-blue border-neon-blue/20 animate-pulse')
               }`}>
                 {b.status}
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
+            <div className={`grid grid-cols-2 gap-4 pt-2 border-t ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
               <div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/30 block mb-1">Client</span>
-                <p className="text-xs font-bold truncate">{b.client_name}</p>
+                <span className={`text-[10px] font-black uppercase tracking-widest block mb-1 ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>Client</span>
+                <p className={`text-xs font-bold truncate ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{b.client_name}</p>
               </div>
               <div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/30 block mb-1">Date</span>
-                <p className="text-xs font-mono text-white/60">{b.event_date || 'TBD'}</p>
+                <span className={`text-[10px] font-black uppercase tracking-widest block mb-1 ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>Date</span>
+                <p className={`text-xs font-mono ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>{b.event_date || 'TBD'}</p>
               </div>
             </div>
 
             <div className="flex gap-2 pt-2">
               <button 
                 onClick={() => setSelectedBooking(b)}
-                className="flex-1 py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center space-x-2"
+                className={`flex-1 py-3 border rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center space-x-2 ${isLightMode ? 'bg-black/5 hover:bg-black/10 border-black/10 text-slate-700' : 'bg-white/5 border-white/10 text-white'}`}
               >
                 <Eye className="w-3 h-3" />
                 <span>Details</span>
@@ -187,13 +189,13 @@ export function AdminBookings() {
               <div className="flex gap-2">
                 <button 
                   onClick={() => updateStatus(b.id, 'confirmed')}
-                  className="p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-green-400 outline-none"
+                  className={`p-3 border rounded-xl outline-none ${isLightMode ? 'bg-green-50 border-green-200 text-green-600' : 'bg-green-500/10 border-green-500/20 text-green-400'}`}
                 >
                   <MessageSquare className="w-4 h-4" />
                 </button>
                 <button 
                   onClick={() => handleDelete(b.id, b.client_name)}
-                  className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 outline-none"
+                  className={`p-3 border rounded-xl outline-none ${isLightMode ? 'bg-red-50 border-red-200 text-red-600' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -204,9 +206,9 @@ export function AdminBookings() {
       </div>
 
       {bookings.length === 0 && (
-        <div className="py-20 text-center glass-panel rounded-[3rem] border-dashed border-white/5">
-          <Ghost className="w-12 h-12 text-white/5 mx-auto mb-4" />
-          <p className="text-white/20 uppercase font-black tracking-widest text-xs">Awaiting new opportunities...</p>
+        <div className={`py-20 text-center rounded-[3rem] border border-dashed ${isLightMode ? 'bg-white border-black/15 shadow-sm text-slate-800' : 'glass-panel border-white/5'}`}>
+          <Ghost className={`w-12 h-12 mx-auto mb-4 ${isLightMode ? 'text-black/20' : 'text-white/5'}`} />
+          <p className={`uppercase font-black tracking-widest text-xs ${isLightMode ? 'text-black/50' : 'text-white/20'}`}>Awaiting new opportunities...</p>
         </div>
       )}
 
@@ -226,42 +228,42 @@ export function AdminBookings() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-lg bg-dark-bg border border-white/10 rounded-3xl shadow-2xl overflow-hidden z-10"
+              className={`relative w-full max-w-lg border rounded-3xl shadow-2xl overflow-hidden z-10 ${isLightMode ? 'bg-white border-black/10 text-slate-800' : 'bg-dark-bg border-white/10 text-white'}`}
             >
               <div className="p-6 sm:p-8 space-y-6">
                 <div className="flex justify-between items-start">
                   <div>
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neon-purple block mb-1">Booking Inquiry</span>
-                    <h4 className="text-2xl font-black uppercase tracking-tight italic">Artist: <span className="text-neon-purple not-italic">{selectedBooking.dj_name}</span></h4>
+                    <h4 className={`text-2xl font-black uppercase tracking-tight italic ${isLightMode ? 'text-slate-900' : 'text-white'}`}>Artist: <span className="text-neon-purple not-italic">{selectedBooking.dj_name}</span></h4>
                   </div>
                   <button 
                     onClick={() => setSelectedBooking(null)}
-                    className="p-2 hover:bg-white/5 rounded-full transition-colors"
+                    className={`p-2 rounded-full transition-colors ${isLightMode ? 'hover:bg-black/5 text-black/40' : 'hover:bg-white/5 text-white/40'}`}
                   >
-                    <X className="w-6 h-6 text-white/40" />
+                    <X className="w-6 h-6" />
                   </button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                   <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase text-white/30 tracking-widest">Client Name</p>
-                    <p className="font-bold text-sm sm:text-base">{selectedBooking.client_name}</p>
+                    <p className={`text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>Client Name</p>
+                    <p className={`font-bold text-sm sm:text-base ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{selectedBooking.client_name}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase text-white/30 tracking-widest">Email Address</p>
-                    <p className="font-mono text-xs sm:text-sm break-all">{selectedBooking.client_email}</p>
+                    <p className={`text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>Email Address</p>
+                    <p className={`font-mono text-xs sm:text-sm break-all ${isLightMode ? 'text-slate-700' : 'text-white/90'}`}>{selectedBooking.client_email}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase text-white/30 tracking-widest">Event Date</p>
-                    <p className="font-mono text-xs sm:text-sm">{selectedBooking.event_date || 'TBD'}</p>
+                    <p className={`text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>Event Date</p>
+                    <p className={`font-mono text-xs sm:text-sm ${isLightMode ? 'text-slate-700' : 'text-white/90'}`}>{selectedBooking.event_date || 'TBD'}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase text-white/30 tracking-widest">Booking Status</p>
+                    <p className={`text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>Booking Status</p>
                     <div>
                       <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded inline-block border ${
-                        selectedBooking.status === 'confirmed' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-                        selectedBooking.status === 'rejected' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-                        'bg-neon-blue/10 text-neon-blue border-neon-blue/20'
+                        selectedBooking.status === 'confirmed' ? (isLightMode ? 'bg-green-50 text-green-600 border-green-200' : 'bg-green-500/10 text-green-400 border-green-500/20') :
+                        selectedBooking.status === 'rejected' ? (isLightMode ? 'bg-red-50 text-red-600 border-red-200' : 'bg-red-500/10 text-red-400 border-red-500/20') :
+                        (isLightMode ? 'bg-cyan-50 text-cyan-600 border-cyan-200' : 'bg-neon-blue/10 text-neon-blue border-neon-blue/20')
                       }`}>
                         {selectedBooking.status}
                       </span>
@@ -269,9 +271,9 @@ export function AdminBookings() {
                   </div>
                 </div>
 
-                <div className="pt-6 border-t border-white/5">
-                  <p className="text-[10px] font-black uppercase text-white/30 tracking-widest mb-3">Inquiry Message</p>
-                  <div className="bg-white/5 p-4 rounded-2xl text-xs sm:text-sm text-white/70 leading-relaxed italic border border-white/5 overflow-y-auto max-h-[200px]">
+                <div className={`pt-6 border-t ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
+                  <p className={`text-[10px] font-black uppercase tracking-widest mb-3 ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>Inquiry Message</p>
+                  <div className={`p-4 rounded-2xl text-xs sm:text-sm leading-relaxed italic border overflow-y-auto max-h-[200px] ${isLightMode ? 'bg-black/5 border-black/5 text-slate-700' : 'bg-white/5 border-white/5 text-white/70'}`}>
                     "{selectedBooking.message || 'No additional message provided.'}"
                   </div>
                 </div>
@@ -279,19 +281,19 @@ export function AdminBookings() {
                 <div className="flex flex-col sm:flex-row gap-3 pt-4">
                   <button 
                     onClick={() => { updateStatus(selectedBooking.id, 'confirmed'); setSelectedBooking(null); }}
-                    className="flex-1 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 py-3 rounded-xl text-green-400 text-[10px] font-black uppercase tracking-widest transition-all"
+                    className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${isLightMode ? 'bg-green-500/5 hover:bg-green-500/10 border-green-500/20 text-green-600' : 'bg-green-500/10 hover:bg-green-500/20 border-green-500/20 text-green-400'}`}
                   >
                     Confirm
                   </button>
                   <button 
                     onClick={() => { updateStatus(selectedBooking.id, 'rejected'); setSelectedBooking(null); }}
-                    className="flex-1 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20 py-3 rounded-xl text-yellow-500 text-[10px] font-black uppercase tracking-widest transition-all"
+                    className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${isLightMode ? 'bg-yellow-500/5 hover:bg-yellow-500/10 border-yellow-500/20 text-yellow-600' : 'bg-yellow-500/10 hover:bg-yellow-500/20 border-yellow-500/20 text-yellow-500'}`}
                   >
                     Reject
                   </button>
                   <button 
                     onClick={() => { handleDelete(selectedBooking.id, selectedBooking.client_name); setSelectedBooking(null); }}
-                    className="flex-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 py-3 rounded-xl text-red-500 text-[10px] font-black uppercase tracking-widest transition-all"
+                    className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${isLightMode ? 'bg-red-500/5 hover:bg-red-500/10 border-red-500/20 text-red-600' : 'bg-red-500/10 hover:bg-red-500/20 border-red-500/20 text-red-500'}`}
                   >
                     Delete
                   </button>

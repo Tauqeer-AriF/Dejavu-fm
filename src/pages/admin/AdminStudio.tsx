@@ -2393,7 +2393,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           </div>
         </div>
         <div className="mt-8 text-center space-y-2">
-          <h2 className={`text-sm font-bold uppercase tracking-[0.25em] ${studioTheme === 'light' ? 'text-black/80' : 'text-white/90'}`}>DEJAVU FM STUDIO</h2>
+          <h2 className={`text-sm font-black font-display uppercase tracking-[0.25em] ${studioTheme === 'light' ? 'text-black/80' : 'text-white/90'}`}>DEJAVU FM STUDIO</h2>
           <div className="flex items-center justify-center gap-2">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -2415,14 +2415,14 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             <Mic className="w-5 h-5 text-neon-purple" />
           </div>
           <div className="min-w-0 hidden sm:block">
-            <h1 className={`text-sm sm:text-base font-bold uppercase tracking-[0.15em] bg-clip-text text-transparent bg-gradient-to-r whitespace-nowrap ${
+            <h1 className={`text-sm sm:text-base font-black font-display uppercase tracking-[0.15em] bg-clip-text text-transparent bg-gradient-to-r whitespace-nowrap ${
               studioTheme === 'light' 
                 ? 'from-slate-900 via-slate-800 to-slate-700' 
                 : 'from-white via-white/90 to-white/70'
             }`}>
               Studio Inbox
             </h1>
-            <p className={`text-[9px] sm:text-[10px] uppercase tracking-widest font-bold whitespace-nowrap mt-0.5 ${
+            <p className={`text-[9px] sm:text-[10px] uppercase tracking-widest font-black font-display whitespace-nowrap mt-0.5 ${
               studioTheme === 'light' ? 'text-slate-500' : 'text-white/40'
             }`}>
               Live Broadcast & Listener Control Desk

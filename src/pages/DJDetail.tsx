@@ -40,6 +40,16 @@ export default function DJDetail() {
   const dj = djs?.find(d => d.id === id);
   const featBookings = settings?.feat_bookings !== '0';
 
+  useEffect(() => {
+    if (dj?.name) {
+      fetch('/api/public/analytics/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: 'dj_view', event_key: dj.name })
+      }).catch(() => {});
+    }
+  }, [dj?.name]);
+
   const handleBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     setBookingStatus('sending');

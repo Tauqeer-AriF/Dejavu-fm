@@ -19,7 +19,7 @@ export function SitePopup() {
           if (settings.popup_delay) delay = parseInt(settings.popup_delay);
         }
 
-        const res = await fetch("/api/public/site-alerts");
+        const res = await fetch("/api/public/popups");
         if (!res.ok) return;
         const contentType = res.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
