@@ -59,7 +59,10 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
     setError("");
     setSuccess("");
 
-    if (!newUsername || !newPassword) {
+    const trimmedUsername = newUsername.trim();
+    const trimmedEmail = newEmail.trim();
+
+    if (!trimmedUsername || !newPassword) {
       setError("Username and password are required");
       return;
     }
@@ -68,15 +71,15 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
       const res = await fetchAdmin("/api/admin/users", {
         method: "POST",
         body: {
-          username: newUsername,
-          email: newEmail,
+          username: trimmedUsername,
+          email: trimmedEmail,
           password: newPassword,
           role: newRole,
         },
       });
 
       if (res.ok) {
-        setSuccess(`User ${newUsername} created successfully`);
+        setSuccess(`User ${trimmedUsername} created successfully`);
         setNewUsername("");
         setNewEmail("");
         setNewPassword("");

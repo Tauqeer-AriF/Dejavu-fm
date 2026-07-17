@@ -85,7 +85,7 @@ export function AdminBookings() {
               {bookings.map(b => (
                 <tr key={b.id} className={`transition-colors group ${isLightMode ? 'hover:bg-black/[0.01] text-slate-800' : 'hover:bg-white/5 text-white'}`}>
                   <td className="p-6">
-                    <span className="font-black text-neon-purple uppercase text-xs tracking-wider">{b.dj_name}</span>
+                    <span className="font-black text-neon-purple uppercase text-xs tracking-wider">{b.dj_name || 'Deleted DJ'}</span>
                   </td>
                   <td className="p-6">
                     <div className="flex flex-col">
@@ -156,7 +156,7 @@ export function AdminBookings() {
             <div className="flex justify-between items-start">
               <div>
                 <span className="text-[10px] font-black uppercase tracking-widest text-neon-purple block mb-1">Artist</span>
-                <p className={`font-black text-lg tracking-tighter italic ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{b.dj_name}</p>
+                <p className={`font-black text-lg tracking-tighter italic ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{b.dj_name || 'Deleted DJ'}</p>
               </div>
               <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
                 b.status === 'confirmed' ? (isLightMode ? 'bg-green-50 text-green-600 border-green-200' : 'bg-green-500/10 text-green-400 border-green-500/20') :
@@ -234,7 +234,7 @@ export function AdminBookings() {
                 <div className="flex justify-between items-start">
                   <div>
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neon-purple block mb-1">Booking Inquiry</span>
-                    <h4 className={`text-2xl font-black uppercase tracking-tight italic ${isLightMode ? 'text-slate-900' : 'text-white'}`}>Artist: <span className="text-neon-purple not-italic">{selectedBooking.dj_name}</span></h4>
+                    <h4 className={`text-2xl font-black uppercase tracking-tight italic ${isLightMode ? 'text-slate-900' : 'text-white'}`}>Artist: <span className="text-neon-purple not-italic">{selectedBooking.dj_name || 'Deleted DJ'}</span></h4>
                   </div>
                   <button 
                     onClick={() => setSelectedBooking(null)}

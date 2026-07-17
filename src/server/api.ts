@@ -283,10 +283,10 @@ apiRouter.get("/public/djs", (req, res) => {
 
 apiRouter.get("/public/schedule", (req, res) => {
   const schedule = db.prepare(`
-    SELECT s.*, d.name as dj_name, d.image_url as dj_photo, d.bio as dj_bio,
+    SELECT s.*, COALESCE(d.name, 'Resident DJ') as dj_name, d.image_url as dj_photo, d.bio as dj_bio,
            d.instagram, d.soundcloud, d.mixcloud
     FROM schedule s
-    JOIN djs d ON s.dj_id = d.id
+    LEFT JOIN djs d ON s.dj_id = d.id
     ORDER BY s.day_of_week, s.start_time
   `).all();
   res.json(schedule);
@@ -880,7 +880,7 @@ apiRouter.post("/admin/login", authLimiter, (req, res) => {
   const identifier = username.trim().toLowerCase();
   
   // Senior Dev: Support login via username OR email, case-insensitive
-  const admin = db.prepare("SELECT * FROM admins WHERE LOWER(username) = ? OR LOWER(email) = ?").get(identifier, identifier) as any;
+  const admin = db.prepare("SELECT * FROM admins WHERE LOWER(TRIM(username)) = ? OR LOWER(TRIM(email)) = ?").get(identifier, identifier) as any;
   
   if (admin) {
     const isMatched = bcrypt.compareSync(password, admin.password_hash);
@@ -1553,22 +1553,37 @@ apiRouter.put("/admin/djs/:id", (req, res) => {
 });
 
 apiRouter.delete("/admin/djs/:id", (req, res) => {
-  // Professional cleanup: Delete the image file from disk if it's a local upload
-  const dj = db.prepare("SELECT image_url FROM djs WHERE id = ?").get(req.params.id) as any;
-  if (dj?.image_url?.startsWith('/uploads/')) {
-    try {
-      const filePath = path.join(getUploadsDir(), path.basename(dj.image_url));
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    } catch (e) {
-      console.error("[API] Failed to cleanup DJ image on deletion:", e);
+  try {
+    const id = req.params.id;
+    // Professional cleanup: Delete the image file from disk if it's a local upload
+    const dj = db.prepare("SELECT image_url FROM djs WHERE id = ?").get(id) as any;
+    if (dj?.image_url?.startsWith('/uploads/')) {
+      try {
+        const filePath = path.join(getUploadsDir(), path.basename(dj.image_url));
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      } catch (e) {
+        console.error("[API] Failed to cleanup DJ image on deletion:", e);
+      }
     }
-  }
 
-  // First clear schedule entries
-  try { db.prepare("DELETE FROM schedule WHERE dj_id = ?").run(req.params.id); } catch(e) {}
-  db.prepare("DELETE FROM djs WHERE id = ?").run(req.params.id);
-  logAction(req, 'DELETE', 'dj', req.params.id);
-  res.json({ success: true });
+    // Disassociate schedule entries by setting dj_id to NULL to preserve the schedules
+    db.prepare("UPDATE schedule SET dj_id = NULL WHERE dj_id = ? OR CAST(dj_id AS TEXT) = ?").run(id, id);
+
+    // Disassociate bookings by setting dj_id to NULL to preserve the bookings
+    try {
+      db.prepare("UPDATE bookings SET dj_id = NULL WHERE dj_id = ?").run(id);
+    } catch (e) {
+      console.error("[API] Failed to disassociate bookings for DJ:", e);
+    }
+
+    // Now delete the DJ
+    const result = db.prepare("DELETE FROM djs WHERE id = ?").run(id);
+    logAction(req, 'DELETE', 'dj', id);
+    res.json({ success: true, changes: result.changes });
+  } catch (error: any) {
+    console.error("[API] Error deleting DJ:", error);
+    res.status(500).json({ error: error.message || "Failed to delete DJ" });
+  }
 });
 
 apiRouter.get("/admin/popups", (req, res) => {
@@ -1670,7 +1685,7 @@ apiRouter.get("/admin/bookings", (req, res) => {
   const bookings = db.prepare(`
     SELECT b.*, d.name as dj_name 
     FROM bookings b 
-    JOIN djs d ON b.dj_id = d.id 
+    LEFT JOIN djs d ON b.dj_id = d.id 
     ORDER BY created_at DESC
   `).all();
   res.json(bookings);
@@ -2062,10 +2077,12 @@ apiRouter.post("/admin/users", authMiddleware, authorizeRole('admin'), (req: Req
   const { username, email, password, role } = req.body;
   if (!username || !password) return res.status(400).json({ error: "Username and password required" });
   if (!['admin', 'dj'].includes(role)) return res.status(400).json({ error: "Invalid role specified" });
+  const trimmedUsername = username.trim();
+  const trimmedEmail = email ? email.trim() : null;
   const hash = bcrypt.hashSync(password, 10);
   try {
-    db.prepare("INSERT INTO admins (username, email, password_hash, role) VALUES (?, ?, ?, ?)").run(username, email || null, hash, role);
-    logAction(req, 'CREATE', 'admin_user', username, { role, email });
+    db.prepare("INSERT INTO admins (username, email, password_hash, role) VALUES (?, ?, ?, ?)").run(trimmedUsername, trimmedEmail, hash, role);
+    logAction(req, 'CREATE', 'admin_user', trimmedUsername, { role, email: trimmedEmail });
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ error: "Username might already exist" });
@@ -2074,20 +2091,22 @@ apiRouter.post("/admin/users", authMiddleware, authorizeRole('admin'), (req: Req
 
 apiRouter.put("/admin/users/:username", authorizeRole('admin'), (req, res) => {
   const { password, email, role } = req.body;
+  const targetUsername = req.params.username.trim();
   
   try {
     if (password) {
       const hash = bcrypt.hashSync(password, 10);
-      db.prepare("UPDATE admins SET password_hash = ? WHERE username = ?").run(hash, req.params.username);
+      db.prepare("UPDATE admins SET password_hash = ? WHERE LOWER(TRIM(username)) = LOWER(TRIM(?))").run(hash, targetUsername);
     }
     if (email !== undefined) {
-      db.prepare("UPDATE admins SET email = ? WHERE username = ?").run(email || null, req.params.username);
+      const trimmedEmail = email ? email.trim() : null;
+      db.prepare("UPDATE admins SET email = ? WHERE LOWER(TRIM(username)) = LOWER(TRIM(?))").run(trimmedEmail, targetUsername);
     }
     if (role !== undefined) {
       if (!['admin', 'dj'].includes(role)) return res.status(400).json({ error: "Invalid role specified" });
-      db.prepare("UPDATE admins SET role = ? WHERE username = ?").run(role, req.params.username);
+      db.prepare("UPDATE admins SET role = ? WHERE LOWER(TRIM(username)) = LOWER(TRIM(?))").run(role, targetUsername);
     }
-    logAction(req, 'UPDATE', 'admin_user', req.params.username, { email, role });
+    logAction(req, 'UPDATE', 'admin_user', targetUsername, { email, role });
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ error: "Update failed" });
@@ -2095,12 +2114,13 @@ apiRouter.put("/admin/users/:username", authorizeRole('admin'), (req, res) => {
 });
 
 apiRouter.delete("/admin/users/:username", authorizeRole('admin'), (req, res) => {
+  const targetUsername = req.params.username.trim();
   // Protect 'admin' user from being deleted
-  if (req.params.username === 'admin') {
+  if (targetUsername.toLowerCase() === 'admin') {
     return res.status(400).json({ error: "Cannot delete the default admin" });
   }
-  db.prepare("DELETE FROM admins WHERE username = ?").run(req.params.username);
-  logAction(req, 'DELETE', 'admin_user', req.params.username);
+  db.prepare("DELETE FROM admins WHERE LOWER(TRIM(username)) = LOWER(TRIM(?))").run(targetUsername);
+  logAction(req, 'DELETE', 'admin_user', targetUsername);
   res.json({ success: true });
 });
 
