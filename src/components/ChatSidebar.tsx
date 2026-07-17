@@ -1265,9 +1265,50 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                           </div>
                         )}
                         {msg.isSystem ? (
-                          <div className="flex items-center space-x-2">
-                             <span className="w-1.5 h-1.5 bg-neon-pink rounded-full animate-pulse"></span>
-                             <p className="text-sm font-bold text-neon-pink break-words leading-relaxed">{msg.text}</p>
+                          <div className="space-y-2">
+                            <div className="flex items-center space-x-2">
+                               <span className="w-1.5 h-1.5 bg-neon-pink rounded-full animate-pulse"></span>
+                               <p className="text-sm font-bold text-neon-pink break-words leading-relaxed">{msg.text}</p>
+                            </div>
+                            {msg.imageUrl && (
+                              <div className="relative max-w-full rounded-lg overflow-hidden border border-neon-pink/20 bg-black/40">
+                                <img 
+                                  src={msg.imageUrl} 
+                                  alt={msg.imageName || "Attached Image"} 
+                                  className="max-h-60 object-contain mx-auto" 
+                                />
+                              </div>
+                            )}
+                            {msg.videoUrl && (
+                              <div className="relative max-w-full rounded-lg overflow-hidden border border-neon-pink/20 bg-black/40">
+                                <video 
+                                  src={msg.videoUrl} 
+                                  controls
+                                  preload="metadata"
+                                  playsInline
+                                  className="max-h-60 w-full object-contain mx-auto bg-black" 
+                                />
+                                {msg.videoName && (
+                                  <div className="absolute top-2 left-2 bg-black/60 px-2 py-1 rounded text-[10px] text-white/70 max-w-[90%] truncate backdrop-blur-md">
+                                    {msg.videoName}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {msg.audioUrl && (
+                              <div className="w-full p-2 rounded-xl bg-black/30 border border-neon-pink/10 flex flex-col gap-1">
+                                {msg.audioName && (
+                                  <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider truncate mb-1">
+                                    🎵 {msg.audioName}
+                                  </p>
+                                )}
+                                <audio 
+                                  src={msg.audioUrl} 
+                                  controls 
+                                  className="w-full h-8 accent-neon-pink rounded" 
+                                />
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <div className={`relative rounded-2xl rounded-tl-none p-3 border transition-all ${isLightMode ? 'bg-black/5 border-black/5 group-hover:border-black/10' : 'bg-white/5 border-white/5 group-hover:border-white/10'}`}>

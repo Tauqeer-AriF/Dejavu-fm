@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { LogOut, Send, Paperclip, X, Maximize, Mic, MessageSquare, Search, ArrowLeft, Image as ImageIcon, Music, Video, Volume2, VolumeX, Ban, Trash2, Eraser, ShieldAlert, MailX, PlusCircle, Square, Pin, CheckSquare, MailOpen, Mail, Trash, Eye, EyeOff, Settings, Link2, Globe, RefreshCw, Download, Phone, Facebook, Instagram, Twitch, Activity, CheckCircle, AlertTriangle, Camera, Check, Sun, Moon } from "lucide-react";
+import { LogOut, Send, Paperclip, X, Maximize, Mic, MessageSquare, Search, ArrowLeft, Image as ImageIcon, Music, Video, Volume2, VolumeX, Ban, Trash2, Eraser, ShieldAlert, MailX, PlusCircle, Square, Pin, CheckSquare, MailOpen, Mail, Trash, Eye, EyeOff, Settings, Link2, Globe, RefreshCw, Download, Phone, Facebook, Instagram, Twitch, Activity, CheckCircle, AlertTriangle, Camera, Check, Sun, Moon, Megaphone, Share2, Radio } from "lucide-react";
 import { toast } from "sonner";
 import { fetchAdmin } from "./adminApi";
 import { useModal } from "../../context/ModalContext";
@@ -431,7 +431,64 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     return lowerUser === "dejavufm studio" || lowerUser === lowerStudio || lowerUser === lowerAdmin;
   };
 
-  const [activeTab, setActiveTab] = useState<'chats' | 'connections' | 'settings' | 'profile'>('chats');
+  const [activeTab, setActiveTab] = useState<'chats' | 'connections' | 'broadcast' | 'settings' | 'profile'>('chats');
+  const [broadcastChannels, setBroadcastChannels] = useState<string[]>(['public_chat', 'shoutouts']);
+  const [broadcastText, setBroadcastText] = useState("");
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+
+  const handleBroadcast = async () => {
+    if (!broadcastText.trim() && !attachment) {
+      toast.error("Please enter a message or attach a file to broadcast.");
+      return;
+    }
+    if (broadcastChannels.length === 0) {
+      toast.error("Please select at least one channel to broadcast to.");
+      return;
+    }
+
+    setIsBroadcasting(true);
+    try {
+      let mediaUrl: string | null = null;
+      let mediaType: string | null = null;
+
+      if (attachment) {
+        const formData = new FormData();
+        formData.append('file', attachment);
+        const res = await fetchAdmin('/api/public/chat/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Upload failed');
+        mediaUrl = data.url;
+        mediaType = data.type;
+      }
+
+      const res = await fetchAdmin('/api/admin/broadcast', {
+        method: 'POST',
+        body: {
+          text: broadcastText,
+          channels: broadcastChannels,
+          imageUrl: mediaType === 'image' ? mediaUrl : null,
+          audioUrl: mediaType === 'audio' ? mediaUrl : null,
+          videoUrl: mediaType === 'video' ? mediaUrl : null,
+          studioName,
+          studioImage
+        }
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Broadcast failed");
+      }
+
+      toast.success("Broadcast sent successfully to selected channels!");
+      setBroadcastText("");
+      setAttachment(null);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send broadcast.");
+    } finally {
+      setIsBroadcasting(false);
+    }
+  };
+
   const [isCreatingQuickReply, setIsCreatingQuickReply] = useState(false);
   const [newQuickReplyText, setNewQuickReplyText] = useState("");
 
@@ -1199,6 +1256,41 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       }
     };
 
+    const handlePlatformBroadcast = (data: any) => {
+      const broadcastMsg: Message = {
+        id: `broadcast-${Date.now()}`,
+        type: 'chat',
+        user: data.studioName || "DejavuFM Studio",
+        avatar: data.studioImage || "/icon.svg",
+        text: `GLOBAL BROADCAST: ${data.text}`,
+        timestamp: data.timestamp || Date.now(),
+        imageUrl: data.imageUrl,
+        audioUrl: data.audioUrl,
+        videoUrl: data.videoUrl,
+      };
+
+      // Add to simulated threads if they match selected platforms
+      data.platforms.forEach((platform: string) => {
+        // We create/update a dedicated simulation thread for each platform to show the broadcast
+        const platformKey = `${platform}_sim`.toLowerCase();
+        setThreads(prev => {
+          const existing = prev[platformKey];
+          const newMessages = existing ? [...existing.messages, broadcastMsg] : [broadcastMsg];
+          return {
+            ...prev,
+            [platformKey]: {
+              user: `${platform.toUpperCase()} Pipeline`,
+              avatar: `/icon.svg`, // Or a platform specific icon
+              messages: newMessages,
+              lastMessageTimestamp: broadcastMsg.timestamp,
+              unreadCount: (existing?.unreadCount || 0) + 1,
+              platform: platform
+            }
+          };
+        });
+      });
+    };
+
     socket.on('chatHistory', handleChatHistory);
     socket.on('privateHistory', handlePrivateHistory);
     socket.on('shoutoutHistory', handleShoutoutHistory);
@@ -1211,6 +1303,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     socket.on('messageDeleted', handleMessageDeleted);
     socket.on('shoutoutDeleted', handleShoutoutDeleted);
     socket.on('shoutoutReply', handleShoutoutReply);
+    socket.on('platform_broadcast', handlePlatformBroadcast);
 
     if (adminUsername) {
       socket.emit('registerUser', adminUsername);
@@ -1229,6 +1322,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       socket.off('messageDeleted', handleMessageDeleted);
       socket.off('shoutoutDeleted', handleShoutoutDeleted);
       socket.off('shoutoutReply', handleShoutoutReply);
+      socket.off('platform_broadcast', handlePlatformBroadcast);
     };
   }, [adminUsername]);
 
@@ -1638,6 +1732,181 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   }, [threads, searchQuery, pinnedThreads]);
 
   const currentThread = selectedUser ? threads[selectedUser.toLowerCase()] : null;
+
+  const renderBroadcastView = () => {
+    const channels = [
+      { id: 'public_chat', name: 'Public Chat Room', icon: Globe, color: 'text-neon-blue', bg: 'bg-neon-blue/10 border-neon-blue/20' },
+      { id: 'shoutouts', name: 'Studio Shoutouts', icon: Megaphone, color: 'text-amber-400', bg: 'bg-amber-400/10 border-amber-400/20' },
+      { id: 'private_dms', name: 'All Active Private DMs', icon: MessageSquare, color: 'text-neon-purple', bg: 'bg-neon-purple/10 border-neon-purple/20' },
+      { id: 'whatsapp', name: 'WhatsApp Broadcast', icon: Phone, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
+      { id: 'instagram', name: 'Instagram Direct', icon: Instagram, color: 'text-pink-400', bg: 'bg-pink-500/10 border-pink-500/20' },
+      { id: 'facebook', name: 'Facebook Messenger', icon: Facebook, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
+      { id: 'twitch', name: 'Twitch Chat', icon: Twitch, color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
+    ];
+
+    const toggleChannel = (id: string) => {
+      setBroadcastChannels(prev => 
+        prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
+      );
+    };
+
+    return (
+      <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-[#070913] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/5 [&::-webkit-scrollbar-thumb]:rounded-full">
+        <div className="max-w-4xl mx-auto space-y-8 pb-28 md:pb-12">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div className="space-y-1">
+              <h2 className="text-xl font-bold uppercase tracking-wider text-white flex items-center gap-3">
+                <Radio className="w-6 h-6 text-neon-blue" />
+                Global Broadcast Center
+              </h2>
+              <p className="text-xs text-white/50">Transmit a synchronized message across multiple connected listener channels simultaneously.</p>
+            </div>
+            <div className="text-[10px] text-white/30 uppercase font-mono tracking-widest bg-white/[0.02] px-3 py-1 rounded-lg border border-white/5">
+              TARGETING: <span className="text-neon-blue">{broadcastChannels.length} CHANNELS</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Column: Message Composer */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-[#0D0F1D] border border-white/5 rounded-2xl p-6 space-y-4 shadow-xl">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 block">Broadcast Payload</label>
+                  <textarea
+                    value={broadcastText}
+                    onChange={(e) => setBroadcastText(e.target.value)}
+                    placeholder="Enter your broadcast message here... Use @username to target specific listeners if needed."
+                    className="w-full h-48 bg-black/40 border border-white/5 rounded-xl p-4 text-sm text-white placeholder-white/20 focus:outline-none focus:border-neon-blue/40 focus:ring-1 focus:ring-neon-blue/20 transition-all resize-none"
+                  />
+                </div>
+
+                {/* Attachment Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Media Attachment</label>
+                    {attachment && (
+                      <button onClick={() => setAttachment(null)} className="text-[9px] font-bold text-red-400 uppercase tracking-widest hover:text-red-300">
+                        Clear Attachment
+                      </button>
+                    )}
+                  </div>
+                  
+                  {attachment ? (
+                    <AttachmentPreview file={attachment} onRemove={() => setAttachment(null)} />
+                  ) : (
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full py-6 border-2 border-dashed border-white/5 hover:border-white/10 rounded-2xl flex flex-col items-center justify-center gap-2 text-white/30 hover:text-white/50 transition-all group"
+                    >
+                      <div className="p-3 rounded-xl bg-white/[0.02] group-hover:bg-white/[0.05] transition-all">
+                        <Paperclip className="w-5 h-5" />
+                      </div>
+                      <span className="text-xs font-semibold">Attach Image, Audio, or Video</span>
+                      <span className="text-[10px] opacity-60">Maximum size: 20MB</span>
+                    </button>
+                  )}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={(e) => setAttachment(e.target.files?.[0] || null)}
+                    className="hidden"
+                    accept="image/*,audio/*,video/*"
+                  />
+                </div>
+
+                <div className="pt-4">
+                  <button
+                    onClick={handleBroadcast}
+                    disabled={isBroadcasting || (!broadcastText.trim() && !attachment)}
+                    className={`w-full py-4 rounded-xl font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
+                      isBroadcasting || (!broadcastText.trim() && !attachment)
+                        ? 'bg-white/5 text-white/20 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-neon-blue to-indigo-600 hover:from-neon-blue hover:to-indigo-500 text-white shadow-[0_0_20px_rgba(0,194,255,0.25)] hover:shadow-[0_0_25px_rgba(0,194,255,0.35)]'
+                    }`}
+                  >
+                    {isBroadcasting ? (
+                      <RefreshCw className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <Share2 className="w-5 h-5" />
+                    )}
+                    <span>{isBroadcasting ? 'Transmitting...' : 'Execute Global Broadcast'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Channel Selector */}
+            <div className="space-y-6">
+              <div className="bg-[#0D0F1D] border border-white/5 rounded-2xl p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-white/80">Active Pipelines</h3>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => setBroadcastChannels(channels.map(c => c.id))}
+                      className="text-[9px] font-bold text-neon-blue uppercase"
+                    >
+                      All
+                    </button>
+                    <button 
+                      onClick={() => setBroadcastChannels([])}
+                      className="text-[9px] font-bold text-white/30 uppercase"
+                    >
+                      None
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  {channels.map(channel => {
+                    const isSelected = broadcastChannels.includes(channel.id);
+                    const isPlatform = ['whatsapp', 'instagram', 'facebook', 'twitch', 'tiktok'].includes(channel.id);
+                    const isConnected = isPlatform ? connectedPlatforms[channel.id] : true;
+
+                    return (
+                      <button
+                        key={channel.id}
+                        onClick={() => toggleChannel(channel.id)}
+                        disabled={!isConnected}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                          isSelected 
+                            ? `${channel.bg} ${channel.color}` 
+                            : 'bg-black/20 border-white/5 text-white/40 hover:text-white/60 hover:border-white/10'
+                        } ${!isConnected ? 'opacity-30 grayscale cursor-not-allowed' : ''}`}
+                      >
+                        <div className={`p-2 rounded-lg ${isSelected ? 'bg-white/10' : 'bg-white/[0.03]'}`}>
+                          <channel.icon className="w-4 h-4" />
+                        </div>
+                        <div className="text-left flex-1">
+                          <div className="text-[11px] font-bold uppercase tracking-tight">{channel.name}</div>
+                          <div className="text-[9px] opacity-60 font-mono">
+                            {isConnected ? (isSelected ? 'SELECTED' : 'AVAILABLE') : 'DISCONNECTED'}
+                          </div>
+                        </div>
+                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? 'border-current' : 'border-white/10'}`}>
+                          {isSelected && <Check className="w-2.5 h-2.5" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-2">
+                  <div className="p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl">
+                    <div className="flex items-start gap-2">
+                      <ShieldAlert className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
+                      <p className="text-[10px] text-blue-300/70 leading-relaxed italic">
+                        Broadcasting to third-party platforms requires an active connection pipeline in the Connection Hub.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const renderConnectionHub = () => {
     const platformsList = [
@@ -2160,6 +2429,18 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           </button>
 
           <button
+            onClick={() => setActiveTab('broadcast')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+              activeTab === 'broadcast'
+                ? 'bg-neon-blue/10 text-neon-blue border border-neon-blue/20 shadow-[0_0_15px_rgba(0,194,255,0.15)]'
+                : 'text-white/40 hover:text-white/80 hover:bg-white/[0.02] border border-transparent'
+            }`}
+          >
+            <Radio className="w-4 h-4" />
+            <span>Broadcast</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('profile')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
               activeTab === 'profile'
@@ -2505,6 +2786,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       )}
 
       {activeTab === 'connections' && renderConnectionHub()}
+      {activeTab === 'broadcast' && renderBroadcastView()}
       {activeTab === 'settings' && renderSettingsView()}
       {activeTab === 'profile' && renderProfileView()}
 
@@ -2537,6 +2819,18 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             )}
           </div>
           <span className="text-[10px] uppercase tracking-wider font-semibold">Hub</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('broadcast')}
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all duration-200 ${
+            activeTab === 'broadcast'
+              ? 'text-neon-blue font-bold'
+              : 'text-white/40 hover:text-white/80'
+          }`}
+        >
+          <Radio className="w-5 h-5" />
+          <span className="text-[10px] uppercase tracking-wider font-semibold">Blast</span>
         </button>
 
         <button

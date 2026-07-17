@@ -1526,6 +1526,111 @@ apiRouter.post("/admin/shoutouts/:id/reply", authMiddleware, (req: any, res: any
   }
 });
 
+apiRouter.post("/admin/broadcast", authMiddleware, (req: any, res: any) => {
+  const { text, channels, imageUrl, audioUrl, videoUrl, studioName, studioImage } = req.body;
+
+  if (!text && !imageUrl && !audioUrl && !videoUrl) {
+    return res.status(400).json({ error: "Broadcast content is required" });
+  }
+
+  const results: string[] = [];
+
+  try {
+    const io: Server = req.app.get('io');
+    const processAndBroadcastChatMessage = req.app.get('processAndBroadcastChatMessage');
+    const processAndBroadcastShoutout = req.app.get('processAndBroadcastShoutout');
+
+    // 1. Public Chat
+    if (channels.includes('public_chat') && processAndBroadcastChatMessage) {
+      processAndBroadcastChatMessage({
+        user: studioName || "DejavuFM Studio",
+        text: text,
+        imageUrl: imageUrl,
+        audioUrl: audioUrl,
+        videoUrl: videoUrl,
+        avatar_url: studioImage,
+        isSystem: true
+      });
+      results.push('public_chat');
+    }
+
+    // 2. Shoutouts
+    if (channels.includes('shoutouts') && processAndBroadcastShoutout) {
+      processAndBroadcastShoutout({
+        listener_name: studioName || "DejavuFM Studio",
+        message: text,
+        type: 'text',
+        imageUrl: imageUrl,
+        audioUrl: audioUrl,
+        videoUrl: videoUrl
+      });
+      results.push('shoutouts');
+    }
+
+    // 3. Private DMs (Broadcast to all users who have an active thread)
+    if (channels.includes('private_dms')) {
+      const activeUsers = db.prepare(`
+        SELECT DISTINCT sender as username FROM public_messages
+        UNION
+        SELECT DISTINCT sender_name as username FROM room_messages
+        UNION
+        SELECT DISTINCT listener_name as username FROM shoutouts
+      `).all() as { username: string }[];
+
+      activeUsers.forEach(({ username }) => {
+        if (!username || username.toLowerCase() === 'anonymous' || username.toLowerCase().includes('studio')) return;
+        
+        const msgId = crypto.randomUUID();
+        const timestamp = Date.now();
+        
+        try {
+          db.prepare(`
+            INSERT INTO private_messages (id, sender, recipient, text, imageUrl, audioUrl, videoUrl, timestamp, is_read)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(msgId, studioName || "DejavuFM Studio", username, text, imageUrl || null, audioUrl || null, videoUrl || null, timestamp, 0);
+          
+          io.emit('privateMessage', {
+            id: msgId,
+            user: studioName || "DejavuFM Studio",
+            recipient: username,
+            text: text,
+            imageUrl: imageUrl,
+            audioUrl: audioUrl,
+            videoUrl: videoUrl,
+            timestamp: timestamp,
+            avatar_url: studioImage
+          });
+        } catch (e) {
+          // Skip if error
+        }
+      });
+      results.push('private_dms');
+    }
+
+    // 4. Other Platform Simulations (handled by Studio UI locally via event)
+    const platformChannels = channels.filter((c: string) => ['whatsapp', 'instagram', 'facebook', 'twitch', 'tiktok'].includes(c));
+    if (platformChannels.length > 0) {
+      io.emit('platform_broadcast', {
+        text,
+        imageUrl,
+        audioUrl,
+        videoUrl,
+        platforms: platformChannels,
+        studioName,
+        studioImage,
+        timestamp: Date.now()
+      });
+      results.push(...platformChannels);
+    }
+
+    logAction(req, 'BROADCAST', `channels:${results.join(',')}`);
+    res.json({ success: true, channels: results });
+  } catch (err: any) {
+    console.error("Broadcast error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 apiRouter.put("/admin/settings", authorizeRole('admin'), (req, res) => {
   const updateStmt = db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value");
   
