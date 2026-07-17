@@ -259,7 +259,7 @@ export default function WatchLive() {
               </p>
             </div>
           ) : (
-            <div className="flex-1 w-full relative">
+            <div className="flex-1 w-full relative flex flex-col min-h-0">
               <ChatSidebar embedded={true} />
             </div>
           )}

@@ -1,9 +1,8 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Play, Search, X, Sparkles, Wand2, RefreshCw } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
-import { GoogleGenAI } from "@google/genai";
+import { Play, Search, X, RefreshCw } from "lucide-react";
+import { motion } from "motion/react";
 import { useLogo } from "../hooks/useLogo";
 
 const containerVariants = {
@@ -27,10 +26,6 @@ export default function PodcastsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get("s") || "";
   const [currentPage, setCurrentPage] = useState(1);
-  const [isAiSearching, setIsAiSearching] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState("");
-  const [aiResult, setAiResult] = useState<any[] | null>(null);
-  const [aiProcessing, setAiProcessing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const itemsPerPage = 12;
 
@@ -52,48 +47,7 @@ export default function PodcastsPage() {
     }
   };
 
-  const handleAiSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!aiPrompt.trim() || !feed?.items) return;
-
-    setAiProcessing(true);
-    try {
-      const genAI = new GoogleGenAI({ apiKey: (import.meta as any).env.VITE_GEMINI_API_KEY || "" });
-
-      const podcastList = feed.items.map((item: any) => ({
-        id: btoa(item.guid || item.link || "").replace(/=/g, ''),
-        title: item.title,
-        desc: item.contentSnippet?.substring(0, 100)
-      }));
-
-      const result = await genAI.models.generateContent({
-        model: "gemini-1.5-flash",
-        contents: [{ role: 'user', parts: [{ text: `Analysing underground radio archives. A listener wants this vibe: "${aiPrompt}".
-        Pick the top 4 most relevant podcasts from this list. Return ONLY a JSON array of IDs.
-        
-        List: ${JSON.stringify(podcastList)}` }] }],
-        config: {
-          responseMimeType: "application/json"
-        }
-      });
-
-      const matchedIds = JSON.parse(result.text || "[]");
-      const matchedPodcasts = feed.items.filter((item: any) => {
-        const id = btoa(item.guid || item.link || "").replace(/=/g, '');
-        return matchedIds.includes(id);
-      });
-
-      setAiResult(matchedPodcasts);
-      setCurrentPage(1);
-    } catch (err) {
-      console.error("AI Search Error:", err);
-    } finally {
-      setAiProcessing(false);
-    }
-  };
-
   const filteredItems = useMemo(() => {
-    if (aiResult) return aiResult;
     if (feed?.error) return [];
     if (!feed?.items) return [];
     if (!query) return feed.items;
@@ -104,7 +58,7 @@ export default function PodcastsPage() {
       item.contentSnippet?.toLowerCase().includes(lowerQuery) ||
       item.content?.toLowerCase().includes(lowerQuery)
     );
-  }, [feed, query, aiResult]);
+  }, [feed, query]);
 
   if (loading) {
     return (
@@ -174,11 +128,11 @@ export default function PodcastsPage() {
           </motion.p>
         </div>
 
-        <div className="flex flex-col items-end gap-5 w-full md:w-auto">
+        <div className="flex flex-col md:flex-row items-center gap-5 w-full md:w-auto">
           <button 
             onClick={handleRefresh}
             disabled={refreshing || loading}
-            className={`flex items-center space-x-3 px-6 py-3 rounded-2xl font-bold uppercase tracking-widest text-[10px] transition-all border disabled:opacity-50 group ${
+            className={`flex items-center space-x-3 px-6 py-3 rounded-2xl font-bold uppercase tracking-widest text-[10px] transition-all border disabled:opacity-50 group w-full md:w-auto justify-center ${
               isLightMode ? 'bg-black/5 text-black/40 hover:text-black border-black/10' : 'bg-white/5 text-white/40 hover:text-white border-white/10'
             }`}
           >
@@ -186,63 +140,24 @@ export default function PodcastsPage() {
             <span>{refreshing ? 'Refreshing...' : 'Refresh Archive'}</span>
           </button>
 
-          <button 
-            onClick={() => {
-              setIsAiSearching(!isAiSearching);
-              setAiResult(null);
-              setSearchParams({});
-            }}
-            className={`flex items-center space-x-3 px-6 py-3 rounded-2xl font-bold uppercase tracking-widest text-[10px] transition-all group overflow-hidden relative ${
-              isAiSearching 
-                ? "bg-neon-purple text-white shadow-[0_0_20px_rgba(176,38,255,0.4)]" 
-                : isLightMode ? "bg-black/5 text-black/40 hover:text-black border border-black/10" : "bg-white/5 text-white/40 hover:text-white border border-white/10"
-            }`}
-          >
-            <Sparkles className={`w-4 h-4 ${isAiSearching ? 'animate-pulse' : 'text-neon-purple'}`} />
-            <span>{isAiSearching ? 'Exit Vibe Search' : 'Smart Vibe Finder'}</span>
-          </button>
-
           <div className="relative w-full md:w-96 group">
-            {!isAiSearching ? (
-              <>
-                <Search className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 group-focus-within:text-neon-purple transition-colors ${isLightMode ? 'text-black/30' : 'text-white/30'}`} />
-                <input 
-                  type="text"
-                  placeholder="Search shows or DJs..."
-                  value={query}
-                  onChange={handleSearch}
-                  className={`w-full border rounded-2xl py-3.5 pl-12 pr-12 text-sm focus:outline-none focus:border-neon-purple/50 transition-all font-medium ${
-                    isLightMode ? 'bg-black/5 border-black/10 focus:bg-white' : 'bg-white/5 border-white/10 focus:bg-white/10'
-                  }`}
-                />
-                {query && (
-                  <button 
-                    onClick={clearSearch}
-                    className={`absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full transition-all ${isLightMode ? 'hover:bg-black/5' : 'hover:bg-white/10'}`}
-                  >
-                    <X className={`w-3.5 h-3.5 ${isLightMode ? 'text-black/50' : 'text-white/50'}`} />
-                  </button>
-                )}
-              </>
-            ) : (
-              <form onSubmit={handleAiSearch} className="flex gap-2 w-full">
-                <div className="relative flex-1">
-                  <Wand2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neon-purple" />
-                  <input 
-                    autoFocus
-                    placeholder="Describe your mood..."
-                    value={aiPrompt}
-                    onChange={(e) => setAiPrompt(e.target.value)}
-                    className="w-full bg-neon-purple/10 border border-neon-purple/30 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:border-neon-purple transition-all font-medium placeholder:text-white/30"
-                  />
-                </div>
-                <button 
-                  disabled={aiProcessing}
-                  className="bg-neon-purple hover:bg-neon-purple/80 text-white px-6 rounded-2xl font-black uppercase tracking-widest text-[10px] disabled:opacity-50"
-                >
-                  {aiProcessing ? '...' : 'Find'}
-                </button>
-              </form>
+            <Search className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 group-focus-within:text-neon-purple transition-colors ${isLightMode ? 'text-black/30' : 'text-white/30'}`} />
+            <input 
+              type="text"
+              placeholder="Search shows or DJs..."
+              value={query}
+              onChange={handleSearch}
+              className={`w-full border rounded-2xl py-3.5 pl-12 pr-12 text-sm focus:outline-none focus:border-neon-purple/50 transition-all font-medium ${
+                isLightMode ? 'bg-black/5 border-black/10 focus:bg-white' : 'bg-white/5 border-white/10 focus:bg-white/10'
+              }`}
+            />
+            {query && (
+              <button 
+                onClick={clearSearch}
+                className={`absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full transition-all ${isLightMode ? 'hover:bg-black/5' : 'hover:bg-white/10'}`}
+              >
+                <X className={`w-3.5 h-3.5 ${isLightMode ? 'text-black/50' : 'text-white/50'}`} />
+              </button>
             )}
           </div>
         </div>
@@ -280,33 +195,6 @@ export default function PodcastsPage() {
         </div>
       ) : filteredItems.length ? (
         <div className="space-y-12 px-4">
-          <AnimatePresence mode="wait">
-            {aiResult && (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0 }}
-                className="bg-neon-purple/10 border border-neon-purple/20 p-6 rounded-3xl flex items-center justify-between mb-8 group"
-              >
-                <div className="flex items-center space-x-5">
-                  <div className="w-12 h-12 bg-neon-purple/20 rounded-2xl flex items-center justify-center border border-neon-purple/30 group-hover:rotate-12 transition-transform">
-                    <Sparkles className="w-6 h-6 text-neon-purple" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-black uppercase tracking-widest text-white">Smart Match Active</h4>
-                    <p className="text-xs text-white/40 mt-0.5">Top picks for: <span className="text-neon-purple">"{aiPrompt}"</span></p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => { setAiResult(null); setAiPrompt(''); }}
-                  className="p-2 hover:bg-white/10 rounded-xl text-white/40 hover:text-white transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           <motion.div 
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
             variants={containerVariants}

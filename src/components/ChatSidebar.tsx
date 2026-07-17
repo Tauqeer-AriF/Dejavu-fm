@@ -134,13 +134,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
   }, [soundEnabled]);
 
   
-  useEffect(() => {
-    const handleSoundSync = (e: any) => {
-      setSoundEnabled(e.detail);
-    };
-    window.addEventListener('chat_sound_sync', handleSoundSync);
-    return () => window.removeEventListener('chat_sound_sync', handleSoundSync);
-  }, []);
+
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -225,6 +219,293 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     window.addEventListener('chat_auth_sync', handleAuthSync);
     return () => window.removeEventListener('chat_auth_sync', handleAuthSync);
   }, []);
+
+  // REAL-TIME ACTIVITY SYNCHRONIZATION BETWEEN SIDEBAR AND WATCH CHAT INSTANCES
+  
+  // 1. soundEnabled sync
+  const lastSoundRef = useRef(soundEnabled);
+  useEffect(() => {
+    if (soundEnabled !== lastSoundRef.current) {
+      lastSoundRef.current = soundEnabled;
+      window.dispatchEvent(new CustomEvent('chat_sound_sync', { detail: soundEnabled }));
+    }
+  }, [soundEnabled]);
+
+  useEffect(() => {
+    const handleSoundSync = (e: any) => {
+      if (e.detail !== soundEnabled) {
+        lastSoundRef.current = e.detail;
+        setSoundEnabled(e.detail);
+      }
+    };
+    window.addEventListener('chat_sound_sync', handleSoundSync);
+    return () => window.removeEventListener('chat_sound_sync', handleSoundSync);
+  }, [soundEnabled]);
+
+  // 2. chatTab sync
+  const lastChatTabRef = useRef(chatTab);
+  useEffect(() => {
+    if (chatTab !== lastChatTabRef.current) {
+      lastChatTabRef.current = chatTab;
+      window.dispatchEvent(new CustomEvent('chat_tab_sync', { detail: chatTab }));
+    }
+  }, [chatTab]);
+
+  useEffect(() => {
+    const handleChatTabSync = (e: any) => {
+      if (e.detail !== chatTab) {
+        lastChatTabRef.current = e.detail;
+        setChatTab(e.detail);
+      }
+    };
+    window.addEventListener('chat_tab_sync', handleChatTabSync);
+    return () => window.removeEventListener('chat_tab_sync', handleChatTabSync);
+  }, [chatTab]);
+
+  // 3. activeDmUser sync
+  const lastActiveDmUserRef = useRef(activeDmUser);
+  useEffect(() => {
+    if (activeDmUser !== lastActiveDmUserRef.current) {
+      lastActiveDmUserRef.current = activeDmUser;
+      window.dispatchEvent(new CustomEvent('chat_active_dm_sync', { detail: activeDmUser }));
+    }
+  }, [activeDmUser]);
+
+  useEffect(() => {
+    const handleActiveDmSync = (e: any) => {
+      if (e.detail !== activeDmUser) {
+        lastActiveDmUserRef.current = e.detail;
+        setActiveDmUser(e.detail);
+      }
+    };
+    window.addEventListener('chat_active_dm_sync', handleActiveDmSync);
+    return () => window.removeEventListener('chat_active_dm_sync', handleActiveDmSync);
+  }, [activeDmUser]);
+
+  // 4. inputText / drafts sync (typing activity)
+  const lastInputTextRef = useRef(inputText);
+  useEffect(() => {
+    if (inputText !== lastInputTextRef.current) {
+      lastInputTextRef.current = inputText;
+      window.dispatchEvent(new CustomEvent('chat_input_text_sync', { detail: inputText }));
+    }
+  }, [inputText]);
+
+  useEffect(() => {
+    const handleInputTextSync = (e: any) => {
+      if (e.detail !== inputText) {
+        lastInputTextRef.current = e.detail;
+        setInputText(e.detail);
+        const currentKey = chatTab === 'public' ? 'public' : `private_${activeDmUser || 'list'}`;
+        setDrafts(prev => {
+          const updated = { ...prev, [currentKey]: e.detail };
+          localStorage.setItem('dejavu_chat_drafts_map', JSON.stringify(updated));
+          return updated;
+        });
+      }
+    };
+    window.addEventListener('chat_input_text_sync', handleInputTextSync);
+    return () => window.removeEventListener('chat_input_text_sync', handleInputTextSync);
+  }, [inputText, chatTab, activeDmUser]);
+
+  // 5. authMode sync
+  const lastAuthModeRef = useRef(authMode);
+  useEffect(() => {
+    if (authMode !== lastAuthModeRef.current) {
+      lastAuthModeRef.current = authMode;
+      window.dispatchEvent(new CustomEvent('chat_auth_mode_sync', { detail: authMode }));
+    }
+  }, [authMode]);
+
+  useEffect(() => {
+    const handleAuthModeSync = (e: any) => {
+      if (e.detail !== authMode) {
+        lastAuthModeRef.current = e.detail;
+        setAuthMode(e.detail);
+      }
+    };
+    window.addEventListener('chat_auth_mode_sync', handleAuthModeSync);
+    return () => window.removeEventListener('chat_auth_mode_sync', handleAuthModeSync);
+  }, [authMode]);
+
+  // 6. showProfile sync
+  const lastShowProfileRef = useRef(showProfile);
+  useEffect(() => {
+    if (showProfile !== lastShowProfileRef.current) {
+      lastShowProfileRef.current = showProfile;
+      window.dispatchEvent(new CustomEvent('chat_show_profile_sync', { detail: showProfile }));
+    }
+  }, [showProfile]);
+
+  useEffect(() => {
+    const handleShowProfileSync = (e: any) => {
+      if (e.detail !== showProfile) {
+        lastShowProfileRef.current = e.detail;
+        setShowProfile(e.detail);
+      }
+    };
+    window.addEventListener('chat_show_profile_sync', handleShowProfileSync);
+    return () => window.removeEventListener('chat_show_profile_sync', handleShowProfileSync);
+  }, [showProfile]);
+
+  // 7. blockedUsers sync
+  const lastBlockedUsersRef = useRef(blockedUsers);
+  useEffect(() => {
+    const currentStr = JSON.stringify(blockedUsers);
+    const lastStr = JSON.stringify(lastBlockedUsersRef.current);
+    if (currentStr !== lastStr) {
+      lastBlockedUsersRef.current = blockedUsers;
+      window.dispatchEvent(new CustomEvent('chat_blocked_users_sync', { detail: blockedUsers }));
+    }
+  }, [blockedUsers]);
+
+  useEffect(() => {
+    const handleBlockedUsersSync = (e: any) => {
+      const detailStr = JSON.stringify(e.detail);
+      const currentStr = JSON.stringify(blockedUsers);
+      if (detailStr !== currentStr) {
+        lastBlockedUsersRef.current = e.detail;
+        setBlockedUsers(e.detail);
+      }
+    };
+    window.addEventListener('chat_blocked_users_sync', handleBlockedUsersSync);
+    return () => window.removeEventListener('chat_blocked_users_sync', handleBlockedUsersSync);
+  }, [blockedUsers]);
+
+  // 8. Login input fields sync (typing auth info)
+  const lastAuthUsernameRef = useRef(authUsername);
+  useEffect(() => {
+    if (authUsername !== lastAuthUsernameRef.current) {
+      lastAuthUsernameRef.current = authUsername;
+      window.dispatchEvent(new CustomEvent('chat_auth_username_sync', { detail: authUsername }));
+    }
+  }, [authUsername]);
+
+  useEffect(() => {
+    const handleAuthUsernameSync = (e: any) => {
+      if (e.detail !== authUsername) {
+        lastAuthUsernameRef.current = e.detail;
+        setAuthUsername(e.detail);
+      }
+    };
+    window.addEventListener('chat_auth_username_sync', handleAuthUsernameSync);
+    return () => window.removeEventListener('chat_auth_username_sync', handleAuthUsernameSync);
+  }, [authUsername]);
+
+  const lastAuthEmailRef = useRef(authEmail);
+  useEffect(() => {
+    if (authEmail !== lastAuthEmailRef.current) {
+      lastAuthEmailRef.current = authEmail;
+      window.dispatchEvent(new CustomEvent('chat_auth_email_sync', { detail: authEmail }));
+    }
+  }, [authEmail]);
+
+  useEffect(() => {
+    const handleAuthEmailSync = (e: any) => {
+      if (e.detail !== authEmail) {
+        lastAuthEmailRef.current = e.detail;
+        setAuthEmail(e.detail);
+      }
+    };
+    window.addEventListener('chat_auth_email_sync', handleAuthEmailSync);
+    return () => window.removeEventListener('chat_auth_email_sync', handleAuthEmailSync);
+  }, [authEmail]);
+
+  const lastAuthPasswordRef = useRef(authPassword);
+  useEffect(() => {
+    if (authPassword !== lastAuthPasswordRef.current) {
+      lastAuthPasswordRef.current = authPassword;
+      window.dispatchEvent(new CustomEvent('chat_auth_password_sync', { detail: authPassword }));
+    }
+  }, [authPassword]);
+
+  useEffect(() => {
+    const handleAuthPasswordSync = (e: any) => {
+      if (e.detail !== authPassword) {
+        lastAuthPasswordRef.current = e.detail;
+        setAuthPassword(e.detail);
+      }
+    };
+    window.addEventListener('chat_auth_password_sync', handleAuthPasswordSync);
+    return () => window.removeEventListener('chat_auth_password_sync', handleAuthPasswordSync);
+  }, [authPassword]);
+
+  const lastResetPasswordConfirmRef = useRef(resetPasswordConfirm);
+  useEffect(() => {
+    if (resetPasswordConfirm !== lastResetPasswordConfirmRef.current) {
+      lastResetPasswordConfirmRef.current = resetPasswordConfirm;
+      window.dispatchEvent(new CustomEvent('chat_reset_password_confirm_sync', { detail: resetPasswordConfirm }));
+    }
+  }, [resetPasswordConfirm]);
+
+  useEffect(() => {
+    const handleResetPasswordConfirmSync = (e: any) => {
+      if (e.detail !== resetPasswordConfirm) {
+        lastResetPasswordConfirmRef.current = e.detail;
+        setResetPasswordConfirm(e.detail);
+      }
+    };
+    window.addEventListener('chat_reset_password_confirm_sync', handleResetPasswordConfirmSync);
+    return () => window.removeEventListener('chat_reset_password_confirm_sync', handleResetPasswordConfirmSync);
+  }, [resetPasswordConfirm]);
+
+  const lastResetTokenRef = useRef(resetToken);
+  useEffect(() => {
+    if (resetToken !== lastResetTokenRef.current) {
+      lastResetTokenRef.current = resetToken;
+      window.dispatchEvent(new CustomEvent('chat_reset_token_sync', { detail: resetToken }));
+    }
+  }, [resetToken]);
+
+  useEffect(() => {
+    const handleResetTokenSync = (e: any) => {
+      if (e.detail !== resetToken) {
+        lastResetTokenRef.current = e.detail;
+        setResetToken(e.detail);
+      }
+    };
+    window.addEventListener('chat_reset_token_sync', handleResetTokenSync);
+    return () => window.removeEventListener('chat_reset_token_sync', handleResetTokenSync);
+  }, [resetToken]);
+
+  // 9. Emoji picker state sync
+  const lastShowEmojiPickerRef = useRef(showEmojiPicker);
+  useEffect(() => {
+    if (showEmojiPicker !== lastShowEmojiPickerRef.current) {
+      lastShowEmojiPickerRef.current = showEmojiPicker;
+      window.dispatchEvent(new CustomEvent('chat_show_emoji_picker_sync', { detail: showEmojiPicker }));
+    }
+  }, [showEmojiPicker]);
+
+  useEffect(() => {
+    const handleShowEmojiPickerSync = (e: any) => {
+      if (e.detail !== showEmojiPicker) {
+        lastShowEmojiPickerRef.current = e.detail;
+        setShowEmojiPicker(e.detail);
+      }
+    };
+    window.addEventListener('chat_show_emoji_picker_sync', handleShowEmojiPickerSync);
+    return () => window.removeEventListener('chat_show_emoji_picker_sync', handleShowEmojiPickerSync);
+  }, [showEmojiPicker]);
+
+  const lastEmojiSearchRef = useRef(emojiSearch);
+  useEffect(() => {
+    if (emojiSearch !== lastEmojiSearchRef.current) {
+      lastEmojiSearchRef.current = emojiSearch;
+      window.dispatchEvent(new CustomEvent('chat_emoji_search_sync', { detail: emojiSearch }));
+    }
+  }, [emojiSearch]);
+
+  useEffect(() => {
+    const handleEmojiSearchSync = (e: any) => {
+      if (e.detail !== emojiSearch) {
+        lastEmojiSearchRef.current = e.detail;
+        setEmojiSearch(e.detail);
+      }
+    };
+    window.addEventListener('chat_emoji_search_sync', handleEmojiSearchSync);
+    return () => window.removeEventListener('chat_emoji_search_sync', handleEmojiSearchSync);
+  }, [emojiSearch]);
 
   const [allUsers, setAllUsers] = useState<{ username: string; avatar_url: string | null }[]>([]);
   const [searchUserQuery, setSearchUserQuery] = useState('');
@@ -1090,7 +1371,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={embedded ? `h-full w-full flex flex-col` : `fixed top-0 right-0 h-full w-full max-w-md bg-dark-bg/95 backdrop-blur-2xl border-l z-[10101] shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col touch-pan-y ${isLightMode ? 'border-black/10' : 'border-white/10'}`}
+            className={embedded ? `h-full w-full flex flex-col bg-dark-bg/95 backdrop-blur-2xl min-h-0` : `fixed top-0 right-0 h-full w-full max-w-md bg-dark-bg/95 backdrop-blur-2xl border-l z-[10101] shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col touch-pan-y ${isLightMode ? 'border-black/10' : 'border-white/10'}`}
           >
             {/* Drag & Drop Media Overlay */}
             {isDragging && (
@@ -1231,7 +1512,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
             )}
 
             <div 
-              className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin" 
+              className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar" 
               ref={scrollRef}
               onScroll={handleScroll}
             >
@@ -2036,7 +2317,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                           </div>
 
                           {/* Emojis list scroll area */}
-                          <div className="flex-1 overflow-y-auto scrollbar-thin max-h-[220px] space-y-3 pr-1 text-left">
+                          <div className="flex-1 overflow-y-auto no-scrollbar max-h-[220px] space-y-3 pr-1 text-left">
                             {filteredEmojis ? (
                               <div>
                                 <h4 className={`text-[9px] uppercase tracking-widest font-black mb-2 px-1 ${isLightMode ? 'text-black/30' : 'text-white/30'}`}>Search Results</h4>
@@ -2136,7 +2417,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                     </button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto space-y-6 pr-1 scrollbar-thin text-left">
+                  <div className="flex-1 overflow-y-auto space-y-6 pr-1 no-scrollbar text-left">
                     {/* User Info Card */}
                     <div className={`rounded-2xl p-4 border flex items-center space-x-4 ${isLightMode ? 'bg-black/5 border-black/10' : 'bg-white/5 border-white/10'}`}>
                       <div className={`w-16 h-16 rounded-2xl overflow-hidden border shrink-0 relative group ${isLightMode ? 'border-black/10 bg-[#ffffff]' : 'border-neon-purple/30 bg-black/40'}`}>
