@@ -21,6 +21,7 @@ import { SitePopup } from './components/SitePopup';
 import { AdvertisementSliders } from './components/AdvertisementSliders';
 import { CinematicVisualizer } from './components/CinematicVisualizer';
 import { PremiumLoader } from './components/PremiumLoader';
+import { ThemeAccessibilityDropdown } from './components/ThemeAccessibilityDropdown';
 
 // Pages
 import Home from './pages/Home';
@@ -257,13 +258,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
             <AdminIcon className="w-6 h-6" />
           </button>
           
-          <button
-            onClick={toggleTheme}
-            className="text-white/60 hover:text-white transition-colors p-2 bg-white/5 rounded-full border border-white/5 shrink-0"
-            title="Toggle Theme"
-          >
-            {isLightMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-          </button>
+          <ThemeAccessibilityDropdown />
           
           <button 
             className="xl:hidden text-white w-12 h-12 flex flex-shrink-0 items-center justify-center bg-white/5 rounded-2xl border border-white/5"
