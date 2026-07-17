@@ -625,6 +625,7 @@ export function AdminSettings() {
 function AdminSecretSettings() {
   const { isLightMode } = useLogo();
   const [secret, setSecret] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const { showAlert } = useModal();
 
   useEffect(() => {
@@ -655,14 +656,23 @@ function AdminSecretSettings() {
     <div className="space-y-3">
       <h4 className={`text-lg font-bold ${isLightMode ? 'text-black' : 'text-white'}`}>Admin Portal Security</h4>
       <label className={`block text-[10px] uppercase mb-1 font-bold tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Secret Access Answer (Authorized Name)</label>
-      <div className="flex flex-col sm:flex-row gap-3">
-        <input 
-          type="text" 
-          value={secret} 
-          onChange={e=>setSecret(e.target.value)} 
-          className={`flex-1 rounded-xl px-4 py-3 text-sm focus:border-neon-purple outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
-          placeholder="e.g. waynee"
-        />
+      <div className="flex flex-col sm:flex-row gap-3 relative">
+        <div className="relative flex-1">
+          <input 
+            type={showPassword ? "text" : "password"}
+            value={secret} 
+            onChange={e=>setSecret(e.target.value)} 
+            className={`w-full rounded-xl px-4 py-3 text-sm focus:border-neon-purple outline-none transition-all border pr-12 ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
+            placeholder="e.g. waynee"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors focus:outline-none ${isLightMode ? 'text-black/40 hover:text-black hover:bg-black/5' : 'text-white/30 hover:text-white hover:bg-white/5'}`}
+          >
+            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        </div>
         <button 
           type="button"
           onClick={handleSaveSecret}

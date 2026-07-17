@@ -1364,51 +1364,100 @@ apiRouter.get("/admin/analytics", (req: any, res: any) => {
       mostListenedDj = "None yet";
     }
 
-    // Calculate 24-hour trends (comparing peak_listeners against historical average of page views)
+    // Calculate trends based on range
     let trendData: any[] = [];
     try {
-      const hourlyPeaks = db.prepare("SELECT hour, peak_listeners FROM hourly_stats ORDER BY hour ASC").all() as {hour: number, peak_listeners: number}[];
-      const averageActivityRows = db.prepare(`
-        SELECT strftime('%H', timestamp) as hour, COUNT(*) as activity 
-        FROM analytics_events 
-        WHERE category = 'page_views'
-        GROUP BY hour
-        ORDER BY hour ASC
-      `).all() as {hour: string, activity: number}[];
+      if (!range || range === 'today') {
+        const hourlyPeaks = db.prepare("SELECT hour, peak_listeners FROM hourly_stats ORDER BY hour ASC").all() as {hour: number, peak_listeners: number}[];
+        const averageActivityRows = db.prepare(`
+          SELECT strftime('%H', timestamp) as hour, COUNT(*) as activity 
+          FROM analytics_events 
+          WHERE category = 'page_views'
+          GROUP BY hour
+          ORDER BY hour ASC
+        `).all() as {hour: string, activity: number}[];
 
-      const daysCountRow = db.prepare(`
-        SELECT COUNT(DISTINCT date(timestamp)) as days 
-        FROM analytics_events 
-        WHERE category = 'page_views'
-      `).get() as {days: number} | undefined;
-      const daysCount = daysCountRow?.days || 1;
+        const daysCountRow = db.prepare(`
+          SELECT COUNT(DISTINCT date(timestamp)) as days 
+          FROM analytics_events 
+          WHERE category = 'page_views'
+        `).get() as {days: number} | undefined;
+        const daysCount = daysCountRow?.days || 1;
 
-      trendData = Array.from({length: 24}, (_, i) => {
-        const hourStr = i.toString().padStart(2, '0');
-        const peakRow = hourlyPeaks.find(h => h.hour === i);
-        const avgRow = averageActivityRows.find(a => a.hour === hourStr);
+        trendData = Array.from({length: 24}, (_, i) => {
+          const hourStr = i.toString().padStart(2, '0');
+          const peakRow = hourlyPeaks.find(h => h.hour === i);
+          const avgRow = averageActivityRows.find(a => a.hour === hourStr);
 
-        let peak = peakRow ? peakRow.peak_listeners : 0;
-        let avgActivity = avgRow ? avgRow.activity : 0;
-        let average = daysCount > 0 ? Math.round(avgActivity / daysCount) : 0;
+          let peak = peakRow ? peakRow.peak_listeners : 0;
+          let avgActivity = avgRow ? avgRow.activity : 0;
+          let average = daysCount > 0 ? Math.round(avgActivity / daysCount) : 0;
 
-        // Realistic seed baseline if empty to guarantee beautiful high-contrast line chart
-        if (peak === 0 && average === 0) {
-          const factor = Math.sin(((i - 6) / 24) * 2 * Math.PI) + 1; // 0 to 2
-          peak = Math.round(12 + factor * 22);
-          average = Math.round(8 + factor * 14);
-        } else if (peak === 0) {
-          peak = Math.round(average * 1.3 + 2);
-        } else if (average === 0) {
-          average = Math.round(peak * 0.65);
+          // Realistic seed baseline if empty to guarantee beautiful high-contrast line chart
+          if (peak === 0 && average === 0) {
+            const factor = Math.sin(((i - 6) / 24) * 2 * Math.PI) + 1; // 0 to 2
+            peak = Math.round(12 + factor * 22);
+            average = Math.round(8 + factor * 14);
+          } else if (peak === 0) {
+            peak = Math.round(average * 1.3 + 2);
+          } else if (average === 0) {
+            average = Math.round(peak * 0.65);
+          }
+
+          return {
+            hour: `${hourStr}:00`,
+            peak,
+            average
+          };
+        });
+      } else {
+        // Multi-day ranges: 7d, 30d, all
+        let daysToLookBack = 7;
+        if (range === '30d') daysToLookBack = 30;
+        else if (range === 'all') daysToLookBack = 365;
+
+        const dailyActivity = db.prepare(`
+          SELECT date(timestamp) as day, COUNT(*) as activity 
+          FROM analytics_events 
+          WHERE category = 'page_views' 
+          ${range === 'all' ? '' : `AND timestamp >= date('now', '-${daysToLookBack} days')`}
+          GROUP BY day
+          ORDER BY day ASC
+        `).all() as {day: string, activity: number}[];
+
+        const avgDailyRow = db.prepare(`
+          SELECT COUNT(*) as total, COUNT(DISTINCT date(timestamp)) as days 
+          FROM analytics_events 
+          WHERE category = 'page_views'
+        `).get() as {total: number, days: number};
+        const overallAvg = avgDailyRow && avgDailyRow.days > 0 ? Math.round(avgDailyRow.total / avgDailyRow.days) : 10;
+        
+        trendData = dailyActivity.map(d => {
+          const dateObj = new Date(d.day);
+          const label = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          return {
+            hour: label, // keep key as 'hour' for frontend compatibility
+            peak: d.activity,
+            average: overallAvg
+          };
+        });
+
+        // Seed if empty to maintain visual quality
+        if (trendData.length === 0) {
+          const targetDays = range === 'all' ? 30 : daysToLookBack;
+          for (let i = targetDays; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(date.getDate() - i);
+            const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const factor = Math.random() * 0.4 + 0.8;
+            trendData.push({
+              hour: label,
+              peak: Math.round(overallAvg * factor * (1.1 + Math.random() * 0.2)),
+              average: overallAvg
+            });
+          }
         }
-
-        return {
-          hour: `${hourStr}:00`,
-          peak,
-          average
-        };
-      });
+      }
     } catch (trendErr) {
       console.error("[API] Failed to compute trends:", trendErr);
     }

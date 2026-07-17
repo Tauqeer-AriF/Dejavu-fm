@@ -9,6 +9,8 @@ import { fetchAdmin } from "./adminApi";
 import { ImageUploadField } from "./ImageUploadField";
 import { useLogo } from "../../hooks/useLogo";
 
+import { PremiumLoader } from "../../components/PremiumLoader";
+
 export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
   const { isLightMode } = useLogo();
   const [stats, setStats] = useState<any>(null);
@@ -198,20 +200,7 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
     };
   }, [range]);
 
-  if (loading && !stats) return (
-    <div className="space-y-8 animate-pulse">
-      <div className="flex justify-between items-center">
-        <div className={`h-10 w-48 rounded-xl ${isLightMode ? 'bg-black/5' : 'bg-white/5'}`}></div>
-        <div className={`h-10 w-64 rounded-full ${isLightMode ? 'bg-black/5' : 'bg-white/5'}`}></div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        {[1,2,3].map(i => (
-          <div key={i} className={`h-32 rounded-3xl ${isLightMode ? 'bg-black/5' : 'bg-white/5'}`}></div>
-        ))}
-      </div>
-      <div className={`h-64 rounded-3xl ${isLightMode ? 'bg-black/5' : 'bg-white/5'}`}></div>
-    </div>
-  );
+  if (loading && !stats) return <PremiumLoader onComplete={() => setLoading(false)} />;
 
   if (error && !stats) return (
     <div className="p-8 space-y-4">
@@ -460,10 +449,12 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
             <div>
               <h4 className={`text-lg font-bold flex items-center space-x-2 ${isLightMode ? 'text-black' : 'text-white'}`}>
                 <TrendingUp className="w-5 h-5 text-neon-purple" />
-                <span>24-Hour Comparative Trends</span>
+                <span>{range === 'today' ? '24-Hour' : range === '7d' ? '7-Day' : range === '30d' ? '30-Day' : 'Historical'} Comparative Trends</span>
               </h4>
               <p className={`text-xs mt-1 ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
-                Comparing real-time active peak listeners against previous historical averages.
+                {range === 'today' 
+                  ? 'Comparing real-time active peak listeners against previous historical averages.'
+                  : 'Daily engagement trends comparing active reach against overall averages.'}
               </p>
             </div>
           </div>
@@ -478,7 +469,7 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
                     fontSize={10} 
                     tickLine={false} 
                     axisLine={false} 
-                    minTickGap={20} 
+                    minTickGap={range === 'today' ? 20 : 40} 
                   />
                   <YAxis 
                     stroke={isLightMode ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.3)"} 
@@ -505,16 +496,16 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
                   <Line 
                     type="monotone" 
                     dataKey="peak" 
-                    name="Real-time Peak" 
+                    name={range === 'today' ? "Real-time Peak" : "Daily Activity"} 
                     stroke={primaryColor} 
                     strokeWidth={3} 
                     activeDot={{ r: 6 }} 
-                    dot={false}
+                    dot={range !== 'today'}
                   />
                   <Line 
                     type="monotone" 
                     dataKey="average" 
-                    name="Historical Average" 
+                    name={range === 'today' ? "Historical Average" : "Overall Average"} 
                     stroke={secondaryColor} 
                     strokeWidth={2} 
                     strokeDasharray="4 4" 

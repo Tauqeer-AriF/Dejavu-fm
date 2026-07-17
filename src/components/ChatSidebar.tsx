@@ -117,7 +117,7 @@ const playNotificationSound = () => {
   }
 };
 
-export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = false }: { isOpen?: boolean; onClose?: () => void; embedded?: boolean }) {
   const { isLightMode } = useLogo();
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
     try {
@@ -132,6 +132,15 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
   useEffect(() => {
     soundEnabledRef.current = soundEnabled;
   }, [soundEnabled]);
+
+  
+  useEffect(() => {
+    const handleSoundSync = (e: any) => {
+      setSoundEnabled(e.detail);
+    };
+    window.addEventListener('chat_sound_sync', handleSoundSync);
+    return () => window.removeEventListener('chat_sound_sync', handleSoundSync);
+  }, []);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -198,6 +207,25 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     const currentKey = chatTab === 'public' ? 'public' : `private_${activeDmUser || 'list'}`;
     setInputText(drafts[currentKey] || '');
   }, [chatTab, activeDmUser]);
+  
+  useEffect(() => {
+    const handleAuthSync = (e: any) => {
+      if (e.detail) {
+        setLoggedInUser(e.detail.username);
+        if (e.detail.avatar) setUserAvatar(e.detail.avatar);
+        if (e.detail.joinedAt) setUserJoinedAt(e.detail.joinedAt);
+        if (e.detail.isAdmin !== undefined) setIsAdmin(e.detail.isAdmin);
+      } else {
+        setLoggedInUser(null);
+        setUserAvatar(null);
+        setIsAdmin(false);
+        setUserJoinedAt(null);
+      }
+    };
+    window.addEventListener('chat_auth_sync', handleAuthSync);
+    return () => window.removeEventListener('chat_auth_sync', handleAuthSync);
+  }, []);
+
   const [allUsers, setAllUsers] = useState<{ username: string; avatar_url: string | null }[]>([]);
   const [searchUserQuery, setSearchUserQuery] = useState('');
   const [unreadDms, setUnreadDms] = useState<Set<string>>(new Set<string>());
@@ -378,11 +406,11 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     if (!socket) return;
     socketRef.current = socket;
 
-    socket.on('chatHistory', (history: ChatMessage[]) => {
+    const onChatHistory = (history: ChatMessage[]) => {
       setMessages(history);
-    });
+    };
 
-    socket.on('chatMessage', (msg: ChatMessage) => {
+    const onChatMessage = (msg: ChatMessage) => {
       setMessages(prev => {
         const newArr = [...prev, msg];
         if (newArr.length > 100) newArr.shift();
@@ -391,19 +419,13 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
       if (msg.user !== loggedInUser && soundEnabledRef.current && document.visibilityState === 'visible') {
         playNotificationSound();
       }
-    });
+    };
 
-    if (loggedInUser) {
-      socket.emit('registerUser', loggedInUser);
-    } else {
-      socket.emit('getChatHistory');
-    }
-
-    socket.on('privateHistory', (history: ChatMessage[]) => {
+    const onPrivateHistory = (history: ChatMessage[]) => {
       setPrivateMessages(history);
-    });
+    };
 
-    socket.on('privateMessage', (msg: ChatMessage) => {
+    const onPrivateMessage = (msg: ChatMessage) => {
       setPrivateMessages(prev => {
         const newArr = [...prev, msg];
         return newArr;
@@ -427,17 +449,17 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
           playNotificationSound();
         }
       }
-    });
+    };
 
-    socket.on('messageDeleted', ({ id, isPrivate }: { id: string; isPrivate: boolean }) => {
+    const onMessageDeleted = ({ id, isPrivate }: { id: string; isPrivate: boolean }) => {
       if (isPrivate) {
         setPrivateMessages(prev => prev.filter(m => m.id !== id));
       } else {
         setMessages(prev => prev.filter(m => m.id !== id));
       }
-    });
+    };
 
-    socket.on('messagesCleared', ({ isPrivate, recipient, sender, allChatData }: { isPrivate: boolean; recipient?: string; sender?: string; allChatData?: boolean }) => {
+    const onMessagesCleared = ({ isPrivate, recipient, sender, allChatData }: { isPrivate: boolean; recipient?: string; sender?: string; allChatData?: boolean }) => {
       if (allChatData) {
         setMessages([]);
         setPrivateMessages([]);
@@ -446,31 +468,44 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
       }
 
       if (isPrivate) {
-        // If it's a private chat clear, we clear all if no recipient specified, or if it involves the current user
         if (!recipient || loggedInUser === recipient || loggedInUser === sender) {
           setPrivateMessages([]);
         }
       } else {
         setMessages([]);
       }
-    });
+    };
 
-    socket.on('user_banned', ({ email }: { email: string }) => {
+    const onUserBanned = ({ email }: { email: string }) => {
       setMessages(prev => prev.filter(m => m.user !== email));
       if (loggedInUser === email) {
         handleLogout();
         toast.error("Your session has been terminated by an administrator.");
       }
-    });
+    };
+
+    socket.on('chatHistory', onChatHistory);
+    socket.on('chatMessage', onChatMessage);
+    socket.on('privateHistory', onPrivateHistory);
+    socket.on('privateMessage', onPrivateMessage);
+    socket.on('messageDeleted', onMessageDeleted);
+    socket.on('messagesCleared', onMessagesCleared);
+    socket.on('user_banned', onUserBanned);
+
+    if (loggedInUser) {
+      socket.emit('registerUser', loggedInUser);
+    } else {
+      socket.emit('getChatHistory');
+    }
 
     return () => {
-      socket.off('chatHistory');
-      socket.off('chatMessage');
-      socket.off('privateHistory');
-      socket.off('privateMessage');
-      socket.off('messageDeleted');
-      socket.off('messagesCleared');
-      socket.off('user_banned');
+      socket.off('chatHistory', onChatHistory);
+      socket.off('chatMessage', onChatMessage);
+      socket.off('privateHistory', onPrivateHistory);
+      socket.off('privateMessage', onPrivateMessage);
+      socket.off('messageDeleted', onMessageDeleted);
+      socket.off('messagesCleared', onMessagesCleared);
+      socket.off('user_banned', onUserBanned);
     };
   }, [isOpen, loggedInUser]);
 
@@ -627,6 +662,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
         setLoggedInUser(data.username);
         setUserAvatar(data.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${data.username}`);
         setUserJoinedAt(data.created_at || new Date().toISOString());
+        window.dispatchEvent(new CustomEvent('chat_auth_sync', { detail: { username: data.username, avatar: data.avatar_url, joinedAt: data.created_at, isAdmin: data.role === 'admin' } }));
         setLoginFailed(false);
         
         // Senior Dev: If this is a staff account, sync the token to admin_token storage 
@@ -664,6 +700,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     setUserAvatar(null);
     setIsAdmin(false);
     setUserJoinedAt(null);
+    window.dispatchEvent(new CustomEvent('chat_auth_sync', { detail: null }));
     setAuthMode('login');
     setPrivateMessages([]);
     setActiveDmUser(null);
@@ -975,6 +1012,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     const newBlocked = [...new Set([...blockedUsers, username])];
     setBlockedUsers(newBlocked);
     localStorage.setItem('dejavu_blocked_users', JSON.stringify(newBlocked));
+    window.dispatchEvent(new CustomEvent('chat_block_sync', { detail: newBlocked }));
     toast.success(`User blocked. You will no longer see messages from ${username}.`);
   };
 
@@ -1007,8 +1045,18 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
   const handleUnblockAll = () => {
     setBlockedUsers([]);
     localStorage.removeItem('dejavu_blocked_users');
+    window.dispatchEvent(new CustomEvent('chat_block_sync', { detail: [] }));
     toast.success('Block list cleared');
   };
+
+  
+  useEffect(() => {
+    const handleBlockSync = (e: any) => {
+      setBlockedUsers(e.detail);
+    };
+    window.addEventListener('chat_block_sync', handleBlockSync);
+    return () => window.removeEventListener('chat_block_sync', handleBlockSync);
+  }, []);
 
   const visibleMessages = useMemo(() => 
     messages.filter(msg => !blockedUsers.includes(msg.user)),
@@ -1017,30 +1065,32 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
   return (
     <>
       <AnimatePresence>
-        {isOpen && (
+        {(isOpen || embedded) && (
         <>
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10100]"
-          />
+          {!embedded && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={onClose}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10100]"
+            />
+          )}
           <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            drag="x"
+            initial={embedded ? false : { x: '100%' }}
+            animate={embedded ? false : { x: 0 }}
+            exit={embedded ? false : { x: '100%' }}
+            drag={embedded ? false : "x"}
             dragConstraints={{ left: 0, right: 0 }}
             dragElastic={{ left: 0, right: 1 }}
             onDragEnd={(_, info) => {
-              if (info.offset.x > 80 || info.velocity.x > 400) onClose();
+              if (!embedded && (info.offset.x > 80 || info.velocity.x > 400)) onClose();
             }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`fixed top-0 right-0 h-full w-full max-w-md bg-dark-bg/95 backdrop-blur-2xl border-l z-[10101] shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col touch-pan-y ${isLightMode ? 'border-black/10' : 'border-white/10'}`}
+            className={embedded ? `h-full w-full flex flex-col` : `fixed top-0 right-0 h-full w-full max-w-md bg-dark-bg/95 backdrop-blur-2xl border-l z-[10101] shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col touch-pan-y ${isLightMode ? 'border-black/10' : 'border-white/10'}`}
           >
             {/* Drag & Drop Media Overlay */}
             {isDragging && (
@@ -1137,13 +1187,15 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                     />
                   </button>
                 )}
-                <button 
-                  onClick={onClose}
-                  id="chat-close-btn"
-                  className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                {!embedded && (
+                  <button 
+                    onClick={onClose}
+                    id="chat-close-btn"
+                    className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1223,7 +1275,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                                     setActiveDmUser(msg.user);
                                     setChatTab('private');
                                   }}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity text-[8px] bg-neon-purple/20 text-neon-purple/80 hover:bg-neon-purple hover:text-white px-1.5 py-0.5 rounded border border-neon-purple/30 font-black uppercase tracking-tighter cursor-pointer"
+                                  className="text-[8px] bg-neon-purple/20 text-neon-purple/80 hover:bg-neon-purple hover:text-white px-1.5 py-0.5 rounded border border-neon-purple/30 font-black uppercase tracking-tighter cursor-pointer transition-all"
                                   title="Send Private Message"
                                 >
                                   Message
@@ -1232,7 +1284,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                               {loggedInUser && msg.user !== loggedInUser && (
                                 <button 
                                   onClick={() => handleBlockUser(msg.user)}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity text-[8px] bg-red-500/10 text-red-500/60 hover:text-red-500 px-1.5 py-0.5 rounded border border-red-500/20 font-black uppercase tracking-tighter cursor-pointer"
+                                  className="text-[8px] bg-red-500/10 text-red-500/60 hover:text-red-500 px-1.5 py-0.5 rounded border border-red-500/20 font-black uppercase tracking-tighter cursor-pointer transition-all"
                                   title="Block User"
                                 >
                                   Block
@@ -1241,7 +1293,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                               {isAdmin && msg.user !== loggedInUser && (
                                 <button 
                                   onClick={() => handleBanUser(msg.user)}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity text-[8px] bg-red-600 text-white hover:bg-red-500 px-1.5 py-0.5 rounded font-black uppercase tracking-tighter flex items-center gap-1 cursor-pointer"
+                                  className="text-[8px] bg-red-600 text-white hover:bg-red-500 px-1.5 py-0.5 rounded font-black uppercase tracking-tighter flex items-center gap-1 cursor-pointer transition-all"
                                   title="Global Ban"
                                 >
                                   <ShieldAlert className="w-2 h-2" />
@@ -1560,7 +1612,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                       </div>
 
                       {searchUserQuery.trim() && (
-                        <div className={`border rounded-xl p-2 max-h-48 overflow-y-auto space-y-1 ${isLightMode ? 'bg-white border-black/10' : 'bg-black/60 border-white/10'}`}>
+                        <div className={`border rounded-xl p-2 max-h-48 overflow-y-auto space-y-1 ${isLightMode ? 'bg-[#ffffff] border-black/10' : 'bg-black/60 border-white/10'}`}>
                           {allUsers.filter(u => u.username !== loggedInUser && u.username.toLowerCase().includes(searchUserQuery.toLowerCase())).length === 0 ? (
                             <p className="text-center text-[10px] uppercase font-black tracking-widest text-white/30 py-3">No matching users found</p>
                           ) : (
@@ -2087,7 +2139,7 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                   <div className="flex-1 overflow-y-auto space-y-6 pr-1 scrollbar-thin text-left">
                     {/* User Info Card */}
                     <div className={`rounded-2xl p-4 border flex items-center space-x-4 ${isLightMode ? 'bg-black/5 border-black/10' : 'bg-white/5 border-white/10'}`}>
-                      <div className={`w-16 h-16 rounded-2xl overflow-hidden border shrink-0 relative group ${isLightMode ? 'border-black/10 bg-white' : 'border-neon-purple/30 bg-black/40'}`}>
+                      <div className={`w-16 h-16 rounded-2xl overflow-hidden border shrink-0 relative group ${isLightMode ? 'border-black/10 bg-[#ffffff]' : 'border-neon-purple/30 bg-black/40'}`}>
                         <img
                           src={userAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${loggedInUser}`}
                           alt={loggedInUser}

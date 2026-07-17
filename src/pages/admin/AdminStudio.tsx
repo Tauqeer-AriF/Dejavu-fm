@@ -305,6 +305,8 @@ const getThreadUserAndKey = (
   return { user: msg.user, key: msg.user.toLowerCase() };
 };
 
+import { PremiumLoader } from "../../components/PremiumLoader";
+
 export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   const { isLightMode } = useLogo();
   const { showConfirm } = useModal();
@@ -2381,30 +2383,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     );
   };
 
-  if (isInitialLoading) {
-    return (
-      <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center font-sans transition-colors duration-300 ${studioTheme === 'light' ? 'bg-[#f3f4f6] text-[#111827]' : 'bg-[#070913] text-white'}`}>
-        <div className="relative flex items-center justify-center w-24 h-24">
-          <div className="absolute inset-0 rounded-full bg-neon-purple/20 blur-xl animate-pulse" />
-          <div className="absolute w-20 h-20 rounded-full border-2 border-t-neon-purple border-r-transparent border-b-transparent border-l-transparent animate-spin" style={{ animationDuration: '1s' }} />
-          <div className="absolute w-24 h-24 rounded-full border-2 border-b-neon-blue border-l-transparent border-t-transparent border-r-transparent animate-spin" style={{ animationDuration: '1.5s', animationDirection: 'reverse' }} />
-          <div className={`z-10 flex items-center justify-center w-16 h-16 rounded-full border shadow-[0_0_20px_rgba(176,38,255,0.3)] ${studioTheme === 'light' ? 'bg-white border-black/10' : 'bg-[#0D0F1D] border-white/10'}`}>
-            <Mic className="w-6 h-6 text-neon-purple animate-pulse" />
-          </div>
-        </div>
-        <div className="mt-8 text-center space-y-2">
-          <h2 className={`text-sm font-black font-display uppercase tracking-[0.25em] ${studioTheme === 'light' ? 'text-black/80' : 'text-white/90'}`}>DEJAVU FM STUDIO</h2>
-          <div className="flex items-center justify-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span className={`text-[10px] uppercase tracking-[0.15em] font-mono ${studioTheme === 'light' ? 'text-black/40' : 'text-white/40'}`}>Initializing Stream Desk</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (isInitialLoading) return <PremiumLoader onComplete={() => setIsInitialLoading(false)} />;
 
   return (
     <div className={`w-full h-screen max-h-screen overflow-hidden ${studioTheme === 'light' ? 'admin-light-mode' : ''}`}>
