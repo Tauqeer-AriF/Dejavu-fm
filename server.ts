@@ -265,7 +265,7 @@ async function startServer() {
         return {
           ...m,
           user: m.sender,
-          avatar_url: avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${m.sender}`
+          avatar_url: avatar_url || m.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${m.sender}`
         };
       });
       console.log(`[Chat] Loaded ${chatHistory.length} messages from database.`);
@@ -416,12 +416,12 @@ async function startServer() {
       ...msg, 
       id: crypto.randomUUID(),
       timestamp: Date.now(),
-      avatar_url: avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${msg.user}`
+      avatar_url: msg.avatar_url || avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${msg.user}`
     };
 
     try {
-      db.prepare("INSERT INTO public_messages (id, sender, text, imageUrl, imageName, audioUrl, audioName, videoUrl, videoName, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-        .run(newMsg.id, newMsg.user, newMsg.text || null, newMsg.imageUrl || null, newMsg.imageName || null, newMsg.audioUrl || null, newMsg.audioName || null, newMsg.videoUrl || null, newMsg.videoName || null, newMsg.timestamp);
+      db.prepare("INSERT INTO public_messages (id, sender, text, imageUrl, imageName, audioUrl, audioName, videoUrl, videoName, timestamp, avatar_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        .run(newMsg.id, newMsg.user, newMsg.text || null, newMsg.imageUrl || null, newMsg.imageName || null, newMsg.audioUrl || null, newMsg.audioName || null, newMsg.videoUrl || null, newMsg.videoName || null, newMsg.timestamp, newMsg.avatar_url);
       emitChatRoomCounts();
     } catch (err) {
       console.error("Failed to save public message:", err);
@@ -908,27 +908,38 @@ async function startServer() {
 
   // Background task to reset shoutouts when DJ changes
   let lastScheduledDjId: string | null = null;
-  const CHECK_INTERVAL = 30000; // Check every 30 seconds
+  const CHECK_INTERVAL = 5000; // Check every 5 seconds for responsive takeover
 
   setInterval(() => {
-    if (!db.open) return;
+    if (!db || !db.open) return;
     try {
       const now = new Date();
       const dayOfWeek = now.getDay(); 
+      const previousDay = (dayOfWeek + 6) % 7;
       const time = now.toTimeString().split(' ')[0].substring(0, 5);
 
-      const currentSlot = db.prepare("SELECT dj_id FROM schedule WHERE day_of_week = ? AND start_time <= ? AND end_time > ?")
-        .get(dayOfWeek, time, time) as { dj_id: string } | undefined;
+      // Robust check handling midnight crossing schedule slots
+      const currentSlot = db.prepare(`
+        SELECT dj_id FROM schedule
+        WHERE (
+          day_of_week = ? AND start_time <= ? AND (end_time > ? OR end_time <= start_time)
+        ) OR (
+          day_of_week = ? AND end_time <= start_time AND end_time > ?
+        )
+        ORDER BY start_time DESC LIMIT 1
+      `).get(dayOfWeek, time, time, previousDay, time) as { dj_id: any } | undefined;
 
-      const currentDjId = currentSlot?.dj_id || null;
+      const currentDjId = currentSlot ? String(currentSlot.dj_id) : null;
 
-      if (currentDjId !== lastScheduledDjId && lastScheduledDjId !== null) {
+      if (lastScheduledDjId === null) {
+        // Initialize on first check so we don't clear right after server boots
+        lastScheduledDjId = currentDjId;
+      } else if (currentDjId !== lastScheduledDjId) {
         console.log(`[Shift Change] DJ changed from ${lastScheduledDjId} to ${currentDjId}. Clearing shoutouts.`);
         db.prepare("DELETE FROM shoutouts").run();
         io.emit('shoutouts_cleared');
+        lastScheduledDjId = currentDjId;
       }
-      
-      lastScheduledDjId = currentDjId;
     } catch (err) {
       console.error("[Shift Check Cache Error]", err);
     }

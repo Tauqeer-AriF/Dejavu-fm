@@ -36,7 +36,7 @@ export function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; 
     { name: "Media", path: "/admin/media", icon: Video },
     { name: "Advanced", path: "/admin/advanced", icon: Ghost },
     { name: "My Profile", path: "/admin/profile", icon: User },
-    { name: "Interaction", path: "/admin/shoutouts", icon: MessageSquare },
+    { name: "Interactions", path: "/admin/shoutouts", icon: MessageSquare },
     { name: "Agency", path: "/admin/bookings", icon: Calendar },
     { name: "Branding", path: "/admin/branding", icon: HomeIcon },
     { name: "DJs", path: "/admin/djs", icon: Users },
@@ -53,24 +53,16 @@ export function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; 
   ];
 
   if (!isAdminUser) {
-    // 1. Filter out tabs that strictly require the 'admin' role
+    // DJs/non-admins only see Live Tools, Interactions, and My Profile
     navs = navs.filter(n =>
-      n.name !== "Settings" &&
-      n.name !== "Advanced" &&
-      n.name !== "Branding" &&
-      n.name !== "Admin Users" &&
-      n.name !== "Chat Users" &&
-      n.name !== "Chat Settings" &&
-      n.name !== "Audit Logs" &&
-      n.name !== "Backup" &&
-      n.name !== "API Keys"
+      n.name === "Live Tools" ||
+      n.name === "Interactions" ||
+      n.name === "My Profile"
     );
 
-    // 2. Apply dynamic feature flags only for non-admins to ensure admins have full control
+    // Apply dynamic feature flags
     if (features.feat_live_tools === '0') navs = navs.filter(n => n.name !== 'Live Tools');
-    if (features.feat_shoutouts === '0') navs = navs.filter(n => n.name !== 'Interaction');
-    if (features.feat_bookings === '0') navs = navs.filter(n => n.name !== 'Agency');
-    if (features.feat_chat === '0') navs = navs.filter(n => n.name !== 'Chat Users');
+    if (features.feat_shoutouts === '0') navs = navs.filter(n => n.name !== 'Interactions');
   }
 
   return (

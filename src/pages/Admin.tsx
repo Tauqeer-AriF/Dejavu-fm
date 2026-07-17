@@ -127,6 +127,9 @@ export default function Admin() {
 
   // Render the Studio page as a full-screen, standalone component if the path matches
   if (location.pathname.startsWith('/admin/studio')) {
+    if (userRole !== 'admin') {
+      return <Navigate to="/admin/live-tools" replace />;
+    }
     return (
       <Suspense fallback={<LoadingFallback />}>
         <AdminStudio onLogout={handleLogout} />
@@ -159,14 +162,16 @@ export default function Admin() {
           </motion.div>
 
           <div className="flex items-center gap-3">
-            <Link
-              to="/admin/studio"
-              className="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-full border border-neon-purple/30 bg-neon-purple/10 text-neon-purple font-bold uppercase text-xs tracking-widest transition hover:bg-neon-purple hover:text-white hover:shadow-lg hover:shadow-neon-purple/20"
-              title="Go to Live Studio Tools"
-            >
-              <Radio className="w-4 h-4" />
-              Studio
-            </Link>
+            {userRole === 'admin' && (
+              <Link
+                to="/admin/studio"
+                className="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-full border border-neon-purple/30 bg-neon-purple/10 text-neon-purple font-bold uppercase text-xs tracking-widest transition hover:bg-neon-purple hover:text-white hover:shadow-lg hover:shadow-neon-purple/20"
+                title="Go to Live Studio Tools"
+              >
+                <Radio className="w-4 h-4" />
+                Studio
+              </Link>
+            )}
             <button
               type="button"
               onClick={toggleTheme}
@@ -192,15 +197,15 @@ export default function Admin() {
               >
                 <Suspense fallback={<LoadingFallback />}>
                   <Routes location={location}>
-                    <Route path="/" element={<AdminAnalytics isAdminUser={userRole === 'admin'} />} />
+                    <Route path="/" element={userRole === 'admin' ? <AdminAnalytics isAdminUser={true} /> : <Navigate to="/admin/live-tools" replace />} />
                     <Route path="/live-tools" element={<AdminLiveTools />} />
-                    <Route path="/djs" element={<AdminDJs />} />
-                    <Route path="/features" element={<AdminFeatures />} />
-                    <Route path="/popup" element={<AdminPopup />} />
-                    <Route path="/ads" element={<AdminAds />} />
+                    <Route path="/djs" element={userRole === 'admin' ? <AdminDJs /> : <Navigate to="/admin/live-tools" replace />} />
+                    <Route path="/features" element={userRole === 'admin' ? <AdminFeatures /> : <Navigate to="/admin/live-tools" replace />} />
+                    <Route path="/popup" element={userRole === 'admin' ? <AdminPopup /> : <Navigate to="/admin/live-tools" replace />} />
+                    <Route path="/ads" element={userRole === 'admin' ? <AdminAds /> : <Navigate to="/admin/live-tools" replace />} />
                     <Route path="/shoutouts" element={<AdminShoutouts isAdminUser={userRole === 'admin'} />} />
-                    <Route path="/bookings" element={<AdminBookings />} />
-                    <Route path="/schedule" element={<AdminSchedule />} />
+                    <Route path="/bookings" element={userRole === 'admin' ? <AdminBookings /> : <Navigate to="/admin/live-tools" replace />} />
+                    <Route path="/schedule" element={userRole === 'admin' ? <AdminSchedule /> : <Navigate to="/admin/live-tools" replace />} />
                     <Route path="/profile" element={<AdminProfile />} />
 
                     <Route path="/settings" element={userRole === 'admin' ? <AdminSettings /> : <Navigate to="/admin" replace />} />

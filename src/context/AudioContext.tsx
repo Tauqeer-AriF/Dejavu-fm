@@ -29,6 +29,8 @@ interface AudioStore {
     instagram?: string;
     soundcloud?: string;
     mixcloud?: string;
+    startTime?: string;
+    endTime?: string;
   } | null;
   isCinematicOpen: boolean;
   
@@ -46,6 +48,8 @@ interface AudioStore {
     instagram?: string;
     soundcloud?: string;
     mixcloud?: string;
+    startTime?: string;
+    endTime?: string;
   } | null) => void;
   toggleCinematic: () => void;
   getAnalyser: () => AnalyserNode | null;

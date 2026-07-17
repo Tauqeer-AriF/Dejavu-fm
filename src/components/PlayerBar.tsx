@@ -144,9 +144,7 @@ export function PlayerBar() {
   const { isPlaying, togglePlay, volume, setVolume, onAirInfo, toggleCinematic } = useAudio();
   const { logoUrl, isLightMode, settings, resolveDjImage } = useLogo();
   
-  const [listeners, setListeners] = useState(0);
   const [isMinimized, setIsMinimized] = useState(true);
-  const socketRef = useRef<any>(null);
 
   const [dragConstraints, setDragConstraints] = useState({ left: -800, right: 50, top: -600, bottom: 50 });
 
@@ -162,21 +160,6 @@ export function PlayerBar() {
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
-    const socket = (window as any).socket;
-    if (!socket) return;
-    
-    socketRef.current = socket;
-    const handler = (count: number) => {
-      setListeners(count);
-    };
-    
-    socket.on('onlineCount', handler);
-    return () => {
-      socket.off('onlineCount', handler);
-    };
   }, []);
 
   return (
@@ -226,11 +209,6 @@ export function PlayerBar() {
                   <p className="text-white/60 text-[8px] md:text-xs uppercase tracking-[0.2em] font-black flex items-center shrink-0">
                     <span className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full mr-2 glow-box shrink-0 ${isPlaying ? 'bg-neon-blue animate-pulse' : 'bg-white/20'}`}></span>
                     <span className="truncate">{onAirInfo ? 'Broadcasting Live' : 'Auto-Mix Mode'}</span>
-                  </p>
-                  <div className="h-3 w-[1px] bg-white/10 hidden sm:block"></div>
-                  <p className="text-neon-purple text-[8px] md:text-xs uppercase tracking-[0.2em] font-black items-center hidden sm:flex">
-                    <Monitor className="w-3 h-3 mr-1.5" />
-                    {listeners} Listeners
                   </p>
                 </div>
                 

@@ -651,6 +651,8 @@ function MainLayout() {
       });
 
       if (onAir) {
+        const start = convertToLocalTime(onAir.day_of_week, onAir.start_time);
+        const end = convertToLocalTime(onAir.day_of_week, onAir.end_time);
         setOnAirInfo({
           djName: onAir.dj_name,
           showName: onAir.show_name,
@@ -658,7 +660,9 @@ function MainLayout() {
           djBio: onAir.dj_bio,
           instagram: onAir.instagram,
           soundcloud: onAir.soundcloud,
-          mixcloud: onAir.mixcloud
+          mixcloud: onAir.mixcloud,
+          startTime: start.timeStr,
+          endTime: end.timeStr
         });
         setCurrentTrack(`${onAir.dj_name} - ${onAir.show_name}`);
       } else {

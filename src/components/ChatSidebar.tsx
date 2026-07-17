@@ -148,7 +148,6 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
   const [loginFailed, setLoginFailed] = useState(false);
   const [showAuthPassword, setShowAuthPassword] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
-  const [listeners, setListeners] = useState(0);
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [userJoinedAt, setUserJoinedAt] = useState<string | null>(null);
   const [showProfile, setShowProfile] = useState(false);
@@ -456,10 +455,6 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
       }
     });
 
-    socket.on('onlineCount', (count: number) => {
-      setListeners(count);
-    });
-
     socket.on('user_banned', ({ email }: { email: string }) => {
       setMessages(prev => prev.filter(m => m.user !== email));
       if (loggedInUser === email) {
@@ -475,7 +470,6 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
       socket.off('privateMessage');
       socket.off('messageDeleted');
       socket.off('messagesCleared');
-      socket.off('onlineCount');
       socket.off('user_banned');
     };
   }, [isOpen, loggedInUser]);
@@ -1075,10 +1069,6 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                 <div>
                   <h3 className="font-bold text-base sm:text-lg leading-tight uppercase tracking-widest">Chat Room</h3>
                   <div className="flex items-center gap-2 sm:gap-4">
-                    <div className={`flex items-center text-[10px] uppercase tracking-widest font-black ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>
-                      <span className="w-1.5 h-1.5 rounded-full bg-neon-blue mr-2 animate-pulse"></span>
-                      {listeners} Online now
-                    </div>
                     {blockedUsers.length > 0 && (
                       <button 
                         onClick={handleUnblockAll}
@@ -1266,9 +1256,28 @@ export function ChatSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                         )}
                         {msg.isSystem ? (
                           <div className="space-y-2">
-                            <div className="flex items-center space-x-2">
-                               <span className="w-1.5 h-1.5 bg-neon-pink rounded-full animate-pulse"></span>
-                               <p className="text-sm font-bold text-neon-pink break-words leading-relaxed">{msg.text}</p>
+                            <div className="flex items-start gap-3">
+                              <div className={`w-8 h-8 rounded-lg overflow-hidden border shrink-0 ${isLightMode ? 'border-neon-pink/30 bg-neon-pink/5' : 'border-neon-pink/30 bg-neon-pink/10'} shadow-[0_0_10px_rgba(255,20,147,0.2)]`}>
+                                <img 
+                                  src={getSecureImageUrl((msg as any).avatar_url) || `/icon.svg`}
+                                  alt={msg.user || "Studio"}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0 pt-0.5">
+                                <div className="flex items-baseline justify-between mb-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-black text-neon-pink text-xs uppercase tracking-widest flex items-center gap-1.5">
+                                      <span className="w-1.5 h-1.5 bg-neon-pink rounded-full animate-pulse"></span>
+                                      {msg.user || "System Broadcast"}
+                                    </span>
+                                  </div>
+                                  <span className={`text-[9px] font-bold uppercase ${isLightMode ? 'text-black/30' : 'text-white/20'}`}>
+                                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                                <p className="text-sm font-bold text-neon-pink break-words leading-relaxed mt-1">{msg.text}</p>
+                              </div>
                             </div>
                             {msg.imageUrl && (
                               <div className="relative max-w-full rounded-lg overflow-hidden border border-neon-pink/20 bg-black/40">

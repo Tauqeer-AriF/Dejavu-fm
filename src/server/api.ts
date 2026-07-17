@@ -60,6 +60,46 @@ apiRouter.post("/admin/settings/secret", authMiddleware, authorizeRole('admin'),
   res.json({ success: true });
 });
 
+apiRouter.get("/admin/studio-settings", authMiddleware, authorizeRole('admin'), (req, res) => {
+  try {
+    const keys = [
+      'studio_connected_platforms',
+      'studio_platform_configs',
+      'dejavu_studio_custom_replies',
+      'studio_pinned_threads'
+    ];
+    const placeholders = keys.map(() => '?').join(',');
+    const rows = db.prepare(`SELECT key, value FROM settings WHERE key IN (${placeholders})`).all(...keys) as {key: string, value: string}[];
+    const settings = rows.reduce((acc, row) => {
+      try {
+        acc[row.key] = JSON.parse(row.value);
+      } catch (e) {
+        acc[row.key] = row.value;
+      }
+      return acc;
+    }, {} as any);
+    res.json(settings);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.post("/admin/studio-settings", authMiddleware, authorizeRole('admin'), (req, res) => {
+  try {
+    const settings = req.body;
+    const stmt = db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
+    const transaction = db.transaction((settingsObj) => {
+      for (const [key, value] of Object.entries(settingsObj)) {
+        stmt.run(key, typeof value === 'string' ? value : JSON.stringify(value));
+      }
+    });
+    transaction(settings);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Fallback secret only for development
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET && process.env.NODE_ENV === "production") {
@@ -1277,13 +1317,25 @@ apiRouter.delete("/admin/analytics/purge", authorizeRole('admin'), (req: any, re
 });
 
 apiRouter.get("/admin/profile", (req: any, res: any) => {
-  const admin = db.prepare("SELECT username, bio, photo_url FROM admins WHERE username = ?").get(req.user.username);
+  const admin = db.prepare("SELECT username, bio, photo_url, role, email FROM admins WHERE username = ?").get(req.user.username);
   res.json(admin);
 });
 
 apiRouter.put("/admin/profile", (req: any, res: any) => {
-  const { bio, photo_url } = req.body;
-  db.prepare("UPDATE admins SET bio=?, photo_url=? WHERE username=?").run(bio || "", photo_url || "", req.user.username);
+  const { bio, photo_url, email, password } = req.body;
+  
+  if (password) {
+    if (password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+    const hash = bcrypt.hashSync(password, 10);
+    db.prepare("UPDATE admins SET bio=?, photo_url=?, email=?, password_hash=? WHERE username=?")
+      .run(bio || "", photo_url || "", email || "", hash, req.user.username);
+  } else {
+    db.prepare("UPDATE admins SET bio=?, photo_url=?, email=? WHERE username=?")
+      .run(bio || "", photo_url || "", email || "", req.user.username);
+  }
+  logAction(req, 'UPDATE_PROFILE', 'admins', req.user.username);
   res.json({ success: true });
 });
 

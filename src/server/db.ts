@@ -403,6 +403,7 @@ export function initDb() {
   runMigration('private_messages_table', "CREATE TABLE IF NOT EXISTS private_messages (id TEXT PRIMARY KEY, sender TEXT NOT NULL, recipient TEXT NOT NULL, text TEXT, imageUrl TEXT, imageName TEXT, audioUrl TEXT, audioName TEXT, timestamp INTEGER NOT NULL); CREATE INDEX IF NOT EXISTS idx_private_messages_participants ON private_messages(sender, recipient);");
   runMigration('private_messages_video_fields', "ALTER TABLE private_messages ADD COLUMN videoUrl TEXT; ALTER TABLE private_messages ADD COLUMN videoName TEXT;");
   runMigration('public_messages_table_v1', "CREATE TABLE IF NOT EXISTS public_messages (id TEXT PRIMARY KEY, sender TEXT NOT NULL, text TEXT, imageUrl TEXT, imageName TEXT, audioUrl TEXT, audioName TEXT, videoUrl TEXT, videoName TEXT, timestamp INTEGER NOT NULL); CREATE INDEX IF NOT EXISTS idx_public_messages_timestamp ON public_messages(timestamp);");
+  runMigration('public_messages_add_avatar_url', "ALTER TABLE public_messages ADD COLUMN avatar_url TEXT;");
   runMigration('room_messages_table_v1', "CREATE TABLE IF NOT EXISTS room_messages (id TEXT PRIMARY KEY, room_id TEXT NOT NULL, sender_name TEXT, text TEXT, image_url TEXT, audio_url TEXT, video_url TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP); CREATE INDEX IF NOT EXISTS idx_room_messages_room_id ON room_messages(room_id);");
   try {
     db.exec("UPDATE users SET email = username WHERE email IS NULL AND username LIKE '%@%'");

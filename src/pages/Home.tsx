@@ -138,23 +138,6 @@ function HeroVisualizer({ isPlaying, isLightMode }: { isPlaying: boolean; isLigh
 
 export default function Home() {
   const { togglePlay, isPlaying, onAirInfo } = useAudio();
-  const [listeners, setListeners] = useState(0);
-  const socketRef = useRef<any>(null);
-
-  useEffect(() => {
-    const socket = (window as any).socket;
-    if (!socket) return;
-    
-    socketRef.current = socket;
-    const handler = (count: number) => {
-      setListeners(count);
-    };
-    
-    socket.on('onlineCount', handler);
-    return () => {
-      socket.off('onlineCount', handler);
-    };
-  }, []);
 
   const handleMobileShoutout = () => {
     window.dispatchEvent(new CustomEvent('open-shoutout'));
@@ -338,10 +321,12 @@ export default function Home() {
                 isLightMode ? 'text-black/50' : 'text-white/50'
               }`}>
                 <span className="flex items-center space-x-2">
-                  <div className={`w-1.5 h-1.5 rounded-full ${isLightMode ? 'bg-black/40' : 'bg-white/40'}`}></div>
-                  <span>HD Feed</span>
+                  <div className={`w-1.5 h-1.5 rounded-full ${onAirInfo ? 'bg-neon-pink animate-pulse' : (isLightMode ? 'bg-black/40' : 'bg-white/40')}`}></div>
+                  <span>{onAirInfo?.startTime ? `START: ${onAirInfo.startTime}` : 'HD Feed'}</span>
                 </span>
-                <span className="text-neon-blue drop-shadow-[0_0_5px_rgba(0,210,255,0.5)]">LIVE / 320K</span>
+                <span className="text-neon-blue drop-shadow-[0_0_5px_rgba(0,210,255,0.5)]">
+                  {onAirInfo?.endTime ? `END: ${onAirInfo.endTime}` : 'LIVE / 320K'}
+                </span>
               </div>
               <div className={`h-[1px] w-full my-2 ${isLightMode ? 'bg-black/10' : 'bg-white/10'}`}></div>
               <div className={`text-[15px] sm:text-lg md:text-xl font-bold uppercase tracking-tight truncate ${
@@ -463,9 +448,6 @@ export default function Home() {
               <div className="flex items-center space-x-3">
                 <span className="w-1.5 h-1.5 bg-neon-purple rounded-full animate-pulse"></span>
                 <span className={`text-[10px] font-black uppercase tracking-[0.4em] ${isLightMode ? 'text-black/30' : 'text-white/30'}`}>Live on {settings?.app_name || "DEJAVU FM"}</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>{listeners} Global Listeners</span>
               </div>
               <div className="flex items-center space-x-3">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neon-blue">Digital Signal Optimal</span>

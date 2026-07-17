@@ -537,7 +537,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   const handleTogglePlatform = (platform: string) => {
     setConnectedPlatforms(prev => {
       const updated = { ...prev, [platform]: !prev[platform] };
-      localStorage.setItem('studio_connected_platforms', JSON.stringify(updated));
+      localStorage.setItem('studio_connected_platforms', JSON.stringify(updated)); syncSettingsToApi({ studio_connected_platforms: updated });
       toast.success(`${platform.toUpperCase()} connection state updated.`);
       return updated;
     });
@@ -546,7 +546,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   const handleSavePlatformConfig = (platform: string, config: Record<string, string>) => {
     setPlatformConfigs(prev => {
       const updated = { ...prev, [platform]: { ...prev[platform], ...config } };
-      localStorage.setItem('studio_platform_configs', JSON.stringify(updated));
+      localStorage.setItem('studio_platform_configs', JSON.stringify(updated)); syncSettingsToApi({ studio_platform_configs: updated });
       return updated;
     });
   };
@@ -1326,6 +1326,40 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     };
   }, [adminUsername]);
 
+  
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const token = localStorage.getItem("admin_token");
+        const res = await fetch("/api/admin/studio-settings", {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.studio_connected_platforms) {
+            setConnectedPlatforms(data.studio_connected_platforms);
+            localStorage.setItem('studio_connected_platforms', JSON.stringify(data.studio_connected_platforms));
+          }
+          if (data.studio_platform_configs) {
+            setPlatformConfigs(data.studio_platform_configs);
+            localStorage.setItem('studio_platform_configs', JSON.stringify(data.studio_platform_configs));
+          }
+          if (data.dejavu_studio_custom_replies) {
+            setCustomReplies(data.dejavu_studio_custom_replies);
+            localStorage.setItem('dejavu_studio_custom_replies', JSON.stringify(data.dejavu_studio_custom_replies));
+          }
+          if (data.studio_pinned_threads) {
+            setPinnedThreads(data.studio_pinned_threads);
+            localStorage.setItem('studio_pinned_threads', JSON.stringify(data.studio_pinned_threads));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load studio settings from API", err);
+      }
+    };
+    fetchSettings();
+  }, []);
+
   useEffect(() => {
     try {
       localStorage.setItem('dejavu_studio_threads', JSON.stringify(threads));
@@ -1336,7 +1370,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem('studio_pinned_threads', JSON.stringify(pinnedThreads));
+      localStorage.setItem('studio_pinned_threads', JSON.stringify(pinnedThreads)); syncSettingsToApi({ studio_pinned_threads: pinnedThreads });
     } catch (error) {
       console.warn("Failed to save pinned threads to local storage", error);
     }
@@ -1344,11 +1378,28 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem('dejavu_studio_custom_replies', JSON.stringify(customReplies));
+      localStorage.setItem('dejavu_studio_custom_replies', JSON.stringify(customReplies)); syncSettingsToApi({ dejavu_studio_custom_replies: customReplies });
     } catch (error) {
       console.warn("Failed to save custom replies to local storage", error);
     }
   }, [customReplies]);
+
+  
+  async function syncSettingsToApi(settingsObj: Record<string, any>) {
+    try {
+      const token = localStorage.getItem('admin_token');
+      await fetch('/api/admin/studio-settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(settingsObj)
+      });
+    } catch (e) {
+      console.warn("Failed to sync settings to API", e);
+    }
+  };
 
   const handleSelectUser = (user: string) => {
     setSelectedUser(user);
@@ -2648,7 +2699,8 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                   const isAdminReply = isSenderAdminMsg(msg.user);
                   return (
                     <div key={msg.id} className={`flex items-start gap-3 group/msg ${isAdminReply ? 'flex-row-reverse' : ''}`}>
-                      {!isAdminReply && <img src={msg.avatar} alt={msg.user} className="w-8 h-8 rounded-lg bg-white/5 border border-white/5 mt-0.5 object-cover" />}
+                      {isAdminReply && <img src={msg.avatar || studioImage || '/icon.svg'} alt={msg.user} className="w-8 h-8 rounded-lg bg-white/5 border border-neon-purple/50 mt-0.5 object-cover shadow-[0_0_10px_rgba(124,58,237,0.3)]" />}
+                      {!isAdminReply && <img src={msg.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${msg.user}`} alt={msg.user} className="w-8 h-8 rounded-lg bg-white/5 border border-white/5 mt-0.5 object-cover" />}
                       <div className={`max-w-lg space-y-1.5 ${isAdminReply ? 'text-right' : ''}`}>
                         <div className={`flex items-center gap-2 text-[10px] text-white/40 ${isAdminReply ? 'justify-end' : ''}`}>
                           <span className={`font-bold ${isAdminReply ? 'text-neon-purple' : (msg.type === 'shoutout' ? 'text-amber-400' : 'text-neon-blue')}`}>

@@ -584,7 +584,7 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
                   ) : (
                     <>
                       <Send className="w-4 h-4 relative z-10" />
-                      <span className="relative z-10">Transmit to Studio</span>
+                      <span className="relative z-10">Message Studio</span>
                     </>
                   )}
                 </motion.button>
