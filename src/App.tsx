@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { NavLink } from 'react-router-dom';
-import { Radio, Calendar, Podcast, Shield as AdminIcon, Headphones, Menu, X, Video, MessageSquare, Sun, Moon, FileText, ChevronDown, ExternalLink } from 'lucide-react';
+import { Radio, Calendar, Podcast, Shield as AdminIcon, Headphones, Menu, X, Video, MessageSquare, Sun, Moon, FileText, ChevronDown, ExternalLink, Info, Instagram, Twitter, Facebook, Youtube, Cloud, Music } from 'lucide-react';
 import { PlayerBar } from './components/PlayerBar';
 import { ChatSidebar } from './components/ChatSidebar';
 import { ShoutoutWidget } from './components/ShoutoutWidget';
@@ -219,6 +219,16 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                     <ExternalLink className="w-3 h-3 text-white/30" />
                   </a>
                   <Link 
+                    to="/about" 
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] text-white/70 hover:text-white hover:bg-white/10 transition-all group/item"
+                    onClick={() => setIsFeaturesOpen(false)}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center group-hover/item:bg-yellow-500/20 transition-colors">
+                      <Info className="w-4 h-4 text-yellow-400" />
+                    </div>
+                    About Station
+                  </Link>
+                  <Link 
                     to="/contact" 
                     className="flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] text-white/70 hover:text-white hover:bg-white/10 transition-all group/item"
                     onClick={() => setIsFeaturesOpen(false)}
@@ -295,10 +305,10 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                     subItems: [
                       { path: '/features', label: 'All Features', icon: <FileText className="w-4 h-4" /> },
                       { path: 'https://dejavufmstore.secure-decoration.com', label: 'Online Store', isExternal: true, icon: <ExternalLink className="w-4 h-4" /> },
+                      { path: '/about', label: 'About Station', icon: <Info className="w-4 h-4" /> },
                       { path: '/contact', label: 'Contact', icon: <MessageSquare className="w-4 h-4" /> },
                     ]
                   },
-                  { path: '/about', label: 'About' },
                 ].map((item: any, index) => (
                   <motion.div
                     key={item.label}
@@ -803,11 +813,40 @@ function MainLayout() {
 
       {!location.pathname.startsWith('/admin') && (
         <footer className="w-full max-w-7xl mx-auto p-4 md:p-8 pt-24 border-t border-white/5 relative flex flex-col md:flex-row items-center justify-between gap-10 text-white/40 text-sm mb-40 md:mb-32">
-          <div className="flex flex-wrap justify-center md:justify-start items-center gap-x-8 gap-y-6">
-            <Link to="/about" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">About</Link>
-            <Link to="/contact" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">Advertising</Link>
-            <Link to="/schedule" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">Schedule</Link>
-            <Link to="/features" className="hover:text-white transition-colors uppercase tracking-[0.2em] text-[10px] font-black">Features</Link>
+          <div className="flex flex-wrap justify-center md:justify-start items-center gap-4">
+            {settings?.social_instagram && (
+              <a href={settings.social_instagram} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="Instagram">
+                <Instagram className="w-4 h-4" />
+              </a>
+            )}
+            {settings?.social_twitter && (
+              <a href={settings.social_twitter} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="Twitter / X">
+                <Twitter className="w-4 h-4" />
+              </a>
+            )}
+            {settings?.social_facebook && (
+              <a href={settings.social_facebook} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="Facebook">
+                <Facebook className="w-4 h-4" />
+              </a>
+            )}
+            {settings?.social_youtube && (
+              <a href={settings.social_youtube} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="YouTube">
+                <Youtube className="w-4 h-4" />
+              </a>
+            )}
+            {settings?.social_soundcloud && (
+              <a href={settings.social_soundcloud} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="SoundCloud">
+                <Cloud className="w-4 h-4" />
+              </a>
+            )}
+            {settings?.social_mixcloud && (
+              <a href={settings.social_mixcloud} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="Mixcloud">
+                <Music className="w-4 h-4" />
+              </a>
+            )}
+            {!settings?.social_instagram && !settings?.social_twitter && !settings?.social_facebook && !settings?.social_youtube && !settings?.social_soundcloud && !settings?.social_mixcloud && (
+              <span className="text-[10px] uppercase tracking-[0.2em] opacity-40">Social profiles not configured</span>
+            )}
           </div>
           <div className="flex flex-col items-center md:items-end space-y-2 text-center md:text-right">
             <p className="font-black uppercase tracking-[0.2em] text-[10px]">© {new Date().getFullYear()} {appName}. All rights reserved.</p>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion, useAnimation, useMotionValue, useTransform } from 'motion/react';
+import { motion } from 'motion/react';
 import { RefreshCw, ArrowDown, Sparkles } from 'lucide-react';
 
 export function PullToRefresh() {
@@ -7,56 +7,59 @@ export function PullToRefresh() {
   const [pullProgress, setPullProgress] = useState(0); // 0 to 1
   
   const startYRef = useRef<number | null>(null);
+  const startXRef = useRef<number | null>(null);
   const currentYRef = useRef<number | null>(null);
   const isEligibleRef = useRef(false);
-  const touchIdRef = useRef<number | null>(null);
+  const pointerIdRef = useRef<number | null>(null);
 
   // Constants
   const TRIGGER_HEIGHT = 90; // Pull distance to trigger refresh (px)
   const MAX_PULL_HEIGHT = 160; // Max visual distance (px)
 
   useEffect(() => {
-    // Check if running on mobile/touch device
-    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    if (!isTouchDevice) return;
+    // Disable native overscroll bounce where supported, giving our custom refresh full control
+    document.body.style.overscrollBehaviorY = 'contain';
+    document.documentElement.style.overscrollBehaviorY = 'contain';
 
-    // We only enable pull-to-refresh when at the top of the document
-    const handleTouchStart = (e: TouchEvent) => {
-      // Only single touch
-      if (e.touches.length !== 1) return;
-      
+    const handleStart = (pageY: number, pageX: number, pointerId?: number) => {
       const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      // We only enable pull-to-refresh when at the top of the document
       if (scrollTop <= 5) {
         isEligibleRef.current = true;
-        const touch = e.touches[0];
-        startYRef.current = touch.pageY;
-        touchIdRef.current = touch.identifier;
+        startYRef.current = pageY;
+        startXRef.current = pageX;
+        currentYRef.current = pageY;
+        if (pointerId !== undefined) {
+          pointerIdRef.current = pointerId;
+        }
         setPullState('idle');
       } else {
         isEligibleRef.current = false;
       }
     };
 
-    const handleTouchMove = (e: TouchEvent) => {
-      if (!isEligibleRef.current || startYRef.current === null || touchIdRef.current === null) return;
-      
-      const touch = Array.from(e.touches).find(t => t.identifier === touchIdRef.current);
-      if (!touch) return;
+    const handleMove = (pageY: number, pageX: number) => {
+      if (!isEligibleRef.current || startYRef.current === null) return;
 
-      currentYRef.current = touch.pageY;
-      const distance = currentYRef.current - startYRef.current;
+      currentYRef.current = pageY;
+      const diffY = pageY - startYRef.current;
+      const diffX = pageX - (startXRef.current ?? pageX);
 
-      if (distance > 0) {
-        // User is pulling down
-        // Prevent default native overscroll refresh if possible
-        if (e.cancelable) {
-          e.preventDefault();
-        }
+      // Horizontal swipe cancels eligibility to avoid conflict with horizontal carousels or swipe features
+      if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 15) {
+        isEligibleRef.current = false;
+        return;
+      }
 
+      // Scrolling up/down-page cancels eligibility
+      if (diffY < -15) {
+        isEligibleRef.current = false;
+        return;
+      }
+
+      if (diffY > 0) {
         // Apply resistance curve to pull distance
-        // formula: actualDistance * (1 / (1 + actualDistance / constant))
-        const rawPull = distance;
-        const resistedPull = Math.min(MAX_PULL_HEIGHT, rawPull * (0.5 * (1 - rawPull / (MAX_PULL_HEIGHT * 2))));
+        const resistedPull = Math.min(MAX_PULL_HEIGHT, diffY * (0.5 * (1 - diffY / (MAX_PULL_HEIGHT * 2))));
         
         const progress = Math.min(1, resistedPull / TRIGGER_HEIGHT);
         setPullProgress(progress);
@@ -67,19 +70,19 @@ export function PullToRefresh() {
           setPullState('pulling');
         }
 
-        // Set CSS variable to dynamically pull the viewport or element down if we want
+        // Set CSS variable to dynamically pull the viewport or element down if needed
         document.documentElement.style.setProperty('--pwa-pull-distance', `${resistedPull}px`);
       }
     };
 
-    const handleTouchEnd = () => {
+    const handleEnd = (pageY: number) => {
       if (!isEligibleRef.current || startYRef.current === null) {
         cleanup();
         return;
       }
 
-      const distance = currentYRef.current && startYRef.current ? currentYRef.current - startYRef.current : 0;
-      const resistedPull = Math.min(MAX_PULL_HEIGHT, distance * (0.5 * (1 - distance / (MAX_PULL_HEIGHT * 2))));
+      const diffY = pageY - startYRef.current;
+      const resistedPull = Math.min(MAX_PULL_HEIGHT, diffY * (0.5 * (1 - diffY / (MAX_PULL_HEIGHT * 2))));
 
       if (resistedPull >= TRIGGER_HEIGHT) {
         triggerRefresh();
@@ -94,7 +97,7 @@ export function PullToRefresh() {
       // Animate to trigger position
       document.documentElement.style.setProperty('--pwa-pull-distance', `${TRIGGER_HEIGHT}px`);
       
-      // Try to trigger haptic feedback if supported (PWA/Android standard)
+      // Try to trigger haptic feedback if supported (PWA/Android/iOS standard)
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         try {
           navigator.vibrate([15]);
@@ -105,7 +108,6 @@ export function PullToRefresh() {
 
       // Perform a premium refresh after a brief delay for visual payoff
       setTimeout(() => {
-        // Clear history state to avoid reload loops, then force clean reload
         window.location.reload();
       }, 1000);
     };
@@ -119,22 +121,86 @@ export function PullToRefresh() {
 
     const cleanup = () => {
       startYRef.current = null;
+      startXRef.current = null;
       currentYRef.current = null;
       isEligibleRef.current = false;
-      touchIdRef.current = null;
+      pointerIdRef.current = null;
     };
 
-    window.addEventListener('touchstart', handleTouchStart, { passive: true });
-    // touchmove needs passive: false so we can e.preventDefault() to block native overscroll
-    window.addEventListener('touchmove', handleTouchMove, { passive: false });
-    window.addEventListener('touchend', handleTouchEnd, { passive: true });
-    window.addEventListener('touchcancel', handleTouchEnd, { passive: true });
+    // POINTER EVENTS (Unifies touch + mouse drags across Safari Desktop, Chrome, and simulation)
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.button !== 0 && e.pointerType === 'mouse') return;
+      handleStart(e.pageY, e.pageX, e.pointerId);
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (pointerIdRef.current !== null && e.pointerId !== pointerIdRef.current) return;
+      handleMove(e.pageY, e.pageX);
+    };
+
+    const onPointerUp = (e: PointerEvent) => {
+      if (pointerIdRef.current !== null && e.pointerId !== pointerIdRef.current) return;
+      handleEnd(e.pageY);
+    };
+
+    // TOUCH EVENTS (Specifically used to cancel Safari iOS native elastic rubber-band scrolls)
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      handleStart(touch.pageY, touch.pageX);
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!isEligibleRef.current || startYRef.current === null) return;
+      const touch = e.touches[0];
+      
+      const diffY = touch.pageY - startYRef.current;
+      if (diffY > 0) {
+        // We are pulling down at the very top of the scroll container, block native browser bounce/overscroll
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+      }
+      handleMove(touch.pageY, touch.pageX);
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (!isEligibleRef.current || startYRef.current === null) {
+        cleanup();
+        return;
+      }
+      const touch = e.touches[0] || e.changedTouches[0];
+      if (touch) {
+        handleEnd(touch.pageY);
+      } else {
+        cancelPull();
+      }
+    };
+
+    // Wire up events to window
+    window.addEventListener('pointerdown', onPointerDown, { passive: true });
+    window.addEventListener('pointermove', onPointerMove, { passive: true });
+    window.addEventListener('pointerup', onPointerUp, { passive: true });
+    window.addEventListener('pointercancel', onPointerUp, { passive: true });
+
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: false }); // MUST be passive: false to allow e.preventDefault()
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
+    window.addEventListener('touchcancel', onTouchEnd, { passive: true });
 
     return () => {
-      window.removeEventListener('touchstart', handleTouchStart);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleTouchEnd);
-      window.removeEventListener('touchcancel', handleTouchEnd);
+      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
+
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('touchcancel', onTouchEnd);
+
+      document.body.style.removeProperty('overscroll-behavior-y');
+      document.documentElement.style.removeProperty('overscroll-behavior-y');
       document.documentElement.style.removeProperty('--pwa-pull-distance');
     };
   }, []);

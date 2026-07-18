@@ -1940,7 +1940,8 @@ apiRouter.put("/admin/settings", authorizeRole('admin'), (req, res) => {
     "secondary_color", "feat_chat", "feat_shoutouts", "feat_cinematic", 
     "feat_pwa", "feat_bookings", "feat_live_tools", "feat_stream_quality",
     "logo_dark", "logo_light", "logo_shape", "favicon", "backup_retention_days",
-    "backup_frequency_hours", "backup_enabled", "popup_delay", "studio_name", "studio_image"
+    "backup_frequency_hours", "backup_enabled", "popup_delay", "studio_name", "studio_image",
+    "social_instagram", "social_twitter", "social_facebook", "social_youtube", "social_soundcloud", "social_mixcloud"
   ];
   
   for (const key of allowedKeys) {

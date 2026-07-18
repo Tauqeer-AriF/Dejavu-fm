@@ -329,12 +329,12 @@ export default function Home() {
                 </span>
               </div>
               <div className={`h-[1px] w-full my-2 ${isLightMode ? 'bg-black/10' : 'bg-white/10'}`}></div>
-              <div className={`text-[15px] sm:text-lg md:text-xl font-bold uppercase tracking-tight truncate ${
+              <div className={`text-center md:text-left text-[15px] sm:text-lg md:text-xl font-bold uppercase tracking-tight truncate ${
                 isLightMode ? 'text-black' : 'text-white'
               }`}>
                 {onAirInfo?.showName || "DEJAVU AUTO-MIX"}
               </div>
-              <div className="text-[9px] md:text-xs text-neon-purple font-black tracking-[0.25em] uppercase drop-shadow-[0_0_8px_rgba(176,38,255,0.4)]">
+              <div className="text-center md:text-left text-[9px] md:text-xs text-neon-purple font-black tracking-[0.25em] uppercase drop-shadow-[0_0_8px_rgba(176,38,255,0.4)]">
                 {onAirInfo?.djName || "STREAMS ACTIVE"}
               </div>
             </div>

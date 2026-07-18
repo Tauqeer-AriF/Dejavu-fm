@@ -135,6 +135,12 @@ export function AdminBranding() {
   const [secondaryColor, setSecondaryColor] = useState("#00d2ff");
   const [fontSans, setFontSans] = useState("Inter");
   const [fontDisplay, setFontDisplay] = useState("Inter");
+  const [socialInstagram, setSocialInstagram] = useState("");
+  const [socialTwitter, setSocialTwitter] = useState("");
+  const [socialFacebook, setSocialFacebook] = useState("");
+  const [socialYoutube, setSocialYoutube] = useState("");
+  const [socialSoundcloud, setSocialSoundcloud] = useState("");
+  const [socialMixcloud, setSocialMixcloud] = useState("");
   const { showAlert, showConfirm } = useModal();
 
   // Live font preview: instantly updates variables in the document
@@ -194,6 +200,12 @@ export function AdminBranding() {
       setSecondaryColor(d.secondary_color || DEFAULTS.secondary_color);
       setFontSans(d.font_sans || DEFAULTS.font_sans);
       setFontDisplay(d.font_display || DEFAULTS.font_display);
+      setSocialInstagram(d.social_instagram || "");
+      setSocialTwitter(d.social_twitter || "");
+      setSocialFacebook(d.social_facebook || "");
+      setSocialYoutube(d.social_youtube || "");
+      setSocialSoundcloud(d.social_soundcloud || "");
+      setSocialMixcloud(d.social_mixcloud || "");
     });
   }, []);
 
@@ -250,7 +262,13 @@ export function AdminBranding() {
           primary_color: DEFAULTS.primary_color,
           secondary_color: DEFAULTS.secondary_color,
           font_sans: DEFAULTS.font_sans,
-          font_display: DEFAULTS.font_display
+          font_display: DEFAULTS.font_display,
+          social_instagram: "",
+          social_twitter: "",
+          social_facebook: "",
+          social_youtube: "",
+          social_soundcloud: "",
+          social_mixcloud: ""
         })
       });
       if (res.ok) {
@@ -268,6 +286,12 @@ export function AdminBranding() {
         setSecondaryColor(DEFAULTS.secondary_color);
         setFontSans(DEFAULTS.font_sans);
         setFontDisplay(DEFAULTS.font_display);
+        setSocialInstagram("");
+        setSocialTwitter("");
+        setSocialFacebook("");
+        setSocialYoutube("");
+        setSocialSoundcloud("");
+        setSocialMixcloud("");
       }
     } catch(e) {
       console.error(e);
@@ -293,7 +317,13 @@ export function AdminBranding() {
           primary_color: primaryColor,
           secondary_color: secondaryColor,
           font_sans: fontSans,
-          font_display: fontDisplay
+          font_display: fontDisplay,
+          social_instagram: socialInstagram,
+          social_twitter: socialTwitter,
+          social_facebook: socialFacebook,
+          social_youtube: socialYoutube,
+          social_soundcloud: socialSoundcloud,
+          social_mixcloud: socialMixcloud
         })
       });
       if (res.ok) {
@@ -451,6 +481,73 @@ export function AdminBranding() {
                   value={secondaryColor} 
                   onChange={e=>setSecondaryColor(e.target.value)} 
                   className={`flex-1 rounded-xl px-4 py-3 text-sm focus:border-neon-purple outline-none transition-all border font-mono uppercase ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className={`space-y-4 pt-4 border-t transition-colors ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
+            <h4 className={`text-xs font-black uppercase tracking-[0.2em] mb-2 ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>Social Media Links</h4>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-[10px] uppercase mb-1 font-bold tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Instagram URL</label>
+                <input 
+                  value={socialInstagram} 
+                  onChange={e=>setSocialInstagram(e.target.value)} 
+                  className={`w-full rounded-xl px-4 py-3 text-sm focus:border-neon-purple outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
+                  placeholder="https://instagram.com/..."
+                />
+              </div>
+              <div>
+                <label className={`block text-[10px] uppercase mb-1 font-bold tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Twitter / X URL</label>
+                <input 
+                  value={socialTwitter} 
+                  onChange={e=>setSocialTwitter(e.target.value)} 
+                  className={`w-full rounded-xl px-4 py-3 text-sm focus:border-neon-purple outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
+                  placeholder="https://twitter.com/..."
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-[10px] uppercase mb-1 font-bold tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Facebook URL</label>
+                <input 
+                  value={socialFacebook} 
+                  onChange={e=>setSocialFacebook(e.target.value)} 
+                  className={`w-full rounded-xl px-4 py-3 text-sm focus:border-neon-purple outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
+                  placeholder="https://facebook.com/..."
+                />
+              </div>
+              <div>
+                <label className={`block text-[10px] uppercase mb-1 font-bold tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>YouTube URL</label>
+                <input 
+                  value={socialYoutube} 
+                  onChange={e=>setSocialYoutube(e.target.value)} 
+                  className={`w-full rounded-xl px-4 py-3 text-sm focus:border-neon-purple outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
+                  placeholder="https://youtube.com/..."
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-[10px] uppercase mb-1 font-bold tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>SoundCloud URL</label>
+                <input 
+                  value={socialSoundcloud} 
+                  onChange={e=>setSocialSoundcloud(e.target.value)} 
+                  className={`w-full rounded-xl px-4 py-3 text-sm focus:border-neon-purple outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
+                  placeholder="https://soundcloud.com/..."
+                />
+              </div>
+              <div>
+                <label className={`block text-[10px] uppercase mb-1 font-bold tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Mixcloud URL</label>
+                <input 
+                  value={socialMixcloud} 
+                  onChange={e=>setSocialMixcloud(e.target.value)} 
+                  className={`w-full rounded-xl px-4 py-3 text-sm focus:border-neon-purple outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
+                  placeholder="https://mixcloud.com/..."
                 />
               </div>
             </div>
