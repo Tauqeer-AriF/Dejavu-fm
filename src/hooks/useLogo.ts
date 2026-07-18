@@ -67,6 +67,21 @@ export function useLogo() {
     }
   }, [settings?.favicon]);
 
+  useEffect(() => {
+    if (settings) {
+      if (settings.font_sans) {
+        const sansFallback = ', ui-sans-serif, system-ui, sans-serif';
+        document.documentElement.style.setProperty('--font-sans', `"${settings.font_sans}"${sansFallback}`);
+      }
+      if (settings.font_display) {
+        let displayFallback = ', sans-serif';
+        if (settings.font_display === 'Playfair Display') displayFallback = ', serif';
+        if (settings.font_display === 'JetBrains Mono') displayFallback = ', monospace';
+        document.documentElement.style.setProperty('--font-display', `"${settings.font_display}"${displayFallback}`);
+      }
+    }
+  }, [settings]);
+
   const logoUrlRaw = isLightMode 
     ? (settings?.logo_light || settings?.logo_url || undefined)
     : (settings?.logo_dark || settings?.logo_url || undefined);

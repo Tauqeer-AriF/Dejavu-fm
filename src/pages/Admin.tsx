@@ -174,7 +174,11 @@ export default function Admin() {
             )}
             <Link
               to="/"
-              className="inline-flex items-center justify-center h-12 w-12 rounded-full border border-white/10 bg-white/5 text-white/80 transition hover:bg-white/10 hover:text-white"
+              className={`inline-flex items-center justify-center h-12 w-12 rounded-full border transition admin-home-btn ${
+                dashboardTheme === 'light'
+                  ? 'border-black/10 bg-black/5 text-black/80 hover:bg-black/10 hover:text-black'
+                  : 'border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white'
+              }`}
               title="Go to Homepage"
             >
               <HomeIcon className="w-5 h-5" />

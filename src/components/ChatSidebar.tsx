@@ -5,6 +5,7 @@ import { Send, User, LogOut, Loader2, X, MessageSquare, Users, Ban, ShieldAlert,
 import { toast } from 'sonner';
 import { useModal } from '../context/ModalContext';
 import { useLogo } from '../hooks/useLogo';
+import { playUINotificationSound } from '../lib/soundHelper';
 
 interface ChatMessage {
   id: string;
@@ -87,34 +88,12 @@ const getSecureImageUrl = (url?: string) => {
 };
 
 const playNotificationSound = () => {
-
-  try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContextClass) return;
-    const ctx = new AudioContextClass();
-    
-    // Create oscillator and gain node
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    
-    osc.type = 'sine';
-    // Clean "ping/pop" sound starting at 800Hz and sliding down to 550Hz
-    osc.frequency.setValueAtTime(800, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(550, ctx.currentTime + 0.15);
-    
-    // Envelope for gain to fade out nicely and prevent clicks
-    gain.gain.setValueAtTime(0.0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
-    
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    
-    osc.start();
-    osc.stop(ctx.currentTime + 0.16);
-  } catch (err) {
-    console.warn("Failed to play notification sound", err);
-  }
+  playUINotificationSound({
+    frequencyStart: 800,
+    frequencyEnd: 550,
+    duration: 0.15,
+    volume: 0.12
+  });
 };
 
 export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = false }: { isOpen?: boolean; onClose?: () => void; embedded?: boolean }) {

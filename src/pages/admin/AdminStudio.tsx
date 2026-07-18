@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { fetchAdmin } from "./adminApi";
 import { useModal } from "../../context/ModalContext";
 import { useLogo } from "../../hooks/useLogo";
+import { playUINotificationSound } from "../../lib/soundHelper";
 
 interface Message {
   id: string;
@@ -228,32 +229,12 @@ const DEFAULT_QUICK_REPLIES = [
 
 const playNotificationSound = (soundEnabled: boolean) => {
   if (!soundEnabled) return;
-
-  try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContextClass) return;
-    const ctx = new AudioContextClass();
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'sine';
-    // A short, clean "ping" sound
-    osc.frequency.setValueAtTime(900, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.12);
-
-    gain.gain.setValueAtTime(0.0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start();
-    osc.stop(ctx.currentTime + 0.15);
-  } catch (err) {
-    console.warn("Failed to play Studio notification sound", err);
-  }
+  playUINotificationSound({
+    frequencyStart: 900,
+    frequencyEnd: 600,
+    duration: 0.12,
+    volume: 0.1
+  });
 };
 
 const getThreadUserAndKey = (
@@ -434,6 +415,102 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   };
 
   const [activeTab, setActiveTab] = useState<'chats' | 'connections' | 'broadcast' | 'settings' | 'profile'>('chats');
+  const [slideDirection, setSlideDirection] = useState<number>(0); // -1 = left, 1 = right
+
+  const navigateToTab = (newTab: 'chats' | 'connections' | 'broadcast' | 'settings' | 'profile') => {
+    const tabs: ('chats' | 'connections' | 'broadcast' | 'profile' | 'settings')[] = [
+      'chats',
+      'connections',
+      'broadcast',
+      'profile',
+      'settings'
+    ];
+    const currentIndex = tabs.indexOf(activeTab);
+    const newIndex = tabs.indexOf(newTab);
+    
+    if (newIndex > currentIndex) {
+      setSlideDirection(1);
+    } else if (newIndex < currentIndex) {
+      setSlideDirection(-1);
+    } else {
+      setSlideDirection(0);
+    }
+    setActiveTab(newTab);
+  };
+
+  // Swipe gesture refs and handlers for MobileBottomBar
+  const barTouchStartX = useRef<number | null>(null);
+  const barTouchStartY = useRef<number | null>(null);
+
+  const handleBarTouchStart = (e: React.TouchEvent) => {
+    barTouchStartX.current = e.touches[0].clientX;
+    barTouchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleBarTouchEnd = (e: React.TouchEvent) => {
+    if (barTouchStartX.current === null || barTouchStartY.current === null) return;
+    const endX = e.changedTouches[0].clientX;
+    const endY = e.changedTouches[0].clientY;
+    
+    const diffX = barTouchStartX.current - endX;
+    const diffY = barTouchStartY.current - endY;
+
+    // Check if horizontal swipe is more dominant and exceeds 40px threshold
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 40) {
+      const tabs: ('chats' | 'connections' | 'broadcast' | 'profile' | 'settings')[] = [
+        'chats',
+        'connections',
+        'broadcast',
+        'profile',
+        'settings'
+      ];
+      const currentIndex = tabs.indexOf(activeTab);
+      
+      if (diffX > 0) {
+        // Swiped Left -> Go to Next tab
+        const nextIndex = (currentIndex + 1) % tabs.length;
+        setSlideDirection(1);
+        setActiveTab(tabs[nextIndex]);
+      } else {
+        // Swiped Right -> Go to Prev tab
+        const prevIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+        setSlideDirection(-1);
+        setActiveTab(tabs[prevIndex]);
+      }
+    }
+    
+    barTouchStartX.current = null;
+    barTouchStartY.current = null;
+  };
+
+  const pageVariants = {
+    initial: (direction: number) => ({
+      opacity: 0,
+      x: direction > 0 ? 80 : direction < 0 ? -80 : 0,
+      scale: 0.98,
+    }),
+    animate: {
+      opacity: 1,
+      x: 0,
+      scale: 1,
+      transition: {
+        x: { type: "spring", stiffness: 320, damping: 28 },
+        opacity: { duration: 0.2 },
+        scale: { duration: 0.2 },
+      }
+    },
+    exit: (direction: number) => ({
+      opacity: 0,
+      x: direction > 0 ? -80 : direction < 0 ? 80 : 0,
+      scale: 0.98,
+      transition: {
+        x: { type: "spring", stiffness: 320, damping: 28 },
+        opacity: { duration: 0.15 },
+        scale: { duration: 0.15 },
+      }
+    })
+  };
+
   const [broadcastChannels, setBroadcastChannels] = useState<string[]>(['public_chat', 'shoutouts']);
   const [broadcastText, setBroadcastText] = useState("");
   const [isBroadcasting, setIsBroadcasting] = useState(false);
@@ -1805,7 +1882,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
     return (
       <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-[#070913] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/5 [&::-webkit-scrollbar-thumb]:rounded-full">
-        <div className="max-w-4xl mx-auto space-y-8 pb-28 md:pb-12">
+        <div className="max-w-4xl mx-auto space-y-8 pb-36 md:pb-12">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div className="space-y-1">
               <h2 className="text-xl font-bold uppercase tracking-wider text-white flex items-center gap-3">
@@ -2034,7 +2111,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             <p className="text-xs text-white/50">Configure direct endpoints to automatically pull messages and chat queries from external platforms into your Studio Inbox.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-28 md:pb-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-36 md:pb-12">
             {platformsList.map(platform => {
               const isConnected = connectedPlatforms[platform.id];
               const config = platformConfigs[platform.id] || {};
@@ -2124,7 +2201,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   const renderSettingsView = () => {
     return (
       <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 bg-[#070913] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/5 [&::-webkit-scrollbar-thumb]:rounded-full">
-        <div className="max-w-4xl mx-auto space-y-8 pb-28 md:pb-12">
+        <div className="max-w-4xl mx-auto space-y-8 pb-36 md:pb-12">
           <div className="space-y-1">
             <h2 className="text-xl font-bold uppercase tracking-wider text-white">Studio Desk Settings</h2>
             <p className="text-xs text-white/50">Manage notifications, customize default responses, and administer storage caches.</p>
@@ -2296,7 +2373,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   const renderProfileView = () => {
     return (
       <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 bg-[#070913] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/5 [&::-webkit-scrollbar-thumb]:rounded-full">
-        <div className="max-w-xl mx-auto space-y-8 pb-28 md:pb-12">
+        <div className="max-w-xl mx-auto space-y-8 pb-36 md:pb-12">
           <div className="space-y-1">
             <h2 className="text-xl font-bold uppercase tracking-wider text-white">Studio Profile</h2>
             <p className="text-xs text-white/50">Configure your broadcast station identity, custom name, and live representative avatar image.</p>
@@ -2432,7 +2509,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       <div className="hidden md:flex items-center justify-between px-6 py-2 bg-[#0A0C16] border-b border-white/5 shrink-0">
         <div className="flex items-center gap-1.5">
           <button
-            onClick={() => setActiveTab('chats')}
+            onClick={() => navigateToTab('chats')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
               activeTab === 'chats'
                 ? 'bg-neon-purple/10 text-neon-purple border border-neon-purple/20 shadow-[0_0_15px_rgba(176,38,255,0.15)]'
@@ -2444,7 +2521,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           </button>
           
           <button
-            onClick={() => setActiveTab('connections')}
+            onClick={() => navigateToTab('connections')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
               activeTab === 'connections'
                 ? 'bg-neon-blue/10 text-neon-blue border border-neon-blue/20 shadow-[0_0_15px_rgba(0,194,255,0.15)]'
@@ -2459,7 +2536,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           </button>
 
           <button
-            onClick={() => setActiveTab('broadcast')}
+            onClick={() => navigateToTab('broadcast')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
               activeTab === 'broadcast'
                 ? 'bg-neon-blue/10 text-neon-blue border border-neon-blue/20 shadow-[0_0_15px_rgba(0,194,255,0.15)]'
@@ -2471,7 +2548,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           </button>
 
           <button
-            onClick={() => setActiveTab('profile')}
+            onClick={() => navigateToTab('profile')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
               activeTab === 'profile'
                 ? 'bg-neon-purple/10 text-neon-purple border border-neon-purple/20 shadow-[0_0_15px_rgba(124,58,237,0.15)]'
@@ -2483,7 +2560,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           </button>
 
           <button
-            onClick={() => setActiveTab('settings')}
+            onClick={() => navigateToTab('settings')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
               activeTab === 'settings'
                 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.15)]'
@@ -2502,8 +2579,18 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         </div>
       </div>
 
-      {activeTab === 'chats' && (
-        <div className="flex flex-1 overflow-hidden">
+      <AnimatePresence mode="wait" custom={slideDirection}>
+        {activeTab === 'chats' && (
+          <motion.div
+            key="chats"
+            custom={slideDirection}
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="flex flex-1 overflow-hidden h-full w-full"
+          >
+            <div className="flex flex-1 overflow-hidden">
         {/* User List Panel */}
         <aside className={`w-full md:w-80 lg:w-96 border-r border-white/5 bg-[#0A0C16] flex flex-col shrink-0 transition-transform duration-300 ${selectedUser ? 'hidden md:flex' : 'flex'}`}>
           <div className="p-4 border-b border-white/5 bg-[#080911]/40">
@@ -2518,7 +2605,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
               />
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto divide-y divide-white/[0.02] pb-24 md:pb-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/5 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/10">
+          <div className="flex-1 overflow-y-auto divide-y divide-white/[0.02] pb-36 md:pb-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/5 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/10">
             {sortedThreads.map(thread => {
               const isSelected = selectedUser?.toLowerCase() === thread.user.toLowerCase();
               const isPinned = pinnedThreads.includes(thread.user.toLowerCase());
@@ -2746,7 +2833,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                 })}
               </div>
 
-              <footer className="p-4 border-t border-white/5 bg-[#0A0C16] shrink-0 space-y-3 shadow-[0_-4px_30px_rgba(0,0,0,0.3)] pb-24 md:pb-4">
+              <footer className="p-4 border-t border-white/5 bg-[#0A0C16] shrink-0 space-y-3 shadow-[0_-4px_30px_rgba(0,0,0,0.3)] pb-36 md:pb-4">
                 <div className="flex md:flex-wrap items-center gap-1.5 overflow-x-auto md:overflow-x-visible pb-1.5 md:pb-0 scrollbar-none shrink-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   {DEFAULT_QUICK_REPLIES.map(reply => (
                     <button key={reply} onClick={() => setReplyText(reply)} className="px-3 py-1.5 bg-white/[0.02] hover:bg-white/[0.06] border border-white/5 hover:border-white/10 rounded-full text-[10px] font-semibold text-white/50 hover:text-white/80 transition-all duration-200 shrink-0">
@@ -2814,74 +2901,191 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           )}
         </main>
       </div>
-      )}
+          </motion.div>
+        )}
 
-      {activeTab === 'connections' && renderConnectionHub()}
-      {activeTab === 'broadcast' && renderBroadcastView()}
-      {activeTab === 'settings' && renderSettingsView()}
-      {activeTab === 'profile' && renderProfileView()}
+        {activeTab === 'connections' && (
+          <motion.div
+            key="connections"
+            custom={slideDirection}
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="flex-1 flex flex-col overflow-hidden h-full w-full"
+          >
+            {renderConnectionHub()}
+          </motion.div>
+        )}
 
-      {/* Fixed Bottom Tab Bar for Mobile App View */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0D0F1D]/90 backdrop-blur-xl border-t border-white/10 px-4 py-3 flex items-center justify-around shadow-[0_-8px_30px_rgba(0,0,0,0.6)]">
-        <button
-          onClick={() => setActiveTab('chats')}
-          className={`flex items-center justify-center p-2.5 rounded-full transition-all duration-200 ${
-            activeTab === 'chats'
-              ? 'text-neon-purple bg-white/5 font-bold'
-              : 'text-white/40 hover:text-white/80 hover:bg-white/5'
+        {activeTab === 'broadcast' && (
+          <motion.div
+            key="broadcast"
+            custom={slideDirection}
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="flex-1 flex flex-col overflow-hidden h-full w-full"
+          >
+            {renderBroadcastView()}
+          </motion.div>
+        )}
+
+        {activeTab === 'settings' && (
+          <motion.div
+            key="settings"
+            custom={slideDirection}
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="flex-1 flex flex-col overflow-hidden h-full w-full"
+          >
+            {renderSettingsView()}
+          </motion.div>
+        )}
+
+        {activeTab === 'profile' && (
+          <motion.div
+            key="profile"
+            custom={slideDirection}
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="flex-1 flex flex-col overflow-hidden h-full w-full"
+          >
+            {renderProfileView()}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Bottom Tab Bar for Mobile App View with Swipe Support & Slide/Scale Transitions */}
+      <div
+        onTouchStart={handleBarTouchStart}
+        onTouchEnd={handleBarTouchEnd}
+        className="md:hidden fixed bottom-5 left-4 right-4 z-40 bg-[#0D0F1D]/95 backdrop-blur-2xl border border-white/10 px-4 py-2.5 rounded-2xl flex items-center justify-around shadow-[0_12px_40px_rgba(0,0,0,0.85)] select-none"
+      >
+        <motion.button
+          onClick={() => navigateToTab('chats')}
+          whileTap={{ scale: 0.92 }}
+          className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 ${
+            activeTab === 'chats' ? 'text-neon-purple' : 'text-white/40 hover:text-white/80'
           }`}
         >
-          <MessageSquare className="w-6 h-6" />
-        </button>
+          {activeTab === 'chats' && (
+            <motion.div
+              layoutId="activeTabGlow"
+              className="absolute inset-0 bg-white/5 rounded-full"
+              transition={{ type: "spring", stiffness: 380, damping: 30 }}
+            />
+          )}
+          <motion.div
+            animate={{ scale: activeTab === 'chats' ? 1.15 : 1 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            className="relative z-10"
+          >
+            <MessageSquare className="w-6 h-6" />
+          </motion.div>
+        </motion.button>
 
-        <button
-          onClick={() => setActiveTab('connections')}
-          className={`flex items-center justify-center p-2.5 rounded-full transition-all duration-200 ${
-            activeTab === 'connections'
-              ? 'text-neon-blue bg-white/5 font-bold'
-              : 'text-white/40 hover:text-white/80 hover:bg-white/5'
+        <motion.button
+          onClick={() => navigateToTab('connections')}
+          whileTap={{ scale: 0.92 }}
+          className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 ${
+            activeTab === 'connections' ? 'text-neon-blue' : 'text-white/40 hover:text-white/80'
           }`}
         >
-          <div className="relative">
-            <Link2 className="w-6 h-6" />
-            {Object.values(connectedPlatforms).filter(Boolean).length > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            )}
-          </div>
-        </button>
+          {activeTab === 'connections' && (
+            <motion.div
+              layoutId="activeTabGlow"
+              className="absolute inset-0 bg-white/5 rounded-full"
+              transition={{ type: "spring", stiffness: 380, damping: 30 }}
+            />
+          )}
+          <motion.div
+            animate={{ scale: activeTab === 'connections' ? 1.15 : 1 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            className="relative z-10"
+          >
+            <div className="relative">
+              <Link2 className="w-6 h-6" />
+              {Object.values(connectedPlatforms).filter(Boolean).length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              )}
+            </div>
+          </motion.div>
+        </motion.button>
 
-        <button
-          onClick={() => setActiveTab('broadcast')}
-          className={`flex items-center justify-center p-2.5 rounded-full transition-all duration-200 ${
-            activeTab === 'broadcast'
-              ? 'text-neon-blue bg-white/5 font-bold'
-              : 'text-white/40 hover:text-white/80 hover:bg-white/5'
+        <motion.button
+          onClick={() => navigateToTab('broadcast')}
+          whileTap={{ scale: 0.92 }}
+          className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 ${
+            activeTab === 'broadcast' ? 'text-neon-blue' : 'text-white/40 hover:text-white/80'
           }`}
         >
-          <Radio className="w-6 h-6" />
-        </button>
+          {activeTab === 'broadcast' && (
+            <motion.div
+              layoutId="activeTabGlow"
+              className="absolute inset-0 bg-white/5 rounded-full"
+              transition={{ type: "spring", stiffness: 380, damping: 30 }}
+            />
+          )}
+          <motion.div
+            animate={{ scale: activeTab === 'broadcast' ? 1.15 : 1 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            className="relative z-10"
+          >
+            <Radio className="w-6 h-6" />
+          </motion.div>
+        </motion.button>
 
-        <button
-          onClick={() => setActiveTab('profile')}
-          className={`flex items-center justify-center p-2.5 rounded-full transition-all duration-200 ${
-            activeTab === 'profile'
-              ? 'text-neon-purple bg-white/5 font-bold'
-              : 'text-white/40 hover:text-white/80 hover:bg-white/5'
+        <motion.button
+          onClick={() => navigateToTab('profile')}
+          whileTap={{ scale: 0.92 }}
+          className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 ${
+            activeTab === 'profile' ? 'text-neon-purple' : 'text-white/40 hover:text-white/80'
           }`}
         >
-          <Camera className="w-6 h-6" />
-        </button>
+          {activeTab === 'profile' && (
+            <motion.div
+              layoutId="activeTabGlow"
+              className="absolute inset-0 bg-white/5 rounded-full"
+              transition={{ type: "spring", stiffness: 380, damping: 30 }}
+            />
+          )}
+          <motion.div
+            animate={{ scale: activeTab === 'profile' ? 1.15 : 1 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            className="relative z-10"
+          >
+            <Camera className="w-6 h-6" />
+          </motion.div>
+        </motion.button>
 
-        <button
-          onClick={() => setActiveTab('settings')}
-          className={`flex items-center justify-center p-2.5 rounded-full transition-all duration-200 ${
-            activeTab === 'settings'
-              ? 'text-amber-400 bg-white/5 font-bold'
-              : 'text-white/40 hover:text-white/80 hover:bg-white/5'
+        <motion.button
+          onClick={() => navigateToTab('settings')}
+          whileTap={{ scale: 0.92 }}
+          className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 ${
+            activeTab === 'settings' ? 'text-amber-400' : 'text-white/40 hover:text-white/80'
           }`}
         >
-          <Settings className="w-6 h-6" />
-        </button>
+          {activeTab === 'settings' && (
+            <motion.div
+              layoutId="activeTabGlow"
+              className="absolute inset-0 bg-white/5 rounded-full"
+              transition={{ type: "spring", stiffness: 380, damping: 30 }}
+            />
+          )}
+          <motion.div
+            animate={{ scale: activeTab === 'settings' ? 1.15 : 1 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            className="relative z-10"
+          >
+            <Settings className="w-6 h-6" />
+          </motion.div>
+        </motion.button>
       </div>
 
       {/* Create Custom Quick Reply Dialog */}

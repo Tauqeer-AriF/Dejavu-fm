@@ -6,6 +6,7 @@ import { ChatSidebar } from './components/ChatSidebar';
 import { ShoutoutWidget } from './components/ShoutoutWidget';
 import { NotificationManager } from './components/NotificationManager';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
+import { PullToRefresh } from './components/PullToRefresh';
 import { AudioProvider, useAudio } from './context/AudioContext';
 import { ModalProvider } from './context/ModalContext';
 import { useState, useEffect, useRef } from 'react';
@@ -819,6 +820,7 @@ function MainLayout() {
       <PlayerBar />
       {featCinematic && <CinematicVisualizer isOpen={isCinematicOpen} onClose={toggleCinematic} />}
       {featPWA && <PWAInstallPrompt />}
+      {featPWA && <PullToRefresh />}
     </div>
     </>
   );

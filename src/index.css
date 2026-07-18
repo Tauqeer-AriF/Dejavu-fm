@@ -112,6 +112,18 @@ body {
   transition: background-color 0.5s cubic-bezier(0.16, 1, 0.3, 1), color 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+input, button, select, textarea {
+  font-family: var(--font-sans);
+}
+
+h1, h2, h3, h4, h5, h6, .font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono, code, pre {
+  font-family: var(--font-mono), monospace !important;
+}
+
 .app-shimmer-overlay {
   position: fixed;
   inset: 0;
@@ -545,17 +557,20 @@ button:not(.absolute) {
   transform: scale(1.1);
 }
 
-/* High contrast theme toggle button in header */
-.admin-light-mode .admin-theme-toggle-btn {
+/* High contrast theme toggle button and home button in header */
+.admin-light-mode .admin-theme-toggle-btn,
+.admin-light-mode .admin-home-btn {
   background-color: rgba(0, 0, 0, 0.06) !important;
   border-color: rgba(0, 0, 0, 0.12) !important;
   color: #111827 !important;
 }
-.admin-light-mode .admin-theme-toggle-btn:hover {
+.admin-light-mode .admin-theme-toggle-btn:hover,
+.admin-light-mode .admin-home-btn:hover {
   background-color: rgba(0, 0, 0, 0.12) !important;
   color: #000000 !important;
 }
-.admin-light-mode .admin-theme-toggle-btn * {
+.admin-light-mode .admin-theme-toggle-btn *,
+.admin-light-mode .admin-home-btn * {
   color: #111827 !important;
 }
 

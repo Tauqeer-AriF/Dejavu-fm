@@ -122,6 +122,7 @@ export function AdminAdvanced() {
 
 export function AdminBranding() {
   const { isLightMode } = useLogo();
+  const queryClient = useQueryClient();
   const [appName, setAppName] = useState("");
   const [appTitle, setAppTitle] = useState("");
   const [appTagline, setAppTagline] = useState("");
@@ -135,6 +136,23 @@ export function AdminBranding() {
   const [fontSans, setFontSans] = useState("Inter");
   const [fontDisplay, setFontDisplay] = useState("Inter");
   const { showAlert, showConfirm } = useModal();
+
+  // Live font preview: instantly updates variables in the document
+  useEffect(() => {
+    if (fontSans) {
+      const sansFallback = ', ui-sans-serif, system-ui, sans-serif';
+      document.documentElement.style.setProperty('--font-sans', `"${fontSans}"${sansFallback}`);
+    }
+  }, [fontSans]);
+
+  useEffect(() => {
+    if (fontDisplay) {
+      let displayFallback = ', sans-serif';
+      if (fontDisplay === 'Playfair Display') displayFallback = ', serif';
+      if (fontDisplay === 'JetBrains Mono') displayFallback = ', monospace';
+      document.documentElement.style.setProperty('--font-display', `"${fontDisplay}"${displayFallback}`);
+    }
+  }, [fontDisplay]);
 
   const DEFAULTS = {
     appName: "DEJAVU FM",
@@ -237,6 +255,7 @@ export function AdminBranding() {
       });
       if (res.ok) {
         showAlert({ title: "Reset Complete", message: "All branding settings have been restored to defaults.", style: "success" });
+        queryClient.invalidateQueries({ queryKey: ["settings"] });
         setAppName(DEFAULTS.appName);
         setAppTitle(DEFAULTS.appTitle);
         setAppTagline(DEFAULTS.appTagline);
@@ -279,6 +298,7 @@ export function AdminBranding() {
       });
       if (res.ok) {
         showAlert({ title: "Success", message: "Branding settings saved!", style: "success" });
+        queryClient.invalidateQueries({ queryKey: ["settings"] });
       }
     } catch(e) {
       console.error(e);
@@ -464,6 +484,7 @@ export function AdminBranding() {
 
 export function AdminSettings() {
   const { isLightMode } = useLogo();
+  const queryClient = useQueryClient();
   const [stream, setStream] = useState("");
   const [streamLow, setStreamLow] = useState("");
   const [streamMedium, setStreamMedium] = useState("");
@@ -502,6 +523,7 @@ export function AdminSettings() {
       });
       if (res.ok) {
         showAlert({ title: "Success", message: "General settings saved!", style: "success" });
+        queryClient.invalidateQueries({ queryKey: ["settings"] });
       }
     } catch(e) {
       console.error(e);
