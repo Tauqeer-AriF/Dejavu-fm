@@ -109,7 +109,7 @@ export function AdvertisementSliders({ position = "bottom" }: { position?: "top"
               autoplay={autoScroll ? { delay: 3500, disableOnInteraction: false } : false}
               pagination={{ clickable: true }}
               navigation={true}
-              className="pb-12"
+              className="pb-12 triple-swiper"
             >
               {groupAds.map((ad: any) => (
                 <SwiperSlide key={ad.id}>

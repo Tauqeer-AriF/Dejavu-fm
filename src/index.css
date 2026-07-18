@@ -20,71 +20,145 @@
   box-shadow: 0 32px 64px -16px rgba(0, 0, 0, 0.1);
 }
 
-/* Swiper Navigation Custom Styles */
+/* Swiper Navigation Custom Styles - Premium Redesign */
 .swiper-button-next,
 .swiper-button-prev {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(10, 10, 12, 0.7);
   backdrop-filter: blur(16px);
-  width: 40px !important;
-  height: 40px !important;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white !important;
-  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-  display: flex;
+  -webkit-backdrop-filter: blur(16px);
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff !important;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex !important;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  transform: translateY(-50%) scale(1) !important;
+  top: 50% !important;
+  margin-top: 0 !important;
 }
 
-.swiper-button-next:after,
-.swiper-button-prev:after {
-  font-size: 8px !important;
-  font-weight: 300;
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+/* Adjust triple-swiper buttons since triple Swiper has a pb-12 (48px padding bottom) for pagination dots */
+.triple-swiper .swiper-button-next,
+.triple-swiper .swiper-button-prev {
+  top: calc(50% - 24px) !important;
+}
+
+/* Light Mode Overrides */
+:root.light .swiper-button-next,
+:root.light .swiper-button-prev {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #0d0d0f !important;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+}
+
+.swiper-button-next::after,
+.swiper-button-prev::after {
+  font-size: 14px !important;
+  font-weight: 900 !important;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.swiper-button-next:hover::after {
+  transform: translateX(2px);
+}
+
+.swiper-button-prev:hover::after {
+  transform: translateX(-2px);
 }
 
 .swiper-button-next:hover,
 .swiper-button-prev:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.4);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 0 15px rgba(255, 255, 255, 0.2);
-  transform: scale(1.1);
+  background: #b026ff !important;
+  border-color: #b026ff !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 25px rgba(176, 38, 255, 0.6), 0 8px 20px -6px rgba(0, 0, 0, 0.4);
+  transform: translateY(-50%) scale(1.08) !important;
 }
 
+/* Position adjustments for perfect centering over card edges */
+.swiper-button-next {
+  right: 24px !important;
+}
+
+.swiper-button-prev {
+  left: 24px !important;
+}
+
+/* Premium Pagination Styles */
 .swiper-pagination-bullet {
-  background: rgba(255, 255, 255, 0.2) !important;
+  background: rgba(255, 255, 255, 0.25) !important;
   opacity: 1 !important;
+  width: 8px !important;
+  height: 8px !important;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+:root.light .swiper-pagination-bullet {
+  background: rgba(0, 0, 0, 0.18) !important;
 }
 
 .swiper-pagination-bullet-active {
-  background: white !important;
+  background: #b026ff !important;
   width: 24px !important;
-  border-radius: 4px !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 0 12px rgba(176, 38, 255, 0.4);
 }
 
+:root.light .swiper-pagination-bullet-active {
+  box-shadow: none;
+}
+
+/* Show arrows ONLY on hover of the specific ad banner/slider container */
 .ad-sliders-container .swiper-button-next,
 .ad-sliders-container .swiper-button-prev {
   opacity: 0;
+  pointer-events: none;
 }
 
-.ad-sliders-container:hover .swiper-button-next,
-.ad-sliders-container:hover .swiper-button-prev {
+.ad-sliders-container .group:hover .swiper-button-next,
+.ad-sliders-container .group:hover .swiper-button-prev {
   opacity: 1;
+  pointer-events: auto;
 }
 
 @media (max-width: 768px) {
   .swiper-button-next,
   .swiper-button-prev {
-    width: 28px !important;
-    height: 28px !important;
+    width: 36px !important;
+    height: 36px !important;
+    background: rgba(10, 10, 12, 0.85);
+    border-color: rgba(255, 255, 255, 0.15);
   }
-  .swiper-button-next:after,
-  .swiper-button-prev:after {
-    font-size: 6px !important;
+  
+  :root.light .swiper-button-next,
+  :root.light .swiper-button-prev {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(0, 0, 0, 0.12);
   }
+
+  .swiper-button-next::after,
+  .swiper-button-prev::after {
+    font-size: 11px !important;
+  }
+  
+  .swiper-button-next {
+    right: 12px !important;
+  }
+
+  .swiper-button-prev {
+    left: 12px !important;
+  }
+
+  /* Keep arrows visible on touch devices so users can click them easily */
   .ad-sliders-container .swiper-button-next,
   .ad-sliders-container .swiper-button-prev {
-    opacity: 0.6 !important;
+    opacity: 0.85 !important;
+    pointer-events: auto !important;
   }
 }
 
