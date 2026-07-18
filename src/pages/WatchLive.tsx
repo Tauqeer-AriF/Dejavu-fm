@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { io, Socket } from 'socket.io-client';
-import { Send, User, LogOut, Loader2, Instagram, Music2, Globe, Radio, Sparkles, Clock, MessageSquare, Users, Eye, EyeOff } from 'lucide-react';
+import { Send, User, LogOut, Loader2, Instagram, Music2, Globe, Radio, Sparkles, Clock, MessageSquare, Users, Eye, EyeOff, Maximize2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { useAudio } from '../context/AudioContext';
@@ -102,6 +102,18 @@ export default function WatchLive() {
   const [trackOverlay, setTrackOverlay] = useState<{artist: string, title: string} | null>(null);
   const overlayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [studioVideoUrlState, setStudioVideoUrlState] = useState<string | null>(null);
+  const [isMobileFullscreen, setIsMobileFullscreen] = useState(false);
+
+  useEffect(() => {
+    if (isMobileFullscreen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobileFullscreen]);
 
   const socketRef = useRef<Socket | null>(null);
 
@@ -163,8 +175,26 @@ export default function WatchLive() {
         
         {/* Left Side: Video Player Section */}
         <div className={`lg:col-span-8 flex flex-col h-full ${isLightMode ? 'bg-[#ffffff] border-black/10' : 'bg-black/40 border-white/5'} border rounded-3xl overflow-hidden shadow-2xl relative min-h-[450px] lg:min-h-0`}>
+          
+          {/* Mobile Split Screen Banner */}
+          <div className={`lg:hidden flex items-center justify-between px-4 py-2 border-b shrink-0 ${isLightMode ? 'bg-black/5 border-black/10 text-black' : 'bg-black/40 border-white/5 text-white'}`}>
+            <div className="flex items-center space-x-1.5 min-w-0">
+              <span className="w-1.5 h-1.5 bg-neon-purple rounded-full animate-pulse shrink-0"></span>
+              <span className={`font-black uppercase tracking-widest text-[9px] truncate ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>
+                Mobile Split View
+              </span>
+            </div>
+            <button
+              onClick={() => setIsMobileFullscreen(true)}
+              className="p-1.5 rounded-lg bg-neon-purple text-white hover:bg-neon-purple/80 active:scale-95 transition-all flex items-center justify-center shadow-[0_0_12px_rgba(168,85,247,0.4)] cursor-pointer shrink-0"
+              title="Split Screen View"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
           <div className="flex-1 w-full relative bg-black group flex items-center justify-center aspect-[4/3] sm:aspect-video lg:aspect-auto">
-            {getEmbedUrl(studioVideoUrl) ? (
+            {getEmbedUrl(studioVideoUrl) && !isMobileFullscreen ? (
               <iframe 
                 key={getEmbedUrl(studioVideoUrl) || 'empty'}
                 src={getEmbedUrl(studioVideoUrl) || undefined} 
@@ -227,30 +257,32 @@ export default function WatchLive() {
                <h3 className={`${isLightMode ? 'text-black/80' : 'text-white/90'} font-bold text-xs truncate`}>{onAirInfo?.showName || "Global Underground Stream"}</h3>
              </div>
              
-             {(onAirInfo?.instagram || onAirInfo?.soundcloud || onAirInfo?.mixcloud) && (
-               <div className="flex gap-4 shrink-0">
-                 {onAirInfo.instagram && (
-                   <a href={`https://instagram.com/${onAirInfo.instagram}`} target="_blank" rel="noopener noreferrer" className={`p-2.5 rounded-xl ${isLightMode ? 'bg-black/5 hover:bg-neon-purple/15 border-black/10 text-black/50 hover:text-black' : 'bg-white/5 hover:bg-neon-purple/20 border-white/5 text-white/50 hover:text-white'} border transition-all`}>
-                     <Instagram className="w-5 h-5" />
-                   </a>
-                 )}
-                 {onAirInfo.soundcloud && (
-                   <a href={`https://soundcloud.com/${onAirInfo.soundcloud}`} target="_blank" rel="noopener noreferrer" className={`p-2.5 rounded-xl ${isLightMode ? 'bg-black/5 hover:bg-neon-blue/15 border-black/10 text-black/50 hover:text-black' : 'bg-white/5 hover:bg-neon-blue/20 border-white/5 text-white/50 hover:text-white'} border transition-all`}>
-                     <Music2 className="w-5 h-5" />
-                   </a>
-                 )}
-                 {onAirInfo.mixcloud && (
-                   <a href={`https://mixcloud.com/${onAirInfo.mixcloud}`} target="_blank" rel="noopener noreferrer" className={`p-2.5 rounded-xl ${isLightMode ? 'bg-black/5 hover:bg-black/10 border-black/10 text-black/50 hover:text-black' : 'bg-white/5 hover:bg-white/10 border-white/5 text-white/50 hover:text-white'} border transition-all`}>
-                     <Globe className="w-5 h-5" />
-                   </a>
-                 )}
-               </div>
-             )}
+             <div className="flex items-center gap-2.5 shrink-0">
+               {(onAirInfo?.instagram || onAirInfo?.soundcloud || onAirInfo?.mixcloud) && (
+                 <div className="flex gap-4 shrink-0">
+                   {onAirInfo.instagram && (
+                     <a href={`https://instagram.com/${onAirInfo.instagram}`} target="_blank" rel="noopener noreferrer" className={`p-2.5 rounded-xl ${isLightMode ? 'bg-black/5 hover:bg-neon-purple/15 border-black/10 text-black/50 hover:text-black' : 'bg-white/5 hover:bg-neon-purple/20 border-white/5 text-white/50 hover:text-white'} border transition-all`}>
+                       <Instagram className="w-5 h-5" />
+                     </a>
+                   )}
+                   {onAirInfo.soundcloud && (
+                     <a href={`https://soundcloud.com/${onAirInfo.soundcloud}`} target="_blank" rel="noopener noreferrer" className={`p-2.5 rounded-xl ${isLightMode ? 'bg-black/5 hover:bg-neon-blue/15 border-black/10 text-black/50 hover:text-black' : 'bg-white/5 hover:bg-neon-blue/20 border-white/5 text-white/50 hover:text-white'} border transition-all`}>
+                       <Music2 className="w-5 h-5" />
+                     </a>
+                   )}
+                   {onAirInfo.mixcloud && (
+                     <a href={`https://mixcloud.com/${onAirInfo.mixcloud}`} target="_blank" rel="noopener noreferrer" className={`p-2.5 rounded-xl ${isLightMode ? 'bg-black/5 hover:bg-black/10 border-black/10 text-black/50 hover:text-black' : 'bg-white/5 hover:bg-white/10 border-white/5 text-white/50 hover:text-white'} border transition-all`}>
+                       <Globe className="w-5 h-5" />
+                     </a>
+                   )}
+                 </div>
+               )}
+             </div>
           </div>
         </div>
 
         {/* Right Side: Chat Room Section */}
-        <div className={`lg:col-span-4 flex flex-col h-full ${isLightMode ? 'bg-[#ffffff] border-black/10' : 'bg-black/40 border-white/5'} border rounded-3xl overflow-hidden shadow-2xl relative min-h-[400px] lg:min-h-0`}>
+        <div className={`lg:col-span-4 flex flex-col h-[550px] sm:h-[650px] lg:h-full ${isLightMode ? 'bg-[#ffffff] border-black/10' : 'bg-black/40 border-white/5'} border rounded-3xl overflow-hidden shadow-2xl relative lg:min-h-0`}>
           {!featChat ? (
             <div className={`flex flex-col items-center justify-center h-full opacity-20 text-center space-y-4 py-12 ${isLightMode ? 'text-black' : 'text-white'}`}>
               <MessageSquare className="w-12 h-12" />
@@ -266,6 +298,70 @@ export default function WatchLive() {
         </div>
 
       </div>
+
+      {/* Mobile Fullscreen Split View Overlay */}
+      <AnimatePresence>
+        {isMobileFullscreen && (
+          <motion.div
+            initial={{ opacity: 0, y: '100%' }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed inset-0 bg-[#060814] z-[9999] flex flex-col lg:hidden overflow-hidden"
+          >
+            {/* Top Bar / Header */}
+            <div className="bg-[#0b0c15] px-4 py-3 flex items-center justify-between border-b border-white/10 shrink-0">
+              <div className="flex items-center space-x-2">
+                <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
+                <span className="text-white font-bold text-xs uppercase tracking-widest">
+                  DEJAVU LIVE
+                </span>
+                {onAirInfo?.djName && (
+                  <span className="text-white/40 text-[10px] font-mono uppercase tracking-wider hidden xs:inline-block">
+                    • {onAirInfo.djName}
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => setIsMobileFullscreen(false)}
+                className="inline-flex items-center gap-1 bg-white/10 hover:bg-white/20 active:scale-95 text-white/90 hover:text-white rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Exit</span>
+              </button>
+            </div>
+
+            {/* Upper half: Video Player */}
+            <div className="w-full bg-black shrink-0 aspect-video relative shadow-lg">
+              {getEmbedUrl(studioVideoUrl) ? (
+                <iframe
+                  src={getEmbedUrl(studioVideoUrl) || undefined}
+                  className="w-full h-full border-none"
+                  allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; clipboard-write; gyroscope"
+                  allowFullScreen
+                ></iframe>
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950 text-white/40 p-4">
+                  <span className="text-xs uppercase font-bold tracking-widest text-center">No Active Stream Cam</span>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom half: Chat Room */}
+            <div className="flex-1 min-h-0 bg-black/40 flex flex-col relative">
+              {featChat ? (
+                <div className="flex-1 w-full relative flex flex-col min-h-0">
+                  <ChatSidebar embedded={true} compact={true} />
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-white/30 text-xs uppercase font-bold p-6">
+                  <span>Chat is offline</span>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
