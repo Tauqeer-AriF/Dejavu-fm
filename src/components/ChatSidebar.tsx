@@ -1992,7 +1992,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
               )}
             </div>
 
-            <div className={`p-6 border-t ${isLightMode ? 'bg-black/5 border-black/10' : 'bg-white/5 border-white/10'}`}>
+            <div className={`${embedded ? 'p-2.5 sm:p-3' : 'p-6'} border-t ${isLightMode ? 'bg-black/5 border-black/10' : 'bg-white/5 border-white/10'}`}>
               {isCheckingAuth ? (
                 <div className="flex justify-center py-4">
                   <Loader2 className="w-6 h-6 animate-spin text-neon-purple" />
@@ -2114,7 +2114,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                   </form>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className={embedded ? "space-y-1.5" : "space-y-4"}>
                   {/* Hidden File Input */}
                   <input 
                     type="file" 
@@ -2196,17 +2196,17 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
 
                   <div className="relative" ref={emojiPickerRef}>
                     {isRecording ? (
-                      <div className={`relative flex items-center justify-between border rounded-2xl px-4 py-4 text-sm transition-all ${isLightMode ? 'bg-[#ffffff]/80 border-black/10 text-black' : 'bg-black/50 border-white/10 text-white'}`}>
+                      <div className={`relative flex items-center justify-between border rounded-2xl ${embedded ? 'px-3 py-2 text-xs' : 'px-4 py-4 text-sm'} transition-all ${isLightMode ? 'bg-[#ffffff]/80 border-black/10 text-black' : 'bg-black/50 border-white/10 text-white'}`}>
                         {/* Recording status with a pulsing red icon */}
                         <div className="flex items-center space-x-3">
-                          <span className="relative flex h-3 w-3">
+                          <span className="relative flex h-2.5 w-2.5">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
                           </span>
-                          <span className="font-bold uppercase tracking-wider text-[11px] text-red-500 animate-pulse">
-                            Recording Voice Note
+                          <span className="font-bold uppercase tracking-wider text-[10px] text-red-500 animate-pulse">
+                            Recording
                           </span>
-                          <span className="font-mono text-xs font-bold text-white/60">
+                          <span className="font-mono text-[11px] font-bold text-white/60">
                             {formatDuration(recordingDuration)}
                           </span>
                         </div>
@@ -2216,18 +2216,18 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                           <button
                             type="button"
                             onClick={() => stopRecording(true)}
-                            className="p-2 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 transition-colors"
+                            className="p-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 transition-colors"
                             title="Discard Recording"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                           <button
                             type="button"
                             onClick={() => stopRecording(false)}
-                            className="p-2 rounded-xl bg-neon-purple/20 text-neon-purple hover:bg-neon-purple/30 hover:text-neon-blue transition-all"
+                            className="p-1.5 rounded-lg bg-neon-purple/20 text-neon-purple hover:bg-neon-purple/30 hover:text-neon-blue transition-all"
                             title="Stop and Save Recording"
                           >
-                            <Square className="w-4 h-4" />
+                            <Square className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
@@ -2237,20 +2237,20 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
-                          className={`absolute left-2 top-2 bottom-2 w-10 flex items-center justify-center rounded-xl transition-all ${isLightMode ? 'text-black/40 hover:text-black hover:bg-black/5' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                          className={`absolute ${embedded ? 'left-1.5 top-1.5 bottom-1.5 w-8' : 'left-2 top-2 bottom-2 w-10'} flex items-center justify-center rounded-xl transition-all ${isLightMode ? 'text-black/40 hover:text-black hover:bg-black/5' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
                           title="Attach image or audio"
                         >
-                          <Paperclip className="w-5 h-5" />
+                          <Paperclip className={embedded ? "w-4 h-4" : "w-5 h-5"} />
                         </button>
 
                         {/* Mic recording trigger button inside the input */}
                         <button
                           type="button"
                           onClick={startRecording}
-                          className={`absolute left-12 top-2 bottom-2 w-10 flex items-center justify-center rounded-xl transition-all ${isLightMode ? 'text-black/40 hover:text-black hover:bg-black/5' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                          className={`absolute ${embedded ? 'left-9 top-1.5 bottom-1.5 w-8' : 'left-12 top-2 bottom-2 w-10'} flex items-center justify-center rounded-xl transition-all ${isLightMode ? 'text-black/40 hover:text-black hover:bg-black/5' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
                           title="Record voice note"
                         >
-                          <Mic className="w-5 h-5" />
+                          <Mic className={embedded ? "w-4 h-4" : "w-5 h-5"} />
                         </button>
 
                         <input
@@ -2259,27 +2259,27 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                           value={inputText}
                           onChange={(e) => handleInputChange(e.target.value)}
                           placeholder="Say something to the station..."
-                          className={`w-full ${isLightMode ? 'bg-[#ffffff]/80 border-black/10 text-black placeholder-black/40' : 'bg-black/50 border-white/10 placeholder-white/20'} border rounded-2xl pl-[88px] pr-24 py-4 text-sm focus:outline-none focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/50 transition-all`}
+                          className={`w-full ${isLightMode ? 'bg-[#ffffff]/80 border-black/10 text-black placeholder-black/40' : 'bg-black/50 border-white/10 placeholder-white/20'} border rounded-2xl ${embedded ? 'pl-[76px] pr-20 py-2.5 text-xs' : 'pl-[88px] pr-24 py-4 text-sm'} focus:outline-none focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/50 transition-all`}
                         />
                         
                         {/* Emoji trigger button inside the input */}
                         <button
                           type="button"
                           onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                          className={`absolute right-12 top-2 bottom-2 w-10 flex items-center justify-center rounded-xl transition-all ${
+                          className={`absolute ${embedded ? 'right-9 top-1.5 bottom-1.5 w-8' : 'right-12 top-2 bottom-2 w-10'} flex items-center justify-center rounded-xl transition-all ${
                             showEmojiPicker ? 'text-neon-purple bg-neon-purple/10' : (isLightMode ? 'text-black/40 hover:text-black bg-transparent' : 'text-white/40 hover:text-white bg-transparent')
                           }`}
                           title="Add emoji"
                         >
-                          <Smile className="w-5 h-5" />
+                          <Smile className={embedded ? "w-4 h-4" : "w-5 h-5"} />
                         </button>
 
                         <button
                           type="submit"
                           disabled={!inputText.trim() && !pendingAttachment}
-                          className="absolute right-2 top-2 bottom-2 w-10 flex items-center justify-center rounded-xl bg-neon-purple text-white disabled:opacity-30 hover:bg-neon-blue transition-all"
+                          className={`absolute ${embedded ? 'right-1.5 top-1.5 bottom-1.5 w-8' : 'right-2 top-2 bottom-2 w-10'} flex items-center justify-center rounded-xl bg-neon-purple text-white disabled:opacity-30 hover:bg-neon-blue transition-all`}
                         >
-                          <Send className="w-4 h-4 ml-0.5" />
+                          <Send className={embedded ? "w-3.5 h-3.5 ml-0.5" : "w-4 h-4 ml-0.5"} />
                         </button>
                       </form>
                     )}
@@ -2365,26 +2365,28 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                     </AnimatePresence>
                   </div>
                   
-                  <div className="flex gap-2 justify-center">
-                    <button 
-                      onClick={() => handleInputChange('🔥 BIG CHUNE!')}
-                      className={`text-[10px] font-black uppercase px-3 py-1 rounded-full transition-all border ${isLightMode ? 'bg-black/5 border-black/5 hover:bg-black/10' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
-                    >
-                      🔥
-                    </button>
-                    <button 
-                      onClick={() => handleInputChange('BIG UP! 🙌')}
-                      className={`text-[10px] font-black uppercase px-3 py-1 rounded-full transition-all border ${isLightMode ? 'bg-black/5 border-black/5 hover:bg-black/10' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
-                    >
-                      🙌
-                    </button>
-                    <button 
-                      onClick={() => handleInputChange('[REQUEST] ')}
-                      className={`text-[10px] font-black uppercase px-3 py-1 rounded-full transition-all border ${isLightMode ? 'bg-black/5 border-black/5 hover:bg-black/10 text-black/80' : 'bg-white/5 border-white/5 hover:bg-white/10 text-white'}`}
-                    >
-                      Request
-                    </button>
-                  </div>
+                  {!embedded && (
+                    <div className="flex gap-2 justify-center">
+                      <button 
+                        onClick={() => handleInputChange('🔥 BIG CHUNE!')}
+                        className={`text-[10px] font-black uppercase px-3 py-1 rounded-full transition-all border ${isLightMode ? 'bg-black/5 border-black/5 hover:bg-black/10' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                      >
+                        🔥
+                      </button>
+                      <button 
+                        onClick={() => handleInputChange('BIG UP! 🙌')}
+                        className={`text-[10px] font-black uppercase px-3 py-1 rounded-full transition-all border ${isLightMode ? 'bg-black/5 border-black/5 hover:bg-black/10' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                      >
+                        🙌
+                      </button>
+                      <button 
+                        onClick={() => handleInputChange('[REQUEST] ')}
+                        className={`text-[10px] font-black uppercase px-3 py-1 rounded-full transition-all border ${isLightMode ? 'bg-black/5 border-black/5 hover:bg-black/10 text-black/80' : 'bg-white/5 border-white/5 hover:bg-white/10 text-white'}`}
+                      >
+                        Request
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

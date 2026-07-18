@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { io, Socket } from 'socket.io-client';
-import { Send, User, LogOut, Loader2, Instagram, Music2, Globe, Radio, Sparkles, Clock, MessageSquare, Users, Eye, EyeOff } from 'lucide-react';
+import { Send, User, LogOut, Loader2, Instagram, Music2, Globe, Radio, Sparkles, Clock, MessageSquare, Users, Eye, EyeOff, Maximize2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { useAudio } from '../context/AudioContext';
@@ -117,6 +117,20 @@ export default function WatchLive() {
   const studioVideoUrl = settings?.studio_video_url || studioVideoUrlState;
   const featChat = settings?.feat_chat !== '0';
 
+  const [isMobileSplitActive, setIsMobileSplitActive] = useState(false);
+
+  // Disable scroll on body when mobile split screen is active
+  useEffect(() => {
+    if (isMobileSplitActive) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobileSplitActive]);
+
   useEffect(() => {
     // Pause background radio if it's playing so the video audio can be heard
     if (isPlaying) {
@@ -163,6 +177,32 @@ export default function WatchLive() {
         
         {/* Left Side: Video Player Section */}
         <div className={`lg:col-span-8 flex flex-col h-full ${isLightMode ? 'bg-[#ffffff] border-black/10' : 'bg-black/40 border-white/5'} border rounded-3xl overflow-hidden shadow-2xl relative min-h-[450px] lg:min-h-0`}>
+          {/* Top Control Bar of Video Section */}
+          <div className={`flex items-center justify-between px-5 py-3 border-b ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-[#0e0e11] border-white/5 text-white'} shrink-0`}>
+            <div className="flex items-center gap-2">
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+              </span>
+              <span className="text-[10px] font-black uppercase tracking-widest opacity-80">
+                Live Studio Cam
+              </span>
+            </div>
+            
+            {/* Split Screen Button - Only visible on Mobile/Tablet */}
+            {featChat && (
+              <button
+                type="button"
+                onClick={() => setIsMobileSplitActive(true)}
+                className="lg:hidden flex items-center gap-1.5 px-3 py-1 bg-neon-blue/10 hover:bg-neon-blue/20 text-neon-blue border border-neon-blue/20 rounded-full transition-all text-[10px] font-black uppercase tracking-wider cursor-pointer"
+                title="Enter Mobile Split-Screen View"
+              >
+                <Maximize2 className="w-3 h-3" />
+                <span>Split View</span>
+              </button>
+            )}
+          </div>
+
           <div className="flex-1 w-full relative bg-black group flex items-center justify-center aspect-[4/3] sm:aspect-video lg:aspect-auto">
             {getEmbedUrl(studioVideoUrl) ? (
               <iframe 
@@ -266,6 +306,62 @@ export default function WatchLive() {
         </div>
 
       </div>
+
+      {/* Mobile Split Screen View */}
+      <AnimatePresence>
+        {isMobileSplitActive && featChat && (
+          <motion.div
+            initial={{ opacity: 0, y: '100%' }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+            className="fixed inset-0 z-[2000] flex flex-col bg-dark-bg/95 backdrop-blur-2xl lg:hidden"
+          >
+            {/* Mobile Header / Controls */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-black/40 shrink-0">
+              <div className="flex items-center space-x-2">
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                </span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-white/90">
+                  Interactive Live Split
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMobileSplitActive(false)}
+                className="flex items-center gap-1 px-3 py-1 bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 rounded-full text-white text-xs font-bold transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+                <span>Exit Split</span>
+              </button>
+            </div>
+
+            {/* Top Half: Video Stream */}
+            <div className="w-full aspect-video bg-black relative shrink-0">
+              {getEmbedUrl(studioVideoUrl) ? (
+                <iframe 
+                  key={`split-${getEmbedUrl(studioVideoUrl)}`}
+                  src={getEmbedUrl(studioVideoUrl) || undefined} 
+                  className="w-full h-full border-none absolute inset-0 z-10" 
+                  allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; clipboard-write; gyroscope"
+                  allowFullScreen>
+                </iframe>
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center bg-zinc-900 text-center p-4">
+                  <p className="text-white/60 text-sm font-bold uppercase tracking-widest">No Stream URL configured</p>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom Half: Scrollable Interactive Chat Room */}
+            <div className="flex-1 min-h-0 bg-dark-bg relative flex flex-col">
+              <ChatSidebar embedded={true} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
