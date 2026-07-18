@@ -117,7 +117,7 @@ const playNotificationSound = () => {
   }
 };
 
-export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = false, compact = false }: { isOpen?: boolean; onClose?: () => void; embedded?: boolean; compact?: boolean }) {
+export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = false }: { isOpen?: boolean; onClose?: () => void; embedded?: boolean }) {
   const { isLightMode } = useLogo();
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
     try {
@@ -648,63 +648,40 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
   }, [emojiSearch]);
 
   useEffect(() => {
-    const checkAdminAndAuthStatus = async () => {
-      let isUserAdmin = false;
-      try {
-        const r = await fetch('/api/public/auth/check');
-        const data = await r.json();
+    fetch('/api/public/auth/check')
+      .then(r => r.json())
+      .then(data => {
         if (data.loggedIn) {
           setLoggedInUser(data.username);
           setUserAvatar(data.avatar_url);
           setUserJoinedAt(data.created_at);
-          if (data.isAdmin) isUserAdmin = true;
+          setIsAdmin(!!data.isAdmin);
+        } else {
+          setIsAdmin(false);
         }
-      } catch (err) {
-        console.warn("Auth check failed", err);
-      }
+        setIsCheckingAuth(false);
+      })
+      .catch(() => {
+        setIsAdmin(false);
+        setIsCheckingAuth(false);
+      });
 
-      // Check for station admin status
-      const adminToken = localStorage.getItem('admin_token');
-      if (adminToken) {
-        try {
-          const r = await fetch('/api/admin/check', {
-            headers: { 'Authorization': `Bearer ${adminToken}` }
-          });
-          if (r.ok) {
-            isUserAdmin = true;
-          } else {
-            localStorage.removeItem('admin_token');
-          }
-        } catch (err) {
-          // offline/network glitch - don't clear token, but keep current status
+    // Check for station admin status
+    const adminToken = localStorage.getItem('admin_token');
+    if (adminToken) {
+      fetch('/api/admin/check', {
+        headers: { 'Authorization': `Bearer ${adminToken}` }
+      }).then(r => { 
+        if (r.ok) {
+          setIsAdmin(true);
+        } else {
+          // If the token is invalid, clear it to prevent further attempts
+          localStorage.removeItem('admin_token');
+          // Don't necessarily set isAdmin to false if we are already a public admin
         }
-      }
-
-      setIsAdmin(isUserAdmin);
-      setIsCheckingAuth(false);
-    };
-
-    // Initial check
-    checkAdminAndAuthStatus();
-
-    // Check periodically every 5 seconds for real-time status updates (appears / disappears in real time)
-    const intervalId = setInterval(checkAdminAndAuthStatus, 5000);
-
-    // Check when user returns to/focuses the tab
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        checkAdminAndAuthStatus();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    // Check when localStorage admin_token changes in other tabs
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'admin_token' || e.key === 'user_token') {
-        checkAdminAndAuthStatus();
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
+      })
+      .catch(() => {});
+    }
 
     const socket = (window as any).socket;
     if (!socket) return;
@@ -803,9 +780,6 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     }
 
     return () => {
-      clearInterval(intervalId);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('storage', handleStorageChange);
       socket.off('chatHistory', onChatHistory);
       socket.off('chatMessage', onChatMessage);
       socket.off('privateHistory', onPrivateHistory);
@@ -1418,26 +1392,24 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
             {/* Mobile Drag Handle Indicator */}
             <div className={`absolute left-2 top-1/2 -translate-y-1/2 w-1 h-16 rounded-full md:hidden pointer-events-none ${isLightMode ? 'bg-black/10' : 'bg-white/10'}`} />
 
-            <div className={`${compact ? 'px-4 py-2 sm:px-4' : 'p-4 sm:p-6'} border-b flex items-center justify-between ${isLightMode ? 'border-black/10' : 'border-white/10'}`}>
+            <div className={`p-4 sm:p-6 border-b flex items-center justify-between ${isLightMode ? 'border-black/10' : 'border-white/10'}`}>
               <div className="flex items-center space-x-2 sm:space-x-3">
-                <div className={`${compact ? 'w-7 h-7 rounded-lg' : 'w-9 h-9 sm:w-10 sm:h-10 rounded-xl'} bg-neon-purple/20 flex items-center justify-center text-neon-purple shrink-0`}>
-                  <MessageSquare className={compact ? 'w-4 h-4' : 'w-5 h-5 sm:w-6 sm:h-6'} />
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-neon-purple/20 flex items-center justify-center text-neon-purple shrink-0">
+                  <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div>
-                  <h3 className={`font-black font-display leading-tight uppercase tracking-widest ${compact ? 'text-xs' : 'text-base sm:text-lg'}`}>Chat Room</h3>
-                  {!compact && (
-                    <div className="flex items-center gap-2 sm:gap-4">
-                      {blockedUsers.length > 0 && (
-                        <button 
-                          onClick={handleUnblockAll}
-                          className="text-[9px] text-red-500/50 hover:text-red-500 uppercase font-black tracking-widest transition-colors flex items-center gap-1"
-                        >
-                          <Ban className="w-2.5 h-2.5" />
-                          Unblock All ({blockedUsers.length})
-                        </button>
-                      )}
-                    </div>
-                  )}
+                  <h3 className="font-black font-display text-base sm:text-lg leading-tight uppercase tracking-widest">Chat Room</h3>
+                  <div className="flex items-center gap-2 sm:gap-4">
+                    {blockedUsers.length > 0 && (
+                      <button 
+                        onClick={handleUnblockAll}
+                        className="text-[9px] text-red-500/50 hover:text-red-500 uppercase font-black tracking-widest transition-colors flex items-center gap-1"
+                      >
+                        <Ban className="w-2.5 h-2.5" />
+                        Unblock All ({blockedUsers.length})
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
@@ -1452,7 +1424,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                     toast.success(newValue ? "Chat sounds enabled" : "Chat sounds muted");
                   }}
                   id="chat-sound-toggle-btn"
-                  className={`${compact ? 'w-7 h-7 rounded-lg' : 'w-8 h-8 sm:w-9 sm:h-9 rounded-xl'} flex items-center justify-center border transition-all relative cursor-pointer group ${
+                  className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl border transition-all relative cursor-pointer group ${
                     soundEnabled 
                       ? 'bg-neon-purple/10 border-neon-purple/30 hover:bg-neon-purple/20' 
                       : 'bg-white/5 border-white/10 hover:bg-white/10'
@@ -1460,30 +1432,30 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                   title={soundEnabled ? "Mute chat sounds" : "Unmute chat sounds"}
                 >
                   {soundEnabled ? (
-                    <Volume2 className={`${compact ? 'w-4 h-4' : 'w-5 h-5'} text-neon-purple animate-pulse`} />
+                    <Volume2 className="w-5 h-5 text-neon-purple animate-pulse" />
                   ) : (
-                    <VolumeX className={`${compact ? 'w-4 h-4' : 'w-5 h-5'} text-white/40`} />
+                    <VolumeX className="w-5 h-5 text-white/40" />
                   )}
                   {soundEnabled && (
-                    <span className={`absolute ${compact ? 'top-1 right-1' : 'top-2 right-2'} w-1.5 h-1.5 rounded-full bg-neon-purple animate-ping`} />
+                    <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-neon-purple animate-ping" />
                   )}
                 </button>
                 {isAdmin && chatTab === 'public' && (
                   <button 
                     onClick={handleClearAll}
-                    className={`${compact ? 'w-7 h-7 rounded-lg' : 'w-8 h-8 sm:w-9 sm:h-9 rounded-xl'} flex items-center justify-center border transition-all cursor-pointer group ${
+                    className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl border transition-all cursor-pointer group ${
                       isLightMode ? 'bg-red-500/10 border-red-500/30 hover:bg-red-500/20 text-red-500' : 'bg-red-500/20 border-red-500/40 hover:bg-red-500/30 text-red-500'
                     }`}
                     title="Clear All Messages (Admin)"
                   >
-                    <Trash2 className={compact ? 'w-4 h-4' : 'w-5 h-5'} />
+                    <Trash2 className="w-5 h-5" />
                   </button>
                 )}
                 {loggedInUser && (
                   <button
                     onClick={() => setShowProfile(true)}
                     id="chat-profile-btn"
-                    className={`${compact ? 'w-7 h-7 rounded-lg' : 'w-8 h-8 sm:w-9 sm:h-9 rounded-xl'} bg-white/5 hover:bg-neon-purple/20 border border-white/10 hover:border-neon-purple/50 flex items-center justify-center overflow-hidden transition-all group shrink-0 relative cursor-pointer`}
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/5 hover:bg-neon-purple/20 border border-white/10 hover:border-neon-purple/50 flex items-center justify-center overflow-hidden transition-all group shrink-0 relative cursor-pointer"
                     title="User Profile & Avatar"
                   >
                     <img
@@ -1510,10 +1482,10 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
 
             {/* Tab Selector when logged in */}
             {loggedInUser && (
-              <div className={`${compact ? 'px-3 py-1.5' : 'px-6 py-2'} border-b flex gap-2 shrink-0 ${isLightMode ? 'border-black/10 bg-black/5' : 'border-white/10 bg-white/5'}`}>
+              <div className={`px-6 py-2 border-b flex gap-2 shrink-0 ${isLightMode ? 'border-black/10 bg-black/5' : 'border-white/10 bg-white/5'}`}>
                 <button
                   onClick={() => setChatTab('public')}
-                  className={`flex-1 ${compact ? 'py-1 text-[10px]' : 'py-1.5 text-[11px]'} font-black uppercase tracking-wider rounded-lg border transition-all cursor-pointer ${
+                  className={`flex-1 py-1.5 text-[11px] font-black uppercase tracking-wider rounded-lg border transition-all cursor-pointer ${
                     chatTab === 'public'
                       ? 'bg-neon-purple text-white border-neon-purple shadow-[0_0_10px_rgba(176,38,255,0.3)]'
                       : (isLightMode ? 'text-black/60 hover:text-black border-black/10 bg-black/5' : 'text-white/60 hover:text-white border-white/10 bg-white/5')
@@ -1523,7 +1495,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                 </button>
                 <button
                   onClick={() => setChatTab('private')}
-                  className={`flex-1 ${compact ? 'py-1 text-[10px]' : 'py-1.5 text-[11px]'} font-black uppercase tracking-wider rounded-lg border transition-all relative cursor-pointer ${
+                  className={`flex-1 py-1.5 text-[11px] font-black uppercase tracking-wider rounded-lg border transition-all relative cursor-pointer ${
                     chatTab === 'private'
                       ? 'bg-neon-purple text-white border-neon-purple shadow-[0_0_10px_rgba(176,38,255,0.3)]'
                       : (isLightMode ? 'text-black/60 hover:text-black border-black/10 bg-black/5' : 'text-white/60 hover:text-white border-white/10 bg-white/5')
@@ -1540,7 +1512,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
             )}
 
             <div 
-              className={`flex-1 overflow-y-auto ${compact ? 'p-3 space-y-3' : 'p-6 space-y-6'} no-scrollbar`} 
+              className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar" 
               ref={scrollRef}
               onScroll={handleScroll}
             >
@@ -1557,10 +1529,10 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       key={msg.id} 
-                      className={`group ${msg.isSystem ? (compact ? 'bg-neon-pink/10 border border-neon-pink/30 p-2 rounded-xl' : 'bg-neon-pink/10 border border-neon-pink/30 p-3 rounded-xl') : (compact ? 'flex gap-2' : 'flex gap-3')}`}
+                      className={`group ${msg.isSystem ? 'bg-neon-pink/10 border border-neon-pink/30 p-3 rounded-xl' : 'flex gap-3'}`}
                     >
                       {!msg.isSystem && (
-                        <div className={`${compact ? 'w-7 h-7' : 'w-8 h-8'} rounded-lg overflow-hidden border shrink-0 ${isLightMode ? 'border-black/10 bg-black/5' : 'border-white/10 bg-white/5'}`}>
+                        <div className={`w-8 h-8 rounded-lg overflow-hidden border shrink-0 ${isLightMode ? 'border-black/10 bg-black/5' : 'border-white/10 bg-white/5'}`}>
                           <img 
                             src={getSecureImageUrl((msg as any).avatar_url) || `https://api.dicebear.com/7.x/bottts/svg?seed=${msg.user}`}
                             alt={msg.user}
@@ -1616,9 +1588,9 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                           </div>
                         )}
                         {msg.isSystem ? (
-                          <div className={compact ? 'space-y-1' : 'space-y-2'}>
-                            <div className={`flex items-start ${compact ? 'gap-2' : 'gap-3'}`}>
-                              <div className={`${compact ? 'w-7 h-7' : 'w-8 h-8'} rounded-lg overflow-hidden border shrink-0 ${isLightMode ? 'border-neon-pink/30 bg-neon-pink/5' : 'border-neon-pink/30 bg-neon-pink/10'} shadow-[0_0_10px_rgba(255,20,147,0.2)]`}>
+                          <div className="space-y-2">
+                            <div className="flex items-start gap-3">
+                              <div className={`w-8 h-8 rounded-lg overflow-hidden border shrink-0 ${isLightMode ? 'border-neon-pink/30 bg-neon-pink/5' : 'border-neon-pink/30 bg-neon-pink/10'} shadow-[0_0_10px_rgba(255,20,147,0.2)]`}>
                                 <img 
                                   src={getSecureImageUrl((msg as any).avatar_url) || `/icon.svg`}
                                   alt={msg.user || "Studio"}
@@ -1681,7 +1653,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                             )}
                           </div>
                         ) : (
-                          <div className={`relative rounded-2xl rounded-tl-none ${compact ? 'p-2 text-xs' : 'p-3 text-sm'} border transition-all ${isLightMode ? 'bg-black/5 border-black/5 group-hover:border-black/10' : 'bg-white/5 border-white/5 group-hover:border-white/10'}`}>
+                          <div className={`relative rounded-2xl rounded-tl-none p-3 border transition-all ${isLightMode ? 'bg-black/5 border-black/5 group-hover:border-black/10' : 'bg-white/5 border-white/5 group-hover:border-white/10'}`}>
                             <div className="absolute top-2 right-2 opacity-30 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 z-10">
                               <button 
                                 onClick={() => handleResendMessage(msg)}
@@ -1802,9 +1774,9 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           key={msg.id} 
-                          className={`group ${compact ? 'flex gap-2' : 'flex gap-3'}`}
+                          className="flex gap-3 group"
                         >
-                          <div className={`${compact ? 'w-7 h-7' : 'w-8 h-8'} rounded-lg overflow-hidden border shrink-0 ${isLightMode ? 'border-black/10 bg-black/5' : 'border-white/10 bg-white/5'}`}>
+                          <div className={`w-8 h-8 rounded-lg overflow-hidden border shrink-0 ${isLightMode ? 'border-black/10 bg-black/5' : 'border-white/10 bg-white/5'}`}>
                             <img 
                               src={getSecureImageUrl((msg as any).avatar_url) || `https://api.dicebear.com/7.x/bottts/svg?seed=${msg.user}`}
                               alt={msg.user}
@@ -1831,7 +1803,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             </div>
-                            <div className={`relative rounded-2xl rounded-tl-none ${compact ? 'p-2 text-xs' : 'p-3 text-sm'} border transition-all ${isLightMode ? 'bg-black/5 border-black/5 group-hover:border-black/10' : 'bg-white/5 border-white/5 group-hover:border-white/10'}`}>
+                            <div className={`relative rounded-2xl rounded-tl-none p-3 border transition-all ${isLightMode ? 'bg-black/5 border-black/5 group-hover:border-black/10' : 'bg-white/5 border-white/5 group-hover:border-white/10'}`}>
                               <div className="absolute top-2 right-2 opacity-30 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 z-10">
                                 <button 
                                   onClick={() => handleResendMessage(msg)}
@@ -2020,7 +1992,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
               )}
             </div>
 
-            <div className={`${compact ? 'p-3' : 'p-6'} border-t ${isLightMode ? 'bg-black/5 border-black/10' : 'bg-white/5 border-white/10'}`}>
+            <div className={`p-6 border-t ${isLightMode ? 'bg-black/5 border-black/10' : 'bg-white/5 border-white/10'}`}>
               {isCheckingAuth ? (
                 <div className="flex justify-center py-4">
                   <Loader2 className="w-6 h-6 animate-spin text-neon-purple" />
@@ -2142,7 +2114,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                   </form>
                 </div>
               ) : (
-                <div className={compact ? "space-y-2" : "space-y-4"}>
+                <div className="space-y-4">
                   {/* Hidden File Input */}
                   <input 
                     type="file" 
@@ -2155,31 +2127,29 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                     }} 
                   />
 
-                  {!compact && (
-                    <div className="flex items-center justify-between px-2">
-                      <button 
-                        onClick={() => setShowProfile(true)}
-                        className="flex items-center space-x-2 text-left cursor-pointer group"
-                      >
-                        <div className={`w-7 h-7 rounded-lg overflow-hidden border group-hover:border-neon-purple/50 transition-colors ${isLightMode ? 'border-black/10 bg-black/5' : 'border-white/10 bg-white/5'}`}>
-                          <img
-                            src={userAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${loggedInUser}`}
-                            alt={loggedInUser}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/bottts/svg?seed=${loggedInUser}`;
-                            }}
-                          />
-                        </div>
-                        <span className={`text-[10px] font-black uppercase tracking-widest group-hover:text-neon-purple transition-colors ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>
-                          {loggedInUser.includes('@') ? loggedInUser.split('@')[0] : loggedInUser}
-                        </span>
-                      </button>
-                      <button onClick={handleLogout} className={`text-[10px] font-black uppercase tracking-widest hover:text-red-400 transition-colors ${isLightMode ? 'text-black/40' : 'text-white/20'}`}>
-                        Logout
-                      </button>
-                    </div>
-                  )}
+                  <div className="flex items-center justify-between px-2">
+                    <button 
+                      onClick={() => setShowProfile(true)}
+                      className="flex items-center space-x-2 text-left cursor-pointer group"
+                    >
+                      <div className={`w-7 h-7 rounded-lg overflow-hidden border group-hover:border-neon-purple/50 transition-colors ${isLightMode ? 'border-black/10 bg-black/5' : 'border-white/10 bg-white/5'}`}>
+                        <img
+                          src={userAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${loggedInUser}`}
+                          alt={loggedInUser}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/bottts/svg?seed=${loggedInUser}`;
+                          }}
+                        />
+                      </div>
+                      <span className={`text-[10px] font-black uppercase tracking-widest group-hover:text-neon-purple transition-colors ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>
+                        {loggedInUser.includes('@') ? loggedInUser.split('@')[0] : loggedInUser}
+                      </span>
+                    </button>
+                    <button onClick={handleLogout} className={`text-[10px] font-black uppercase tracking-widest hover:text-red-400 transition-colors ${isLightMode ? 'text-black/40' : 'text-white/20'}`}>
+                      Logout
+                    </button>
+                  </div>
 
                   {/* Pending Attachment Preview / Upload Loading indicator */}
                   {(isUploadingAttachment || pendingAttachment) && (
@@ -2226,38 +2196,38 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
 
                   <div className="relative" ref={emojiPickerRef}>
                     {isRecording ? (
-                      <div className={`relative flex items-center justify-between border ${compact ? 'rounded-xl px-3 py-2 text-xs' : 'rounded-2xl px-4 py-4 text-sm'} transition-all ${isLightMode ? 'bg-[#ffffff]/80 border-black/10 text-black' : 'bg-black/50 border-white/10 text-white'}`}>
+                      <div className={`relative flex items-center justify-between border rounded-2xl px-4 py-4 text-sm transition-all ${isLightMode ? 'bg-[#ffffff]/80 border-black/10 text-black' : 'bg-black/50 border-white/10 text-white'}`}>
                         {/* Recording status with a pulsing red icon */}
-                        <div className={`flex items-center ${compact ? 'space-x-2' : 'space-x-3'}`}>
-                          <span className="relative flex h-2.5 w-2.5">
+                        <div className="flex items-center space-x-3">
+                          <span className="relative flex h-3 w-3">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
                           </span>
-                          <span className={`font-bold uppercase tracking-wider text-red-500 animate-pulse ${compact ? 'text-[9px]' : 'text-[11px]'}`}>
+                          <span className="font-bold uppercase tracking-wider text-[11px] text-red-500 animate-pulse">
                             Recording Voice Note
                           </span>
-                          <span className={`font-mono font-bold text-white/60 ${compact ? 'text-[10px]' : 'text-xs'}`}>
+                          <span className="font-mono text-xs font-bold text-white/60">
                             {formatDuration(recordingDuration)}
                           </span>
                         </div>
 
                         {/* Controls: Discard and Save */}
-                        <div className="flex items-center space-x-1.5">
+                        <div className="flex items-center space-x-2">
                           <button
                             type="button"
                             onClick={() => stopRecording(true)}
-                            className={`rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 transition-colors ${compact ? 'p-1.5' : 'p-2'}`}
+                            className="p-2 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 transition-colors"
                             title="Discard Recording"
                           >
-                            <Trash2 className={compact ? "w-3.5 h-3.5" : "w-4 h-4"} />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                           <button
                             type="button"
                             onClick={() => stopRecording(false)}
-                            className={`rounded-lg bg-neon-purple/20 text-neon-purple hover:bg-neon-purple/30 hover:text-neon-blue transition-all ${compact ? 'p-1.5' : 'p-2'}`}
+                            className="p-2 rounded-xl bg-neon-purple/20 text-neon-purple hover:bg-neon-purple/30 hover:text-neon-blue transition-all"
                             title="Stop and Save Recording"
                           >
-                            <Square className={compact ? "w-3.5 h-3.5" : "w-4 h-4"} />
+                            <Square className="w-4 h-4" />
                           </button>
                         </div>
                       </div>
@@ -2267,20 +2237,20 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
-                          className={`absolute ${compact ? 'left-1.5 top-1.5 bottom-1.5 w-8 rounded-lg' : 'left-2 top-2 bottom-2 w-10 rounded-xl'} flex items-center justify-center transition-all ${isLightMode ? 'text-black/40 hover:text-black hover:bg-black/5' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                          className={`absolute left-2 top-2 bottom-2 w-10 flex items-center justify-center rounded-xl transition-all ${isLightMode ? 'text-black/40 hover:text-black hover:bg-black/5' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
                           title="Attach image or audio"
                         >
-                          <Paperclip className={compact ? "w-4 h-4" : "w-5 h-5"} />
+                          <Paperclip className="w-5 h-5" />
                         </button>
 
                         {/* Mic recording trigger button inside the input */}
                         <button
                           type="button"
                           onClick={startRecording}
-                          className={`absolute ${compact ? 'left-9 top-1.5 bottom-1.5 w-8 rounded-lg' : 'left-12 top-2 bottom-2 w-10 rounded-xl'} flex items-center justify-center transition-all ${isLightMode ? 'text-black/40 hover:text-black hover:bg-black/5' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                          className={`absolute left-12 top-2 bottom-2 w-10 flex items-center justify-center rounded-xl transition-all ${isLightMode ? 'text-black/40 hover:text-black hover:bg-black/5' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
                           title="Record voice note"
                         >
-                          <Mic className={compact ? "w-4 h-4" : "w-5 h-5"} />
+                          <Mic className="w-5 h-5" />
                         </button>
 
                         <input
@@ -2288,32 +2258,28 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                           type="text"
                           value={inputText}
                           onChange={(e) => handleInputChange(e.target.value)}
-                          placeholder={compact ? `Chatting as ${loggedInUser.includes('@') ? loggedInUser.split('@')[0] : loggedInUser}...` : "Say something to the station..."}
-                          className={`w-full ${isLightMode ? 'bg-[#ffffff]/80 border-black/10 text-black placeholder-black/40' : 'bg-black/50 border-white/10 placeholder-white/20'} border focus:outline-none focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/50 transition-all ${
-                            compact 
-                              ? 'pl-[74px] pr-[74px] py-2.5 text-xs rounded-xl font-medium' 
-                              : 'pl-[88px] pr-24 py-4 text-sm rounded-2xl'
-                          }`}
+                          placeholder="Say something to the station..."
+                          className={`w-full ${isLightMode ? 'bg-[#ffffff]/80 border-black/10 text-black placeholder-black/40' : 'bg-black/50 border-white/10 placeholder-white/20'} border rounded-2xl pl-[88px] pr-24 py-4 text-sm focus:outline-none focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/50 transition-all`}
                         />
                         
                         {/* Emoji trigger button inside the input */}
                         <button
                           type="button"
                           onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                          className={`absolute ${compact ? 'right-9 top-1.5 bottom-1.5 w-8 rounded-lg' : 'right-12 top-2 bottom-2 w-10 rounded-xl'} flex items-center justify-center transition-all ${
+                          className={`absolute right-12 top-2 bottom-2 w-10 flex items-center justify-center rounded-xl transition-all ${
                             showEmojiPicker ? 'text-neon-purple bg-neon-purple/10' : (isLightMode ? 'text-black/40 hover:text-black bg-transparent' : 'text-white/40 hover:text-white bg-transparent')
                           }`}
                           title="Add emoji"
                         >
-                          <Smile className={compact ? "w-4 h-4" : "w-5 h-5"} />
+                          <Smile className="w-5 h-5" />
                         </button>
 
                         <button
                           type="submit"
                           disabled={!inputText.trim() && !pendingAttachment}
-                          className={`absolute ${compact ? 'right-1.5 top-1.5 bottom-1.5 w-8 rounded-lg' : 'right-2 top-2 bottom-2 w-10 rounded-xl'} flex items-center justify-center bg-neon-purple text-white disabled:opacity-30 hover:bg-neon-blue transition-all`}
+                          className="absolute right-2 top-2 bottom-2 w-10 flex items-center justify-center rounded-xl bg-neon-purple text-white disabled:opacity-30 hover:bg-neon-blue transition-all"
                         >
-                          <Send className={compact ? "w-3.5 h-3.5" : "w-4 h-4 ml-0.5"} />
+                          <Send className="w-4 h-4 ml-0.5" />
                         </button>
                       </form>
                     )}

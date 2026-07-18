@@ -1,7 +1,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useNavigate, Routes, Route, useLocation, Navigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { Sun, Moon, Radio, LogOut, Home } from "lucide-react";
+import { Sun, Moon, Radio, LogOut, Home as HomeIcon } from "lucide-react";
 import { fetchAdmin } from "./admin/adminApi";
 import { LoadingFallback } from "./admin/LoadingFallback";
 import { AdminSecretGate } from "./admin/AdminAuth";
@@ -172,6 +172,13 @@ export default function Admin() {
                 Studio
               </Link>
             )}
+            <Link
+              to="/"
+              className="inline-flex items-center justify-center h-12 w-12 rounded-full border border-white/10 bg-white/5 text-white/80 transition hover:bg-white/10 hover:text-white"
+              title="Go to Homepage"
+            >
+              <HomeIcon className="w-5 h-5" />
+            </Link>
             <button
               type="button"
               onClick={toggleTheme}
@@ -180,13 +187,6 @@ export default function Admin() {
             >
               {dashboardTheme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
             </button>
-            <Link
-              to="/"
-              className="inline-flex items-center justify-center min-h-[3rem] min-w-[3rem] rounded-full border border-white/10 bg-white/5 text-white/80 transition hover:bg-white/10 hover:text-white admin-theme-toggle-btn"
-              title="Back to Home"
-            >
-              <Home className="w-5 h-5" />
-            </Link>
           </div>
         </div>
 
