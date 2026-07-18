@@ -1,1 +1,28 @@
-import React, { createContext, useContext, ReactNode } from 'react';\n\ninterface AudioContextType {\n  // Add audio context properties here\n}\n\nconst AudioContext = createContext<AudioContextType | undefined>(undefined);\n\nexport function AudioProvider({ children }: { children: ReactNode }) {\n  const value: AudioContextType = {\n    // Initialize context values\n  };\n\n  return (\n    <AudioContext.Provider value={value}>\n      {children}\n    </AudioContext.Provider>\n  );\n}\n\nexport function useAudio(): AudioContextType {\n  const context = useContext(AudioContext);\n  if (!context) {\n    throw new Error('useAudio must be used within AudioProvider');\n  }\n  return context;\n}\n
+import React, { createContext, useContext, ReactNode } from 'react';
+
+interface AudioContextType {
+  // Add audio context properties here
+}
+
+const AudioContext = createContext<AudioContextType | undefined>(undefined);
+
+export function AudioProvider({ children }: { children: ReactNode }) {
+  const value: AudioContextType = {
+    // Initialize context values
+  };
+
+  return (
+    <AudioContext.Provider value={value}>
+      {children}
+    </AudioContext.Provider>
+  );
+}
+
+export function useAudio(): AudioContextType {
+  const context = useContext(AudioContext);
+  if (!context) {
+    throw new Error('useAudio must be used within AudioProvider');
+  }
+  return context;
+}
+

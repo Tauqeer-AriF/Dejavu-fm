@@ -1,1 +1,37 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';\n\ninterface ModalContextType {\n  showConfirm: (title: string, message: string) => Promise<boolean>;\n}\n\nconst ModalContext = createContext<ModalContextType | undefined>(undefined);\n\nexport function ModalProvider({ children }: { children: ReactNode }) {\n  const [, setConfirmState] = useState<any>(null);\n\n  const showConfirm = async (title: string, message: string): Promise<boolean> => {\n    return new Promise((resolve) => {\n      // Implement confirmation logic here\n      resolve(true);\n    });\n  };\n\n  const value: ModalContextType = {\n    showConfirm,\n  };\n\n  return (\n    <ModalContext.Provider value={value}>\n      {children}\n    </ModalContext.Provider>\n  );\n}\n\nexport function useModal(): ModalContextType {\n  const context = useContext(ModalContext);\n  if (!context) {\n    throw new Error('useModal must be used within ModalProvider');\n  }\n  return context;\n}\n
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+
+interface ModalContextType {
+  showConfirm: (title: string, message: string) => Promise<boolean>;
+}
+
+const ModalContext = createContext<ModalContextType | undefined>(undefined);
+
+export function ModalProvider({ children }: { children: ReactNode }) {
+  const [, setConfirmState] = useState<any>(null);
+
+  const showConfirm = async (title: string, message: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      // Implement confirmation logic here
+      resolve(true);
+    });
+  };
+
+  const value: ModalContextType = {
+    showConfirm,
+  };
+
+  return (
+    <ModalContext.Provider value={value}>
+      {children}
+    </ModalContext.Provider>
+  );
+}
+
+export function useModal(): ModalContextType {
+  const context = useContext(ModalContext);
+  if (!context) {
+    throw new Error('useModal must be used within ModalProvider');
+  }
+  return context;
+}
+
