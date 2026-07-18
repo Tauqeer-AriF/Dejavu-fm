@@ -318,23 +318,23 @@ export default function WatchLive() {
             className="fixed inset-0 z-[2000] flex flex-col bg-dark-bg/95 backdrop-blur-2xl lg:hidden"
           >
             {/* Mobile Header / Controls */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-black/40 shrink-0">
-              <div className="flex items-center space-x-2">
-                <span className="flex h-2 w-2 relative">
+            <div className="flex items-center justify-between px-3.5 py-1.5 border-b border-white/5 bg-black/40 shrink-0">
+              <div className="flex items-center space-x-1.5">
+                <span className="flex h-1.5 w-1.5 relative">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
                 </span>
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/90">
-                  Interactive Live Split
+                <span className="text-[9px] font-black uppercase tracking-widest text-white/95">
+                  Interactive Split Mode
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setIsMobileSplitActive(false)}
-                className="flex items-center gap-1 px-3 py-1 bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 rounded-full text-white text-xs font-bold transition cursor-pointer"
+                className="flex items-center gap-1 px-2.5 py-0.5 bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 rounded-full text-white text-[10px] font-bold transition cursor-pointer"
               >
-                <X className="w-4 h-4" />
-                <span>Exit Split</span>
+                <X className="w-3 h-3" />
+                <span>Exit</span>
               </button>
             </div>
 

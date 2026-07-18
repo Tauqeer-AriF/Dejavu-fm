@@ -195,6 +195,21 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
       localStorage.setItem('dejavu_chat_drafts_map', JSON.stringify(updated));
       return updated;
     });
+
+    // Mentions auto-suggest logic
+    const cursor = inputRef.current?.selectionStart ?? text.length;
+    const textBeforeCursor = text.substring(0, cursor);
+    const words = textBeforeCursor.split(/\s+/);
+    const lastWord = words[words.length - 1];
+
+    if (lastWord && lastWord.startsWith('@')) {
+      const query = lastWord.substring(1);
+      setMentionSearch(query);
+      setShowMentionSuggestions(true);
+      setSelectedSuggestionIndex(0);
+    } else {
+      setShowMentionSuggestions(false);
+    }
   };
 
   useEffect(() => {
@@ -507,7 +522,37 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     return () => window.removeEventListener('chat_emoji_search_sync', handleEmojiSearchSync);
   }, [emojiSearch]);
 
+  // 10. isAdmin sync
+  const lastIsAdminRef = useRef(isAdmin);
+  useEffect(() => {
+    if (isAdmin !== lastIsAdminRef.current) {
+      lastIsAdminRef.current = isAdmin;
+      window.dispatchEvent(new CustomEvent('chat_is_admin_sync', { detail: isAdmin }));
+    }
+  }, [isAdmin]);
+
+  useEffect(() => {
+    const handleIsAdminSync = (e: any) => {
+      if (e.detail !== isAdmin) {
+        lastIsAdminRef.current = e.detail;
+        setIsAdmin(e.detail);
+      }
+    };
+    window.addEventListener('chat_is_admin_sync', handleIsAdminSync);
+    return () => window.removeEventListener('chat_is_admin_sync', handleIsAdminSync);
+  }, [isAdmin]);
+
   const [allUsers, setAllUsers] = useState<{ username: string; avatar_url: string | null }[]>([]);
+  const [mentionSearch, setMentionSearch] = useState('');
+  const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
+
+  const filteredUsers = useMemo(() => {
+    if (!mentionSearch) return allUsers;
+    return allUsers.filter(u => 
+      u.username.toLowerCase().includes(mentionSearch.toLowerCase())
+    );
+  }, [allUsers, mentionSearch]);
   const [searchUserQuery, setSearchUserQuery] = useState('');
   const [unreadDms, setUnreadDms] = useState<Set<string>>(new Set<string>());
 
@@ -529,10 +574,10 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
   };
 
   useEffect(() => {
-    if (isOpen && loggedInUser && chatTab === 'private') {
+    if (isOpen && loggedInUser) {
       fetchAllUsers();
     }
-  }, [isOpen, loggedInUser, chatTab]);
+  }, [isOpen, loggedInUser]);
 
   useEffect(() => {
     if (activeDmUser) {
@@ -606,6 +651,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     function handleClickOutside(event: MouseEvent) {
       if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
         setShowEmojiPicker(false);
+        setShowMentionSuggestions(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -648,43 +694,62 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
   }, [emojiSearch]);
 
   useEffect(() => {
-    fetch('/api/public/auth/check')
-      .then(r => r.json())
-      .then(data => {
-        if (data.loggedIn) {
-          setLoggedInUser(data.username);
-          setUserAvatar(data.avatar_url);
-          setUserJoinedAt(data.created_at);
-          setIsAdmin(!!data.isAdmin);
-        } else {
+    const checkAuthAndAdmin = () => {
+      fetch('/api/public/auth/check')
+        .then(r => r.json())
+        .then(data => {
+          if (data.loggedIn) {
+            setLoggedInUser(data.username);
+            setUserAvatar(data.avatar_url);
+            setUserJoinedAt(data.created_at);
+            setIsAdmin(!!data.isAdmin);
+          } else {
+            setIsAdmin(false);
+          }
+          setIsCheckingAuth(false);
+        })
+        .catch(() => {
           setIsAdmin(false);
-        }
-        setIsCheckingAuth(false);
-      })
-      .catch(() => {
-        setIsAdmin(false);
-        setIsCheckingAuth(false);
-      });
+          setIsCheckingAuth(false);
+        });
 
-    // Check for station admin status
-    const adminToken = localStorage.getItem('admin_token');
-    if (adminToken) {
-      fetch('/api/admin/check', {
-        headers: { 'Authorization': `Bearer ${adminToken}` }
-      }).then(r => { 
-        if (r.ok) {
-          setIsAdmin(true);
+      // Check for station admin status
+      const adminToken = localStorage.getItem('admin_token');
+      if (adminToken) {
+        fetch('/api/admin/check', {
+          headers: { 'Authorization': `Bearer ${adminToken}` }
+        }).then(r => { 
+          if (r.ok) {
+            setIsAdmin(true);
+          } else {
+            // If the token is invalid, clear it to prevent further attempts
+            localStorage.removeItem('admin_token');
+          }
+        })
+        .catch(() => {});
+      }
+    };
+
+    checkAuthAndAdmin();
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'admin_token') {
+        if (!e.newValue) {
+          setIsAdmin(false);
         } else {
-          // If the token is invalid, clear it to prevent further attempts
-          localStorage.removeItem('admin_token');
-          // Don't necessarily set isAdmin to false if we are already a public admin
+          checkAuthAndAdmin();
         }
-      })
-      .catch(() => {});
-    }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
 
     const socket = (window as any).socket;
-    if (!socket) return;
+    if (!socket) {
+      return () => {
+        window.removeEventListener('storage', handleStorageChange);
+      };
+    }
     socketRef.current = socket;
 
     const onChatHistory = (history: ChatMessage[]) => {
@@ -780,6 +845,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     }
 
     return () => {
+      window.removeEventListener('storage', handleStorageChange);
       socket.off('chatHistory', onChatHistory);
       socket.off('chatMessage', onChatMessage);
       socket.off('privateHistory', onPrivateHistory);
@@ -952,6 +1018,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
           localStorage.setItem('admin_token', data.token);
           setIsAdmin(true);
         } else {
+          localStorage.removeItem('admin_token');
           setIsAdmin(!!data.isAdmin);
         }
         
@@ -1113,6 +1180,84 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const insertMention = (username: string) => {
+    const text = inputText;
+    const cursor = inputRef.current?.selectionStart ?? text.length;
+    const textBeforeCursor = text.substring(0, cursor);
+    const textAfterCursor = text.substring(cursor);
+
+    // Replace the last word (which started with @) with @username
+    const lastWordIndex = textBeforeCursor.lastIndexOf('@');
+    if (lastWordIndex !== -1) {
+      const newTextBefore = textBeforeCursor.substring(0, lastWordIndex) + `@${username} `;
+      const newText = newTextBefore + textAfterCursor;
+      handleInputChange(newText);
+      setShowMentionSuggestions(false);
+      
+      // Put focus back and place cursor after the inserted mention
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          const newCursorPos = newTextBefore.length;
+          inputRef.current.setSelectionRange(newCursorPos, newCursorPos);
+        }
+      }, 0);
+    }
+  };
+
+  const renderMessageText = (text: string | undefined | null) => {
+    if (!text) return null;
+    const parts = text.split(/(@[a-zA-Z0-9_.-]+)/g);
+    return (
+      <>
+        {parts.map((part, index) => {
+          if (part.startsWith('@')) {
+            const username = part.substring(1);
+            const canDm = loggedInUser && username.toLowerCase() !== loggedInUser.toLowerCase();
+            return (
+              <button
+                key={index}
+                type="button"
+                onClick={() => {
+                  if (canDm) {
+                    setActiveDmUser(username);
+                    setChatTab('private');
+                  }
+                }}
+                disabled={!canDm}
+                className={`inline-block px-1.5 py-0.5 rounded bg-neon-purple/20 text-neon-purple font-black uppercase text-[10px] tracking-widest align-middle border border-neon-purple/30 mx-0.5 transition-all ${
+                  canDm ? 'hover:bg-neon-purple hover:text-white hover:scale-105 active:scale-95 cursor-pointer' : ''
+                }`}
+                title={canDm ? `Message @${username}` : undefined}
+              >
+                {part}
+              </button>
+            );
+          }
+          return <span key={index}>{part}</span>;
+        })}
+      </>
+    );
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (showMentionSuggestions && filteredUsers.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedSuggestionIndex(prev => (prev + 1) % filteredUsers.length);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedSuggestionIndex(prev => (prev - 1 + filteredUsers.length) % filteredUsers.length);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        insertMention(filteredUsers[selectedSuggestionIndex].username);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowMentionSuggestions(false);
+      }
+    }
   };
 
   const startRecording = async () => {
@@ -1392,13 +1537,13 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
             {/* Mobile Drag Handle Indicator */}
             <div className={`absolute left-2 top-1/2 -translate-y-1/2 w-1 h-16 rounded-full md:hidden pointer-events-none ${isLightMode ? 'bg-black/10' : 'bg-white/10'}`} />
 
-            <div className={`p-4 sm:p-6 border-b flex items-center justify-between ${isLightMode ? 'border-black/10' : 'border-white/10'}`}>
+            <div className={`${embedded ? 'p-2.5 sm:p-3' : 'p-4 sm:p-6'} border-b flex items-center justify-between ${isLightMode ? 'border-black/10' : 'border-white/10'}`}>
               <div className="flex items-center space-x-2 sm:space-x-3">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-neon-purple/20 flex items-center justify-center text-neon-purple shrink-0">
-                  <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />
+                <div className={`${embedded ? 'w-7 h-7' : 'w-9 h-9 sm:w-10 sm:h-10'} rounded-xl bg-neon-purple/20 flex items-center justify-center text-neon-purple shrink-0`}>
+                  <MessageSquare className={embedded ? "w-4 h-4" : "w-5 h-5 sm:w-6 sm:h-6"} />
                 </div>
                 <div>
-                  <h3 className="font-black font-display text-base sm:text-lg leading-tight uppercase tracking-widest">Chat Room</h3>
+                  <h3 className={`font-black font-display ${embedded ? 'text-xs' : 'text-base sm:text-lg'} leading-tight uppercase tracking-widest`}>Chat Room</h3>
                   <div className="flex items-center gap-2 sm:gap-4">
                     {blockedUsers.length > 0 && (
                       <button 
@@ -1424,7 +1569,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                     toast.success(newValue ? "Chat sounds enabled" : "Chat sounds muted");
                   }}
                   id="chat-sound-toggle-btn"
-                  className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl border transition-all relative cursor-pointer group ${
+                  className={`${embedded ? 'w-7 h-7' : 'w-8 h-8 sm:w-9 sm:h-9'} flex items-center justify-center rounded-xl border transition-all relative cursor-pointer group ${
                     soundEnabled 
                       ? 'bg-neon-purple/10 border-neon-purple/30 hover:bg-neon-purple/20' 
                       : 'bg-white/5 border-white/10 hover:bg-white/10'
@@ -1432,9 +1577,9 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                   title={soundEnabled ? "Mute chat sounds" : "Unmute chat sounds"}
                 >
                   {soundEnabled ? (
-                    <Volume2 className="w-5 h-5 text-neon-purple animate-pulse" />
+                    <Volume2 className={`${embedded ? 'w-4 h-4' : 'w-5 h-5'} text-neon-purple animate-pulse`} />
                   ) : (
-                    <VolumeX className="w-5 h-5 text-white/40" />
+                    <VolumeX className={`${embedded ? 'w-4 h-4' : 'w-5 h-5'} text-white/40`} />
                   )}
                   {soundEnabled && (
                     <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-neon-purple animate-ping" />
@@ -1443,19 +1588,19 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                 {isAdmin && chatTab === 'public' && (
                   <button 
                     onClick={handleClearAll}
-                    className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl border transition-all cursor-pointer group ${
+                    className={`${embedded ? 'w-7 h-7' : 'w-8 h-8 sm:w-9 sm:h-9'} flex items-center justify-center rounded-xl border transition-all cursor-pointer group ${
                       isLightMode ? 'bg-red-500/10 border-red-500/30 hover:bg-red-500/20 text-red-500' : 'bg-red-500/20 border-red-500/40 hover:bg-red-500/30 text-red-500'
                     }`}
                     title="Clear All Messages (Admin)"
                   >
-                    <Trash2 className="w-5 h-5" />
+                    <Trash2 className={embedded ? "w-4 h-4" : "w-5 h-5"} />
                   </button>
                 )}
                 {loggedInUser && (
                   <button
                     onClick={() => setShowProfile(true)}
                     id="chat-profile-btn"
-                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/5 hover:bg-neon-purple/20 border border-white/10 hover:border-neon-purple/50 flex items-center justify-center overflow-hidden transition-all group shrink-0 relative cursor-pointer"
+                    className={`${embedded ? 'w-7 h-7' : 'w-8 h-8 sm:w-9 sm:h-9'} rounded-xl bg-white/5 hover:bg-neon-purple/20 border border-white/10 hover:border-neon-purple/50 flex items-center justify-center overflow-hidden transition-all group shrink-0 relative cursor-pointer`}
                     title="User Profile & Avatar"
                   >
                     <img
@@ -1482,10 +1627,10 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
 
             {/* Tab Selector when logged in */}
             {loggedInUser && (
-              <div className={`px-6 py-2 border-b flex gap-2 shrink-0 ${isLightMode ? 'border-black/10 bg-black/5' : 'border-white/10 bg-white/5'}`}>
+              <div className={`${embedded ? 'px-3 py-1.5' : 'px-6 py-2'} border-b flex gap-2 shrink-0 ${isLightMode ? 'border-black/10 bg-black/5' : 'border-white/10 bg-white/5'}`}>
                 <button
                   onClick={() => setChatTab('public')}
-                  className={`flex-1 py-1.5 text-[11px] font-black uppercase tracking-wider rounded-lg border transition-all cursor-pointer ${
+                  className={`flex-1 ${embedded ? 'py-1 text-[10px]' : 'py-1.5 text-[11px]'} font-black uppercase tracking-wider rounded-lg border transition-all cursor-pointer ${
                     chatTab === 'public'
                       ? 'bg-neon-purple text-white border-neon-purple shadow-[0_0_10px_rgba(176,38,255,0.3)]'
                       : (isLightMode ? 'text-black/60 hover:text-black border-black/10 bg-black/5' : 'text-white/60 hover:text-white border-white/10 bg-white/5')
@@ -1495,7 +1640,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                 </button>
                 <button
                   onClick={() => setChatTab('private')}
-                  className={`flex-1 py-1.5 text-[11px] font-black uppercase tracking-wider rounded-lg border transition-all relative cursor-pointer ${
+                  className={`flex-1 ${embedded ? 'py-1 text-[10px]' : 'py-1.5 text-[11px]'} font-black uppercase tracking-wider rounded-lg border transition-all relative cursor-pointer ${
                     chatTab === 'private'
                       ? 'bg-neon-purple text-white border-neon-purple shadow-[0_0_10px_rgba(176,38,255,0.3)]'
                       : (isLightMode ? 'text-black/60 hover:text-black border-black/10 bg-black/5' : 'text-white/60 hover:text-white border-white/10 bg-white/5')
@@ -1512,7 +1657,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
             )}
 
             <div 
-              className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar" 
+              className={`flex-1 overflow-y-auto ${embedded ? 'p-3 space-y-3' : 'p-6 space-y-6'} no-scrollbar`} 
               ref={scrollRef}
               onScroll={handleScroll}
             >
@@ -1609,7 +1754,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                     {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                   </span>
                                 </div>
-                                <p className="text-sm font-bold text-neon-pink break-words leading-relaxed mt-1">{msg.text}</p>
+                                <p className="text-sm font-bold text-neon-pink break-words leading-relaxed mt-1">{renderMessageText(msg.text)}</p>
                               </div>
                             </div>
                             {msg.imageUrl && (
@@ -1653,7 +1798,11 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                             )}
                           </div>
                         ) : (
-                          <div className={`relative rounded-2xl rounded-tl-none p-3 border transition-all ${isLightMode ? 'bg-black/5 border-black/5 group-hover:border-black/10' : 'bg-white/5 border-white/5 group-hover:border-white/10'}`}>
+                          <div className={`relative rounded-2xl rounded-tl-none p-3 border transition-all ${
+                            loggedInUser && msg.text && new RegExp(`@${loggedInUser}\\b`, 'i').test(msg.text)
+                              ? (isLightMode ? 'bg-neon-purple/5 border-neon-purple/40 shadow-[0_0_12px_rgba(176,38,255,0.15)] animate-pulse' : 'bg-neon-purple/10 border-neon-purple/50 shadow-[0_0_15px_rgba(176,38,255,0.25)]')
+                              : (isLightMode ? 'bg-black/5 border-black/5 group-hover:border-black/10' : 'bg-white/5 border-white/5 group-hover:border-white/10')
+                          }`}>
                             <div className="absolute top-2 right-2 opacity-30 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 z-10">
                               <button 
                                 onClick={() => handleResendMessage(msg)}
@@ -1662,7 +1811,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                               >
                                 <Send className="w-3 h-3" />
                               </button>
-                              {(isAdmin || msg.user === loggedInUser) && (
+                              {isAdmin && (
                                 <button 
                                   onClick={() => handleDeleteMessage(msg.id, false)}
                                   className={`p-1.5 rounded-lg transition-all cursor-pointer backdrop-blur-md ${isLightMode ? 'bg-black/5 text-black/40 hover:text-red-500 hover:bg-black/10' : 'bg-black/60 text-white/70 hover:text-white hover:bg-red-500'}`}
@@ -1673,7 +1822,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                               )}
                             </div>
                             {msg.text && (
-                              <p className={`text-sm break-words leading-relaxed ${isLightMode ? 'text-black/80' : 'text-white/80'}`}>{msg.text}</p>
+                              <p className={`text-sm break-words leading-relaxed ${isLightMode ? 'text-black/80' : 'text-white/80'}`}>{renderMessageText(msg.text)}</p>
                             )}
                             {msg.imageUrl && (
                               <div className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
@@ -1803,7 +1952,11 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             </div>
-                            <div className={`relative rounded-2xl rounded-tl-none p-3 border transition-all ${isLightMode ? 'bg-black/5 border-black/5 group-hover:border-black/10' : 'bg-white/5 border-white/5 group-hover:border-white/10'}`}>
+                            <div className={`relative rounded-2xl rounded-tl-none p-3 border transition-all ${
+                              loggedInUser && msg.text && new RegExp(`@${loggedInUser}\\b`, 'i').test(msg.text)
+                                ? (isLightMode ? 'bg-neon-purple/5 border-neon-purple/40 shadow-[0_0_12px_rgba(176,38,255,0.15)] animate-pulse' : 'bg-neon-purple/10 border-neon-purple/50 shadow-[0_0_15px_rgba(176,38,255,0.25)]')
+                                : (isLightMode ? 'bg-black/5 border-black/5 group-hover:border-black/10' : 'bg-white/5 border-white/5 group-hover:border-white/10')
+                            }`}>
                               <div className="absolute top-2 right-2 opacity-30 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 z-10">
                                 <button 
                                   onClick={() => handleResendMessage(msg)}
@@ -1812,7 +1965,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                 >
                                   <Send className="w-3 h-3" />
                                 </button>
-                                {(isAdmin || msg.user === loggedInUser) && (
+                                {isAdmin && (
                                   <button 
                                     onClick={() => handleDeleteMessage(msg.id, true)}
                                     className={`p-1.5 rounded-lg transition-all cursor-pointer backdrop-blur-md ${isLightMode ? 'bg-black/5 text-black/40 hover:text-red-500 hover:bg-black/10' : 'bg-black/60 text-white/70 hover:text-white hover:bg-red-500'}`}
@@ -1823,7 +1976,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                 )}
                               </div>
                               {msg.text && (
-                                <p className={`text-sm break-words leading-relaxed ${isLightMode ? 'text-black/80' : 'text-white/80'}`}>{msg.text}</p>
+                                <p className={`text-sm break-words leading-relaxed ${isLightMode ? 'text-black/80' : 'text-white/80'}`}>{renderMessageText(msg.text)}</p>
                               )}
                               {msg.imageUrl && (
                                 <div className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
@@ -2233,6 +2386,41 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                       </div>
                     ) : (
                       <form onSubmit={sendMessage} className="relative group">
+                        {/* Mention Suggestions Popover */}
+                        {showMentionSuggestions && filteredUsers.length > 0 && (
+                          <div
+                            className={`absolute bottom-full left-0 mb-2 w-[240px] border rounded-xl shadow-2xl p-1 z-50 flex flex-col backdrop-blur-xl ${
+                              isLightMode ? 'bg-[#ffffff]/95 border-black/10 text-black' : 'bg-[#0c0a0f]/95 border-white/10 text-white'
+                            }`}
+                            style={{ maxHeight: '180px' }}
+                          >
+                            <div className={`px-2 py-1 text-[9px] font-black uppercase tracking-wider ${isLightMode ? 'text-black/40 border-black/5' : 'text-white/40 border-white/5'} border-b mb-1`}>
+                              Mention User
+                            </div>
+                            <div className="overflow-y-auto no-scrollbar max-h-[140px] space-y-0.5">
+                              {filteredUsers.map((user, idx) => (
+                                <button
+                                  key={user.username}
+                                  type="button"
+                                  onClick={() => insertMention(user.username)}
+                                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all text-left cursor-pointer ${
+                                    idx === selectedSuggestionIndex
+                                      ? 'bg-neon-purple text-white'
+                                      : (isLightMode ? 'text-black/80 hover:bg-black/5' : 'text-white/80 hover:bg-white/5')
+                                  }`}
+                                >
+                                  <img 
+                                    src={user.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.username}`} 
+                                    alt={user.username} 
+                                    className="w-4 h-4 rounded-full bg-white/10 object-cover border border-white/10" 
+                                  />
+                                  <span className="truncate">@{user.username}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Attachment trigger button inside the input */}
                         <button
                           type="button"
@@ -2258,6 +2446,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                           type="text"
                           value={inputText}
                           onChange={(e) => handleInputChange(e.target.value)}
+                          onKeyDown={handleKeyDown}
                           placeholder="Say something to the station..."
                           className={`w-full ${isLightMode ? 'bg-[#ffffff]/80 border-black/10 text-black placeholder-black/40' : 'bg-black/50 border-white/10 placeholder-white/20'} border rounded-2xl ${embedded ? 'pl-[76px] pr-20 py-2.5 text-xs' : 'pl-[88px] pr-24 py-4 text-sm'} focus:outline-none focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/50 transition-all`}
                         />
