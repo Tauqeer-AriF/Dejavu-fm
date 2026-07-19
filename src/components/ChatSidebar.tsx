@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { io, Socket } from 'socket.io-client';
-import { Send, User, LogOut, Loader2, X, MessageSquare, Users, Ban, ShieldAlert, Smile, Search, Paperclip, Music, Mic, Square, Trash2, ArrowLeft, Eye, EyeOff, Volume2, VolumeX, Video } from 'lucide-react';
+import { Send, User, LogOut, Loader2, X, MessageSquare, Users, Ban, ShieldAlert, Smile, Search, Paperclip, Music, Mic, Square, Trash2, ArrowLeft, Eye, EyeOff, Volume2, VolumeX, Video, Disc } from 'lucide-react';
 import { toast } from 'sonner';
 import { useModal } from '../context/ModalContext';
 import { useLogo } from '../hooks/useLogo';
@@ -1648,134 +1648,191 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                     <p className={`text-sm font-bold uppercase tracking-widest ${isLightMode ? 'text-black' : 'text-white'}`}>{messages.length > 0 ? 'Messages are filtered' : 'The airwaves are quiet... say something!'}</p>
                   </div>
                 ) : (
-                  visibleMessages.map((msg) => (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      key={msg.id} 
-                      className={`group ${msg.isSystem ? 'bg-neon-pink/10 border border-neon-pink/30 p-3 rounded-xl' : 'flex gap-3'}`}
-                    >
-                      {!msg.isSystem && (
-                        <div className={`w-8 h-8 rounded-lg overflow-hidden border shrink-0 ${isLightMode ? 'border-black/10 bg-black/5' : 'border-white/10 bg-white/5'}`}>
-                          <img 
-                            src={getSecureImageUrl((msg as any).avatar_url) || `https://api.dicebear.com/7.x/bottts/svg?seed=${msg.user}`}
-                            alt={msg.user}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/bottts/svg?seed=${msg.user}`;
-                            }}
-                          />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
+                  visibleMessages.map((msg) => {
+                    const isNowPlayingTrack = msg.isSystem && msg.text?.startsWith('NOW PLAYING:');
+                    let trackArtist = '';
+                    let trackTitle = '';
+                    if (isNowPlayingTrack) {
+                      const match = msg.text.match(/^NOW PLAYING:\s*(.*?)\s*-\s*(.*)$/i);
+                      if (match) {
+                        trackArtist = match[1];
+                        trackTitle = match[2];
+                      } else {
+                        trackTitle = msg.text.replace(/^NOW PLAYING:\s*/i, '');
+                      }
+                    }
+
+                    return (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        key={msg.id} 
+                        className={`group ${
+                          msg.isSystem 
+                            ? isNowPlayingTrack
+                              ? 'bg-gradient-to-r from-neon-purple/20 via-black/40 to-neon-blue/20 border border-white/10 p-4 rounded-2xl shadow-[0_10px_30px_rgba(176,38,255,0.15)] backdrop-blur-md relative overflow-hidden'
+                              : 'bg-neon-pink/10 border border-neon-pink/30 p-3 rounded-xl' 
+                            : 'flex gap-3'
+                        }`}
+                      >
                         {!msg.isSystem && (
-                          <div className="flex items-baseline justify-between mb-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-black text-neon-blue text-xs uppercase tracking-widest">
-                                {msg.user.includes('@') ? msg.user.split('@')[0] : msg.user}
-                              </span>
-                              {loggedInUser && msg.user !== loggedInUser && (
-                                <button 
-                                  onClick={() => {
-                                    setActiveDmUser(msg.user);
-                                    setChatTab('private');
-                                  }}
-                                  className="text-[8px] bg-neon-purple/20 text-neon-purple/80 hover:bg-neon-purple hover:text-white px-1.5 py-0.5 rounded border border-neon-purple/30 font-black uppercase tracking-tighter cursor-pointer transition-all"
-                                  title="Send Private Message"
-                                >
-                                  Message
-                                </button>
-                              )}
-                              {loggedInUser && msg.user !== loggedInUser && (
-                                <button 
-                                  onClick={() => handleBlockUser(msg.user)}
-                                  className="text-[8px] bg-red-500/10 text-red-500/60 hover:text-red-500 px-1.5 py-0.5 rounded border border-red-500/20 font-black uppercase tracking-tighter cursor-pointer transition-all"
-                                  title="Block User"
-                                >
-                                  Block
-                                </button>
-                              )}
-                              {isAdmin && msg.user !== loggedInUser && (
-                                <button 
-                                  onClick={() => handleBanUser(msg.user)}
-                                  className="text-[8px] bg-red-600 text-white hover:bg-red-500 px-1.5 py-0.5 rounded font-black uppercase tracking-tighter flex items-center gap-1 cursor-pointer transition-all"
-                                  title="Global Ban"
-                                >
-                                  <ShieldAlert className="w-2 h-2" />
-                                  Ban
-                                </button>
-                              )}
-                            </div>
-                            <span className={`text-[9px] font-bold uppercase ${isLightMode ? 'text-black/30' : 'text-white/20'}`}>
-                              {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
+                          <div className={`w-8 h-8 rounded-lg overflow-hidden border shrink-0 ${isLightMode ? 'border-black/10 bg-black/5' : 'border-white/10 bg-white/5'}`}>
+                            <img 
+                              src={getSecureImageUrl((msg as any).avatar_url) || `https://api.dicebear.com/7.x/bottts/svg?seed=${msg.user}`}
+                              alt={msg.user}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/bottts/svg?seed=${msg.user}`;
+                              }}
+                            />
                           </div>
                         )}
-                        {msg.isSystem ? (
-                          <div className="space-y-2">
-                            <div className="flex items-start gap-3">
-                              <div className={`w-8 h-8 rounded-lg overflow-hidden border shrink-0 ${isLightMode ? 'border-neon-pink/30 bg-neon-pink/5' : 'border-neon-pink/30 bg-neon-pink/10'} shadow-[0_0_10px_rgba(255,20,147,0.2)]`}>
-                                <img 
-                                  src={getSecureImageUrl((msg as any).avatar_url) || `/icon.svg`}
-                                  alt={msg.user || "Studio"}
-                                  className="w-full h-full object-cover"
-                                />
+                        <div className="flex-1 min-w-0">
+                          {!msg.isSystem && (
+                            <div className="flex items-baseline justify-between mb-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-black text-neon-blue text-xs uppercase tracking-widest">
+                                  {msg.user.includes('@') ? msg.user.split('@')[0] : msg.user}
+                                </span>
+                                {loggedInUser && msg.user !== loggedInUser && (
+                                  <button 
+                                    onClick={() => {
+                                      setActiveDmUser(msg.user);
+                                      setChatTab('private');
+                                    }}
+                                    className="text-[8px] bg-neon-purple/20 text-neon-purple/80 hover:bg-neon-purple hover:text-white px-1.5 py-0.5 rounded border border-neon-purple/30 font-black uppercase tracking-tighter cursor-pointer transition-all"
+                                    title="Send Private Message"
+                                  >
+                                    Message
+                                  </button>
+                                )}
+                                {loggedInUser && msg.user !== loggedInUser && (
+                                  <button 
+                                    onClick={() => handleBlockUser(msg.user)}
+                                    className="text-[8px] bg-red-500/10 text-red-500/60 hover:text-red-500 px-1.5 py-0.5 rounded border border-red-500/20 font-black uppercase tracking-tighter cursor-pointer transition-all"
+                                    title="Block User"
+                                  >
+                                    Block
+                                  </button>
+                                )}
+                                {isAdmin && msg.user !== loggedInUser && (
+                                  <button 
+                                    onClick={() => handleBanUser(msg.user)}
+                                    className="text-[8px] bg-red-600 text-white hover:bg-red-500 px-1.5 py-0.5 rounded font-black uppercase tracking-tighter flex items-center gap-1 cursor-pointer transition-all"
+                                    title="Global Ban"
+                                  >
+                                    <ShieldAlert className="w-2 h-2" />
+                                    Ban
+                                  </button>
+                                )}
                               </div>
-                              <div className="flex-1 min-w-0 pt-0.5">
-                                <div className="flex items-baseline justify-between mb-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-black text-neon-pink text-xs uppercase tracking-widest flex items-center gap-1.5">
-                                      <span className="w-1.5 h-1.5 bg-neon-pink rounded-full animate-pulse"></span>
-                                      {msg.user || "System Broadcast"}
-                                    </span>
-                                  </div>
-                                  <span className={`text-[9px] font-bold uppercase ${isLightMode ? 'text-black/30' : 'text-white/20'}`}>
-                                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                  </span>
-                                </div>
-                                <p className="text-sm font-bold text-neon-pink break-words leading-relaxed mt-1">{renderMessageText(msg.text)}</p>
-                              </div>
+                              <span className={`text-[9px] font-bold uppercase ${isLightMode ? 'text-black/30' : 'text-white/20'}`}>
+                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
                             </div>
-                            {msg.imageUrl && (
-                              <div className="relative max-w-full rounded-lg overflow-hidden border border-neon-pink/20 bg-black/40">
-                                <img 
-                                  src={msg.imageUrl} 
-                                  alt={msg.imageName || "Attached Image"} 
-                                  className="max-h-60 object-contain mx-auto" 
-                                />
+                          )}
+                          {msg.isSystem ? (
+                            isNowPlayingTrack ? (
+                              <div className="flex items-center gap-4">
+                                {/* Rotating CD/Vinyl disk */}
+                                <div className="relative shrink-0 w-11 h-11 rounded-full bg-gradient-to-tr from-neon-purple to-neon-blue p-0.5 shadow-[0_0_10px_rgba(176,38,255,0.3)] flex items-center justify-center">
+                                  <div className="w-full h-full rounded-full bg-zinc-950 flex items-center justify-center animate-[spin_5s_linear_infinite]">
+                                    <Disc className="w-5 h-5 text-neon-blue" />
+                                  </div>
+                                  <div className="absolute w-2.5 h-2.5 rounded-full bg-zinc-950 border border-white/20"></div>
+                                </div>
+                                
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-[9px] font-black uppercase tracking-[0.15em] text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue mb-0.5 flex items-center gap-1.5">
+                                    <span className="flex h-1.5 w-1.5 relative">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-purple opacity-75"></span>
+                                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-neon-purple"></span>
+                                    </span>
+                                    <span>Live Broadcast Stream</span>
+                                  </div>
+                                  <h4 className={`text-sm font-black tracking-tight leading-tight truncate ${isLightMode ? 'text-black' : 'text-white'}`}>
+                                    {trackTitle}
+                                  </h4>
+                                  {trackArtist && (
+                                    <p className={`text-xs font-medium ${isLightMode ? 'text-black/60' : 'text-white/60'} mt-0.5 truncate`}>
+                                      by <span className={`${isLightMode ? 'text-black font-bold' : 'text-white font-bold'}`}>{trackArtist}</span>
+                                    </p>
+                                  )}
+                                </div>
+
+                                {/* Live Equalizer micro-animation */}
+                                <div className="flex items-end gap-[2px] h-4 shrink-0 px-1 opacity-80">
+                                  <span className="w-[2.5px] bg-neon-purple rounded-full animate-eq-1"></span>
+                                  <span className="w-[2.5px] bg-neon-blue rounded-full animate-eq-2"></span>
+                                  <span className="w-[2.5px] bg-neon-purple rounded-full animate-eq-3"></span>
+                                </div>
                               </div>
-                            )}
-                            {msg.videoUrl && (
-                              <div className="relative max-w-full rounded-lg overflow-hidden border border-neon-pink/20 bg-black/40">
-                                <video 
-                                  src={msg.videoUrl} 
-                                  controls
-                                  preload="metadata"
-                                  playsInline
-                                  className="max-h-60 w-full object-contain mx-auto bg-black" 
-                                />
-                                {msg.videoName && (
-                                  <div className="absolute top-2 left-2 bg-black/60 px-2 py-1 rounded text-[10px] text-white/70 max-w-[90%] truncate backdrop-blur-md">
-                                    {msg.videoName}
+                            ) : (
+                              <div className="space-y-2">
+                                <div className="flex items-start gap-3">
+                                  <div className={`w-8 h-8 rounded-lg overflow-hidden border shrink-0 ${isLightMode ? 'border-neon-pink/30 bg-neon-pink/5' : 'border-neon-pink/30 bg-neon-pink/10'} shadow-[0_0_10px_rgba(255,20,147,0.2)]`}>
+                                    <img 
+                                      src={getSecureImageUrl((msg as any).avatar_url) || `/icon.svg`}
+                                      alt={msg.user || "Studio"}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+                                  <div className="flex-1 min-w-0 pt-0.5">
+                                    <div className="flex items-baseline justify-between mb-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-black text-neon-pink text-xs uppercase tracking-widest flex items-center gap-1.5">
+                                          <span className="w-1.5 h-1.5 bg-neon-pink rounded-full animate-pulse"></span>
+                                          {msg.user || "System Broadcast"}
+                                        </span>
+                                      </div>
+                                      <span className={`text-[9px] font-bold uppercase ${isLightMode ? 'text-black/30' : 'text-white/20'}`}>
+                                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      </span>
+                                    </div>
+                                    <p className="text-sm font-bold text-neon-pink break-words leading-relaxed mt-1">{renderMessageText(msg.text)}</p>
+                                  </div>
+                                </div>
+                                {msg.imageUrl && (
+                                  <div className="relative max-w-full rounded-lg overflow-hidden border border-neon-pink/20 bg-black/40">
+                                    <img 
+                                      src={msg.imageUrl} 
+                                      alt={msg.imageName || "Attached Image"} 
+                                      className="max-h-60 object-contain mx-auto" 
+                                    />
+                                  </div>
+                                )}
+                                {msg.videoUrl && (
+                                  <div className="relative max-w-full rounded-lg overflow-hidden border border-neon-pink/20 bg-black/40">
+                                    <video 
+                                      src={msg.videoUrl} 
+                                      controls
+                                      preload="metadata"
+                                      playsInline
+                                      className="max-h-60 w-full object-contain mx-auto bg-black" 
+                                    />
+                                    {msg.videoName && (
+                                      <div className="absolute top-2 left-2 bg-black/60 px-2 py-1 rounded text-[10px] text-white/70 max-w-[90%] truncate backdrop-blur-md">
+                                        {msg.videoName}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                {msg.audioUrl && (
+                                  <div className="w-full p-2 rounded-xl bg-black/30 border border-neon-pink/10 flex flex-col gap-1">
+                                    {msg.audioName && (
+                                      <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider truncate mb-1">
+                                        🎵 {msg.audioName}
+                                      </p>
+                                    )}
+                                    <audio 
+                                      src={msg.audioUrl} 
+                                      controls 
+                                      className="w-full h-8 accent-neon-pink rounded" 
+                                    />
                                   </div>
                                 )}
                               </div>
-                            )}
-                            {msg.audioUrl && (
-                              <div className="w-full p-2 rounded-xl bg-black/30 border border-neon-pink/10 flex flex-col gap-1">
-                                {msg.audioName && (
-                                  <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider truncate mb-1">
-                                    🎵 {msg.audioName}
-                                  </p>
-                                )}
-                                <audio 
-                                  src={msg.audioUrl} 
-                                  controls 
-                                  className="w-full h-8 accent-neon-pink rounded" 
-                                />
-                              </div>
-                            )}
-                          </div>
+                            )
                         ) : (
                           <div className={`relative rounded-2xl rounded-tl-none p-3 border transition-all ${
                             loggedInUser && msg.text && new RegExp(`@${loggedInUser}\\b`, 'i').test(msg.text)
@@ -1846,8 +1903,8 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                         )}
                       </div>
                     </motion.div>
-                  ))
-                )
+                  );
+                }))
               ) : (
                 // Private Direct Messages view
                 activeDmUser ? (

@@ -137,7 +137,15 @@ function HeroVisualizer({ isPlaying, isLightMode }: { isPlaying: boolean; isLigh
 }
 
 export default function Home() {
-  const { togglePlay, isPlaying, onAirInfo } = useAudio();
+  const { togglePlay, playRadio, isPlaying, activeType, onAirInfo } = useAudio();
+
+  const handleMainPlayerClick = () => {
+    if (activeType === 'podcast') {
+      playRadio();
+    } else {
+      togglePlay();
+    }
+  };
 
   const handleMobileShoutout = () => {
     window.dispatchEvent(new CustomEvent('open-shoutout'));
@@ -301,7 +309,7 @@ export default function Home() {
           transition={{ duration: 1.2, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
         className="relative group w-full lg:w-[45%] flex justify-center py-0 md:py-6 lg:py-12"
         >
-          <HeroVisualizer isPlaying={isPlaying} isLightMode={isLightMode} />
+          <HeroVisualizer isPlaying={isPlaying && activeType === 'radio'} isLightMode={isLightMode} />
           
           <div className={`relative w-full aspect-square max-w-[280px] sm:max-w-[340px] md:max-w-[400px] lg:max-w-[480px] rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/5 group-hover:border-white/20 transition-all duration-700 ${
             (resolveDjImage(onAirInfo?.djPhoto) === logoUrl) && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''
@@ -309,9 +317,9 @@ export default function Home() {
             <img 
               src={resolveDjImage(onAirInfo?.djPhoto)}
               alt="Current DJ"
-              className={`w-full h-full transition-all duration-1000 ${isPlaying ? 'scale-110 contrast-125' : 'scale-100 grayscale brightness-75'} ${(resolveDjImage(onAirInfo?.djPhoto) === logoUrl && logoUrl) ? 'object-contain p-6 md:p-8' : 'object-cover'}`}
+              className={`w-full h-full transition-all duration-1000 ${(isPlaying && activeType === 'radio') ? 'scale-110 contrast-125' : 'scale-100 grayscale brightness-75'} ${(resolveDjImage(onAirInfo?.djPhoto) === logoUrl && logoUrl) ? 'object-contain p-6 md:p-8' : 'object-cover'}`}
             />
-            <div className={`absolute inset-0 bg-gradient-to-t ${isPlaying ? 'from-neon-purple/40 via-dark-bg/60' : 'from-dark-bg via-dark-bg/40'} to-transparent opacity-90 transition-colors duration-1000`}></div>
+            <div className={`absolute inset-0 bg-gradient-to-t ${(isPlaying && activeType === 'radio') ? 'from-neon-purple/40 via-dark-bg/60' : 'from-dark-bg via-dark-bg/40'} to-transparent opacity-90 transition-colors duration-1000`}></div>
             
             {/* CDJ Style Now Playing Overlay */}
             <div className={`now-playing-panel absolute bottom-4 left-4 right-4 md:bottom-10 md:left-10 md:right-10 z-10 p-4 md:p-6 rounded-2xl md:rounded-3xl border flex flex-col space-y-1.5 md:space-y-2 translate-y-0 group-hover:-translate-y-2 transition-transform duration-500 backdrop-blur-xl ${
@@ -334,12 +342,12 @@ export default function Home() {
               }`}>
                 {onAirInfo?.showName || "DEJAVU AUTO-MIX"}
               </div>
-              <div className="text-center md:text-left text-[9px] md:text-xs text-neon-purple font-black tracking-[0.25em] uppercase drop-shadow-[0_0_8px_rgba(176,38,255,0.4)]">
+              <div className={`text-center md:text-left text-[9px] md:text-xs text-neon-purple font-black tracking-[0.25em] uppercase drop-shadow-[0_0_8px_rgba(176,38,255,0.4)]`}>
                 {onAirInfo?.djName || "STREAMS ACTIVE"}
               </div>
             </div>
           </div>
-
+ 
           {/* Mobile Only Shoutout Button */}
           <motion.button
             initial={{ opacity: 0, y: 10 }}
@@ -351,16 +359,16 @@ export default function Home() {
             <MessageSquare className="w-4 h-4 text-neon-purple" />
             <span className="text-[10px] font-black uppercase tracking-widest">Send Shoutout</span>
           </motion.button>
-
+ 
           <button 
-            onClick={togglePlay}
+            onClick={handleMainPlayerClick}
             className={`absolute top-[40%] sm:top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-500 bg-clip-padding group/btn ${
               isLightMode 
                 ? 'bg-dark-bg text-white shadow-[0_20px_60px_rgba(0,0,0,0.3)] border-4 border-black/5' 
                 : 'bg-white text-dark-bg shadow-2xl hover:shadow-[0_20px_80px_rgba(255,255,255,0.6)] border-4 border-white/20'
             }`}
           >
-            {isPlaying ? (
+            {isPlaying && activeType === 'radio' ? (
               <Pause className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 fill-current group-hover/btn:text-neon-purple transition-colors duration-300 ${isLightMode ? 'text-white' : 'text-black'}`} />
             ) : (
               <Play className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 ml-1 fill-current group-hover/btn:text-neon-blue transition-colors duration-300 ${isLightMode ? 'text-white' : 'text-black'}`} />

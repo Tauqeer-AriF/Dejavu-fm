@@ -25,6 +25,13 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
   const [isHovered, setIsHovered] = useState(false);
   const [isMediaPlaying, setIsMediaPlaying] = useState(false);
+  const [isSplitActive, setIsSplitActive] = useState(() => {
+    try {
+      return document.body.classList.contains('split-view-active');
+    } catch {
+      return false;
+    }
+  });
 
   const [attachment, setAttachment] = useState<File | null>(null);
   const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
@@ -117,6 +124,17 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
     const handleRemoteOpen = () => setIsOpen(true);
     window.addEventListener('open-shoutout', handleRemoteOpen);
     return () => window.removeEventListener('open-shoutout', handleRemoteOpen);
+  }, []);
+
+  useEffect(() => {
+    const handleSplitChange = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      setIsSplitActive(!!customEvent.detail?.active);
+    };
+    window.addEventListener('split-view-change', handleSplitChange);
+    return () => {
+      window.removeEventListener('split-view-change', handleSplitChange);
+    };
   }, []);
 
 
@@ -303,6 +321,8 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
     });
     toast.success(`${emoji} Sent!`);
   };
+
+  if (isSplitActive) return null;
 
   return (
     <div className={`fixed bottom-28 sm:bottom-[180px] xl:bottom-32 z-[10020] flex flex-col items-end gap-5 pointer-events-none transition-all duration-500 ease-in-out ${

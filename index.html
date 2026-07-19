@@ -20,7 +20,10 @@
     <meta name="theme-color" content="#B026FF" />
     <script>
       const savedTheme = localStorage.getItem('theme');
-      if (savedTheme === 'light') {
+      const defaultThemeFallback = localStorage.getItem('default_theme_fallback');
+      const activeTheme = savedTheme || defaultThemeFallback || 'dark';
+      
+      if (activeTheme === 'light') {
         document.documentElement.classList.add('light');
         document.documentElement.style.backgroundColor = '#f8f9fa';
       } else {

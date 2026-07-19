@@ -407,6 +407,7 @@ export function initDb() {
   runMigration('public_messages_add_avatar_url', "ALTER TABLE public_messages ADD COLUMN avatar_url TEXT;");
   runMigration('room_messages_table_v1', "CREATE TABLE IF NOT EXISTS room_messages (id TEXT PRIMARY KEY, room_id TEXT NOT NULL, sender_name TEXT, text TEXT, image_url TEXT, audio_url TEXT, video_url TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP); CREATE INDEX IF NOT EXISTS idx_room_messages_room_id ON room_messages(room_id);");
   runMigration('admin_dj_profile_link_v2', "ALTER TABLE admins ADD COLUMN dj_profile_id TEXT DEFAULT NULL;");
+  runMigration('default_theme_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('default_theme', 'dark');");
   try {
     db.prepare(`
       UPDATE admins 
@@ -490,6 +491,7 @@ export function initDb() {
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('popup_delay', '10000');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('studio_name', 'DejavuFM Studio');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('studio_image', '/icon.svg');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('default_theme', 'dark');
   }
 
   // Ensure admin secret exists

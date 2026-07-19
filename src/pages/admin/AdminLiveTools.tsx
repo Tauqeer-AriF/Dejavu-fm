@@ -11,6 +11,7 @@ import { ImageUploadField } from "./ImageUploadField";
 export function AdminLiveTools() {
   const [artist, setArtist] = useState("");
   const [title, setTitle] = useState("");
+  const [duration, setDuration] = useState(8000);
   const { showAlert } = useModal();
 
   const handlePushTrack = async (e: any) => {
@@ -18,7 +19,7 @@ export function AdminLiveTools() {
     const res = await fetchAdmin("/api/admin/push-track", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ artist, title })
+      body: JSON.stringify({ artist, title, duration })
     });
     if (res.ok) {
       showAlert({ title: "Success", message: `Pushed "${artist} - ${title}" to live stream!`, style: "success" });
@@ -63,6 +64,22 @@ export function AdminLiveTools() {
               className="w-full bg-panel-bg border border-white/10 rounded px-4 py-2 focus:outline-none focus:border-neon-purple"
               placeholder="e.g. Latch"
             />
+          </div>
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-widest text-white/50 mb-2">Display Duration</label>
+            <select 
+              value={duration} 
+              onChange={e => setDuration(Number(e.target.value))}
+              className="w-full bg-panel-bg border border-white/10 rounded px-4 py-2 focus:outline-none focus:border-neon-purple text-white cursor-pointer"
+            >
+              <option value={5000}>5 Seconds</option>
+              <option value={8000}>8 Seconds (Default)</option>
+              <option value={15000}>15 Seconds</option>
+              <option value={30000}>30 Seconds</option>
+              <option value={60000}>1 Minute</option>
+              <option value={120000}>2 Minutes</option>
+              <option value={300000}>5 Minutes</option>
+            </select>
           </div>
           <button type="submit" className="px-6 py-2 bg-neon-purple text-white rounded hover:bg-neon-blue transition-colors uppercase tracking-widest text-sm font-bold flex items-center justify-center w-full sm:w-auto">
             Push to Stream

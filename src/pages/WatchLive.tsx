@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { io, Socket } from 'socket.io-client';
-import { Send, User, LogOut, Loader2, Instagram, Music2, Globe, Radio, Sparkles, Clock, MessageSquare, Users, Eye, EyeOff, Maximize2, X, RefreshCw } from 'lucide-react';
+import { Send, User, LogOut, Loader2, Instagram, Music2, Globe, Radio, Sparkles, Clock, MessageSquare, Users, Eye, EyeOff, Maximize2, X, RefreshCw, Disc } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { useAudio } from '../context/AudioContext';
@@ -139,11 +139,14 @@ export default function WatchLive() {
   useEffect(() => {
     if (isSplitActive) {
       document.body.style.overflow = 'hidden';
+      window.dispatchEvent(new CustomEvent('split-view-change', { detail: { active: true } }));
     } else {
       document.body.style.overflow = '';
+      window.dispatchEvent(new CustomEvent('split-view-change', { detail: { active: false } }));
     }
     return () => {
       document.body.style.overflow = '';
+      window.dispatchEvent(new CustomEvent('split-view-change', { detail: { active: false } }));
     };
   }, [isSplitActive]);
 
@@ -161,12 +164,13 @@ export default function WatchLive() {
     
     socketRef.current = socket;
 
-    const onPushTrack = (data: {artist: string, title: string}) => {
+    const onPushTrack = (data: {artist: string, title: string, duration?: number}) => {
       setTrackOverlay(data);
       if (overlayTimeoutRef.current) clearTimeout(overlayTimeoutRef.current);
+      const displayDuration = data.duration || 8000;
       overlayTimeoutRef.current = setTimeout(() => {
         setTrackOverlay(null);
-      }, 8000); 
+      }, displayDuration); 
     };
 
     socket.on('pushTrack', onPushTrack);
@@ -262,17 +266,43 @@ export default function WatchLive() {
             <AnimatePresence>
               {trackOverlay && (
                 <motion.div
-                  initial={{ opacity: 0, x: -50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="absolute bottom-6 left-6 z-[60] bg-black/80 backdrop-blur-md border-l-4 border-l-neon-pink p-4 rounded-xl shadow-2xl pointer-events-none"
+                  initial={{ opacity: 0, x: -40, scale: 0.95 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 20, scale: 0.9 }}
+                  transition={{ type: "spring", stiffness: 120, damping: 14 }}
+                  className="absolute bottom-6 left-6 z-[100] max-w-[90%] sm:max-w-md bg-zinc-950/80 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-[0_20px_50px_rgba(236,72,153,0.15)] flex items-center gap-4 pointer-events-none"
                 >
-                  <div className="text-neon-pink text-[10px] font-bold uppercase tracking-widest mb-1 flex items-center space-x-2">
-                    <span className="w-1.5 h-1.5 bg-neon-pink rounded-full animate-pulse"></span>
-                    <span>Now Playing</span>
+                  {/* Rotating Vinyl/CD Emblem */}
+                  <div className="relative shrink-0 w-12 h-12 rounded-full bg-gradient-to-tr from-neon-purple to-neon-blue p-0.5 shadow-[0_0_15px_rgba(176,38,255,0.4)] flex items-center justify-center">
+                    <div className="w-full h-full rounded-full bg-black flex items-center justify-center animate-[spin_5s_linear_infinite]">
+                      <Disc className="w-6 h-6 text-neon-blue" />
+                    </div>
+                    {/* Small center dot */}
+                    <div className="absolute w-3 h-3 rounded-full bg-zinc-950 border border-white/20"></div>
                   </div>
-                  <div className="text-xl font-bold text-[#ffffff] break-words max-w-[250px] leading-tight mb-1">{trackOverlay.title}</div>
-                  <div className="text-sm font-medium text-[#ffffff]/70 truncate max-w-[250px]">{trackOverlay.artist}</div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue mb-1 flex items-center gap-2">
+                      <span className="flex h-2 w-2 relative">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-purple opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-neon-purple"></span>
+                      </span>
+                      <span>Now Playing on Stream</span>
+                    </div>
+                    <h4 className="text-base font-black text-white tracking-tight leading-tight truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+                      {trackOverlay.title}
+                    </h4>
+                    <p className="text-xs font-medium text-white/70 mt-0.5 truncate">
+                      by <span className="text-white font-bold">{trackOverlay.artist}</span>
+                    </p>
+                  </div>
+
+                  {/* Sound Wave Micro-Animation */}
+                  <div className="flex items-end gap-[3px] h-5 shrink-0 px-1">
+                    <span className="w-[3px] bg-neon-purple rounded-full animate-eq-1"></span>
+                    <span className="w-[3px] bg-neon-blue rounded-full animate-eq-2"></span>
+                    <span className="w-[3px] bg-neon-purple rounded-full animate-eq-3"></span>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -431,17 +461,43 @@ export default function WatchLive() {
                   <AnimatePresence>
                     {trackOverlay && (
                       <motion.div
-                        initial={{ opacity: 0, x: -50 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="absolute bottom-6 left-6 z-[60] bg-black/80 backdrop-blur-md border-l-4 border-l-neon-pink p-4 rounded-xl shadow-2xl pointer-events-none"
+                        initial={{ opacity: 0, x: -40, scale: 0.95 }}
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 20, scale: 0.9 }}
+                        transition={{ type: "spring", stiffness: 120, damping: 14 }}
+                        className="absolute bottom-6 left-6 z-[100] max-w-[90%] sm:max-w-md bg-zinc-950/80 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-[0_20px_50px_rgba(236,72,153,0.15)] flex items-center gap-4 pointer-events-none"
                       >
-                        <div className="text-neon-pink text-[10px] font-bold uppercase tracking-widest mb-1 flex items-center space-x-2">
-                          <span className="w-1.5 h-1.5 bg-neon-pink rounded-full animate-pulse"></span>
-                          <span>Now Playing</span>
+                        {/* Rotating Vinyl/CD Emblem */}
+                        <div className="relative shrink-0 w-12 h-12 rounded-full bg-gradient-to-tr from-neon-purple to-neon-blue p-0.5 shadow-[0_0_15px_rgba(176,38,255,0.4)] flex items-center justify-center">
+                          <div className="w-full h-full rounded-full bg-black flex items-center justify-center animate-[spin_5s_linear_infinite]">
+                            <Disc className="w-6 h-6 text-neon-blue" />
+                          </div>
+                          {/* Small center dot */}
+                          <div className="absolute w-3 h-3 rounded-full bg-zinc-950 border border-white/20"></div>
                         </div>
-                        <div className="text-xl font-bold text-[#ffffff] break-words max-w-[250px] leading-tight mb-1">{trackOverlay.title}</div>
-                        <div className="text-sm font-medium text-[#ffffff]/70 truncate max-w-[250px]">{trackOverlay.artist}</div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue mb-1 flex items-center gap-2">
+                            <span className="flex h-2 w-2 relative">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-purple opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-neon-purple"></span>
+                            </span>
+                            <span>Now Playing on Stream</span>
+                          </div>
+                          <h4 className="text-base font-black text-white tracking-tight leading-tight truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+                            {trackOverlay.title}
+                          </h4>
+                          <p className="text-xs font-medium text-white/70 mt-0.5 truncate">
+                            by <span className="text-white font-bold">{trackOverlay.artist}</span>
+                          </p>
+                        </div>
+
+                        {/* Sound Wave Micro-Animation */}
+                        <div className="flex items-end gap-[3px] h-5 shrink-0 px-1">
+                          <span className="w-[3px] bg-neon-purple rounded-full animate-eq-1"></span>
+                          <span className="w-[3px] bg-neon-blue rounded-full animate-eq-2"></span>
+                          <span className="w-[3px] bg-neon-purple rounded-full animate-eq-3"></span>
+                        </div>
                       </motion.div>
                     )}
                   </AnimatePresence>

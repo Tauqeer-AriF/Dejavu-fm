@@ -178,8 +178,8 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
       } else {
         if (podcastTrack?.audioUrl) {
           const proxiedUrl = getProxiedPodcastUrl(podcastTrack.audioUrl);
-          const absoluteProxiedUrl = proxiedUrl.startsWith('http') ? proxiedUrl : new URL(proxiedUrl, window.location.href).href;
-          if (audio.src !== absoluteProxiedUrl) {
+          const isSameSource = audio.src && (audio.src === proxiedUrl || audio.src.endsWith(proxiedUrl));
+          if (!isSameSource) {
             audio.src = proxiedUrl;
             audio.load();
           }

@@ -79,6 +79,27 @@ export function useLogo() {
         if (settings.font_display === 'JetBrains Mono') displayFallback = ', monospace';
         document.documentElement.style.setProperty('--font-display', `"${settings.font_display}"${displayFallback}`);
       }
+
+      // Handle front-end default theme if user hasn't explicitly set a preference
+      if (typeof window !== 'undefined') {
+        const isAdmin = window.location.pathname.startsWith('/admin');
+        if (!isAdmin) {
+          const savedTheme = localStorage.getItem('theme');
+          if (savedTheme === null) {
+            const defaultTheme = settings.default_theme || 'dark';
+            if (defaultTheme === 'light') {
+              document.documentElement.classList.add('light');
+              document.documentElement.style.backgroundColor = '#f8f9fa';
+            } else {
+              document.documentElement.classList.remove('light');
+              document.documentElement.style.backgroundColor = '#0a0a0f';
+            }
+          }
+          if (settings.default_theme) {
+            localStorage.setItem('default_theme_fallback', settings.default_theme);
+          }
+        }
+      }
     }
   }, [settings]);
 

@@ -135,6 +135,7 @@ export function AdminBranding() {
   const [secondaryColor, setSecondaryColor] = useState("#00d2ff");
   const [fontSans, setFontSans] = useState("Inter");
   const [fontDisplay, setFontDisplay] = useState("Inter");
+  const [defaultTheme, setDefaultTheme] = useState("dark");
   const [socialInstagram, setSocialInstagram] = useState("");
   const [socialTwitter, setSocialTwitter] = useState("");
   const [socialFacebook, setSocialFacebook] = useState("");
@@ -172,7 +173,8 @@ export function AdminBranding() {
     primary_color: "#b026ff",
     secondary_color: "#00d2ff",
     font_sans: "Inter",
-    font_display: "Inter"
+    font_display: "Inter",
+    default_theme: "dark"
   };
 
   const fontOptions = [
@@ -200,6 +202,7 @@ export function AdminBranding() {
       setSecondaryColor(d.secondary_color || DEFAULTS.secondary_color);
       setFontSans(d.font_sans || DEFAULTS.font_sans);
       setFontDisplay(d.font_display || DEFAULTS.font_display);
+      setDefaultTheme(d.default_theme || DEFAULTS.default_theme);
       setSocialInstagram(d.social_instagram || "");
       setSocialTwitter(d.social_twitter || "");
       setSocialFacebook(d.social_facebook || "");
@@ -263,6 +266,7 @@ export function AdminBranding() {
           secondary_color: DEFAULTS.secondary_color,
           font_sans: DEFAULTS.font_sans,
           font_display: DEFAULTS.font_display,
+          default_theme: DEFAULTS.default_theme,
           social_instagram: "",
           social_twitter: "",
           social_facebook: "",
@@ -286,6 +290,7 @@ export function AdminBranding() {
         setSecondaryColor(DEFAULTS.secondary_color);
         setFontSans(DEFAULTS.font_sans);
         setFontDisplay(DEFAULTS.font_display);
+        setDefaultTheme(DEFAULTS.default_theme);
         setSocialInstagram("");
         setSocialTwitter("");
         setSocialFacebook("");
@@ -318,6 +323,7 @@ export function AdminBranding() {
           secondary_color: secondaryColor,
           font_sans: fontSans,
           font_display: fontDisplay,
+          default_theme: defaultTheme,
           social_instagram: socialInstagram,
           social_twitter: socialTwitter,
           social_facebook: socialFacebook,
@@ -483,6 +489,24 @@ export function AdminBranding() {
                   className={`flex-1 rounded-xl px-4 py-3 text-sm focus:border-neon-purple outline-none transition-all border font-mono uppercase ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
                 />
               </div>
+            </div>
+          </div>
+
+          <div className={`space-y-4 pt-4 border-t transition-colors ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
+            <h4 className={`text-xs font-black uppercase tracking-[0.2em] mb-2 ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>Front End Default Theme</h4>
+            <div>
+              <label className={`block text-[10px] uppercase mb-1 font-bold tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Default Theme Mode</label>
+              <select
+                value={defaultTheme}
+                onChange={e => setDefaultTheme(e.target.value)}
+                className={`w-full rounded-xl px-4 py-3 text-sm focus:border-neon-purple outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`}
+              >
+                <option value="dark" className={isLightMode ? "text-black bg-white" : "text-white bg-dark-bg"}>Dark Mode</option>
+                <option value="light" className={isLightMode ? "text-black bg-white" : "text-white bg-dark-bg"}>Light Mode</option>
+              </select>
+              <p className={`text-[10px] mt-1.5 leading-relaxed ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>
+                Controls whether first-time visitors see the player in Dark Mode or Light Mode by default.
+              </p>
             </div>
           </div>
 

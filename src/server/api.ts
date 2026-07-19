@@ -304,12 +304,25 @@ apiRouter.get("/public/podcasts", asyncHandler(async (req: Request, res: Respons
 }));
 
 function proxyPodcast(targetUrl: string, clientReq: Request, clientRes: Response, redirectCount = 0) {
+  // Always set CORS headers to prevent browser-side security blocks on error responses
+  clientRes.setHeader("Access-Control-Allow-Origin", "*");
+  clientRes.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+  clientRes.setHeader("Access-Control-Allow-Headers", "Content-Type, Range");
+
   if (redirectCount > 8) {
     return clientRes.status(500).send("Too many redirects");
   }
 
+  let sanitizedUrl = targetUrl.trim();
   try {
-    const parsedUrl = new URL(targetUrl);
+    // Attempt URL correction for spaces and unencoded special characters
+    try {
+      new URL(sanitizedUrl);
+    } catch (urlErr) {
+      sanitizedUrl = encodeURI(sanitizedUrl);
+    }
+
+    const parsedUrl = new URL(sanitizedUrl);
     const isHttps = parsedUrl.protocol === "https:";
     const requestFn = isHttps ? httpsRequest : httpRequest;
 
@@ -322,7 +335,7 @@ function proxyPodcast(targetUrl: string, clientReq: Request, clientRes: Response
     }
 
     const upstreamReq = requestFn(
-      targetUrl,
+      sanitizedUrl,
       {
         method: "GET",
         headers,
@@ -334,7 +347,7 @@ function proxyPodcast(targetUrl: string, clientReq: Request, clientRes: Response
         if ([301, 302, 303, 307, 308].includes(statusCode) && upstreamRes.headers.location) {
           let nextUrl = upstreamRes.headers.location;
           if (!nextUrl.startsWith("http:") && !nextUrl.startsWith("https:")) {
-            nextUrl = new URL(nextUrl, targetUrl).toString();
+            nextUrl = new URL(nextUrl, sanitizedUrl).toString();
           }
           return proxyPodcast(nextUrl, clientReq, clientRes, redirectCount + 1);
         }
@@ -353,10 +366,6 @@ function proxyPodcast(targetUrl: string, clientReq: Request, clientRes: Response
             clientRes.setHeader(h, upstreamRes.headers[h] as string);
           }
         }
-
-        clientRes.setHeader("Access-Control-Allow-Origin", "*");
-        clientRes.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
-        clientRes.setHeader("Access-Control-Allow-Headers", "Content-Type, Range");
 
         clientRes.status(statusCode);
         upstreamRes.pipe(clientRes);
@@ -2051,7 +2060,8 @@ apiRouter.put("/admin/settings", authorizeRole('admin'), (req, res) => {
     "feat_pwa", "feat_bookings", "feat_live_tools", "feat_stream_quality",
     "logo_dark", "logo_light", "logo_shape", "favicon", "backup_retention_days",
     "backup_frequency_hours", "backup_enabled", "popup_delay", "studio_name", "studio_image",
-    "social_instagram", "social_twitter", "social_facebook", "social_youtube", "social_soundcloud", "social_mixcloud"
+    "social_instagram", "social_twitter", "social_facebook", "social_youtube", "social_soundcloud", "social_mixcloud",
+    "default_theme"
   ];
   
   for (const key of allowedKeys) {
@@ -2251,7 +2261,7 @@ apiRouter.delete("/admin/schedule/:id", (req, res) => {
 });
 
 apiRouter.post("/admin/push-track", (req, res) => {
-  const { artist, title } = req.body;
+  const { artist, title, duration } = req.body;
   if (!artist || !title) return res.status(400).json({ error: "Artist and title required" });
   
   const io = req.app.get('io');
@@ -2267,10 +2277,10 @@ apiRouter.post("/admin/push-track", (req, res) => {
     io.emit('chatMessage', newMsg);
     
     // Alert on video
-    io.emit('pushTrack', { artist, title });
+    io.emit('pushTrack', { artist, title, duration: Number(duration) || 8000 });
   }
   
-  res.json({ success: true, artist, title });
+  res.json({ success: true, artist, title, duration });
 });
 
 apiRouter.get("/admin/users", authMiddleware, authorizeRole('admin'), (req, res) => {
