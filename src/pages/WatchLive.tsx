@@ -117,11 +117,11 @@ export default function WatchLive() {
   const studioVideoUrl = settings?.studio_video_url || studioVideoUrlState;
   const featChat = settings?.feat_chat !== '0';
 
-  const [isMobileSplitActive, setIsMobileSplitActive] = useState(false);
+  const [isSplitActive, setIsSplitActive] = useState(false);
 
-  // Disable scroll on body when mobile split screen is active
+  // Disable scroll on body when split screen theater mode is active
   useEffect(() => {
-    if (isMobileSplitActive) {
+    if (isSplitActive) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -129,7 +129,7 @@ export default function WatchLive() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [isMobileSplitActive]);
+  }, [isSplitActive]);
 
   useEffect(() => {
     // Pause background radio if it's playing so the video audio can be heard
@@ -189,13 +189,13 @@ export default function WatchLive() {
               </span>
             </div>
             
-            {/* Split Screen Button - Only visible on Mobile/Tablet */}
+            {/* Split Screen Button - Desktop & Mobile/Tablet */}
             {featChat && (
               <button
                 type="button"
-                onClick={() => setIsMobileSplitActive(true)}
-                className="lg:hidden flex items-center gap-1.5 px-3 py-1 bg-neon-blue/10 hover:bg-neon-blue/20 text-neon-blue border border-neon-blue/20 rounded-full transition-all text-[10px] font-black uppercase tracking-wider cursor-pointer"
-                title="Enter Mobile Split-Screen View"
+                onClick={() => setIsSplitActive(true)}
+                className="flex items-center gap-1.5 px-3 py-1 bg-neon-blue/10 hover:bg-neon-blue/20 text-neon-blue border border-neon-blue/20 rounded-full transition-all text-[10px] font-black uppercase tracking-wider cursor-pointer shadow-[0_0_15px_rgba(0,242,254,0.1)] hover:shadow-[0_0_15px_rgba(0,242,254,0.25)]"
+                title="Enter Interactive Split-Screen View"
               >
                 <Maximize2 className="w-3 h-3" />
                 <span>Split View</span>
@@ -307,57 +307,120 @@ export default function WatchLive() {
 
       </div>
 
-      {/* Mobile Split Screen View */}
+      {/* Split Screen Theater View (Desktop & Mobile) */}
       <AnimatePresence>
-        {isMobileSplitActive && featChat && (
+        {isSplitActive && featChat && (
           <motion.div
-            initial={{ opacity: 0, y: '100%' }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-            className="fixed inset-0 z-[2000] flex flex-col bg-dark-bg/95 backdrop-blur-2xl lg:hidden"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="fixed inset-0 z-[2000] flex flex-col bg-[#08090d] select-none overflow-hidden"
           >
-            {/* Mobile Header / Controls */}
-            <div className="flex items-center justify-between px-3.5 py-1.5 border-b border-white/5 bg-black/40 shrink-0">
-              <div className="flex items-center space-x-1.5">
-                <span className="flex h-1.5 w-1.5 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
-                </span>
-                <span className="text-[9px] font-black uppercase tracking-widest text-white/95">
-                  Interactive Split Mode
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsMobileSplitActive(false)}
-                className="flex items-center gap-1 px-2.5 py-0.5 bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 rounded-full text-white text-[10px] font-bold transition cursor-pointer"
-              >
-                <X className="w-3 h-3" />
-                <span>Exit</span>
-              </button>
-            </div>
-
-            {/* Top Half: Video Stream */}
-            <div className="w-full aspect-video bg-black relative shrink-0">
-              {getEmbedUrl(studioVideoUrl) ? (
-                <iframe 
-                  key={`split-${getEmbedUrl(studioVideoUrl)}`}
-                  src={getEmbedUrl(studioVideoUrl) || undefined} 
-                  className="w-full h-full border-none absolute inset-0 z-10" 
-                  allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; clipboard-write; gyroscope"
-                  allowFullScreen>
-                </iframe>
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center bg-zinc-900 text-center p-4">
-                  <p className="text-white/60 text-sm font-bold uppercase tracking-widest">No Stream URL configured</p>
+            {/* Unified Header */}
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 bg-black/40 shrink-0">
+              {/* Left Side: Live Badge + DJ Show Info */}
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="flex h-2 w-2 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                  </span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-red-500">
+                    Live
+                  </span>
                 </div>
-              )}
+                
+                <div className="hidden sm:flex items-center gap-2 border-l border-white/10 pl-3.5 min-w-0">
+                  <span className="text-xs font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue italic truncate max-w-[120px] md:max-w-[180px]">
+                    {onAirInfo?.djName || "DEJAVU FM"}
+                  </span>
+                  <span className="text-[11px] text-white/50 truncate max-w-[150px] md:max-w-[250px]">
+                    — {onAirInfo?.showName || "Global Underground Stream"}
+                  </span>
+                </div>
+                <div className="sm:hidden text-[10px] font-black uppercase tracking-wider text-white/90">
+                  Split Screen Cam
+                </div>
+              </div>
+
+              {/* Right Side: Social Links + Exit Button */}
+              <div className="flex items-center gap-3">
+                <div className="hidden md:flex items-center gap-2">
+                  {onAirInfo?.instagram && (
+                    <a href={`https://instagram.com/${onAirInfo.instagram}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg bg-white/5 hover:bg-neon-purple/20 text-white/50 hover:text-white border border-white/5 hover:border-neon-purple/30 transition-all">
+                      <Instagram className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                  {onAirInfo?.soundcloud && (
+                    <a href={`https://soundcloud.com/${onAirInfo.soundcloud}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg bg-white/5 hover:bg-neon-blue/20 text-white/50 hover:text-white border border-white/5 hover:border-neon-blue/30 transition-all">
+                      <Music2 className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                  {onAirInfo?.mixcloud && (
+                    <a href={`https://mixcloud.com/${onAirInfo.mixcloud}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white border border-white/5 hover:border-white/10 transition-all">
+                      <Globe className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsSplitActive(false)}
+                  className="flex items-center gap-1.5 px-3 py-1 bg-white/5 hover:bg-red-500/10 hover:text-red-400 active:bg-white/20 border border-white/10 hover:border-red-500/20 rounded-full text-white text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>Exit Split View</span>
+                </button>
+              </div>
             </div>
 
-            {/* Bottom Half: Scrollable Interactive Chat Room */}
-            <div className="flex-1 min-h-0 bg-dark-bg relative flex flex-col">
-              <ChatSidebar embedded={true} />
+            {/* Split Content Body */}
+            <div className="flex-1 min-h-0 w-full flex flex-col lg:flex-row bg-[#030406]">
+              {/* Left Portion: Video Player Section */}
+              <div className="w-full lg:w-1/2 lg:shrink-0 flex flex-col bg-black relative h-full">
+                {/* On mobile, we enforce aspect-video; on desktop, it stretches to fill the left pane */}
+                <div className="w-full aspect-video lg:aspect-auto lg:flex-1 bg-black relative shrink-0 lg:shrink flex items-center justify-center">
+                  {getEmbedUrl(studioVideoUrl) ? (
+                    <iframe 
+                      key={`split-${getEmbedUrl(studioVideoUrl)}`}
+                      src={getEmbedUrl(studioVideoUrl) || undefined} 
+                      className="w-full h-full border-none absolute inset-0 z-10" 
+                      allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; clipboard-write; gyroscope"
+                      allowFullScreen>
+                    </iframe>
+                  ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950 text-center p-4">
+                      <Radio className="w-12 h-12 text-white/20 animate-pulse mb-3" />
+                      <p className="text-white/60 text-sm font-bold uppercase tracking-widest">No Stream URL configured</p>
+                    </div>
+                  )}
+
+                  {/* Animated Track overlay inside Split view */}
+                  <AnimatePresence>
+                    {trackOverlay && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -50 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="absolute bottom-6 left-6 z-[60] bg-black/80 backdrop-blur-md border-l-4 border-l-neon-pink p-4 rounded-xl shadow-2xl pointer-events-none"
+                      >
+                        <div className="text-neon-pink text-[10px] font-bold uppercase tracking-widest mb-1 flex items-center space-x-2">
+                          <span className="w-1.5 h-1.5 bg-neon-pink rounded-full animate-pulse"></span>
+                          <span>Now Playing</span>
+                        </div>
+                        <div className="text-xl font-bold text-[#ffffff] break-words max-w-[250px] leading-tight mb-1">{trackOverlay.title}</div>
+                        <div className="text-sm font-medium text-[#ffffff]/70 truncate max-w-[250px]">{trackOverlay.artist}</div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+
+              {/* Right Portion: Chat Sidebar */}
+              <div className="w-full lg:w-1/2 lg:shrink-0 border-t lg:border-t-0 lg:border-l border-white/5 bg-[#0b0c10] flex flex-col min-h-0 flex-1 lg:flex-none">
+                <ChatSidebar embedded={true} />
+              </div>
             </div>
           </motion.div>
         )}

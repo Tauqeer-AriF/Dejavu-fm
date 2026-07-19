@@ -877,7 +877,7 @@ function MainLayout() {
       <PlayerBar />
       {featCinematic && <CinematicVisualizer isOpen={isCinematicOpen} onClose={toggleCinematic} />}
       {featPWA && <PWAInstallPrompt />}
-      {featPWA && <PullToRefresh />}
+      {!location.pathname.startsWith('/admin') && <PullToRefresh />}
       <ShareModal 
         isOpen={isShareOpen} 
         onClose={() => setIsShareOpen(false)} 

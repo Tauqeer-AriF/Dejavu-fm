@@ -18,22 +18,22 @@ export function PullToRefresh() {
   const lastTouchYRef = useRef<number | null>(null);
 
   // Constants
-  const TRIGGER_HEIGHT = 90; // Pull distance to trigger refresh (px)
-  const MAX_PULL_HEIGHT = 150; // Max visual distance (px)
+  const TRIGGER_HEIGHT = 80; // Pull distance to trigger refresh (px)
+  const MAX_PULL_HEIGHT = 130; // Max visual distance (px)
   const CONTAINER_HEIGHT = 100; // Height of our fixed pull-to-refresh pane (px)
 
   useEffect(() => {
-    // Disable native overscroll bounce where supported, giving our custom refresh full control
+    // Disable native overscroll bounce where supported
     document.body.style.overscrollBehaviorY = 'none';
     document.documentElement.style.overscrollBehaviorY = 'none';
 
-    const handleStart = (pageY: number, pageX: number, pointerId?: number) => {
+    const handleStart = (clientY: number, clientX: number, pointerId?: number) => {
       const scrollTop = window.pageYOffset || window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
       // We only enable pull-to-refresh when at the top of the document
       if (scrollTop <= 10) {
         isEligibleRef.current = true;
-        startYRef.current = pageY;
-        startXRef.current = pageX;
+        startYRef.current = clientY;
+        startXRef.current = clientX;
         if (pointerId !== undefined) {
           pointerIdRef.current = pointerId;
         }
@@ -54,11 +54,11 @@ export function PullToRefresh() {
       }
     };
 
-    const handleMove = (pageY: number, pageX: number) => {
+    const handleMove = (clientY: number, clientX: number) => {
       if (!isEligibleRef.current || startYRef.current === null) return;
 
-      const diffY = pageY - startYRef.current;
-      const diffX = pageX - (startXRef.current ?? pageX);
+      const diffY = clientY - startYRef.current;
+      const diffX = clientX - (startXRef.current ?? clientX);
 
       // Horizontal swipe cancels eligibility to avoid conflict with horizontal carousels or swipe features
       if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 15) {
@@ -84,7 +84,7 @@ export function PullToRefresh() {
         // Apply a highly responsive, buttery-smooth linear dampening curve matching standard iOS feel
         const resistedPull = Math.min(
           MAX_PULL_HEIGHT,
-          diffY * 0.55
+          diffY * 0.5
         );
         const progress = Math.min(1, resistedPull / TRIGGER_HEIGHT);
 
@@ -152,16 +152,16 @@ export function PullToRefresh() {
       }
     };
 
-    const handleEnd = (pageY: number) => {
+    const handleEnd = (clientY: number) => {
       if (!isEligibleRef.current || startYRef.current === null) {
         cleanup();
         return;
       }
 
-      const diffY = pageY - startYRef.current;
+      const diffY = clientY - startYRef.current;
       const resistedPull = Math.min(
         MAX_PULL_HEIGHT,
-        diffY * 0.55
+        diffY * 0.5
       );
 
       if (resistedPull >= TRIGGER_HEIGHT) {
@@ -251,16 +251,16 @@ export function PullToRefresh() {
       const scrollTop = window.pageYOffset || window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
       if (scrollTop <= 10) {
         const touch = e.touches[0];
-        lastTouchYRef.current = touch.pageY;
-        handleStart(touch.pageY, touch.pageX);
+        lastTouchYRef.current = touch.clientY;
+        handleStart(touch.clientY, touch.clientX);
       }
     };
 
     const onTouchMove = (e: TouchEvent) => {
       if (!isEligibleRef.current || startYRef.current === null) return;
       const touch = e.touches[0];
-      lastTouchYRef.current = touch.pageY;
-      const diffY = touch.pageY - startYRef.current;
+      lastTouchYRef.current = touch.clientY;
+      const diffY = touch.clientY - startYRef.current;
       
       if (diffY > 0) {
         // Crucial for iOS: cancel native rubber-banding scroll immediately
@@ -268,7 +268,7 @@ export function PullToRefresh() {
           e.preventDefault();
         }
       }
-      handleMove(touch.pageY, touch.pageX);
+      handleMove(touch.clientY, touch.clientX);
     };
 
     const onTouchEnd = (e: TouchEvent) => {
@@ -277,7 +277,7 @@ export function PullToRefresh() {
         return;
       }
       const touch = e.changedTouches[0] || e.touches[0];
-      const endY = touch ? touch.pageY : (lastTouchYRef.current ?? startYRef.current);
+      const endY = touch ? touch.clientY : (lastTouchYRef.current ?? startYRef.current);
       handleEnd(endY);
     };
 
@@ -288,7 +288,7 @@ export function PullToRefresh() {
       
       const scrollTop = window.pageYOffset || window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
       if (scrollTop <= 10) {
-        handleStart(e.pageY, e.pageX, e.pointerId);
+        handleStart(e.clientY, e.clientX, e.pointerId);
       }
     };
 
@@ -297,7 +297,7 @@ export function PullToRefresh() {
       if (pointerIdRef.current !== null && e.pointerId !== pointerIdRef.current) return;
       
       if (isEligibleRef.current && startYRef.current !== null) {
-        const diffY = e.pageY - startYRef.current;
+        const diffY = e.clientY - startYRef.current;
         if (diffY > 0) {
           if (e.cancelable) {
             e.preventDefault();
@@ -308,13 +308,13 @@ export function PullToRefresh() {
           }
         }
       }
-      handleMove(e.pageY, e.pageX);
+      handleMove(e.clientY, e.clientX);
     };
 
     const onPointerUp = (e: PointerEvent) => {
       if (e.pointerType === 'touch') return;
       if (pointerIdRef.current !== null && e.pointerId !== pointerIdRef.current) return;
-      handleEnd(e.pageY);
+      handleEnd(e.clientY);
     };
 
     // Block browser image/text ghost drag visual during active pulls
@@ -331,11 +331,11 @@ export function PullToRefresh() {
       }
     };
 
-    // Register active non-passive listeners for touch
-    document.addEventListener('touchstart', onTouchStart, { passive: false });
-    document.addEventListener('touchmove', onTouchMove, { passive: false });
-    document.addEventListener('touchend', onTouchEnd, { passive: true });
-    document.addEventListener('touchcancel', onTouchEnd, { passive: true });
+    // Register active non-passive listeners for touch directly on the window object
+    window.addEventListener('touchstart', onTouchStart, { passive: false });
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onTouchEnd, { passive: false });
+    window.addEventListener('touchcancel', onTouchEnd, { passive: false });
 
     // Register listeners for mouse pointer
     window.addEventListener('pointerdown', onPointerDown, { passive: true });
@@ -347,10 +347,10 @@ export function PullToRefresh() {
     window.addEventListener('selectstart', onSelectStart, { capture: true });
 
     return () => {
-      document.removeEventListener('touchstart', onTouchStart);
-      document.removeEventListener('touchmove', onTouchMove);
-      document.removeEventListener('touchend', onTouchEnd);
-      document.removeEventListener('touchcancel', onTouchEnd);
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('touchcancel', onTouchEnd);
 
       window.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
@@ -370,7 +370,7 @@ export function PullToRefresh() {
   return (
     <div 
       ref={containerRef}
-      className="fixed top-0 left-0 right-0 z-[9998] flex flex-col items-center justify-center pointer-events-none select-none overflow-hidden"
+      className="fixed top-0 left-0 right-0 z-[9998] flex flex-col items-center justify-end pb-4 pointer-events-none select-none overflow-hidden"
       style={{
         height: `${CONTAINER_HEIGHT}px`,
         transform: `translateY(${-CONTAINER_HEIGHT}px)`,
@@ -383,7 +383,7 @@ export function PullToRefresh() {
         className="absolute inset-0 bg-gradient-to-b from-black/90 to-transparent backdrop-blur-[6px] border-b border-white/[0.03] opacity-0"
       />
 
-      <div className="relative flex flex-col items-center justify-center gap-2 z-10 pt-2">
+      <div className="relative flex flex-col items-center justify-center gap-2.5 z-10">
         {/* Record/Vinyl visual design with glowing ring */}
         <div 
           ref={spinnerRef}
