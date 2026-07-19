@@ -28,9 +28,9 @@ export function PullToRefresh() {
     document.documentElement.style.overscrollBehaviorY = 'none';
 
     const handleStart = (pageY: number, pageX: number, pointerId?: number) => {
-      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const scrollTop = window.pageYOffset || window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
       // We only enable pull-to-refresh when at the top of the document
-      if (scrollTop <= 5) {
+      if (scrollTop <= 10) {
         isEligibleRef.current = true;
         startYRef.current = pageY;
         startXRef.current = pageX;
@@ -81,10 +81,10 @@ export function PullToRefresh() {
           document.body.style.webkitUserSelect = 'none';
         }
 
-        // Apply a highly refined, buttery-smooth natural logarithmic curve that never caps or curves backward
+        // Apply a highly responsive, buttery-smooth linear dampening curve matching standard iOS feel
         const resistedPull = Math.min(
           MAX_PULL_HEIGHT,
-          TRIGGER_HEIGHT * Math.log(1 + (diffY * 0.85) / TRIGGER_HEIGHT)
+          diffY * 0.55
         );
         const progress = Math.min(1, resistedPull / TRIGGER_HEIGHT);
 
@@ -130,6 +130,25 @@ export function PullToRefresh() {
           }
           return prev;
         });
+      } else {
+        // If they drag all the way back up or negative, keep updating visual state smoothly to 0 pull
+        if (containerRef.current) {
+          containerRef.current.style.transform = `translateY(${-CONTAINER_HEIGHT}px)`;
+          containerRef.current.style.opacity = '0';
+        }
+        if (glowRef.current) {
+          glowRef.current.style.opacity = '0';
+        }
+        if (spinnerRef.current) {
+          spinnerRef.current.style.transform = 'scale(0.85)';
+        }
+        if (iconRef.current) {
+          iconRef.current.style.transform = 'rotate(0deg)';
+        }
+        setPullState('idle');
+        if (textRef.current) {
+          textRef.current.textContent = 'Pull to Refresh';
+        }
       }
     };
 
@@ -142,7 +161,7 @@ export function PullToRefresh() {
       const diffY = pageY - startYRef.current;
       const resistedPull = Math.min(
         MAX_PULL_HEIGHT,
-        TRIGGER_HEIGHT * Math.log(1 + (diffY * 0.85) / TRIGGER_HEIGHT)
+        diffY * 0.55
       );
 
       if (resistedPull >= TRIGGER_HEIGHT) {
@@ -229,8 +248,8 @@ export function PullToRefresh() {
     // TOUCH EVENTS - Dedicated for mobile devices to bypass and block native elastic scrolling completely
     const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length > 1) return; // Ignore multitouch gestures
-      const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-      if (scrollTop <= 5) {
+      const scrollTop = window.pageYOffset || window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      if (scrollTop <= 10) {
         const touch = e.touches[0];
         lastTouchYRef.current = touch.pageY;
         handleStart(touch.pageY, touch.pageX);
@@ -248,8 +267,8 @@ export function PullToRefresh() {
         if (e.cancelable) {
           e.preventDefault();
         }
-        handleMove(touch.pageY, touch.pageX);
       }
+      handleMove(touch.pageY, touch.pageX);
     };
 
     const onTouchEnd = (e: TouchEvent) => {
@@ -267,8 +286,8 @@ export function PullToRefresh() {
       if (e.pointerType === 'touch') return; // Let touch events handle touchscreens
       if (e.button !== 0) return; // Only left clicks
       
-      const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-      if (scrollTop <= 5) {
+      const scrollTop = window.pageYOffset || window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      if (scrollTop <= 10) {
         handleStart(e.pageY, e.pageX, e.pointerId);
       }
     };
@@ -313,7 +332,7 @@ export function PullToRefresh() {
     };
 
     // Register active non-passive listeners for touch
-    document.addEventListener('touchstart', onTouchStart, { passive: true });
+    document.addEventListener('touchstart', onTouchStart, { passive: false });
     document.addEventListener('touchmove', onTouchMove, { passive: false });
     document.addEventListener('touchend', onTouchEnd, { passive: true });
     document.addEventListener('touchcancel', onTouchEnd, { passive: true });
@@ -351,7 +370,7 @@ export function PullToRefresh() {
   return (
     <div 
       ref={containerRef}
-      className="fixed top-0 left-0 right-0 z-[100] flex flex-col items-center justify-center pointer-events-none select-none overflow-hidden"
+      className="fixed top-0 left-0 right-0 z-[9998] flex flex-col items-center justify-center pointer-events-none select-none overflow-hidden"
       style={{
         height: `${CONTAINER_HEIGHT}px`,
         transform: `translateY(${-CONTAINER_HEIGHT}px)`,
