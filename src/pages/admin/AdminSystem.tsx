@@ -188,29 +188,34 @@ export function AdminBranding() {
     { name: "Plus Jakarta Sans (Minimal)", value: "Plus Jakarta Sans" }
   ];
 
+  const { data: serverSettings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: () => fetch('/api/public/settings').then(res => res.json()),
+  });
+
   useEffect(() => {
-    fetch("/api/public/settings").then(r=>r.json()).then(d => {
-      setAppName(d.app_name !== undefined ? d.app_name : DEFAULTS.appName);
-      setAppTitle(d.app_title || DEFAULTS.appTitle);
-      setAppTagline(d.app_tagline !== undefined ? d.app_tagline : DEFAULTS.appTagline);
-      setLogoUrl(d.logo_url || DEFAULTS.logo_url);
-      setLogoDark(d.logo_dark || DEFAULTS.logo_dark);
-      setLogoLight(d.logo_light || DEFAULTS.logo_light);
-      setLogoShape(d.logo_shape !== undefined ? d.logo_shape : DEFAULTS.logo_shape);
-      setFavicon(d.favicon || DEFAULTS.favicon);
-      setPrimaryColor(d.primary_color || DEFAULTS.primary_color);
-      setSecondaryColor(d.secondary_color || DEFAULTS.secondary_color);
-      setFontSans(d.font_sans || DEFAULTS.font_sans);
-      setFontDisplay(d.font_display || DEFAULTS.font_display);
-      setDefaultTheme(d.default_theme || DEFAULTS.default_theme);
-      setSocialInstagram(d.social_instagram || "");
-      setSocialTwitter(d.social_twitter || "");
-      setSocialFacebook(d.social_facebook || "");
-      setSocialYoutube(d.social_youtube || "");
-      setSocialSoundcloud(d.social_soundcloud || "");
-      setSocialMixcloud(d.social_mixcloud || "");
-    });
-  }, []);
+    if (serverSettings) {
+      setAppName(serverSettings.app_name !== undefined ? serverSettings.app_name : DEFAULTS.appName);
+      setAppTitle(serverSettings.app_title || DEFAULTS.appTitle);
+      setAppTagline(serverSettings.app_tagline !== undefined ? serverSettings.app_tagline : DEFAULTS.appTagline);
+      setLogoUrl(serverSettings.logo_url || DEFAULTS.logo_url);
+      setLogoDark(serverSettings.logo_dark || DEFAULTS.logo_dark);
+      setLogoLight(serverSettings.logo_light || DEFAULTS.logo_light);
+      setLogoShape(serverSettings.logo_shape !== undefined ? serverSettings.logo_shape : DEFAULTS.logo_shape);
+      setFavicon(serverSettings.favicon || DEFAULTS.favicon);
+      setPrimaryColor(serverSettings.primary_color || DEFAULTS.primary_color);
+      setSecondaryColor(serverSettings.secondary_color || DEFAULTS.secondary_color);
+      setFontSans(serverSettings.font_sans || DEFAULTS.font_sans);
+      setFontDisplay(serverSettings.font_display || DEFAULTS.font_display);
+      setDefaultTheme(serverSettings.default_theme || DEFAULTS.default_theme);
+      setSocialInstagram(serverSettings.social_instagram || "");
+      setSocialTwitter(serverSettings.social_twitter || "");
+      setSocialFacebook(serverSettings.social_facebook || "");
+      setSocialYoutube(serverSettings.social_youtube || "");
+      setSocialSoundcloud(serverSettings.social_soundcloud || "");
+      setSocialMixcloud(serverSettings.social_mixcloud || "");
+    }
+  }, [serverSettings]);
 
   // Update the browser tab icon instantly when the favicon state changes
   useEffect(() => {

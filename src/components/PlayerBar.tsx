@@ -189,7 +189,7 @@ export function PlayerBar() {
             <div className="flex-1 flex items-center space-x-3 md:space-x-6 overflow-hidden">
               <div className="relative shrink-0">
                 <div className={`w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl text-dark-bg flex items-center justify-center overflow-hidden transition-all duration-500 ${isPlaying ? 'scale-100' : 'scale-95 grayscale'} ${
-                  activeType === 'radio' && resolveDjImage(onAirInfo?.djPhoto) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''
+                  activeType === 'radio' && resolveDjImage(onAirInfo?.djPhoto) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-black' : 'bg-transparent') : ''
                 }`}>
                   {activeType === 'podcast' && podcastTrack ? (
                     <img src={podcastTrack.imageUrl} alt={podcastTrack.title} className="w-full h-full object-cover" />

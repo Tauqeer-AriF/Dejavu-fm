@@ -137,9 +137,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                 logoShape === 'rectangle' ? 'w-24 md:w-32 h-11 md:h-14 px-3' : 'w-11 h-11 md:w-14 md:h-14 p-1.5'
               } relative z-10 flex items-center justify-center overflow-hidden shrink-0 transition-all duration-300 rounded-xl md:rounded-2xl ${
                 isLightMode 
-                  ? (isSingleLogo 
-                      ? 'bg-neutral-900/90 backdrop-blur-md border border-black/10 shadow-[0_8px_32px_rgba(0,0,0,0.12)] group-hover:shadow-[0_12px_40px_rgba(0,0,0,0.2)]' 
-                      : 'bg-white/80 backdrop-blur-md border border-black/5 shadow-[0_8px_30px_rgba(0,0,0,0.04)] group-hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)]') 
+                  ? 'bg-black border border-black/10 shadow-[0_8px_32px_rgba(0,0,0,0.12)] group-hover:shadow-[0_12px_40px_rgba(0,0,0,0.2)]' 
                   : (isSingleLogo 
                       ? 'bg-white/10 backdrop-blur-md border border-white/10 shadow-[inset_0_0_20px_rgba(255,255,255,0.05)] shadow-[0_12px_40px_rgba(0,0,0,0.6)] hover:bg-white/15' 
                       : 'bg-black/30 backdrop-blur-md border border-white/[0.06] group-hover:border-neon-purple/30 shadow-[0_10px_35px_rgba(0,0,0,0.5)] group-hover:shadow-[0_0_25px_rgba(176,38,255,0.15)]')
@@ -453,26 +451,6 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                 ))}
               </div>
               
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                transition={{ duration: 0.4, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                className="mt-8"
-              >
-                <div className="py-6 border-t border-white/10 w-full flex justify-center">
-                  <button 
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      handleAdminClick();
-                    }} 
-                    className="px-6 py-3 rounded-full bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all flex items-center space-x-2"
-                  >
-                    <AdminIcon className="w-4 h-4" />
-                    <span className="font-semibold uppercase tracking-widest text-[10px]">Admin Area</span>
-                  </button>
-                </div>
-              </motion.div>
             </div>
           </motion.div>
         )}

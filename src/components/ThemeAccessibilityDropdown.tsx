@@ -180,6 +180,12 @@ export function ThemeAccessibilityDropdown() {
     window.dispatchEvent(new Event("theme-change"));
   };
 
+  const handleHardReset = () => {
+    localStorage.removeItem("theme");
+    localStorage.removeItem("default_theme_fallback");
+    window.location.reload();
+  };
+
   const isWidgetLight = isLightMode || mode === "high-light";
 
   return (
@@ -287,6 +293,18 @@ export function ThemeAccessibilityDropdown() {
                 }`}>
                   Toggle
                 </span>
+              </button>
+              
+              <button
+                onClick={handleHardReset}
+                className={`w-full flex items-center justify-center gap-2 p-2 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all ${
+                  isWidgetLight
+                    ? "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-600 hover:text-slate-900"
+                    : "bg-white/5 hover:bg-white/10 border-white/5 text-white/50 hover:text-white"
+                }`}
+              >
+                <RefreshCw className="w-3 h-3" />
+                Reset Theme to Default
               </button>
             </div>
 

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useLocation } from 'react-router-dom';
 
 export function useLogo() {
+  const location = useLocation();
   const { data: settings } = useQuery({
     queryKey: ['settings'],
     queryFn: () => fetch("/api/public/settings").then(res => res.json())
@@ -9,7 +11,7 @@ export function useLogo() {
 
   const [isLightMode, setIsLightMode] = useState(() => {
     if (typeof window !== 'undefined') {
-      const isAdmin = window.location.pathname.startsWith('/admin');
+      const isAdmin = location.pathname.startsWith('/admin');
       if (isAdmin) {
         return localStorage.getItem('dashboard_theme') === 'light';
       }
@@ -21,7 +23,7 @@ export function useLogo() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const isAdmin = window.location.pathname.startsWith('/admin');
+    const isAdmin = location.pathname.startsWith('/admin');
 
     if (isAdmin) {
       const handleThemeChange = () => {
@@ -51,7 +53,7 @@ export function useLogo() {
       observer.observe(document.documentElement, { attributes: true });
       return () => observer.disconnect();
     }
-  }, []);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (settings?.favicon) {
@@ -82,7 +84,12 @@ export function useLogo() {
 
       // Handle front-end default theme if user hasn't explicitly set a preference
       if (typeof window !== 'undefined') {
-        const isAdmin = window.location.pathname.startsWith('/admin');
+        // Always update the fallback so it's ready for the next front-end load
+        if (settings.default_theme) {
+          localStorage.setItem('default_theme_fallback', settings.default_theme);
+        }
+
+        const isAdmin = location.pathname.startsWith('/admin');
         if (!isAdmin) {
           const savedTheme = localStorage.getItem('theme');
           if (savedTheme === null) {
@@ -95,13 +102,10 @@ export function useLogo() {
               document.documentElement.style.backgroundColor = '#0a0a0f';
             }
           }
-          if (settings.default_theme) {
-            localStorage.setItem('default_theme_fallback', settings.default_theme);
-          }
         }
       }
     }
-  }, [settings]);
+  }, [settings, location.pathname]);
 
   const logoUrlRaw = isLightMode 
     ? (settings?.logo_light || settings?.logo_url || undefined)
