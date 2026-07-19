@@ -15,6 +15,7 @@ export function PullToRefresh() {
   const startXRef = useRef<number | null>(null);
   const isEligibleRef = useRef(false);
   const pointerIdRef = useRef<number | null>(null);
+  const lastTouchYRef = useRef<number | null>(null);
 
   // Constants
   const TRIGGER_HEIGHT = 90; // Pull distance to trigger refresh (px)
@@ -220,34 +221,71 @@ export function PullToRefresh() {
       startXRef.current = null;
       isEligibleRef.current = false;
       pointerIdRef.current = null;
+      lastTouchYRef.current = null;
       document.body.style.removeProperty('user-select');
       document.body.style.removeProperty('-webkit-user-select');
     };
 
-    // POINTER EVENTS - single system unifies mouse/pen/touch cleanly without double triggers
-    const onPointerDown = (e: PointerEvent) => {
-      if (e.button !== 0 && e.pointerType === 'mouse') return;
-      
-      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+    // TOUCH EVENTS - Dedicated for mobile devices to bypass and block native elastic scrolling completely
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length > 1) return; // Ignore multitouch gestures
+      const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
       if (scrollTop <= 5) {
-        // Set pointer capture to prevent losing track of drag during fast movements
-        if (e.target && 'setPointerCapture' in (e.target as any)) {
-          try {
-            (e.target as any).setPointerCapture(e.pointerId);
-          } catch (err) {}
+        const touch = e.touches[0];
+        lastTouchYRef.current = touch.pageY;
+        handleStart(touch.pageY, touch.pageX);
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!isEligibleRef.current || startYRef.current === null) return;
+      const touch = e.touches[0];
+      lastTouchYRef.current = touch.pageY;
+      const diffY = touch.pageY - startYRef.current;
+      
+      if (diffY > 0) {
+        // Crucial for iOS: cancel native rubber-banding scroll immediately
+        if (e.cancelable) {
+          e.preventDefault();
         }
+        handleMove(touch.pageY, touch.pageX);
+      }
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (!isEligibleRef.current || startYRef.current === null) {
+        cleanup();
+        return;
+      }
+      const touch = e.changedTouches[0] || e.touches[0];
+      const endY = touch ? touch.pageY : (lastTouchYRef.current ?? startYRef.current);
+      handleEnd(endY);
+    };
+
+    // POINTER EVENTS - Restricted to desktop mouse for high efficiency on Windows Chrome
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.pointerType === 'touch') return; // Let touch events handle touchscreens
+      if (e.button !== 0) return; // Only left clicks
+      
+      const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      if (scrollTop <= 5) {
         handleStart(e.pageY, e.pageX, e.pointerId);
       }
     };
 
     const onPointerMove = (e: PointerEvent) => {
+      if (e.pointerType === 'touch') return;
       if (pointerIdRef.current !== null && e.pointerId !== pointerIdRef.current) return;
       
       if (isEligibleRef.current && startYRef.current !== null) {
         const diffY = e.pageY - startYRef.current;
-        if (diffY > 5) {
+        if (diffY > 0) {
           if (e.cancelable) {
             e.preventDefault();
+          }
+          if (diffY > 2) {
+            document.body.style.userSelect = 'none';
+            document.body.style.webkitUserSelect = 'none';
           }
         }
       }
@@ -255,28 +293,9 @@ export function PullToRefresh() {
     };
 
     const onPointerUp = (e: PointerEvent) => {
+      if (e.pointerType === 'touch') return;
       if (pointerIdRef.current !== null && e.pointerId !== pointerIdRef.current) return;
-      
-      if (e.target && 'releasePointerCapture' in (e.target as any)) {
-        try {
-          (e.target as any).releasePointerCapture(e.pointerId);
-        } catch (err) {}
-      }
       handleEnd(e.pageY);
-    };
-
-    // TOUCH EVENTS (Active listener specifically required to block iOS/Safari elastic browser rubber-band scroll)
-    const onTouchMove = (e: TouchEvent) => {
-      if (!isEligibleRef.current || startYRef.current === null) return;
-      const touch = e.touches[0];
-      const diffY = touch.pageY - startYRef.current;
-      
-      if (diffY > 0) {
-        // We are pulling down from the top: lock native browser overscroll/scroll
-        if (e.cancelable) {
-          e.preventDefault();
-        }
-      }
     };
 
     // Block browser image/text ghost drag visual during active pulls
@@ -286,22 +305,41 @@ export function PullToRefresh() {
       }
     };
 
+    // Block browser native selection start during active pulls
+    const onSelectStart = (e: Event) => {
+      if (isEligibleRef.current && startYRef.current !== null) {
+        e.preventDefault();
+      }
+    };
+
+    // Register active non-passive listeners for touch
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
+    window.addEventListener('touchcancel', onTouchEnd, { passive: true });
+
+    // Register listeners for mouse pointer
     window.addEventListener('pointerdown', onPointerDown, { passive: true });
-    window.addEventListener('pointermove', onPointerMove, { passive: false }); // crucial to cancel default selection
+    window.addEventListener('pointermove', onPointerMove, { passive: false });
     window.addEventListener('pointerup', onPointerUp, { passive: true });
     window.addEventListener('pointercancel', onPointerUp, { passive: true });
 
-    window.addEventListener('touchmove', onTouchMove, { passive: false }); // crucial to cancel scroll
     window.addEventListener('dragstart', onDragStart, { capture: true });
+    window.addEventListener('selectstart', onSelectStart, { capture: true });
 
     return () => {
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('touchcancel', onTouchEnd);
+
       window.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
       window.removeEventListener('pointercancel', onPointerUp);
 
-      window.removeEventListener('touchmove', onTouchMove);
       window.removeEventListener('dragstart', onDragStart, { capture: true });
+      window.removeEventListener('selectstart', onSelectStart, { capture: true });
 
       document.body.style.removeProperty('overscroll-behavior-y');
       document.documentElement.style.removeProperty('overscroll-behavior-y');
