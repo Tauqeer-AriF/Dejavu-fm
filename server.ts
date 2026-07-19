@@ -115,6 +115,7 @@ async function startServer() {
   }));
 
   const io = new SocketIOServer(server, {
+    transports: ['websocket'],
     cors: { 
       origin: true, // Allow same origin and common proxy setups
       methods: ["GET", "POST"],

@@ -202,7 +202,8 @@ const API_KEY = "${generatedKey || 'YOUR_API_KEY'}";
 const SOCKET_URL = "${window.location.origin}";
 
 const socket = io(SOCKET_URL, {
-  auth: { apiKey: API_KEY }
+  auth: { apiKey: API_KEY },
+  transports: ['websocket']
 });
 
 socket.on('connect', () => console.log('Connected to API stream!'));
@@ -220,7 +221,8 @@ const API_KEY = "${generatedKey || 'YOUR_API_KEY'}";
 const SOCKET_URL = "${window.location.origin}";
 
 const socket = io(SOCKET_URL, {
-  auth: { apiKey: API_KEY }
+  auth: { apiKey: API_KEY },
+  transports: ['websocket']
 });
 
 socket.on('connect', () => console.log('Connected to API stream!'));

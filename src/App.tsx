@@ -43,7 +43,7 @@ const queryClient = new QueryClient();
 
 // Initialize global socket
 if (typeof window !== 'undefined') {
-  (window as any).socket = io();
+  (window as any).socket = io({ transports: ['websocket'] });
 }
 
 
