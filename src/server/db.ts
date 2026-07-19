@@ -67,15 +67,32 @@ if (dbPath !== 'dejavufm.db' && fs.existsSync('dejavufm.db') && !fs.existsSync(d
 
 const configureDb = (connection: any) => {
   try {
+    // 1. Enable Write-Ahead Logging (WAL) Mode
     try {
       connection.pragma('journal_mode = WAL');
+      const mode = connection.pragma('journal_mode', { simple: true });
+      if (mode !== 'wal') {
+        connection.exec('PRAGMA journal_mode = WAL;');
+      }
+      console.log(`[DB] Write-Ahead Logging (WAL) Mode is active: ${connection.pragma('journal_mode', { simple: true })}`);
     } catch (e) {
-      console.warn('[DB] Failed to set WAL mode, falling back to default:', e);
+      console.warn('[DB] Failed to set WAL mode via pragma, trying direct SQL exec:', e);
+      try {
+        connection.exec('PRAGMA journal_mode = WAL;');
+        console.log(`[DB] Write-Ahead Logging (WAL) Mode is active via direct exec: ${connection.pragma('journal_mode', { simple: true })}`);
+      } catch (execErr) {
+        console.error('[DB] Critical: Failed to enable WAL mode. Concurrency will be limited:', execErr);
+      }
     }
-    connection.pragma('busy_timeout = 5000');
-    connection.pragma('synchronous = NORMAL'); // 'NORMAL' is a safer default than 'OFF'.
-    connection.pragma('cache_size = 10000');
-    connection.pragma('foreign_keys = ON');
+
+    // 2. Configure High-Performance Pragmas for Concurrent and Faster SQLite usage
+    connection.pragma('busy_timeout = 5000');       // Wait up to 5 seconds when locked instead of immediately failing
+    connection.pragma('synchronous = NORMAL');      // Highly recommended for WAL mode: much faster writes, still corruption-safe
+    connection.pragma('cache_size = 10000');         // Increase cache size (approx 10MB in page memory cache)
+    connection.pragma('foreign_keys = ON');         // Enforce foreign key constraints
+    connection.pragma('temp_store = MEMORY');       // Store temporary tables and indices in RAM
+    connection.pragma('mmap_size = 268435456');     // Use memory-mapped I/O (256 MB) for ultra-fast reads
+    connection.pragma('journal_size_limit = 67108864'); // Limit WAL file size to 64MB to avoid unbounded disk growth
   } catch (err) {
     console.error('[DB] Error during pragma configuration:', err);
     throw err;
@@ -134,12 +151,34 @@ const createAndConfigureDb = (pathStr: string): any => {
 
 let activeDb = createAndConfigureDb(dbPath);
 
+const statementCache = new Map<string, any>();
+
+export function clearStatementCache() {
+  statementCache.clear();
+  console.log("[DB] Prepared statement cache cleared.");
+}
+
 export const db = new Proxy({} as any, {
   get(_, prop) {
     if (prop === 'close') {
       return () => {
         console.log("[DB Proxy] Closing active database connection...");
+        clearStatementCache();
         return activeDb.close();
+      };
+    }
+    if (prop === 'prepare') {
+      return (sql: string) => {
+        let stmt = statementCache.get(sql);
+        if (!stmt) {
+          stmt = activeDb.prepare(sql);
+          // Defensive size limit to prevent memory leak with unique dynamic queries
+          if (statementCache.size >= 1000) {
+            statementCache.clear();
+          }
+          statementCache.set(sql, stmt);
+        }
+        return stmt;
       };
     }
     const value = Reflect.get(activeDb, prop);
@@ -156,12 +195,14 @@ export const db = new Proxy({} as any, {
 export function closeDatabaseConnection() {
   if (activeDb.open) {
     console.log("[DB] Closing active database connection...");
+    clearStatementCache();
     activeDb.close();
   }
 }
 
 export function reopenDatabaseConnection() {
   console.log(`[DB] Re-opening database connection at ${dbPath}...`);
+  clearStatementCache();
   activeDb = createAndConfigureDb(dbPath);
 }
 
@@ -560,6 +601,28 @@ export function initDb() {
     }
     console.log(`[DB] Already have ${countAdmins.count} admin user(s).`);
   }
+
+  // Create high-performance indexes for tables and columns frequently used in filtering, sorting, or joining
+  try {
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_schedule_dj_id ON schedule(dj_id);
+      CREATE INDEX IF NOT EXISTS idx_schedule_day_of_week ON schedule(day_of_week);
+      CREATE INDEX IF NOT EXISTS idx_bookings_dj_id ON bookings(dj_id);
+      CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
+      CREATE INDEX IF NOT EXISTS idx_bookings_created_at ON bookings(created_at);
+      CREATE INDEX IF NOT EXISTS idx_shoutouts_dj_id ON shoutouts(dj_id);
+      CREATE INDEX IF NOT EXISTS idx_shoutouts_is_read ON shoutouts(is_read);
+      CREATE INDEX IF NOT EXISTS idx_shoutouts_timestamp ON shoutouts(timestamp);
+      CREATE INDEX IF NOT EXISTS idx_popups_active_type_created ON popups(is_active, type, created_at);
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp);
+      CREATE INDEX IF NOT EXISTS idx_private_messages_timestamp ON private_messages(timestamp);
+      CREATE INDEX IF NOT EXISTS idx_room_messages_created_at ON room_messages(created_at);
+    `);
+    console.log("[DB] High-performance indexes verified / created successfully.");
+  } catch (indexErr) {
+    console.error("[DB] Warning: Failed to create some database indexes:", indexErr);
+  }
+
   console.log("[DB] Database initialization complete.");
 } catch (err) {
   console.error("[DB] CRITICAL ERROR during database initialization:", err);

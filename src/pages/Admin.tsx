@@ -24,9 +24,9 @@ import { AdminBackup } from "./admin/AdminBackup";
 import { AdminAds } from "./admin/AdminAds";
 import { AdminSEO } from "./admin/AdminSEO";
 import { AdminMedia } from "./admin/AdminMedia";
-import { AdminStudio } from "./admin/AdminStudio";
+const AdminStudio = React.lazy(() => import("./admin/AdminStudio").then(m => ({ default: m.AdminStudio })));
 import { AdminApiKeys } from "./admin/AdminApiKeys";
-import { AdminMetaIntegrations } from "./admin/AdminMetaIntegrations";
+const AdminMetaIntegrations = React.lazy(() => import("./admin/AdminMetaIntegrations").then(m => ({ default: m.AdminMetaIntegrations })));
 import { useLogo } from "../hooks/useLogo";
 
 export default function Admin() {

@@ -333,6 +333,11 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   });
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const selectedUserRef = useRef<string | null>(null);
+  const [messageLimit, setMessageLimit] = useState(50);
+
+  useEffect(() => {
+    setMessageLimit(50);
+  }, [selectedUser]);
 
   const lastReadTimestampsRef = useRef<Record<string, number>>({});
   const [lastReadTimestamps, setLastReadTimestamps] = useState<Record<string, number>>(() => {
@@ -2529,6 +2534,19 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     );
   };
 
+  // Memoized sorted messages and visible slice for currentThread
+  const sortedMessages = useMemo(() => {
+    if (!currentThread?.messages) return [];
+    return [...currentThread.messages].sort((a, b) => a.timestamp - b.timestamp);
+  }, [currentThread?.messages]);
+
+  const hasMoreMessages = sortedMessages.length > messageLimit;
+
+  const visibleMessages = useMemo(() => {
+    if (!hasMoreMessages) return sortedMessages;
+    return sortedMessages.slice(sortedMessages.length - messageLimit);
+  }, [sortedMessages, messageLimit, hasMoreMessages]);
+
   if (isInitialLoading) return <PremiumLoader onComplete={() => setIsInitialLoading(false)} />;
 
   return (
@@ -2830,7 +2848,17 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
               </header>
 
               <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-[#080911] to-[#06070D] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/5 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/10">
-                {currentThread.messages.sort((a, b) => a.timestamp - b.timestamp).map(msg => {
+                {hasMoreMessages && (
+                  <div className="flex justify-center pb-4 pt-1">
+                    <button
+                      onClick={() => setMessageLimit(prev => prev + 50)}
+                      className="px-5 py-2 bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 hover:border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-white transition-all duration-250 shadow-md"
+                    >
+                      Load older messages ({sortedMessages.length - messageLimit} remaining)
+                    </button>
+                  </div>
+                )}
+                {visibleMessages.map(msg => {
                   const isAdminReply = isSenderAdminMsg(msg.user);
                   return (
                     <div key={msg.id} className={`flex items-start gap-3 group/msg ${isAdminReply ? 'flex-row-reverse' : ''}`}>

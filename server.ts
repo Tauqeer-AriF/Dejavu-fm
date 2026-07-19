@@ -1,6 +1,7 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import cookieParser from "cookie-parser";
+import compression from "compression";
 import path from "path";
 import { fileURLToPath } from "url";
 import { apiRouter } from "./src/server/api.ts";
@@ -46,6 +47,9 @@ async function startServer() {
 
   const app = express();
   
+  // Enable Gzip/Deflate payload compression for APIs and assets
+  app.use(compression());
+  
   app.set('serverId', serverId);
   app.set('regenerateServerId', () => {
     serverId = crypto.randomUUID();
@@ -70,14 +74,26 @@ async function startServer() {
   const requestedPort = 3000;
   const server = http.createServer(app);
   
-  // Explicitly serve public folder for manifest.json and icons
-  app.use(express.static(path.join(process.cwd(), "public")));
+  // Explicitly serve public folder for manifest.json and icons with standard cache-control headers
+  app.use(express.static(path.join(process.cwd(), "public"), {
+    maxAge: '1d',
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.html') || filePath.includes('manifest.json')) {
+        res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+      } else {
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+      }
+    }
+  }));
 
-  // Serve uploads folder from persistent or local uploads directory dynamically
+  // Serve uploads folder with long-term caching headers
   app.use("/uploads", express.static(getUploadsDir(), {
     maxAge: '1y',
     acceptRanges: true,
-    cacheControl: true
+    cacheControl: true,
+    setHeaders: (res) => {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
   }));
 
   // Security Headers
@@ -1032,7 +1048,17 @@ async function startServer() {
 
     // Production static serving
     const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath, { index: false })); // don't serve index.html automatically
+    app.use(express.static(distPath, { 
+      index: false,
+      maxAge: '1y',
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html') || filePath.includes('service-worker') || filePath.includes('sw.js')) {
+          res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+        } else {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+      }
+    }));
     
     app.get("*", async (req, res) => {
       if (req.path.startsWith('/api/')) {

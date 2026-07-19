@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchAdmin } from "./adminApi";
 import { 
@@ -185,6 +185,16 @@ export function AdminMetaIntegrations() {
       studio_platform_configs: updatedPlatformConfigs
     });
   };
+
+  const handleUpdatePlatformField = useCallback((platform: string, field: string, value: string) => {
+    setPlatformConfigs(prev => ({
+      ...prev,
+      [platform]: {
+        ...prev[platform],
+        [field]: value
+      }
+    }));
+  }, []);
 
   // Credentials Testing State
   const [testingPlatform, setTestingPlatform] = useState<string | null>(null);
@@ -575,10 +585,7 @@ export function AdminMetaIntegrations() {
                     type="text"
                     placeholder="+447123456789"
                     value={platformConfigs.whatsapp?.phone || ''}
-                    onChange={(e) => setPlatformConfigs({
-                      ...platformConfigs,
-                      whatsapp: { ...platformConfigs.whatsapp, phone: e.target.value }
-                    })}
+                    onChange={(e) => handleUpdatePlatformField('whatsapp', 'phone', e.target.value)}
                     className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
                       isLightMode 
                         ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
@@ -592,10 +599,7 @@ export function AdminMetaIntegrations() {
                     type="text"
                     placeholder="e.g. 102948572019485"
                     value={platformConfigs.whatsapp?.phoneId || ''}
-                    onChange={(e) => setPlatformConfigs({
-                      ...platformConfigs,
-                      whatsapp: { ...platformConfigs.whatsapp, phoneId: e.target.value }
-                    })}
+                    onChange={(e) => handleUpdatePlatformField('whatsapp', 'phoneId', e.target.value)}
                     className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
                       isLightMode 
                         ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
@@ -715,10 +719,7 @@ export function AdminMetaIntegrations() {
                     type="text"
                     placeholder="e.g. 178414012345678"
                     value={platformConfigs.instagram?.accountId || ''}
-                    onChange={(e) => setPlatformConfigs({
-                      ...platformConfigs,
-                      instagram: { ...platformConfigs.instagram, accountId: e.target.value }
-                    })}
+                    onChange={(e) => handleUpdatePlatformField('instagram', 'accountId', e.target.value)}
                     className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
                       isLightMode 
                         ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
@@ -732,10 +733,7 @@ export function AdminMetaIntegrations() {
                     type="password"
                     placeholder="••••••••••••••••"
                     value={platformConfigs.instagram?.accessToken || ''}
-                    onChange={(e) => setPlatformConfigs({
-                      ...platformConfigs,
-                      instagram: { ...platformConfigs.instagram, accessToken: e.target.value }
-                    })}
+                    onChange={(e) => handleUpdatePlatformField('instagram', 'accessToken', e.target.value)}
                     className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
                       isLightMode 
                         ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
@@ -855,10 +853,7 @@ export function AdminMetaIntegrations() {
                     type="text"
                     placeholder="e.g. 1029485720194"
                     value={platformConfigs.facebook?.pageId || ''}
-                    onChange={(e) => setPlatformConfigs({
-                      ...platformConfigs,
-                      facebook: { ...platformConfigs.facebook, pageId: e.target.value }
-                    })}
+                    onChange={(e) => handleUpdatePlatformField('facebook', 'pageId', e.target.value)}
                     className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
                       isLightMode 
                         ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
@@ -872,10 +867,7 @@ export function AdminMetaIntegrations() {
                     type="password"
                     placeholder="••••••••••••••••"
                     value={platformConfigs.facebook?.pageAccessToken || ''}
-                    onChange={(e) => setPlatformConfigs({
-                      ...platformConfigs,
-                      facebook: { ...platformConfigs.facebook, pageAccessToken: e.target.value }
-                    })}
+                    onChange={(e) => handleUpdatePlatformField('facebook', 'pageAccessToken', e.target.value)}
                     className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
                       isLightMode 
                         ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 

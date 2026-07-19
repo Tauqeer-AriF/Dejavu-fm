@@ -9,7 +9,7 @@ import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { PullToRefresh } from './components/PullToRefresh';
 import { AudioProvider, useAudio } from './context/AudioContext';
 import { ModalProvider, useModal } from './context/ModalContext';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Toaster, toast } from 'sonner';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -27,17 +27,17 @@ import { ShareModal } from './components/ShareModal';
 
 // Pages
 import Home from './pages/Home';
-import Schedule from './pages/Schedule';
-import PodcastsPage from './pages/Podcasts';
-import PodcastDetail from './pages/PodcastDetail';
-import DJs from './pages/DJs';
-import DJDetail from './pages/DJDetail';
-import About from './pages/About';
-import Contact from './pages/Contact';
-import Admin from './pages/Admin';
-import WatchLive from './pages/WatchLive';
-import Features from './pages/Features';
-import FeatureDetail from './pages/FeatureDetail';
+const Schedule = lazy(() => import('./pages/Schedule'));
+const PodcastsPage = lazy(() => import('./pages/Podcasts'));
+const PodcastDetail = lazy(() => import('./pages/PodcastDetail'));
+const DJs = lazy(() => import('./pages/DJs'));
+const DJDetail = lazy(() => import('./pages/DJDetail'));
+const About = lazy(() => import('./pages/About'));
+const Contact = lazy(() => import('./pages/Contact'));
+const Admin = lazy(() => import('./pages/Admin'));
+const WatchLive = lazy(() => import('./pages/WatchLive'));
+const Features = lazy(() => import('./pages/Features'));
+const FeatureDetail = lazy(() => import('./pages/FeatureDetail'));
 
 const queryClient = new QueryClient();
 
@@ -563,20 +563,26 @@ function AnimatedRoutes() {
         exit={{ opacity: 0, y: -10 }}
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       >
-        <Routes location={location}>
-          <Route path="/" element={<Home />} />
-          <Route path="/watch" element={<WatchLive />} />
-          <Route path="/schedule" element={<Schedule />} />
-          <Route path="/djs" element={<DJs />} />
-          <Route path="/djs/:id" element={<DJDetail />} />
-          <Route path="/podcasts" element={<PodcastsPage />} />
-          <Route path="/podcasts/:id" element={<PodcastDetail />} />
-          <Route path="/features" element={<Features />} />
-          <Route path="/features/:slug" element={<FeatureDetail />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/admin/*" element={<Admin />} />
-        </Routes>
+        <Suspense fallback={
+          <div className="flex items-center justify-center min-h-[40vh] w-full">
+            <div className="w-8 h-8 border-4 border-neon-purple border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(176,38,255,0.3)]" />
+          </div>
+        }>
+          <Routes location={location}>
+            <Route path="/" element={<Home />} />
+            <Route path="/watch" element={<WatchLive />} />
+            <Route path="/schedule" element={<Schedule />} />
+            <Route path="/djs" element={<DJs />} />
+            <Route path="/djs/:id" element={<DJDetail />} />
+            <Route path="/podcasts" element={<PodcastsPage />} />
+            <Route path="/podcasts/:id" element={<PodcastDetail />} />
+            <Route path="/features" element={<Features />} />
+            <Route path="/features/:slug" element={<FeatureDetail />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/admin/*" element={<Admin />} />
+          </Routes>
+        </Suspense>
       </motion.div>
     </AnimatePresence>
   );
