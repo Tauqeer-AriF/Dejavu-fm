@@ -12,6 +12,14 @@ if (typeof window !== 'undefined') {
   audio.crossOrigin = "anonymous";
 }
 
+function getProxiedPodcastUrl(url: string | undefined): string {
+  if (!url) return '';
+  if (url.startsWith('http')) {
+    return `/api/public/podcast-stream?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
+
 export type AudioQuality = 'low' | 'medium' | 'high';
 
 interface AudioStore {
@@ -34,7 +42,20 @@ interface AudioStore {
   } | null;
   isCinematicOpen: boolean;
   
+  // Podcast Additions
+  activeType: 'radio' | 'podcast';
+  podcastTrack: {
+    id: string;
+    title: string;
+    audioUrl: string;
+    imageUrl: string;
+  } | null;
+  podcastProgress: number;
+  podcastDuration: number;
+  playbackRate: number;
+  
   togglePlay: () => void;
+  playRadio: () => void;
   setVolume: (val: number) => void;
   setCurrentTrack: (val: string) => void;
   setStreamUrl: (val: string) => void;
@@ -53,6 +74,11 @@ interface AudioStore {
   } | null) => void;
   toggleCinematic: () => void;
   getAnalyser: () => AnalyserNode | null;
+
+  // Podcast Actions
+  playPodcast: (track: { id: string; title: string; audioUrl: string; imageUrl: string }) => void;
+  seekPodcast: (time: number) => void;
+  setPlaybackRate: (rate: number) => void;
 }
 
 const getSavedVolume = () => {
@@ -133,10 +159,44 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
   quality: getSavedQuality(),
   qualityUrls: getSavedQualityUrls(),
   onAirInfo: null,
+  
+  // Podcast Init State
+  activeType: 'radio',
+  podcastTrack: null,
+  podcastProgress: 0,
+  podcastDuration: 0,
+  playbackRate: 1.0,
 
   togglePlay: () => {
-    const { isPlaying, streamUrl, volume, quality, qualityUrls } = get();
+    const { isPlaying, activeType, streamUrl, volume, quality, qualityUrls, podcastTrack } = get();
     if (!audio) return;
+
+    if (activeType === 'podcast') {
+      if (isPlaying) {
+        audio.pause();
+        set({ isPlaying: false });
+      } else {
+        if (podcastTrack?.audioUrl) {
+          const proxiedUrl = getProxiedPodcastUrl(podcastTrack.audioUrl);
+          const absoluteProxiedUrl = proxiedUrl.startsWith('http') ? proxiedUrl : new URL(proxiedUrl, window.location.href).href;
+          if (audio.src !== absoluteProxiedUrl) {
+            audio.src = proxiedUrl;
+            audio.load();
+          }
+          audio.playbackRate = get().playbackRate;
+          audio.volume = get().volume;
+          audio.play().then(() => {
+            set({ isPlaying: true });
+          }).catch(e => {
+            console.error("Podcast play error:", e);
+            toast.error("Failed to play podcast");
+            set({ isPlaying: false });
+          });
+        }
+      }
+      return;
+    }
+
     
     // Choose the best URL based on quality if streamUrl isn't explicitly set to something else
     let targetUrl = streamUrl;
@@ -353,6 +413,88 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
 
   toggleCinematic: () => set(state => ({ isCinematicOpen: !state.isCinematicOpen })),
 
+  playRadio: () => {
+    const { isPlaying, activeType } = get();
+    if (!audio) return;
+    
+    if (activeType !== 'radio') {
+      audio.pause();
+      set({ activeType: 'radio', isPlaying: false });
+    }
+    
+    if (!get().isPlaying) {
+      get().togglePlay();
+    }
+  },
+
+  playPodcast: (track) => {
+    if (!audio) return;
+    
+    const { podcastTrack, isPlaying, activeType } = get();
+    
+    // If it's already the active podcast track, toggle play/pause
+    if (activeType === 'podcast' && podcastTrack?.id === track.id) {
+      get().togglePlay();
+      return;
+    }
+
+    audio.pause();
+
+    set({
+      activeType: 'podcast',
+      podcastTrack: track,
+      podcastProgress: 0,
+      podcastDuration: 0,
+      isPlaying: true
+    });
+
+    const proxiedUrl = getProxiedPodcastUrl(track.audioUrl);
+    audio.src = proxiedUrl;
+    audio.playbackRate = get().playbackRate;
+    audio.load();
+    audio.volume = get().volume;
+    
+    // Update MediaSession metadata
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: track.title,
+        artist: 'Dejavu FM',
+        album: 'Podcast',
+        artwork: [
+          { src: track.imageUrl, sizes: '256x256', type: 'image/jpeg' },
+          { src: track.imageUrl, sizes: '512x512', type: 'image/jpeg' }
+        ]
+      });
+      navigator.mediaSession.playbackState = 'playing';
+    }
+
+    audio.play().then(() => {
+      // Track analytics
+      fetch('/api/public/analytics/podcast-play', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: track.title })
+      }).catch(() => {});
+    }).catch(err => {
+      if (err.name === 'AbortError') return;
+      console.error("Podcast play error:", err);
+      toast.error("Failed to play podcast");
+      set({ isPlaying: false });
+    });
+  },
+
+  seekPodcast: (time) => {
+    if (!audio) return;
+    audio.currentTime = time;
+    set({ podcastProgress: time });
+  },
+
+  setPlaybackRate: (rate) => {
+    if (!audio) return;
+    audio.playbackRate = rate;
+    set({ playbackRate: rate });
+  },
+
   getAnalyser: () => analyser
 }));
 
@@ -392,6 +534,7 @@ if (typeof window !== 'undefined' && audio) {
 
   const attemptRecovery = () => {
     const store = useAudioStore.getState();
+    if (store.activeType === 'podcast') return; // Do not recover for podcasts
     if (!store.isPlaying || !audio || isRecovering || retryCount >= MAX_RETRIES) return;
     
     isRecovering = true;
@@ -426,7 +569,29 @@ if (typeof window !== 'undefined' && audio) {
 
   audio.addEventListener('error', attemptRecovery);
   audio.addEventListener('stalled', attemptRecovery);
-  audio.addEventListener('ended', attemptRecovery); // A live radio stream shouldn't end smoothly
+  
+  audio.addEventListener('ended', () => {
+    const store = useAudioStore.getState();
+    if (store.activeType === 'podcast') {
+      useAudioStore.setState({ isPlaying: false, podcastProgress: 0 });
+    } else {
+      attemptRecovery();
+    }
+  });
+
+  audio.addEventListener('timeupdate', () => {
+    const store = useAudioStore.getState();
+    if (store.activeType === 'podcast' && audio) {
+      useAudioStore.setState({ podcastProgress: audio.currentTime });
+    }
+  });
+
+  audio.addEventListener('durationchange', () => {
+    const store = useAudioStore.getState();
+    if (store.activeType === 'podcast' && audio && isFinite(audio.duration)) {
+      useAudioStore.setState({ podcastDuration: audio.duration });
+    }
+  });
   
   audio.addEventListener('playing', () => {
     isRecovering = false;
@@ -457,7 +622,9 @@ if (typeof window !== 'undefined' && audio) {
       if (store.isPlaying && audio) {
         if (audio.paused || audio.ended || audio.readyState < 2) {
           console.warn("[Audio] Audio output is out of sync with state (paused/stalled in background). Recovering...");
-          const currentSrc = audio.src || store.streamUrl || store.qualityUrls[store.quality];
+          const currentSrc = store.activeType === 'podcast'
+            ? getProxiedPodcastUrl(store.podcastTrack?.audioUrl)
+            : (audio.src || store.streamUrl || store.qualityUrls[store.quality]);
           if (currentSrc) {
             audio.src = ''; // Reset buffer
             setTimeout(() => {

@@ -1,6 +1,9 @@
 import { Router, Request, Response, NextFunction } from "express";
 import Database from 'better-sqlite3';
 import { db, dbPath, backupDir, pruneBackups, backupDatabase, reopenDatabaseConnection, getUploadsDir } from "./db.js";
+import { request as httpRequest } from "http";
+import { request as httpsRequest } from "https";
+import { URL } from "url";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Parser from "rss-parser";
@@ -299,6 +302,113 @@ apiRouter.get("/public/podcasts", asyncHandler(async (req: Request, res: Respons
   const feed = await getPodcastFeed(forceRefresh);
   res.json(feed);
 }));
+
+function proxyPodcast(targetUrl: string, clientReq: Request, clientRes: Response, redirectCount = 0) {
+  if (redirectCount > 8) {
+    return clientRes.status(500).send("Too many redirects");
+  }
+
+  try {
+    const parsedUrl = new URL(targetUrl);
+    const isHttps = parsedUrl.protocol === "https:";
+    const requestFn = isHttps ? httpsRequest : httpRequest;
+
+    const headers: Record<string, string> = {
+      "user-agent": (clientReq.headers["user-agent"] as string) || "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    };
+
+    if (clientReq.headers.range) {
+      headers["range"] = clientReq.headers.range as string;
+    }
+
+    const upstreamReq = requestFn(
+      targetUrl,
+      {
+        method: "GET",
+        headers,
+        timeout: 15000,
+      },
+      (upstreamRes) => {
+        const statusCode = upstreamRes.statusCode || 200;
+
+        if ([301, 302, 303, 307, 308].includes(statusCode) && upstreamRes.headers.location) {
+          let nextUrl = upstreamRes.headers.location;
+          if (!nextUrl.startsWith("http:") && !nextUrl.startsWith("https:")) {
+            nextUrl = new URL(nextUrl, targetUrl).toString();
+          }
+          return proxyPodcast(nextUrl, clientReq, clientRes, redirectCount + 1);
+        }
+
+        const copyHeaders = [
+          "content-type",
+          "content-length",
+          "content-range",
+          "accept-ranges",
+          "cache-control",
+          "expires",
+        ];
+
+        for (const h of copyHeaders) {
+          if (upstreamRes.headers[h]) {
+            clientRes.setHeader(h, upstreamRes.headers[h] as string);
+          }
+        }
+
+        clientRes.setHeader("Access-Control-Allow-Origin", "*");
+        clientRes.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+        clientRes.setHeader("Access-Control-Allow-Headers", "Content-Type, Range");
+
+        clientRes.status(statusCode);
+        upstreamRes.pipe(clientRes);
+      }
+    );
+
+    clientReq.on("close", () => {
+      upstreamReq.destroy();
+    });
+
+    upstreamReq.on("error", (err) => {
+      console.error("[Podcast Proxy Error] Upstream connection failed:", err);
+      if (!clientRes.headersSent) {
+        clientRes.status(500).send("Proxy error loading audio source");
+      }
+    });
+
+    upstreamReq.on("timeout", () => {
+      upstreamReq.destroy();
+      if (!clientRes.headersSent) {
+        clientRes.status(504).send("Proxy gateway timeout");
+      }
+    });
+
+    upstreamReq.end();
+  } catch (err) {
+    console.error("[Podcast Proxy Error] Invalid URL:", err);
+    if (!clientRes.headersSent) {
+      clientRes.status(400).send("Invalid target URL");
+    }
+  }
+}
+
+apiRouter.options("/public/podcast-stream", (req: Request, res: Response) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Range");
+  res.setHeader("Access-Control-Max-Age", "86400");
+  res.sendStatus(204);
+});
+
+apiRouter.get("/public/podcast-stream", (req: Request, res: Response) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Range");
+
+  const targetUrl = req.query.url as string;
+  if (!targetUrl || targetUrl.trim() === "") {
+    return res.status(400).send("Missing target url parameter");
+  }
+  proxyPodcast(targetUrl, req, res);
+});
 
 apiRouter.get("/public/features", (req, res) => {
   const features = db.prepare(`

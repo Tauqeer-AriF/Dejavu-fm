@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Play, Calendar, Share2, Copy, Twitter, Facebook, X, Check } from "lucide-react";
+import { ArrowLeft, Play, Pause, Calendar, Share2, Copy, Twitter, Facebook, X, Check, RotateCcw, RotateCw, Volume2, VolumeX, Sliders } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { useAudio } from "../context/AudioContext";
@@ -97,7 +97,20 @@ function ShareModal({ podcast, isOpen, onClose }: { podcast: any, isOpen: boolea
 }
 
 export default function PodcastDetail() {
-  const { isPlaying, togglePlay } = useAudio();
+  const { 
+    isPlaying, 
+    togglePlay, 
+    activeType, 
+    podcastTrack, 
+    podcastProgress, 
+    podcastDuration, 
+    playbackRate,
+    playPodcast, 
+    seekPodcast, 
+    setPlaybackRate,
+    volume,
+    setVolume
+  } = useAudio();
   const { id } = useParams();
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
@@ -184,6 +197,37 @@ export default function PodcastDetail() {
   // Extract a sensible image if possible; many RSS feeds have itunes:image or just use a default
   const imageUrl = podcast.itunes?.image || "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=1200";
 
+  const isCurrentPodcastPlaying = activeType === 'podcast' && podcastTrack?.id === id && isPlaying;
+  const isCurrentPodcastLoaded = activeType === 'podcast' && podcastTrack?.id === id;
+
+  const handlePlayPause = () => {
+    playPodcast({
+      id: id || "",
+      title: podcast.title,
+      audioUrl: audioUrl || "",
+      imageUrl: imageUrl
+    });
+  };
+
+  const handleSkipBackward = () => {
+    if (!isCurrentPodcastLoaded) return;
+    const newProgress = Math.max(0, podcastProgress - 15);
+    seekPodcast(newProgress);
+  };
+
+  const handleSkipForward = () => {
+    if (!isCurrentPodcastLoaded) return;
+    const newProgress = Math.min(podcastDuration, podcastProgress + 15);
+    seekPodcast(newProgress);
+  };
+
+  const formatTime = (secs: number) => {
+    if (isNaN(secs) || !isFinite(secs)) return "0:00";
+    const minutes = Math.floor(secs / 60);
+    const seconds = Math.floor(secs % 60);
+    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -196,11 +240,11 @@ export default function PodcastDetail() {
         Back to Library
       </Link>
       
-      <div className="glass-panel p-8 md:p-12 rounded-3xl relative overflow-hidden">
+      <div className="glass-panel p-6 md:p-10 rounded-3xl relative overflow-hidden">
         {/* Ambient glow from the top right */}
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-neon-purple/10 rounded-full blur-[100px] pointer-events-none -translate-y-1/2 translate-x-1/3"></div>
         
-        <div className="relative z-10 flex flex-col md:flex-row gap-10">
+        <div className="relative z-10 flex flex-col md:flex-row gap-8 md:gap-10">
           <div className="w-full md:w-1/3 flex-shrink-0">
             <div className="aspect-square rounded-2xl overflow-hidden border border-white/10 shadow-2xl relative group">
                <img src={imageUrl} alt={podcast.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
@@ -208,53 +252,154 @@ export default function PodcastDetail() {
             </div>
           </div>
           
-          <div className="flex-1 space-y-6 flex flex-col justify-center">
+          <div className="flex-1 space-y-6 flex flex-col justify-center items-start min-w-0 w-full">
             <div className="inline-flex items-center space-x-2 px-3 py-1 bg-neon-purple/20 text-neon-purple rounded-full text-xs font-bold tracking-widest uppercase border border-neon-purple/30">
               <Calendar className="w-4 h-4" />
               <span>{dateStr}</span>
             </div>
             
-            <h1 className="text-4xl md:text-5xl font-black font-display leading-[1.1] tracking-tight">
+            <h1 className="text-3xl md:text-5xl font-black font-display leading-[1.1] tracking-tight break-words w-full">
               {podcast.title}
             </h1>
 
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-4">
-              {audioUrl ? (
-                <div className="flex-1">
-                  <audio 
-                    controls 
-                    onPlay={() => {
-                      if (isPlaying) togglePlay();
-                      fetch('/api/public/analytics/podcast-play', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ title: podcast.title })
-                      }).catch(() => {});
-                    }}
-                    src={audioUrl} 
-                    className="w-full h-12 custom-audio filter invert sepia hue-rotate-[240deg]" 
-                    controlsList="nodownload"
-                    autoPlay
-                  />
+            {/* Custom Premium Audio Player Dashboard */}
+            {audioUrl ? (
+              <div className="w-full bg-white/[0.03] backdrop-blur-md rounded-2xl p-5 md:p-6 border border-white/5 space-y-6 shadow-[inset_0_1px_2px_rgba(255,255,255,0.05)]">
+                {/* Progress bar with timestamps */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-[11px] font-mono text-white/45 uppercase tracking-widest">
+                    <span>{formatTime(isCurrentPodcastLoaded ? podcastProgress : 0)}</span>
+                    <span>{formatTime(isCurrentPodcastLoaded ? podcastDuration : 0)}</span>
+                  </div>
+                  
+                  <div className="relative group/progress flex items-center">
+                    <input 
+                      type="range"
+                      min="0"
+                      max={isCurrentPodcastLoaded ? (podcastDuration || 100) : 100}
+                      value={isCurrentPodcastLoaded ? podcastProgress : 0}
+                      onChange={(e) => {
+                        if (!isCurrentPodcastLoaded) handlePlayPause();
+                        seekPodcast(parseFloat(e.target.value));
+                      }}
+                      className="w-full h-1.5 bg-white/10 hover:bg-white/20 rounded-full appearance-none cursor-pointer accent-neon-purple outline-none transition-all duration-300 relative z-10"
+                    />
+                    <div 
+                      className="absolute top-1/2 -translate-y-1/2 left-0 bg-gradient-to-r from-neon-purple to-neon-blue rounded-full pointer-events-none h-1"
+                      style={{ 
+                        width: `${isCurrentPodcastLoaded && podcastDuration ? (podcastProgress / podcastDuration) * 100 : 0}%` 
+                      }}
+                    />
+                  </div>
                 </div>
-              ) : podcast.link ? (
-                 <div>
-                    <a href={podcast.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center bg-neon-blue hover:bg-[#0099cc] text-dark-bg font-bold py-3 px-8 rounded-full transition-colors shadow-[0_0_20px_rgba(0,210,255,0.4)]">
-                      <Play className="w-5 h-5 mr-2 fill-current" /> Play on Podomatic
-                    </a>
-                 </div>
-              ) : null}
-              
-              <button
-                onClick={() => setIsShareModalOpen(true)}
-                className="inline-flex h-12 items-center justify-center space-x-2 bg-white/5 hover:bg-white/10 text-white font-semibold py-2 px-6 rounded-full transition-colors border border-white/10 shrink-0"
-              >
-                <Share2 className="w-5 h-5" />
-                <span>Share</span>
-              </button>
 
+                {/* Control Panel */}
+                <div className="flex flex-col gap-6 w-full">
+                  {/* Row 1: Play, Pause, Skip buttons (Centered and Hero) */}
+                  <div className="flex items-center justify-center space-x-6 w-full">
+                    <button 
+                      onClick={handleSkipBackward}
+                      className="p-3.5 text-white/50 hover:text-white bg-white/5 hover:bg-white/10 rounded-full border border-white/5 active:scale-90 transition-all cursor-pointer"
+                      title="Skip backward 15s"
+                    >
+                      <RotateCcw className="w-5 h-5" />
+                    </button>
 
-            </div>
+                    <button 
+                      onClick={handlePlayPause}
+                      className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 active:scale-95 shadow-[0_0_30px_rgba(176,38,255,0.25)] border-2 cursor-pointer ${
+                        isCurrentPodcastPlaying
+                          ? 'bg-neon-purple border-neon-purple/30 text-white hover:scale-105'
+                          : 'bg-white border-white/25 text-dark-bg hover:scale-105 hover:shadow-[0_0_30px_rgba(255,255,255,0.3)]'
+                      }`}
+                    >
+                      {isCurrentPodcastPlaying ? (
+                        <Pause className="w-7 h-7 fill-current" />
+                      ) : (
+                        <Play className="w-7 h-7 ml-1 fill-current" />
+                      )}
+                    </button>
+
+                    <button 
+                      onClick={handleSkipForward}
+                      className="p-3.5 text-white/50 hover:text-white bg-white/5 hover:bg-white/10 rounded-full border border-white/5 active:scale-90 transition-all cursor-pointer"
+                      title="Skip forward 15s"
+                    >
+                      <RotateCw className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="h-[1px] bg-white/5 w-full" />
+
+                  {/* Row 2: Speed Selector (Left) & Volume (Right) */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 w-full">
+                    {/* Playback speed selector */}
+                    <div className="flex items-center space-x-2 shrink-0">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-white/30">Speed</span>
+                      <div className="flex items-center space-x-1 bg-white/5 p-1 rounded-xl border border-white/5">
+                        {[1.0, 1.25, 1.5, 2.0].map((rate) => (
+                          <button
+                            key={rate}
+                            onClick={() => setPlaybackRate(rate)}
+                            className={`px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+                              playbackRate === rate && isCurrentPodcastLoaded
+                                ? 'bg-neon-purple text-white shadow-[0_0_12px_rgba(176,38,255,0.45)]'
+                                : 'text-white/40 hover:text-white hover:bg-white/5'
+                            }`}
+                          >
+                            {rate}x
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Volume slider */}
+                    <div className="flex items-center space-x-2 bg-white/5 px-3 py-1.5 rounded-xl border border-white/5 shrink-0">
+                      <Volume2 className="text-white/40 w-4 h-4 shrink-0" />
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="1" 
+                        step="0.01" 
+                        value={volume}
+                        onChange={(e) => setVolume(parseFloat(e.target.value))}
+                        className="w-20 sm:w-24 accent-neon-blue cursor-pointer h-1"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 3: Dedicated Centered Share Button under controls */}
+                  <div className="flex items-center justify-center w-full pt-1">
+                    <button
+                      onClick={() => setIsShareModalOpen(true)}
+                      className="inline-flex h-9 items-center justify-center space-x-1.5 bg-white/5 hover:bg-white/10 text-white font-semibold py-1.5 px-6 rounded-xl transition-colors border border-white/10 text-xs uppercase tracking-wider cursor-pointer hover:border-white/20 hover:text-neon-blue"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                      <span className="font-bold">Share Episode</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : podcast.link ? (
+               <div className="flex items-center gap-4">
+                  <a 
+                    href={podcast.link} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="inline-flex items-center justify-center bg-neon-blue hover:bg-[#0099cc] text-dark-bg font-bold py-3 px-8 rounded-full transition-colors shadow-[0_0_20px_rgba(0,210,255,0.4)]"
+                  >
+                    <Play className="w-5 h-5 mr-2 fill-current" /> Play on Podomatic
+                  </a>
+                  <button
+                    onClick={() => setIsShareModalOpen(true)}
+                    className="inline-flex h-12 items-center justify-center space-x-2 bg-white/5 hover:bg-white/10 text-white font-semibold py-2 px-6 rounded-full transition-colors border border-white/10 shrink-0"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    <span className="text-sm font-bold uppercase tracking-wider">Share</span>
+                  </button>
+               </div>
+            ) : null}
           </div>
         </div>
 

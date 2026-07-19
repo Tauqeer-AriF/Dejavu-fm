@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { io, Socket } from 'socket.io-client';
-import { Send, User, LogOut, Loader2, Instagram, Music2, Globe, Radio, Sparkles, Clock, MessageSquare, Users, Eye, EyeOff, Maximize2, X } from 'lucide-react';
+import { Send, User, LogOut, Loader2, Instagram, Music2, Globe, Radio, Sparkles, Clock, MessageSquare, Users, Eye, EyeOff, Maximize2, X, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { useAudio } from '../context/AudioContext';
@@ -47,6 +47,16 @@ function getEmbedUrl(url: string | null) {
           'dejavufm.com',
           'www.dejavufm.com'
         ];
+        
+        // Dynamically append current parent origin if we are in an iframe
+        if (typeof document !== 'undefined' && document.referrer) {
+          try {
+            const referrerUrl = new URL(document.referrer);
+            if (referrerUrl.hostname) {
+              parents.push(referrerUrl.hostname);
+            }
+          } catch (e) {}
+        }
         
         // Also extract any parents already provided in the input URL
         const existingParents = parsedUrl.searchParams.getAll('parent').map(p => p.replace(/\/+$/, ''));
@@ -102,6 +112,12 @@ export default function WatchLive() {
   const [trackOverlay, setTrackOverlay] = useState<{artist: string, title: string} | null>(null);
   const overlayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [studioVideoUrlState, setStudioVideoUrlState] = useState<string | null>(null);
+  const [playerKey, setPlayerKey] = useState(0);
+
+  const handleRefreshPlayer = () => {
+    setPlayerKey(prev => prev + 1);
+    toast.success("Stream reloaded successfully");
+  };
 
   const socketRef = useRef<Socket | null>(null);
 
@@ -189,24 +205,39 @@ export default function WatchLive() {
               </span>
             </div>
             
-            {/* Split Screen Button - Desktop & Mobile/Tablet */}
-            {featChat && (
-              <button
-                type="button"
-                onClick={() => setIsSplitActive(true)}
-                className="flex items-center gap-1.5 px-3 py-1 bg-neon-blue/10 hover:bg-neon-blue/20 text-neon-blue border border-neon-blue/20 rounded-full transition-all text-[10px] font-black uppercase tracking-wider cursor-pointer shadow-[0_0_15px_rgba(0,242,254,0.1)] hover:shadow-[0_0_15px_rgba(0,242,254,0.25)]"
-                title="Enter Interactive Split-Screen View"
-              >
-                <Maximize2 className="w-3 h-3" />
-                <span>Split View</span>
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {/* Refresh Player Button */}
+              {getEmbedUrl(studioVideoUrl) && (
+                <button
+                  type="button"
+                  onClick={handleRefreshPlayer}
+                  className={`flex items-center gap-1.5 px-3 py-1 bg-white/5 hover:bg-white/10 ${isLightMode ? 'text-black border-black/10' : 'text-white border-white/5'} border rounded-full transition-all text-[10px] font-black uppercase tracking-wider cursor-pointer`}
+                  title="Reload Live Video Stream"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span>Reload Stream</span>
+                </button>
+              )}
+
+              {/* Split Screen Button - Desktop & Mobile/Tablet */}
+              {featChat && (
+                <button
+                  type="button"
+                  onClick={() => setIsSplitActive(true)}
+                  className="flex items-center gap-1.5 px-3 py-1 bg-neon-blue/10 hover:bg-neon-blue/20 text-neon-blue border border-neon-blue/20 rounded-full transition-all text-[10px] font-black uppercase tracking-wider cursor-pointer shadow-[0_0_15px_rgba(0,242,254,0.1)] hover:shadow-[0_0_15px_rgba(0,242,254,0.25)]"
+                  title="Enter Interactive Split-Screen View"
+                >
+                  <Maximize2 className="w-3 h-3" />
+                  <span>Split View</span>
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="flex-1 w-full relative bg-black group flex items-center justify-center aspect-[4/3] sm:aspect-video lg:aspect-auto">
             {getEmbedUrl(studioVideoUrl) ? (
               <iframe 
-                key={getEmbedUrl(studioVideoUrl) || 'empty'}
+                key={`${playerKey}-${getEmbedUrl(studioVideoUrl) || 'empty'}`}
                 src={getEmbedUrl(studioVideoUrl) || undefined} 
                 className="w-full h-full border-none absolute inset-0 z-10" 
                 allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; clipboard-write; gyroscope"
@@ -383,7 +414,7 @@ export default function WatchLive() {
                 <div className="w-full aspect-video lg:aspect-auto lg:flex-1 bg-black relative shrink-0 lg:shrink flex items-center justify-center">
                   {getEmbedUrl(studioVideoUrl) ? (
                     <iframe 
-                      key={`split-${getEmbedUrl(studioVideoUrl)}`}
+                      key={`split-${playerKey}-${getEmbedUrl(studioVideoUrl)}`}
                       src={getEmbedUrl(studioVideoUrl) || undefined} 
                       className="w-full h-full border-none absolute inset-0 z-10" 
                       allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; clipboard-write; gyroscope"

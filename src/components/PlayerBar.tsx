@@ -141,7 +141,7 @@ function QualitySelector() {
 }
 
 export function PlayerBar() {
-  const { isPlaying, togglePlay, volume, setVolume, onAirInfo, toggleCinematic } = useAudio();
+  const { isPlaying, togglePlay, volume, setVolume, onAirInfo, toggleCinematic, activeType, podcastTrack } = useAudio();
   const { logoUrl, isLightMode, settings, resolveDjImage } = useLogo();
   
   const [isMinimized, setIsMinimized] = useState(true);
@@ -189,9 +189,11 @@ export function PlayerBar() {
             <div className="flex-1 flex items-center space-x-3 md:space-x-6 overflow-hidden">
               <div className="relative shrink-0">
                 <div className={`w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl text-dark-bg flex items-center justify-center overflow-hidden transition-all duration-500 ${isPlaying ? 'scale-100' : 'scale-95 grayscale'} ${
-                  resolveDjImage(onAirInfo?.djPhoto) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''
+                  activeType === 'radio' && resolveDjImage(onAirInfo?.djPhoto) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''
                 }`}>
-                  {resolveDjImage(onAirInfo?.djPhoto) ? (
+                  {activeType === 'podcast' && podcastTrack ? (
+                    <img src={podcastTrack.imageUrl} alt={podcastTrack.title} className="w-full h-full object-cover" />
+                  ) : resolveDjImage(onAirInfo?.djPhoto) ? (
                     <img src={resolveDjImage(onAirInfo?.djPhoto)} alt={onAirInfo?.djName || "DJ"} className={`w-full h-full ${resolveDjImage(onAirInfo?.djPhoto) === logoUrl && logoUrl ? 'object-contain p-2' : 'object-cover'}`} />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center text-white">
@@ -208,12 +210,19 @@ export function PlayerBar() {
                 <div className="flex items-center space-x-2 md:space-x-3 mb-1 flex-wrap gap-y-1">
                   <p className="text-white/60 text-[8px] md:text-xs uppercase tracking-[0.2em] font-black flex items-center shrink-0">
                     <span className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full mr-2 glow-box shrink-0 ${isPlaying ? 'bg-neon-blue animate-pulse' : 'bg-white/20'}`}></span>
-                    <span className="truncate">{onAirInfo ? 'Broadcasting Live' : 'Auto-Mix Mode'}</span>
+                    <span className="truncate">
+                      {activeType === 'podcast' ? 'Podcast Player' : (onAirInfo ? 'Broadcasting Live' : 'Auto-Mix Mode')}
+                    </span>
                   </p>
                 </div>
                 
                 <h4 className="text-white font-display font-bold text-sm md:text-2xl truncate tracking-tight leading-tight mb-1">
-                  {onAirInfo ? (
+                  {activeType === 'podcast' && podcastTrack ? (
+                    <div className="flex items-center truncate">
+                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue font-black uppercase italic tracking-tighter mr-2 shrink-0">EPISODE</span>
+                      <span className="text-white opacity-80 font-medium truncate">{podcastTrack.title}</span>
+                    </div>
+                  ) : onAirInfo ? (
                     <div className="flex items-center truncate">
                       <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue font-black uppercase italic tracking-tighter mr-2 shrink-0">{onAirInfo.djName}</span>
                       <span className="text-white opacity-80 font-medium truncate">{onAirInfo.showName}</span>

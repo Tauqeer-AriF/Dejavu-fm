@@ -122,38 +122,73 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
   return (
     <>
       <nav className="flex items-center justify-between p-4 md:p-8 max-w-[100rem] mx-auto w-full relative z-[1000] gap-4">
-        <Link to="/" className="flex items-center space-x-3 md:space-x-4 z-40 shrink-0" onClick={() => setIsMobileMenuOpen(false)}>
+        <Link 
+          to="/" 
+          className="flex items-center space-x-3 md:space-x-4 z-40 shrink-0 group transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]" 
+          onClick={() => setIsMobileMenuOpen(false)}
+        >
           {logoUrl && (
-            <div className={`${
-              logoShape === 'rectangle' ? 'w-24 md:w-32 h-11 md:h-14 px-2' : 'w-11 h-11 md:w-14 md:h-14 p-1'
-            } rounded-xl md:rounded-2xl flex items-center justify-center overflow-hidden shrink-0 transition-all ${
-              isLightMode 
-                ? (isSingleLogo ? 'bg-neutral-900 shadow-xl' : 'bg-white shadow-[0_10px_30px_rgba(0,0,0,0.1)]') 
-                : (isSingleLogo ? 'bg-white shadow-xl' : 'bg-dark-bg border border-white/5 shadow-[0_10px_30px_rgba(255,255,255,0.05)]')
-            }`}>
-              <img src={logoUrl} alt={appName || "Logo"} className="w-full h-full object-contain" />
+            <div className="relative rounded-xl md:rounded-2xl shrink-0 transition-all duration-300">
+              {/* Outer soft glowing ambient accent layer */}
+              <div className="absolute inset-0 bg-gradient-to-tr from-neon-purple/20 to-neon-blue/20 opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500 pointer-events-none" />
+              
+              {/* Core container with ultra-premium borders and subtle inner/outer shadows */}
+              <div className={`${
+                logoShape === 'rectangle' ? 'w-24 md:w-32 h-11 md:h-14 px-3' : 'w-11 h-11 md:w-14 md:h-14 p-1.5'
+              } relative z-10 flex items-center justify-center overflow-hidden shrink-0 transition-all duration-300 rounded-xl md:rounded-2xl ${
+                isLightMode 
+                  ? (isSingleLogo 
+                      ? 'bg-neutral-900/90 backdrop-blur-md border border-black/10 shadow-[0_8px_32px_rgba(0,0,0,0.12)] group-hover:shadow-[0_12px_40px_rgba(0,0,0,0.2)]' 
+                      : 'bg-white/80 backdrop-blur-md border border-black/5 shadow-[0_8px_30px_rgba(0,0,0,0.04)] group-hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)]') 
+                  : (isSingleLogo 
+                      ? 'bg-white/10 backdrop-blur-md border border-white/10 shadow-[inset_0_0_20px_rgba(255,255,255,0.05)] shadow-[0_12px_40px_rgba(0,0,0,0.6)] hover:bg-white/15' 
+                      : 'bg-black/30 backdrop-blur-md border border-white/[0.06] group-hover:border-neon-purple/30 shadow-[0_10px_35px_rgba(0,0,0,0.5)] group-hover:shadow-[0_0_25px_rgba(176,38,255,0.15)]')
+              }`}>
+                {/* Premium sweeping diagonal shine effect on hover */}
+                <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shine pointer-events-none z-20" />
+                
+                <img 
+                  src={logoUrl} 
+                  alt={appName || "Logo"} 
+                  className="w-full h-full object-contain relative z-10 transition-transform duration-500 group-hover:scale-[1.03]" 
+                />
+              </div>
             </div>
           )}
           {appName && appName.trim() !== "" && !logoUrl && (
-            <div className="flex flex-col">
+            <div className="flex flex-col relative">
               <div className="flex items-center space-x-2">
-                <span className="text-xl sm:text-2xl md:text-4xl font-display font-black tracking-tighter uppercase leading-none">
-                  {appName.split(' ')[0]}
-                  <span className="text-neon-purple glow-text ml-1 inline">{appName.split(' ').slice(1).join(' ')}</span>
+                <span className="text-xl sm:text-2xl md:text-4xl font-display font-black tracking-tighter uppercase leading-none select-none transition-all duration-300">
+                  <span className={`${
+                    isLightMode 
+                      ? "text-transparent bg-clip-text bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800" 
+                      : "text-transparent bg-clip-text bg-gradient-to-r from-white via-neutral-100 to-neutral-400"
+                  }`}>
+                    {appName.split(' ')[0]}
+                  </span>
+                  <span className="text-neon-purple glow-text ml-1.5 inline-block transition-transform duration-300 group-hover:scale-105 group-hover:rotate-1">
+                    {appName.split(' ').slice(1).join(' ')}
+                  </span>
                 </span>
                 {isOnAir && (
                   <motion.div 
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="px-2 py-0.5 bg-red-500 rounded flex items-center space-x-1 shadow-[0_0_15px_rgba(239,68,68,0.5)]"
+                    className="px-2 py-0.5 bg-red-500 rounded-full flex items-center space-x-1 shadow-[0_0_15px_rgba(239,68,68,0.55)] border border-red-400/20"
                   >
-                    <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
-                    <span className="text-[8px] font-black uppercase text-white tracking-widest">Live</span>
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
+                    </span>
+                    <span className="text-[8px] font-black uppercase text-white tracking-[0.15em]">Live</span>
                   </motion.div>
                 )}
               </div>
               {appTagline && appTagline.trim() !== "" && (
-                <span className="text-[8px] md:text-[10px] uppercase tracking-[0.4em] font-black text-white/30 hidden md:block">{appTagline}</span>
+                <div className="flex items-center gap-1.5 mt-1 hidden md:flex">
+                  <span className="w-1.5 h-[1px] bg-neon-purple/50 group-hover:w-3.5 transition-all duration-300" />
+                  <span className="text-[8px] md:text-[9px] uppercase tracking-[0.35em] font-black text-white/30 group-hover:text-white/50 transition-colors duration-300">{appTagline}</span>
+                </div>
               )}
             </div>
           )}
