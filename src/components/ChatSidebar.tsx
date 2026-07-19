@@ -1,3 +1,4 @@
+import { ChatMessage } from "../types";
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { io, Socket } from 'socket.io-client';
@@ -7,20 +8,6 @@ import { useModal } from '../context/ModalContext';
 import { useLogo } from '../hooks/useLogo';
 import { playUINotificationSound } from '../lib/soundHelper';
 
-interface ChatMessage {
-  id: string;
-  user: string;
-  text: string;
-  timestamp: number;
-  isSystem?: boolean;
-  imageUrl?: string;
-  imageName?: string;
-  audioUrl?: string;
-  audioName?: string;
-  videoUrl?: string;
-  videoName?: string;
-  recipient?: string;
-}
 
 const EMOJI_CATEGORIES = [
   {
@@ -146,6 +133,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
   const [privateMessages, setPrivateMessages] = useState<ChatMessage[]>([]);
   const [activeDmUser, setActiveDmUser] = useState<string | null>(null);
   const [chatTab, setChatTab] = useState<'public' | 'private'>('public');
+  const [showAdminClearToggle, setShowAdminClearToggle] = useState(false);
 
   const [drafts, setDrafts] = useState<Record<string, string>>(() => {
     try {
@@ -1525,7 +1513,19 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                   <MessageSquare className={embedded ? "w-4 h-4" : "w-5 h-5 sm:w-6 sm:h-6"} />
                 </div>
                 <div>
-                  <h3 className={`font-black font-display ${embedded ? 'text-xs' : 'text-base sm:text-lg'} leading-tight uppercase tracking-widest`}>Chat Room</h3>
+                  <h3 
+                    onClick={() => {
+                      if (isAdmin) {
+                        const next = !showAdminClearToggle;
+                        setShowAdminClearToggle(next);
+                        toast.success(next ? "Admin clear controls visible" : "Admin clear controls hidden");
+                      }
+                    }}
+                    className={`font-black font-display ${embedded ? 'text-xs' : 'text-base sm:text-lg'} leading-tight uppercase tracking-widest ${isAdmin ? 'cursor-pointer hover:text-neon-purple select-none transition-colors' : ''}`}
+                    title={isAdmin ? "Click to toggle admin clear controls" : undefined}
+                  >
+                    Chat Room
+                  </h3>
                   <div className="flex items-center gap-2 sm:gap-4">
                     {blockedUsers.length > 0 && (
                       <button 
@@ -1567,7 +1567,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                     <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-neon-purple animate-ping" />
                   )}
                 </button>
-                {isAdmin && chatTab === 'public' && (
+                {isAdmin && chatTab === 'public' && showAdminClearToggle && (
                   <button 
                     onClick={handleClearAll}
                     className={`${embedded ? 'w-7 h-7' : 'w-8 h-8 sm:w-9 sm:h-9'} flex items-center justify-center rounded-xl border transition-all cursor-pointer group ${

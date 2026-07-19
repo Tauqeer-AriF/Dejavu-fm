@@ -1,18 +1,9 @@
+import { BlogPost } from "../types";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { ArrowLeft, CalendarDays, FileText } from "lucide-react";
 
-interface BlogPost {
-  id: string;
-  slug: string;
-  title: string;
-  excerpt: string;
-  image_url: string;
-  content: string;
-  created_at: string;
-  updated_at: string;
-}
 
 const fallbackImage = "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&q=80&w=1400";
 

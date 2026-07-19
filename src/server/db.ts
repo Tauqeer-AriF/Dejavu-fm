@@ -485,9 +485,6 @@ export function initDb() {
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('backup_enabled', '1');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('backup_last_attempt', '');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('backup_last_status', 'never');
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('chat_auto_delete_enabled', '0');
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('chat_auto_delete_hours', '24');
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('chat_auto_delete_last_run', '');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('popup_delay', '10000');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('studio_name', 'DejavuFM Studio');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('studio_image', '/icon.svg');
@@ -613,6 +610,11 @@ export async function backupDatabase() {
 
     // 2. Backup database to temp dir
     const dbBackupPath = path.join(tempDir, 'database.db');
+    try {
+      db.pragma('wal_checkpoint(TRUNCATE)');
+    } catch (e) {
+      console.warn('[DB] WAL checkpoint failed before backup, continuing...', e);
+    }
     await db.backup(dbBackupPath);
 
     // 3. Copy uploads if they exist

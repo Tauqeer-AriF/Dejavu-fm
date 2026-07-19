@@ -35,6 +35,7 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
 
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState("all");
+  const [geoTab, setGeoTab] = useState<"countries" | "cities">("countries");
   const { showAlert, showConfirm } = useModal();
   const [isMobile, setIsMobile] = useState(false);
 
@@ -138,14 +139,25 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
     sections.push("");
 
     // Global Reach Section
-    sections.push("--- GLOBAL REACH (GEO DISTRIBUTION) ---");
+    sections.push("--- GLOBAL REACH (COUNTRY DISTRIBUTION) ---");
     sections.push("Country,Reach Percentage");
     if (stats.geoData && stats.geoData.length > 0) {
       stats.geoData.forEach((item: any) => {
         sections.push(`"${item.name || ""}",${item.value !== undefined ? item.value : 0}%`);
       });
     } else {
-      sections.push("No geographic data available,");
+      sections.push("No country geographic data available,");
+    }
+    sections.push("");
+
+    sections.push("--- GLOBAL REACH (CITY DISTRIBUTION) ---");
+    sections.push("City / Region,Reach Percentage");
+    if (stats.cityData && stats.cityData.length > 0) {
+      stats.cityData.forEach((item: any) => {
+        sections.push(`"${item.name || ""}",${item.value !== undefined ? item.value : 0}%`);
+      });
+    } else {
+      sections.push("No city geographic data available,");
     }
     sections.push("");
 
@@ -523,49 +535,80 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
 
         {/* Geo Distribution */}
         <div className={`p-6 rounded-3xl border ${isLightMode ? 'bg-white border-black/10 shadow-sm' : 'bg-white/5 border-white/10 backdrop-blur-md'}`}>
-          <h4 className={`text-lg font-bold mb-6 flex items-center space-x-2 ${isLightMode ? 'text-black' : 'text-white'}`}>
-            <Globe className="w-5 h-5 text-neon-purple" />
-            <span>Real-time Global Reach</span>
-          </h4>
-          {stats.geoData && stats.geoData.length > 0 ? (
-            <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-8">
-              <div className="h-[200px] w-full max-w-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={stats.geoData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {stats.geoData.map((entry: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={getBrandColor(index)} stroke="none" />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex-1 space-y-4 w-full">
-                {stats.geoData.map((g: any, index: number) => (
-                  <div key={g.name} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: getBrandColor(index) }} />
-                      <span className={`text-sm font-semibold ${isLightMode ? 'text-black' : 'text-white'}`}>{g.name}</span>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <h4 className={`text-lg font-bold flex items-center space-x-2 ${isLightMode ? 'text-black' : 'text-white'}`}>
+              <Globe className="w-5 h-5 text-neon-purple" />
+              <span>Real-time Global Reach</span>
+            </h4>
+            
+            <div className={`p-0.5 rounded-full flex self-start ${isLightMode ? 'bg-zinc-100' : 'bg-white/5 border border-white/5'}`}>
+              <button
+                type="button"
+                onClick={() => setGeoTab("countries")}
+                className={`px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                  geoTab === "countries"
+                    ? (isLightMode ? 'bg-white text-zinc-900 shadow-sm' : 'bg-white/10 text-white')
+                    : (isLightMode ? 'text-zinc-500 hover:text-zinc-900' : 'text-zinc-400 hover:text-white')
+                }`}
+              >
+                Countries
+              </button>
+              <button
+                type="button"
+                onClick={() => setGeoTab("cities")}
+                className={`px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                  geoTab === "cities"
+                    ? (isLightMode ? 'bg-white text-zinc-900 shadow-sm' : 'bg-white/10 text-white')
+                    : (isLightMode ? 'text-zinc-500 hover:text-zinc-900' : 'text-zinc-400 hover:text-white')
+                }`}
+              >
+                Cities
+              </button>
+            </div>
+          </div>
+
+          {(() => {
+            const geoDisplayData = (geoTab === "countries" ? stats?.geoData : stats?.cityData) || [];
+            return geoDisplayData.length > 0 ? (
+              <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-8">
+                <div className="h-[200px] w-full max-w-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={geoDisplayData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {geoDisplayData.map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={getBrandColor(index)} stroke="none" />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex-1 space-y-4 w-full">
+                  {geoDisplayData.map((g: any, index: number) => (
+                    <div key={g.name} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: getBrandColor(index) }} />
+                        <span className={`text-sm font-semibold ${isLightMode ? 'text-black' : 'text-white'}`}>{g.name}</span>
+                      </div>
+                      <span className={`text-sm ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>{g.value}%</span>
                     </div>
-                    <span className={`text-sm ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>{g.value}%</span>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className={`h-[100px] flex items-center justify-center border border-dashed rounded-2xl ${isLightMode ? 'border-black/10' : 'border-white/10'}`}>
-              <p className={`text-sm ${isLightMode ? 'text-black/30' : 'text-white/30'}`}>Waiting for listeners to connect...</p>
-            </div>
-          )}
+            ) : (
+              <div className={`h-[100px] flex items-center justify-center border border-dashed rounded-2xl ${isLightMode ? 'border-black/10' : 'border-white/10'}`}>
+                <p className={`text-sm ${isLightMode ? 'text-black/30' : 'text-white/30'}`}>Waiting for listeners to connect...</p>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Top Podcasts */}

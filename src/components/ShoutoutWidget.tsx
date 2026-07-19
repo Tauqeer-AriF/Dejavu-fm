@@ -433,7 +433,7 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
         </div>
         
         <motion.button 
-          onClick={() => setIsOpen(true)}
+          onClick={() => setIsOpen(!isOpen)}
           whileHover="hover"
           className="bg-white text-dark-bg px-6 py-4 rounded-3xl shadow-[0_15px_40px_rgba(0,0,0,0.4)] hover:shadow-neon-purple/20 transition-all flex items-center space-x-3 z-10 relative overflow-hidden group/btn"
         >
@@ -443,11 +443,17 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
             transition={{ duration: 0.75, ease: "easeInOut" }}
           />
           <div className="relative">
-            <Mic2 className="w-5 h-5 group-hover/btn:rotate-12 transition-transform" />
-            <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse border-2 border-white"></span>
+            {isOpen ? (
+              <X className="w-5 h-5 group-hover/btn:rotate-90 transition-transform" />
+            ) : (
+              <>
+                <Mic2 className="w-5 h-5 group-hover/btn:rotate-12 transition-transform" />
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse border-2 border-white"></span>
+              </>
+            )}
           </div>
           <span className="text-[11px] font-black uppercase tracking-[0.15em] hidden md:block">
-            Live Shoutout
+            {isOpen ? 'Close Panel' : 'Live Shoutout'}
           </span>
         </motion.button>
       </div>

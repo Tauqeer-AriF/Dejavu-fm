@@ -1,3 +1,4 @@
+import { ChatMessage } from "../types";
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { io, Socket } from 'socket.io-client';
@@ -9,13 +10,6 @@ import { useLogo } from '../hooks/useLogo';
 import { convertToLocalTime } from '../lib/timeUtils';
 import { ChatSidebar } from '../components/ChatSidebar';
 
-interface ChatMessage {
-  id: string;
-  user: string;
-  text: string;
-  timestamp: number;
-  isSystem?: boolean;
-}
 
 function getEmbedUrl(url: string | null) {
   if (!url) return null;

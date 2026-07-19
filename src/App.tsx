@@ -11,7 +11,7 @@ import { AudioProvider, useAudio } from './context/AudioContext';
 import { ModalProvider, useModal } from './context/ModalContext';
 import { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
@@ -611,6 +611,31 @@ function MainLayout() {
   });
 
   const isStaff = authData?.loggedIn && (authData?.isAdmin || authData?.role);
+
+  // Monitor Online/Offline Connection Status
+  useEffect(() => {
+    const handleOnline = () => {
+      toast.success("Connection Restored", {
+        description: "You are back online. Reconnecting streams...",
+        duration: 4000,
+      });
+    };
+
+    const handleOffline = () => {
+      toast.error("Connection Lost", {
+        description: "You are currently offline. Live audio playback may be interrupted.",
+        duration: 8000,
+      });
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   // Prefetch critical data for faster navigation
   useEffect(() => {

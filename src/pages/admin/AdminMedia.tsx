@@ -549,8 +549,16 @@ function MediaItemCard({ item, isSelected, onToggleSelection, onDelete, isDeleti
 
       <div className="grid gap-3 p-5">
         {item.type === 'image' ? (
-          <div className={`relative overflow-hidden rounded-xl aspect-video ${isLightMode ? 'bg-slate-100' : 'bg-slate-950'}`}>
-            <img src={item.url} alt={item.filename} className="h-full w-full object-cover" />
+          <div 
+            onClick={onShowReferences}
+            className={`relative overflow-hidden rounded-xl aspect-video cursor-pointer group transition-all duration-300 ${isLightMode ? 'bg-slate-100' : 'bg-slate-950'}`}
+          >
+            <img src={item.url} alt={item.filename} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30">
+                <Search className="w-5 h-5" />
+              </div>
+            </div>
           </div>
         ) : item.type === 'video' ? (
           <div className={`relative overflow-hidden rounded-xl aspect-video ${isLightMode ? 'bg-slate-100' : 'bg-slate-950'}`}>
