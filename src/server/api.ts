@@ -105,7 +105,10 @@ apiRouter.get("/admin/studio-settings", authMiddleware, authorizeRole('admin'), 
       'studio_connected_platforms',
       'studio_platform_configs',
       'dejavu_studio_custom_replies',
-      'studio_pinned_threads'
+      'studio_pinned_threads',
+      'meta_webhook_processing_enabled',
+      'meta_webhook_processing_platforms',
+      'meta_verify_token'
     ];
     const placeholders = keys.map(() => '?').join(',');
     const rows = db.prepare(`SELECT key, value FROM settings WHERE key IN (${placeholders})`).all(...keys) as {key: string, value: string}[];

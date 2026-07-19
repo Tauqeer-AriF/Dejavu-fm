@@ -26,6 +26,7 @@ import { AdminSEO } from "./admin/AdminSEO";
 import { AdminMedia } from "./admin/AdminMedia";
 import { AdminStudio } from "./admin/AdminStudio";
 import { AdminApiKeys } from "./admin/AdminApiKeys";
+import { AdminMetaIntegrations } from "./admin/AdminMetaIntegrations";
 import { useLogo } from "../hooks/useLogo";
 
 export default function Admin() {
@@ -230,6 +231,7 @@ export default function Admin() {
                     <Route path="/audit-logs" element={userRole === 'admin' ? <AdminAuditLogs /> : <Navigate to="/admin" replace />} />
                     <Route path="/backup" element={userRole === 'admin' ? <AdminBackup /> : <Navigate to="/admin" replace />} />
                     <Route path="/api-keys" element={userRole === 'admin' ? <AdminApiKeys /> : <Navigate to="/admin" replace />} />
+                    <Route path="/meta-integrations" element={userRole === 'admin' ? <AdminMetaIntegrations /> : <Navigate to="/admin" replace />} />
 
                     <Route path="*" element={<Navigate to="/admin" replace />} />
                   </Routes>

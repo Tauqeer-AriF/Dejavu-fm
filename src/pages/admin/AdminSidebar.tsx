@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
-import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles, Database, Video, Key } from "lucide-react";
+import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles, Database, Video, Key, Facebook } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { useModal } from "../../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
@@ -50,6 +50,7 @@ export function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; 
     { name: "Backup", path: "/admin/backup", icon: Database },
     { name: "Audit Logs", path: "/admin/audit-logs", icon: Shield },
     { name: "API Keys", path: "/admin/api-keys", icon: Key },
+    { name: "Meta Integrations", path: "/admin/meta-integrations", icon: Facebook },
   ];
 
   if (!isAdminUser) {

@@ -935,6 +935,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           messages: newMessages,
           lastMessageTimestamp: message.timestamp,
           unreadCount: selectedKey === userKey ? 0 : (existing?.unreadCount || 0) + 1,
+          platform: message.platform || existing?.platform,
         },
       };
     });
@@ -1036,6 +1037,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             audioUrl: msg.audioUrl,
             videoUrl: msg.videoUrl,
             recipient: msg.recipient,
+            platform: msg.platform,
           };
 
           const threadMessages = existing
@@ -1178,6 +1180,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         audioUrl: msg.audioUrl,
         videoUrl: msg.videoUrl,
         recipient: msg.recipient,
+        platform: msg.platform,
       };
       addMessageToThread(incomingMessage);
     };
@@ -1691,6 +1694,9 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         });
         if (!res.ok) throw new Error("Failed to send shoutout reply.");
       } else {
+        const isMeta = ['whatsapp', 'instagram', 'facebook'].includes(source);
+        const isPrivate = source === 'private_dm' || isMeta;
+
         const chatPayload = {
           user: studioName,
           text: `@${selectedUser} ${replyText}`,
@@ -1698,6 +1704,8 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           audioUrl: mediaType === 'audio' ? mediaUrl : null,
           videoUrl: mediaType === 'video' ? mediaUrl : null,
           avatar_url: studioImage,
+          recipient: isPrivate ? selectedUser : undefined,
+          platform: isMeta ? source : undefined,
         };
         // A public message has no recipient. The server will broadcast it to everyone.
         // The isStudioReply flag prevents the studio from receiving its own message back in a loop.
@@ -1717,6 +1725,8 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           imageUrl: mediaType === 'image' && mediaUrl ? mediaUrl : undefined,
           audioUrl: mediaType === 'audio' && mediaUrl ? mediaUrl : undefined,
           videoUrl: mediaType === 'video' && mediaUrl ? mediaUrl : undefined,
+          recipient: ['private_dm', 'whatsapp', 'instagram', 'facebook'].includes(source) ? selectedUser : undefined,
+          platform: ['whatsapp', 'instagram', 'facebook'].includes(source) ? source : undefined,
         };
         setThreads(prev => ({
           ...prev,
@@ -2048,9 +2058,9 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         glow: 'rgba(16,185,129,0.3)',
         desc: 'Receive listener requests and voice notes from the WhatsApp Cloud API.',
         fields: [
-          { key: 'phone', label: 'Business Phone Number', placeholder: '+44 7123 456789' },
-          { key: 'verifyToken', label: 'Webhook Verify Token', placeholder: 'Enter verify token', type: 'password' },
-          { key: 'webhook', label: 'Webhook Callback URL', placeholder: 'https://api.dejavu.fm/v1/whatsapp/webhook', disabled: true }
+          { key: 'phone', label: 'Business Phone Number ID', placeholder: 'Enter phone number ID (e.g. 1045234567890)' },
+          { key: 'verifyToken', label: 'System Access Token / Verify Token', placeholder: 'Enter system user access token', type: 'password' },
+          { key: 'webhook', label: 'Webhook Callback URL', placeholder: 'Loading callback...', disabled: true }
         ]
       },
       {
@@ -2062,7 +2072,8 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         desc: 'Connect your Instagram Professional Inbox to respond to direct messages and story mentions.',
         fields: [
           { key: 'accountId', label: 'Instagram Account ID', placeholder: '1784140123456789' },
-          { key: 'accessToken', label: 'Graph Access Token', placeholder: 'Enter system user access token', type: 'password' }
+          { key: 'accessToken', label: 'Graph Access Token', placeholder: 'Enter system user access token', type: 'password' },
+          { key: 'webhook', label: 'Webhook Callback URL', placeholder: 'Loading callback...', disabled: true }
         ]
       },
       {
@@ -2074,7 +2085,8 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         desc: 'Link your station Facebook Page to read and reply to fan page messages in real-time.',
         fields: [
           { key: 'pageId', label: 'Facebook Page ID', placeholder: '109876543210' },
-          { key: 'pageAccessToken', label: 'Page Access Token', placeholder: 'Enter Facebook Page Access Token', type: 'password' }
+          { key: 'pageAccessToken', label: 'Page Access Token', placeholder: 'Enter Facebook Page Access Token', type: 'password' },
+          { key: 'webhook', label: 'Webhook Callback URL', placeholder: 'Loading callback...', disabled: true }
         ]
       },
       {
@@ -2144,21 +2156,78 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
                   <p className="text-[11px] text-white/50 leading-relaxed">{platform.desc}</p>
 
-                  <div className="space-y-3 pt-2">
-                    {platform.fields.map(field => (
-                      <PlatformFieldInput
-                        key={field.key}
-                        platformId={platform.id}
-                        fieldKey={field.key}
-                        label={field.label}
-                        placeholder={field.placeholder}
-                        type={field.type}
-                        disabled={field.disabled}
-                        initialValue={config[field.key] || ''}
-                        onSave={(val) => handleSavePlatformConfig(platform.id, { [field.key]: val })}
-                      />
-                    ))}
-                  </div>
+                  {['whatsapp', 'instagram', 'facebook'].includes(platform.id) ? (
+                    <div className="space-y-3.5 pt-2">
+                      <div className="bg-black/35 rounded-xl border border-white/5 p-3.5 space-y-2.5">
+                        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-white/40 font-mono">
+                          <span>Configuration Parameters</span>
+                          <span className="text-neon-purple text-[9px] bg-neon-purple/10 border border-neon-purple/20 px-1.5 py-0.5 rounded">Meta Managed</span>
+                        </div>
+                        <div className="space-y-2 text-xs">
+                          {platform.id === 'whatsapp' && (
+                            <>
+                              <div className="flex items-center justify-between font-mono">
+                                <span className="text-white/40 text-[10px]">PHONE ID:</span>
+                                <span className="font-bold text-white/95">{config.phone ? config.phone : <span className="text-red-400/80 italic text-[10px]">Not Configured</span>}</span>
+                              </div>
+                              <div className="flex items-center justify-between font-mono">
+                                <span className="text-white/40 text-[10px]">VERIFY TOKEN:</span>
+                                <span className="font-bold text-neon-purple">{config.verifyToken ? "••••••••" : <span className="text-red-400/80 italic text-[10px]">Not Configured</span>}</span>
+                              </div>
+                            </>
+                          )}
+                          {platform.id === 'instagram' && (
+                            <>
+                              <div className="flex items-center justify-between font-mono">
+                                <span className="text-white/40 text-[10px]">ACCOUNT ID:</span>
+                                <span className="font-bold text-white/95">{config.accountId ? config.accountId : <span className="text-red-400/80 italic text-[10px]">Not Configured</span>}</span>
+                              </div>
+                              <div className="flex items-center justify-between font-mono">
+                                <span className="text-white/40 text-[10px]">GRAPH TOKEN:</span>
+                                <span className="font-bold text-neon-purple">{config.accessToken ? "••••••••" : <span className="text-red-400/80 italic text-[10px]">Not Configured</span>}</span>
+                              </div>
+                            </>
+                          )}
+                          {platform.id === 'facebook' && (
+                            <>
+                              <div className="flex items-center justify-between font-mono">
+                                <span className="text-white/40 text-[10px]">PAGE ID:</span>
+                                <span className="font-bold text-white/95">{config.pageId ? config.pageId : <span className="text-red-400/80 italic text-[10px]">Not Configured</span>}</span>
+                              </div>
+                              <div className="flex items-center justify-between font-mono">
+                                <span className="text-white/40 text-[10px]">PAGE TOKEN:</span>
+                                <span className="font-bold text-neon-purple">{config.pageAccessToken ? "••••••••" : <span className="text-red-400/80 italic text-[10px]">Not Configured</span>}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      <Link
+                        to="/admin/meta-integrations"
+                        className="w-full py-2 bg-neon-purple/5 hover:bg-neon-purple/15 border border-neon-purple/10 hover:border-neon-purple/20 rounded-xl text-[10px] font-bold uppercase tracking-wider text-neon-purple transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <Settings className="w-3.5 h-3.5" />
+                        <span>Manage Developer Credentials</span>
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 pt-2">
+                      {platform.fields.map(field => (
+                        <PlatformFieldInput
+                          key={field.key}
+                          platformId={platform.id}
+                          fieldKey={field.key}
+                          label={field.label}
+                          placeholder={field.placeholder}
+                          type={field.type}
+                          disabled={field.disabled}
+                          initialValue={field.key === 'webhook' ? (window.location.origin + '/webhook') : (config[field.key] || '')}
+                          onSave={(val) => handleSavePlatformConfig(platform.id, { [field.key]: val })}
+                        />
+                      ))}
+                    </div>
+                  )}
 
                   <div className="pt-4 border-t border-white/5 space-y-3">
                     <div className="flex items-center justify-between">

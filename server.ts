@@ -5,6 +5,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { apiRouter } from "./src/server/api.ts";
 import { externalApiRouter } from "./src/server/v1_external_api.ts";
+import { webhookRouter } from "./src/server/meta/webhook.routes.ts";
+import { MetaService } from "./src/server/meta/meta.service.ts";
 import { initDb, db, backupDatabase, getUploadsDir } from "./src/server/db.ts";
 import { apiKeyCache } from "./src/server/api_key_cache.ts";
 import http from "http";
@@ -766,9 +768,16 @@ async function startServer() {
          // Private message logic remains here as it's not part of the public API endpoint
          if (!db.open) return;
          const newMsg = { ...msg, id: crypto.randomUUID(), timestamp: Date.now() }; // Simplified for PM
+          if (msg.platform && ['whatsapp', 'instagram', 'facebook'].includes(msg.platform)) {
+            MetaService.sendPlatformReply(msg.platform, msg.recipient, msg.text).then(() => {
+              console.log(`[Meta Reply Dispatcher] Dispatched ${msg.platform} reply to ${msg.recipient} successfully`);
+            }).catch((err: any) => {
+              console.error(`[Meta Reply Dispatcher] Error sending ${msg.platform} reply:`, err.message);
+            });
+          }
          try {
-           db.prepare("INSERT INTO private_messages (id, sender, recipient, text, imageUrl, imageName, audioUrl, audioName, videoUrl, videoName, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-             .run(newMsg.id, msg.user, msg.recipient, msg.text || null, msg.imageUrl || null, msg.imageName || null, msg.audioUrl || null, msg.audioName || null, msg.videoUrl || null, msg.videoName || null, newMsg.timestamp);
+           db.prepare("INSERT INTO private_messages (id, sender, recipient, text, imageUrl, imageName, audioUrl, audioName, videoUrl, videoName, timestamp, platform) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+             .run(newMsg.id, msg.user, msg.recipient, msg.text || null, msg.imageUrl || null, msg.imageName || null, msg.audioUrl || null, msg.audioName || null, msg.videoUrl || null, msg.videoName || null, newMsg.timestamp, msg.platform || null);
            emitChatRoomCounts();
          } catch (err) {
            console.error("Failed to save private message:", err);
@@ -953,6 +962,7 @@ async function startServer() {
   // API Routes
   app.use("/api/v1", externalApiRouter);
   app.use("/api", apiRouter);
+  app.use("/webhook", webhookRouter);
 
   app.get("/api/health", (req, res) => {
     const currentId = req.app.get('serverId') || serverId;
