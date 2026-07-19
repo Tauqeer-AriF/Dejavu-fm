@@ -896,7 +896,7 @@ async function trackGeo(req: any) {
     
     if (ip && ip !== '::1' && ip !== '127.0.0.1') {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout for geo lookup
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout for geo lookup
       
       try {
         const resp = await fetch(`http://ip-api.com/json/${ip}`, { signal: controller.signal });
@@ -918,7 +918,12 @@ async function trackGeo(req: any) {
         }
       } catch (innerErr) {
         clearTimeout(timeoutId);
-        console.warn(`[Geo] Lookup failed for ${ip}: ${innerErr instanceof Error ? innerErr.message : 'timeout'}`);
+        const isAbort = innerErr instanceof Error && (innerErr.name === 'AbortError' || innerErr.message.toLowerCase().includes('abort'));
+        if (isAbort) {
+          console.log(`[Geo] Lookup for ${ip} timed out or was aborted (expected behavior for slow response)`);
+        } else {
+          console.warn(`[Geo] Lookup failed for ${ip}: ${innerErr instanceof Error ? innerErr.message : 'timeout'}`);
+        }
       }
     }
   } catch (e) {

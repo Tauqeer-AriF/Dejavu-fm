@@ -198,28 +198,30 @@ export default function WatchLive() {
         {/* Left Side: Video Player Section */}
         <div className={`lg:col-span-8 flex flex-col h-full ${isLightMode ? 'bg-[#ffffff] border-black/10' : 'bg-black/40 border-white/5'} border rounded-3xl overflow-hidden shadow-2xl relative min-h-[450px] lg:min-h-0`}>
           {/* Top Control Bar of Video Section */}
-          <div className={`flex items-center justify-between px-5 py-3 border-b ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-[#0e0e11] border-white/5 text-white'} shrink-0`}>
-            <div className="flex items-center gap-2">
+          <div className={`flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3 border-b ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-[#0e0e11] border-white/5 text-white'} shrink-0`}>
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <span className="flex h-2 w-2 relative">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
               </span>
-              <span className="text-[10px] font-black uppercase tracking-widest opacity-80">
-                Live Studio Cam
+              <span className="text-[10px] font-black uppercase tracking-widest opacity-80 whitespace-nowrap">
+                <span className="hidden sm:inline">Live Studio Cam</span>
+                <span className="sm:hidden">Live Cam</span>
               </span>
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-3">
               {/* Refresh Player Button */}
               {getEmbedUrl(studioVideoUrl) && (
                 <button
                   type="button"
                   onClick={handleRefreshPlayer}
-                  className={`flex items-center gap-1.5 px-3 py-1 bg-white/5 hover:bg-white/10 ${isLightMode ? 'text-black border-black/10' : 'text-white border-white/5'} border rounded-full transition-all text-[10px] font-black uppercase tracking-wider cursor-pointer`}
+                  className={`flex items-center gap-1 px-2 sm:px-3 py-1 bg-white/5 hover:bg-white/10 ${isLightMode ? 'text-black border-black/10' : 'text-white border-white/5'} border rounded-full transition-all text-[10px] font-black uppercase tracking-wider cursor-pointer whitespace-nowrap`}
                   title="Reload Live Video Stream"
                 >
-                  <RefreshCw className="w-3 h-3" />
-                  <span>Reload Stream</span>
+                  <RefreshCw className="w-3 h-3 shrink-0" />
+                  <span className="hidden sm:inline">Reload Stream</span>
+                  <span className="sm:hidden">Reload</span>
                 </button>
               )}
 
@@ -228,11 +230,12 @@ export default function WatchLive() {
                 <button
                   type="button"
                   onClick={() => setIsSplitActive(true)}
-                  className="flex items-center gap-1.5 px-3 py-1 bg-neon-blue/10 hover:bg-neon-blue/20 text-neon-blue border border-neon-blue/20 rounded-full transition-all text-[10px] font-black uppercase tracking-wider cursor-pointer shadow-[0_0_15px_rgba(0,242,254,0.1)] hover:shadow-[0_0_15px_rgba(0,242,254,0.25)]"
+                  className="flex items-center gap-1 px-2 sm:px-3 py-1 bg-neon-blue/10 hover:bg-neon-blue/20 text-neon-blue border border-neon-blue/20 rounded-full transition-all text-[10px] font-black uppercase tracking-wider cursor-pointer shadow-[0_0_15px_rgba(0,242,254,0.1)] hover:shadow-[0_0_15px_rgba(0,242,254,0.25)] whitespace-nowrap"
                   title="Enter Interactive Split-Screen View"
                 >
-                  <Maximize2 className="w-3 h-3" />
-                  <span>Split View</span>
+                  <Maximize2 className="w-3 h-3 shrink-0" />
+                  <span className="hidden sm:inline">Split View</span>
+                  <span className="sm:hidden">Split</span>
                 </button>
               )}
             </div>
@@ -270,15 +273,19 @@ export default function WatchLive() {
                   animate={{ opacity: 1, x: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 20, scale: 0.9 }}
                   transition={{ type: "spring", stiffness: 120, damping: 14 }}
-                  className="absolute bottom-6 left-6 z-[100] max-w-[90%] sm:max-w-md bg-zinc-950/80 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-[0_20px_50px_rgba(236,72,153,0.15)] flex items-center gap-4 pointer-events-none"
+                  className={`absolute bottom-6 left-6 z-[100] max-w-[90%] sm:max-w-md backdrop-blur-xl border rounded-2xl p-5 flex items-center gap-4 pointer-events-none transition-all ${
+                    isLightMode 
+                      ? 'bg-[#ffffff]/95 border-black/10 shadow-[0_20px_50px_rgba(176,38,255,0.06)]' 
+                      : 'bg-zinc-950/80 border-white/10 shadow-[0_20px_50px_rgba(236,72,153,0.15)]'
+                  }`}
                 >
                   {/* Rotating Vinyl/CD Emblem */}
                   <div className="relative shrink-0 w-12 h-12 rounded-full bg-gradient-to-tr from-neon-purple to-neon-blue p-0.5 shadow-[0_0_15px_rgba(176,38,255,0.4)] flex items-center justify-center">
-                    <div className="w-full h-full rounded-full bg-black flex items-center justify-center animate-[spin_5s_linear_infinite]">
+                    <div className={`w-full h-full rounded-full flex items-center justify-center animate-[spin_5s_linear_infinite] ${isLightMode ? 'bg-zinc-100' : 'bg-black'}`}>
                       <Disc className="w-6 h-6 text-neon-blue" />
                     </div>
                     {/* Small center dot */}
-                    <div className="absolute w-3 h-3 rounded-full bg-zinc-950 border border-white/20"></div>
+                    <div className={`absolute w-3 h-3 rounded-full ${isLightMode ? 'bg-zinc-100 border border-black/10' : 'bg-zinc-950 border border-white/20'}`}></div>
                   </div>
 
                   <div className="flex-1 min-w-0">
@@ -289,11 +296,11 @@ export default function WatchLive() {
                       </span>
                       <span>Now Playing on Stream</span>
                     </div>
-                    <h4 className="text-base font-black text-white tracking-tight leading-tight truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+                    <h4 className={`text-base font-black tracking-tight leading-tight truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.1)] ${isLightMode ? 'text-zinc-900' : 'text-[#ffffff]'}`}>
                       {trackOverlay.title}
                     </h4>
-                    <p className="text-xs font-medium text-white/70 mt-0.5 truncate">
-                      by <span className="text-white font-bold">{trackOverlay.artist}</span>
+                    <p className={`text-xs font-medium mt-0.5 truncate ${isLightMode ? 'text-zinc-600' : 'text-zinc-300'}`}>
+                      by <span className={`font-bold ${isLightMode ? 'text-zinc-800' : 'text-[#ffffff]'}`}>{trackOverlay.artist}</span>
                     </p>
                   </div>
 
@@ -376,10 +383,18 @@ export default function WatchLive() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
             transition={{ duration: 0.25, ease: 'easeOut' }}
-            className="fixed inset-0 z-[2000] flex flex-col bg-[#08090d] select-none overflow-hidden"
+            className={`fixed inset-0 z-[2000] flex flex-col select-none overflow-hidden transition-all duration-300 ${
+              isLightMode ? 'bg-[#f4f4f5] text-zinc-900' : 'bg-[#08090d] text-white'
+            }`}
           >
             {/* Unified Header */}
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 bg-black/40 shrink-0">
+            <div 
+              className={`flex items-center justify-between px-4 py-2.5 border-b shrink-0 transition-colors duration-300 ${
+                isLightMode 
+                  ? 'border-zinc-200 bg-[#ffffff] text-zinc-900' 
+                  : 'border-zinc-800 bg-[#0e0f14]/90 text-white'
+              }`}
+            >
               {/* Left Side: Live Badge + DJ Show Info */}
               <div className="flex items-center gap-3.5 min-w-0">
                 <div className="flex items-center gap-2 shrink-0">
@@ -392,16 +407,13 @@ export default function WatchLive() {
                   </span>
                 </div>
                 
-                <div className="hidden sm:flex items-center gap-2 border-l border-white/10 pl-3.5 min-w-0">
-                  <span className="text-xs font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue italic truncate max-w-[120px] md:max-w-[180px]">
+                <div className={`flex items-center gap-1.5 border-l pl-3 min-w-0 ${isLightMode ? 'border-zinc-200' : 'border-zinc-800'}`}>
+                  <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue italic truncate max-w-[100px] sm:max-w-[150px] md:max-w-[180px]">
                     {onAirInfo?.djName || "DEJAVU FM"}
                   </span>
-                  <span className="text-[11px] text-white/50 truncate max-w-[150px] md:max-w-[250px]">
+                  <span className={`hidden sm:inline text-[11px] truncate max-w-[150px] md:max-w-[250px] ${isLightMode ? 'text-zinc-600' : 'text-zinc-400'}`}>
                     — {onAirInfo?.showName || "Global Underground Stream"}
                   </span>
-                </div>
-                <div className="sm:hidden text-[10px] font-black uppercase tracking-wider text-white/90">
-                  Split Screen Cam
                 </div>
               </div>
 
@@ -409,17 +421,32 @@ export default function WatchLive() {
               <div className="flex items-center gap-3">
                 <div className="hidden md:flex items-center gap-2">
                   {onAirInfo?.instagram && (
-                    <a href={`https://instagram.com/${onAirInfo.instagram}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg bg-white/5 hover:bg-neon-purple/20 text-white/50 hover:text-white border border-white/5 hover:border-neon-purple/30 transition-all">
+                    <a 
+                      href={`https://instagram.com/${onAirInfo.instagram}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className={`p-1.5 rounded-lg border transition-all ${isLightMode ? 'bg-zinc-100 hover:bg-neon-purple/15 text-zinc-500 hover:text-zinc-900 border-zinc-200' : 'bg-white/5 hover:bg-neon-purple/20 text-white/50 hover:text-white border-zinc-800 hover:border-neon-purple/30'}`}
+                    >
                       <Instagram className="w-3.5 h-3.5" />
                     </a>
                   )}
                   {onAirInfo?.soundcloud && (
-                    <a href={`https://soundcloud.com/${onAirInfo.soundcloud}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg bg-white/5 hover:bg-neon-blue/20 text-white/50 hover:text-white border border-white/5 hover:border-neon-blue/30 transition-all">
+                    <a 
+                      href={`https://soundcloud.com/${onAirInfo.soundcloud}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className={`p-1.5 rounded-lg border transition-all ${isLightMode ? 'bg-zinc-100 hover:bg-neon-blue/15 text-zinc-500 hover:text-zinc-900 border-zinc-200' : 'bg-white/5 hover:bg-neon-blue/20 text-white/50 hover:text-white border-zinc-800 hover:border-neon-blue/30'}`}
+                    >
                       <Music2 className="w-3.5 h-3.5" />
                     </a>
                   )}
                   {onAirInfo?.mixcloud && (
-                    <a href={`https://mixcloud.com/${onAirInfo.mixcloud}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white border border-white/5 hover:border-white/10 transition-all">
+                    <a 
+                      href={`https://mixcloud.com/${onAirInfo.mixcloud}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className={`p-1.5 rounded-lg border transition-all ${isLightMode ? 'bg-zinc-100 hover:bg-zinc-200 text-zinc-500 hover:text-zinc-900 border-zinc-200' : 'bg-white/5 hover:bg-white/10 text-white/50 hover:text-white border-zinc-800'}`}
+                    >
                       <Globe className="w-3.5 h-3.5" />
                     </a>
                   )}
@@ -428,18 +455,19 @@ export default function WatchLive() {
                 <button
                   type="button"
                   onClick={() => setIsSplitActive(false)}
-                  className="flex items-center gap-1.5 px-3 py-1 bg-white/5 hover:bg-red-500/10 hover:text-red-400 active:bg-white/20 border border-white/10 hover:border-red-500/20 rounded-full text-white text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer"
+                  className={`flex items-center gap-1 sm:gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1 rounded-full text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer border ${isLightMode ? 'bg-zinc-100 hover:bg-red-500/10 hover:text-red-600 border-zinc-200 text-zinc-800' : 'bg-white/5 hover:bg-red-500/10 hover:text-red-400 border border-zinc-800 text-white'}`}
                 >
                   <X className="w-3.5 h-3.5" />
-                  <span>Exit Split View</span>
+                  <span className="hidden sm:inline">Exit Split View</span>
+                  <span className="sm:hidden">Exit</span>
                 </button>
               </div>
             </div>
 
             {/* Split Content Body */}
-            <div className="flex-1 min-h-0 w-full flex flex-col lg:flex-row bg-[#030406]">
+            <div className={`flex-1 min-h-0 w-full flex flex-col lg:flex-row transition-colors duration-300 ${isLightMode ? 'bg-[#f4f4f5]' : 'bg-[#030406]'}`}>
               {/* Left Portion: Video Player Section */}
-              <div className="w-full lg:w-1/2 lg:shrink-0 flex flex-col bg-black relative h-full">
+              <div className="w-full lg:w-1/2 shrink-0 flex flex-col bg-black relative h-auto lg:h-full">
                 {/* On mobile, we enforce aspect-video; on desktop, it stretches to fill the left pane */}
                 <div className="w-full aspect-video lg:aspect-auto lg:flex-1 bg-black relative shrink-0 lg:shrink flex items-center justify-center">
                   {getEmbedUrl(studioVideoUrl) ? (
@@ -451,9 +479,9 @@ export default function WatchLive() {
                       allowFullScreen>
                     </iframe>
                   ) : (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950 text-center p-4">
-                      <Radio className="w-12 h-12 text-white/20 animate-pulse mb-3" />
-                      <p className="text-white/60 text-sm font-bold uppercase tracking-widest">No Stream URL configured</p>
+                    <div className={`absolute inset-0 flex flex-col items-center justify-center text-center p-4 transition-colors duration-300 ${isLightMode ? 'bg-zinc-100 text-zinc-800' : 'bg-zinc-950 text-white'}`}>
+                      <Radio className={`w-12 h-12 animate-pulse mb-3 ${isLightMode ? 'text-zinc-400/55' : 'text-white/20'}`} />
+                      <p className={`text-sm font-bold uppercase tracking-widest ${isLightMode ? 'text-zinc-600' : 'text-white/60'}`}>No Stream URL configured</p>
                     </div>
                   )}
 
@@ -465,15 +493,19 @@ export default function WatchLive() {
                         animate={{ opacity: 1, x: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.9 }}
                         transition={{ type: "spring", stiffness: 120, damping: 14 }}
-                        className="absolute bottom-6 left-6 z-[100] max-w-[90%] sm:max-w-md bg-zinc-950/80 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-[0_20px_50px_rgba(236,72,153,0.15)] flex items-center gap-4 pointer-events-none"
+                        className={`absolute bottom-6 left-6 z-[100] max-w-[90%] sm:max-w-md backdrop-blur-xl border rounded-2xl p-5 flex items-center gap-4 pointer-events-none transition-all ${
+                          isLightMode 
+                            ? 'bg-[#ffffff]/95 border-black/10 shadow-[0_20px_50px_rgba(176,38,255,0.06)]' 
+                            : 'bg-zinc-950/80 border-white/10 shadow-[0_20px_50px_rgba(236,72,153,0.15)]'
+                        }`}
                       >
                         {/* Rotating Vinyl/CD Emblem */}
                         <div className="relative shrink-0 w-12 h-12 rounded-full bg-gradient-to-tr from-neon-purple to-neon-blue p-0.5 shadow-[0_0_15px_rgba(176,38,255,0.4)] flex items-center justify-center">
-                          <div className="w-full h-full rounded-full bg-black flex items-center justify-center animate-[spin_5s_linear_infinite]">
+                          <div className={`w-full h-full rounded-full flex items-center justify-center animate-[spin_5s_linear_infinite] ${isLightMode ? 'bg-zinc-100' : 'bg-black'}`}>
                             <Disc className="w-6 h-6 text-neon-blue" />
                           </div>
                           {/* Small center dot */}
-                          <div className="absolute w-3 h-3 rounded-full bg-zinc-950 border border-white/20"></div>
+                          <div className={`absolute w-3 h-3 rounded-full ${isLightMode ? 'bg-zinc-100 border border-black/10' : 'bg-zinc-950 border border-white/20'}`}></div>
                         </div>
 
                         <div className="flex-1 min-w-0">
@@ -484,11 +516,11 @@ export default function WatchLive() {
                             </span>
                             <span>Now Playing on Stream</span>
                           </div>
-                          <h4 className="text-base font-black text-white tracking-tight leading-tight truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+                          <h4 className={`text-base font-black tracking-tight leading-tight truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.1)] ${isLightMode ? 'text-zinc-900' : 'text-[#ffffff]'}`}>
                             {trackOverlay.title}
                           </h4>
-                          <p className="text-xs font-medium text-white/70 mt-0.5 truncate">
-                            by <span className="text-white font-bold">{trackOverlay.artist}</span>
+                          <p className={`text-xs font-medium mt-0.5 truncate ${isLightMode ? 'text-zinc-600' : 'text-zinc-300'}`}>
+                            by <span className={`font-bold ${isLightMode ? 'text-zinc-800' : 'text-[#ffffff]'}`}>{trackOverlay.artist}</span>
                           </p>
                         </div>
 
@@ -505,7 +537,7 @@ export default function WatchLive() {
               </div>
 
               {/* Right Portion: Chat Sidebar */}
-              <div className="w-full lg:w-1/2 lg:shrink-0 border-t lg:border-t-0 lg:border-l border-white/5 bg-[#0b0c10] flex flex-col min-h-0 flex-1 lg:flex-none">
+              <div className={`w-full lg:w-1/2 lg:shrink-0 border-t lg:border-t-0 lg:border-l flex flex-col min-h-0 flex-1 lg:flex-none transition-colors duration-300 ${isLightMode ? 'border-zinc-200 bg-[#ffffff]' : 'border-zinc-800 bg-[#0b0c10]'}`}>
                 <ChatSidebar embedded={true} />
               </div>
             </div>

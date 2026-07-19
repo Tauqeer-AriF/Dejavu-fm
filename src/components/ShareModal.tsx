@@ -66,8 +66,8 @@ export function ShareModal({ isOpen, onClose, appName, appTagline, shareUrl }: S
             transition={{ type: 'spring', damping: 25, stiffness: 350 }}
             className={`relative w-full max-w-sm overflow-hidden rounded-[32px] p-6 shadow-2xl z-10 text-center transition-all ${
               isLightMode 
-                ? 'bg-white border border-slate-200 text-slate-900' 
-                : 'bg-neutral-950/90 border border-white/10 text-white'
+                ? 'bg-[#ffffff] border border-slate-200 text-slate-900' 
+                : 'bg-neutral-950/90 border border-[#ffffff]/10 text-[#ffffff]'
             }`}
           >
             {/* Glowing Neon Background Effect */}
@@ -89,7 +89,7 @@ export function ShareModal({ isOpen, onClose, appName, appTagline, shareUrl }: S
                 className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer ${
                   isLightMode
                     ? 'bg-slate-100 border border-slate-200 text-slate-500 hover:text-slate-800 hover:border-slate-300 hover:bg-slate-200/50'
-                    : 'bg-white/5 border border-white/10 hover:border-white/30 text-white/50 hover:text-white'
+                    : 'bg-[#ffffff]/5 border border-[#ffffff]/10 hover:border-[#ffffff]/30 text-[#ffffff]/50 hover:text-[#ffffff]'
                 }`}
               >
                 <X className="w-4 h-4" />
@@ -99,12 +99,12 @@ export function ShareModal({ isOpen, onClose, appName, appTagline, shareUrl }: S
             {/* Title & Info */}
             <div className="relative z-10 mb-6">
               <h3 className={`text-2xl font-black uppercase tracking-tight mb-1 ${
-                isLightMode ? 'text-slate-900' : 'text-white'
+                isLightMode ? 'text-slate-900' : 'text-[#ffffff]'
               }`}>
                 Share {appName}
               </h3>
               <p className={`text-xs font-medium line-clamp-1 px-4 ${
-                isLightMode ? 'text-slate-500' : 'text-white/40'
+                isLightMode ? 'text-slate-500' : 'text-[#ffffff]/40'
               }`}>
                 {appTagline}
               </p>
@@ -112,7 +112,7 @@ export function ShareModal({ isOpen, onClose, appName, appTagline, shareUrl }: S
 
             {/* QR Code Container - Custom Premium styling */}
             <div className="relative z-10 flex flex-col items-center justify-center mb-6">
-              <div className={`p-4 rounded-3xl bg-white flex items-center justify-center border-4 border-neon-purple/30 relative shadow-2xl ${
+              <div className={`p-4 rounded-3xl bg-[#ffffff] flex items-center justify-center border-4 border-neon-purple/30 relative shadow-2xl ${
                 isLightMode ? 'shadow-neon-purple/10 border-neon-purple/20' : 'shadow-neon-purple/20'
               }`}>
                 <QRCodeSVG
@@ -126,13 +126,13 @@ export function ShareModal({ isOpen, onClose, appName, appTagline, shareUrl }: S
                 
                 {/* Embedded Mini Logo Circle in the very center */}
                 <div className={`absolute w-9 h-9 rounded-full border border-neon-purple flex items-center justify-center text-[10px] font-black text-neon-purple tracking-tighter uppercase select-none ${
-                  isLightMode ? 'bg-white' : 'bg-neutral-950'
+                  isLightMode ? 'bg-[#ffffff]' : 'bg-neutral-950'
                 }`}>
                   FM
                 </div>
               </div>
               <span className={`text-[10px] font-semibold uppercase tracking-[0.15em] mt-3 ${
-                isLightMode ? 'text-slate-450' : 'text-white/30'
+                isLightMode ? 'text-slate-500' : 'text-[#ffffff]/30'
               }`}>
                 Scan with phone camera
               </span>
@@ -145,10 +145,10 @@ export function ShareModal({ isOpen, onClose, appName, appTagline, shareUrl }: S
                 onClick={handleCopy}
                 className={`w-full py-3.5 px-5 rounded-2xl flex items-center justify-center gap-2.5 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-md hover:shadow-lg ${
                   copied 
-                    ? 'bg-[#00c853] text-white shadow-[#00c853]/20 scale-[0.98]' 
+                    ? 'bg-[#00c853] text-[#ffffff] shadow-[#00c853]/20 scale-[0.98]' 
                     : isLightMode
-                      ? 'bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 hover:border-slate-350'
-                      : 'bg-white/5 hover:bg-white/10 text-white/90 border border-white/10 hover:border-white/20'
+                      ? 'bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 hover:border-slate-300'
+                      : 'bg-[#ffffff]/5 hover:bg-[#ffffff]/10 text-[#ffffff]/90 border border-[#ffffff]/10 hover:border-[#ffffff]/20'
                 }`}
               >
                 {copied ? (

@@ -1495,7 +1495,10 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={embedded ? `h-full w-full flex flex-col bg-dark-bg/95 backdrop-blur-2xl min-h-0` : `fixed top-0 right-0 h-full w-full max-w-md bg-dark-bg/95 backdrop-blur-2xl border-l z-[10101] shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col touch-pan-y ${isLightMode ? 'border-black/10' : 'border-white/10'}`}
+            className={embedded 
+              ? `flex-1 h-full w-full flex flex-col min-h-0 ${isLightMode ? 'bg-[#ffffff]/95 text-zinc-900' : 'bg-dark-bg/95 text-white'} backdrop-blur-2xl` 
+              : `fixed top-0 right-0 h-full w-full max-w-md ${isLightMode ? 'bg-[#ffffff]/95 text-zinc-900 border-black/10' : 'bg-dark-bg/95 text-white border-white/10'} backdrop-blur-2xl border-l z-[10101] shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col touch-pan-y`
+            }
           >
             {/* Drag & Drop Media Overlay */}
             {isDragging && (
@@ -1503,13 +1506,13 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                className="absolute inset-0 bg-[#0c0a0f]/90 backdrop-blur-md z-[10200] flex flex-col items-center justify-center p-6 border-2 border-dashed border-neon-purple/50 rounded-l-3xl animate-in fade-in"
+                className={`absolute inset-0 backdrop-blur-md z-[10200] flex flex-col items-center justify-center p-6 border-2 border-dashed border-neon-purple/50 rounded-l-3xl animate-in fade-in ${isLightMode ? 'bg-[#ffffff]/90' : 'bg-[#0c0a0f]/90'}`}
               >
                 <div className="w-16 h-16 rounded-2xl bg-neon-purple/20 flex items-center justify-center text-neon-purple border border-neon-purple/30 mb-4 animate-bounce">
                   <Paperclip className="w-8 h-8" />
                 </div>
-                <p className="text-sm font-black uppercase tracking-[0.2em] text-white">Drop to Upload Media</p>
-                <p className="text-[10px] uppercase font-bold tracking-widest text-white/40 mt-1">Images or audio files up to 15MB</p>
+                <p className={`text-sm font-black uppercase tracking-[0.2em] ${isLightMode ? 'text-zinc-900' : 'text-white'}`}>Drop to Upload Media</p>
+                <p className={`text-[10px] uppercase font-bold tracking-widest mt-1 ${isLightMode ? 'text-zinc-600' : 'text-white/40'}`}>Images or audio files up to 15MB</p>
               </div>
             )}
 
@@ -1736,10 +1739,10 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                               <div className="flex items-center gap-4">
                                 {/* Rotating CD/Vinyl disk */}
                                 <div className="relative shrink-0 w-11 h-11 rounded-full bg-gradient-to-tr from-neon-purple to-neon-blue p-0.5 shadow-[0_0_10px_rgba(176,38,255,0.3)] flex items-center justify-center">
-                                  <div className="w-full h-full rounded-full bg-zinc-950 flex items-center justify-center animate-[spin_5s_linear_infinite]">
+                                  <div className={`w-full h-full rounded-full flex items-center justify-center animate-[spin_5s_linear_infinite] ${isLightMode ? 'bg-zinc-100' : 'bg-zinc-950'}`}>
                                     <Disc className="w-5 h-5 text-neon-blue" />
                                   </div>
-                                  <div className="absolute w-2.5 h-2.5 rounded-full bg-zinc-950 border border-white/20"></div>
+                                  <div className={`absolute w-2.5 h-2.5 rounded-full ${isLightMode ? 'bg-zinc-100 border border-black/10' : 'bg-zinc-950 border border-white/20'}`}></div>
                                 </div>
                                 
                                 <div className="flex-1 min-w-0">

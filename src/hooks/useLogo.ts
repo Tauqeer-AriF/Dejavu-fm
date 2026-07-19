@@ -43,15 +43,30 @@ export function useLogo() {
         window.removeEventListener('storage', handleStorageChange);
       };
     } else {
+      const handleThemeChange = () => {
+        setIsLightMode(document.documentElement.classList.contains('light') || localStorage.getItem('theme') === 'light');
+      };
+
       const observer = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
           if (mutation.attributeName === 'class') {
-            setIsLightMode(document.documentElement.classList.contains('light'));
+            handleThemeChange();
           }
         });
       });
       observer.observe(document.documentElement, { attributes: true });
-      return () => observer.disconnect();
+
+      window.addEventListener('theme-change', handleThemeChange);
+      window.addEventListener('storage', handleThemeChange);
+
+      // Run on mount to ensure synchronization
+      handleThemeChange();
+
+      return () => {
+        observer.disconnect();
+        window.removeEventListener('theme-change', handleThemeChange);
+        window.removeEventListener('storage', handleThemeChange);
+      };
     }
   }, [location.pathname]);
 

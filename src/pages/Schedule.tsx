@@ -228,8 +228,8 @@ export default function Schedule() {
                         transition={{ duration: 0.75, ease: "easeInOut" }}
                         initial={{ x: '-150%' }}
                       />
-                      <div className="relative">
-                        <div className={`w-24 h-24 rounded-xl overflow-hidden shrink-0 border border-white/5 ${
+                      <div className="relative shrink-0 w-24 h-24">
+                        <div className={`w-full h-full rounded-xl overflow-hidden border border-white/5 ${
                           resolveDjImage(show.dj_photo) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''
                         }`}>
                           <img src={resolveDjImage(show.dj_photo)} alt={show.dj_name} className={`w-full h-full filter grayscale group-hover:grayscale-0 transition-all duration-500 ${resolveDjImage(show.dj_photo) === logoUrl && logoUrl ? 'object-contain p-2' : 'object-cover'}`} />
