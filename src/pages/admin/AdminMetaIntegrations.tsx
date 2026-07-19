@@ -400,88 +400,95 @@ export function AdminMetaIntegrations() {
   return (
     <div className="space-y-8">
       {/* Overview & Global Controller Section */}
-      <div className={`p-6 md:p-8 rounded-3xl border transition-all ${isLightMode ? 'bg-white border-black/10 shadow-sm' : 'bg-white/[0.02] border-white/5 shadow-2xl'}`}>
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+      <div className={`p-4 sm:p-6 md:p-8 rounded-3xl border transition-all ${isLightMode ? 'bg-white border-zinc-200/80 shadow-sm' : 'bg-zinc-900/50 border-zinc-800/80 shadow-xl'}`}>
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 pb-6 border-b border-zinc-100 dark:border-zinc-800/80">
           <div className="space-y-2">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-neon-purple/15 rounded-2xl">
-                <Shield className="w-6 h-6 text-neon-purple" />
+              <div className="p-2.5 bg-violet-500/10 dark:bg-violet-500/20 rounded-xl border border-violet-500/15">
+                <Shield className="w-5 h-5 text-violet-600 dark:text-violet-400" />
               </div>
               <div>
-                <h2 className="text-2xl font-display font-black uppercase tracking-tight">Meta Integrations Hub</h2>
-                <p className={`text-xs font-mono uppercase tracking-widest ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Webhook control panel & status center</p>
+                <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50 font-sans tracking-tight">Meta Integrations</h2>
+                <p className="text-xs text-zinc-400 dark:text-zinc-500 font-medium">Configure webhook processing and credential pipelines</p>
               </div>
             </div>
-            <p className={`text-sm max-w-2xl ${isLightMode ? 'text-black/60' : 'text-white/60'} pt-2`}>
-              Configure API connection credentials, callback settings, and manage real-time messaging pipeline subscriptions for WhatsApp, Instagram, and Facebook Messenger from a central interface.
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-2xl pt-1">
+              Connect your Meta Developer applications to receive message payloads in real-time. Toggle ingestion for individual channels, validate credentials, and simulate live data payloads.
             </p>
           </div>
 
-          <div className={`p-4 rounded-2xl flex items-center justify-between gap-6 border ${isLightMode ? 'bg-black/5 border-black/5' : 'bg-white/5 border-white/5'} min-w-[280px]`}>
-            <div className="space-y-1">
-              <span className="text-xs uppercase tracking-wider font-bold">Webhook Processing</span>
-              <p className={`text-[10px] font-mono uppercase tracking-widest ${globalEnabled ? 'text-neon-blue' : 'text-red-400'}`}>
-                {globalEnabled ? "Active & Ingesting" : "Suspended / Offline"}
-              </p>
-            </div>
-            <button
-              onClick={handleToggleGlobal}
-              className={`w-14 h-8 rounded-full p-1 transition-colors duration-300 relative ${
-                globalEnabled ? "bg-neon-purple" : isLightMode ? "bg-black/20" : "bg-white/10"
-              }`}
-            >
-              <div
-                className={`w-6 h-6 rounded-full bg-white shadow-md transition-transform duration-300 transform ${
-                  globalEnabled ? "translate-x-6" : "translate-x-0"
+          <div className="flex items-center gap-4 w-full lg:w-auto">
+            <div className={`p-4 rounded-2xl flex items-center justify-between gap-6 border ${isLightMode ? 'bg-zinc-50 border-zinc-100' : 'bg-zinc-950/40 border-zinc-800/50'} w-full sm:min-w-[280px]`}>
+              <div className="space-y-0.5">
+                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Global Webhook Ingestion</span>
+                <p className={`text-[10px] font-mono uppercase tracking-wider font-semibold ${globalEnabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-400'}`}>
+                  {globalEnabled ? "Active & Listening" : "Suspended"}
+                </p>
+              </div>
+              <button
+                onClick={handleToggleGlobal}
+                className={`w-12 h-7 rounded-full p-0.5 transition-colors duration-300 relative focus:outline-none focus:ring-2 focus:ring-violet-500/20 ${
+                  globalEnabled ? "bg-violet-600" : "bg-zinc-300 dark:bg-zinc-700"
                 }`}
-              />
-            </button>
+              >
+                <div
+                  className={`w-6 h-6 rounded-full bg-white shadow-sm transition-transform duration-300 transform ${
+                    globalEnabled ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Callback configuration details */}
-        <div className={`mt-8 p-4 rounded-2xl border flex flex-col md:flex-row md:items-center justify-between gap-4 font-mono text-xs ${isLightMode ? 'bg-black/[0.02] border-black/10' : 'bg-white/[0.01] border-white/5'}`}>
-          <div className="space-y-1">
-            <span className="text-[10px] uppercase tracking-wider opacity-60">Webhook Callback URL</span>
-            <div className="font-bold text-neon-blue break-all">{webhookCallbackUrl}</div>
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className={`p-4 rounded-xl border flex flex-col gap-1.5 ${isLightMode ? 'bg-zinc-50/50 border-zinc-200/60' : 'bg-zinc-900/20 border-zinc-800/40'}`}>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-sans">Webhook Callback URL</span>
+            <div className="font-mono text-xs font-bold text-violet-600 dark:text-violet-400 break-all select-all">
+              {webhookCallbackUrl}
+            </div>
           </div>
-          <div className="space-y-1 min-w-[280px]">
-            <span className="text-[10px] uppercase tracking-wider opacity-60 block mb-1">Verification Token</span>
+
+          <div className={`p-4 rounded-xl border flex flex-col gap-1.5 ${isLightMode ? 'bg-zinc-50/50 border-zinc-200/60' : 'bg-zinc-900/20 border-zinc-800/40'}`}>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-sans block">Verification Token</span>
             {isEditingToken ? (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                 <input
                   type="text"
                   value={customVerifyToken}
                   onChange={(e) => setCustomVerifyToken(e.target.value)}
                   className={`px-3 py-1.5 rounded-lg border text-xs font-mono outline-none transition w-full ${
                     isLightMode 
-                      ? 'bg-black/5 border-black/10 focus:border-neon-purple/50 text-black' 
-                      : 'bg-white/5 border-white/10 focus:border-neon-purple/50 text-white'
+                      ? 'bg-white border-zinc-200 focus:border-violet-500 text-zinc-900' 
+                      : 'bg-zinc-950 border-zinc-800 focus:border-violet-500 text-zinc-50'
                   }`}
                   placeholder="Enter verify token"
                 />
-                <button
-                  onClick={handleSaveVerifyToken}
-                  className="px-3 py-1.5 bg-neon-purple text-white rounded-lg text-xs font-bold font-sans transition hover:bg-neon-purple/80"
-                >
-                  Save
-                </button>
-                <button
-                  onClick={() => {
-                    setCustomVerifyToken(defaultVerifyToken);
-                    setIsEditingToken(false);
-                  }}
-                  className="px-2 py-1.5 bg-white/10 hover:bg-white/20 text-xs rounded-lg font-sans transition"
-                >
-                  Cancel
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={handleSaveVerifyToken}
+                    className="flex-1 sm:flex-none px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-semibold font-sans transition text-center"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCustomVerifyToken(defaultVerifyToken);
+                      setIsEditingToken(false);
+                    }}
+                    className="flex-1 sm:flex-none px-2 py-1.5 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs rounded-lg font-sans transition text-center"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="flex items-center gap-2.5">
-                <div className="font-bold text-neon-purple">{defaultVerifyToken}</div>
+                <div className="font-mono text-xs font-bold text-zinc-800 dark:text-zinc-200">{defaultVerifyToken}</div>
                 <button
                   onClick={() => setIsEditingToken(true)}
-                  className="p-1 hover:bg-neon-purple/10 text-neon-purple/80 hover:text-neon-purple rounded-md transition"
+                  className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 rounded-md transition"
                   title="Edit verify token"
                 >
                   <Edit className="w-3.5 h-3.5" />
@@ -496,398 +503,422 @@ export function AdminMetaIntegrations() {
       <div className="flex flex-col gap-8">
         
         {/* WhatsApp Row */}
-        <div className={`p-6 md:p-8 rounded-3xl border flex flex-col lg:flex-row lg:items-stretch gap-8 transition-all ${isLightMode ? 'bg-white border-black/10 shadow-sm' : 'bg-white/[0.02] border-white/5 shadow-2xl'}`}>
+        <div className={`p-4 sm:p-6 md:p-8 rounded-3xl border flex flex-col lg:flex-row gap-8 transition-all ${isLightMode ? 'bg-white border-zinc-200/80 shadow-sm' : 'bg-zinc-900/50 border-zinc-800/80 shadow-xl'}`}>
           {/* Identity & Control Column */}
-          <div className="flex flex-col justify-between lg:w-1/3 space-y-6 lg:border-r lg:border-dashed lg:border-white/10 lg:pr-8">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-green-500/10 text-green-500 rounded-2xl">
-                  <MessageSquare className="w-6 h-6" />
+          <div className="w-full lg:w-[280px] shrink-0 border-b lg:border-b-0 lg:border-r border-zinc-100 dark:border-zinc-800/50 pb-5 lg:pb-0 lg:pr-8 flex flex-col justify-between space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-2xl border border-emerald-500/15">
+                    <MessageSquare className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-base text-zinc-900 dark:text-zinc-50">WhatsApp</h3>
+                    <span className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider block">Cloud API</span>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-bold font-display text-lg uppercase tracking-tight">WhatsApp Business</h3>
-                  <span className={`text-xs font-mono uppercase tracking-wider ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Cloud API Integration</span>
-                </div>
+                <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${
+                  connectedPlatforms.whatsapp 
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20' 
+                    : 'bg-zinc-50 text-zinc-500 border-zinc-200 dark:bg-zinc-800/50 dark:text-zinc-400 dark:border-zinc-800'
+                }`}>
+                  {connectedPlatforms.whatsapp ? "Connected" : "Inactive"}
+                </span>
               </div>
-              <span className={`text-[10px] font-mono uppercase tracking-widest px-3 py-1.5 rounded-full ${
-                connectedPlatforms.whatsapp ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'
-              }`}>
-                {connectedPlatforms.whatsapp ? "Connected" : "Disconnected"}
-              </span>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Receive and send end-customer chats using WhatsApp Cloud Business APIs.
+              </p>
             </div>
 
-            <div className={`p-4 rounded-2xl space-y-3 ${isLightMode ? 'bg-black/[0.02]' : 'bg-white/[0.01]'}`}>
-              <div className="flex items-center justify-between text-xs">
-                <span className="opacity-60 font-medium">Webhook Ingestion</span>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-xs py-1">
+                <span className="text-zinc-400 font-medium">Channel Ingestion</span>
                 <button 
                   onClick={() => handleTogglePlatformWebhook('whatsapp')}
-                  className={`text-xs font-mono font-bold uppercase tracking-widest px-3 py-1.5 rounded-full transition ${
+                  className={`text-[10px] font-semibold uppercase tracking-wider px-3 py-1 rounded-lg transition ${
                     platformToggles.whatsapp 
-                      ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/30' 
-                      : 'bg-white/5 text-white/40 border border-white/5'
+                      ? 'bg-violet-600 text-white shadow-sm' 
+                      : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400'
                   }`}
                 >
-                  {platformToggles.whatsapp ? "Active" : "Inactive"}
+                  {platformToggles.whatsapp ? "Active" : "Disabled"}
                 </button>
               </div>
 
-              <div className="flex items-center justify-between text-xs">
-                <span className="opacity-60 font-medium font-mono text-[10px] uppercase">Service Status</span>
+              <div className="flex items-center justify-between text-xs py-1 border-t border-zinc-100 dark:border-zinc-800/40 pt-3">
+                <span className="text-zinc-400 font-medium">Platform Link</span>
                 <button 
                   onClick={() => handleTogglePlatformConnection('whatsapp')}
-                  className={`text-[10px] font-mono uppercase tracking-widest px-3 py-1.5 rounded-full transition ${
+                  className={`text-[10px] font-semibold uppercase tracking-wider px-3 py-1 rounded-lg transition border ${
                     connectedPlatforms.whatsapp 
-                      ? 'bg-red-500/20 text-red-400 border border-red-500/30' 
-                      : 'bg-green-500/20 text-green-400 border border-green-500/30'
+                      ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20 dark:hover:bg-red-500/20' 
+                      : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-300 dark:border-zinc-800 dark:hover:bg-zinc-800'
                   }`}
                 >
-                  {connectedPlatforms.whatsapp ? "Disconnect" : "Connect Link"}
+                  {connectedPlatforms.whatsapp ? "Disconnect" : "Link Connect"}
                 </button>
               </div>
             </div>
           </div>
 
           {/* Credentials Column */}
-          <div className="flex-1 flex flex-col justify-between space-y-4">
-            <div className="space-y-1">
-              <span className="text-[10px] font-mono uppercase tracking-wider opacity-60">Platform API Credentials</span>
-              <p className={`text-xs ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Specify phone registration and token mappings configured in Meta Developer dashboard.</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex-1 flex flex-col justify-between space-y-6 lg:pl-4">
+            <div className="space-y-4">
               <div>
-                <label className="text-[10px] uppercase tracking-wider block mb-1 opacity-50">Business Phone Number</label>
-                <input 
-                  type="text"
-                  placeholder="+447123456789"
-                  value={platformConfigs.whatsapp?.phone || ''}
-                  onChange={(e) => setPlatformConfigs({
-                    ...platformConfigs,
-                    whatsapp: { ...platformConfigs.whatsapp, phone: e.target.value }
-                  })}
-                  className={`w-full h-11 px-4 rounded-xl border text-xs font-mono outline-none transition ${
-                    isLightMode 
-                      ? 'bg-black/5 border-black/10 focus:border-neon-purple/50' 
-                      : 'bg-white/5 border-white/10 focus:border-neon-purple/50'
-                  }`}
-                />
+                <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block mb-1">Developer Credentials</span>
+                <p className="text-xs text-zinc-400">Map the specific phone registrations from your Meta Developer app.</p>
               </div>
-              <div>
-                <label className="text-[10px] uppercase tracking-wider block mb-1 opacity-50">Phone Number ID</label>
-                <input 
-                  type="text"
-                  placeholder="e.g. 102948572019485"
-                  value={platformConfigs.whatsapp?.phoneId || ''}
-                  onChange={(e) => setPlatformConfigs({
-                    ...platformConfigs,
-                    whatsapp: { ...platformConfigs.whatsapp, phoneId: e.target.value }
-                  })}
-                  className={`w-full h-11 px-4 rounded-xl border text-xs font-mono outline-none transition ${
-                    isLightMode 
-                      ? 'bg-black/5 border-black/10 focus:border-neon-purple/50' 
-                      : 'bg-white/5 border-white/10 focus:border-neon-purple/50'
-                  }`}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Registered Phone Number</label>
+                  <input 
+                    type="text"
+                    placeholder="+447123456789"
+                    value={platformConfigs.whatsapp?.phone || ''}
+                    onChange={(e) => setPlatformConfigs({
+                      ...platformConfigs,
+                      whatsapp: { ...platformConfigs.whatsapp, phone: e.target.value }
+                    })}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
+                      isLightMode 
+                        ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
+                        : 'bg-zinc-950/40 border-zinc-800 text-zinc-100 focus:bg-zinc-950'
+                    }`}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Phone Number ID</label>
+                  <input 
+                    type="text"
+                    placeholder="e.g. 102948572019485"
+                    value={platformConfigs.whatsapp?.phoneId || ''}
+                    onChange={(e) => setPlatformConfigs({
+                      ...platformConfigs,
+                      whatsapp: { ...platformConfigs.whatsapp, phoneId: e.target.value }
+                    })}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
+                      isLightMode 
+                        ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
+                        : 'bg-zinc-950/40 border-zinc-800 text-zinc-100 focus:bg-zinc-950'
+                    }`}
+                  />
+                </div>
               </div>
             </div>
-            <div className="flex justify-end pt-2">
-              <button
-                onClick={() => handleSaveConfig('whatsapp', { 
-                  phone: platformConfigs.whatsapp.phone,
-                  phoneId: platformConfigs.whatsapp.phoneId
-                })}
-                className="px-6 h-11 rounded-xl bg-neon-purple text-white text-xs font-bold uppercase tracking-widest transition hover:bg-neon-purple/80 w-full md:w-auto"
-              >
-                Save WhatsApp Configuration
-              </button>
+
+            <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950/40 border border-zinc-100 dark:border-zinc-800/60 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="space-y-0.5">
+                <span className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Pipeline Sandbox</span>
+                <p className="text-xs text-zinc-400">Validate connection or dispatch simulated webhook events.</p>
+              </div>
+              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => handleTestHandshake('whatsapp')}
+                  disabled={testingPlatform === 'whatsapp'}
+                  className="w-full sm:w-auto px-4 py-2 bg-white hover:bg-zinc-50 border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 dark:hover:bg-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 font-medium rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${testingPlatform === 'whatsapp' ? 'animate-spin' : ''}`} />
+                  Test Pipeline
+                </button>
+                <button
+                  onClick={() => handleSimulateWebhook('whatsapp')}
+                  disabled={simulatingPlatform === 'whatsapp'}
+                  className="w-full sm:w-auto px-4 py-2 bg-violet-50 hover:bg-violet-100 dark:bg-violet-500/10 dark:hover:bg-violet-500/20 border border-violet-100 dark:border-violet-500/20 text-xs text-violet-700 dark:text-violet-400 font-medium rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  <Play className="w-3.5 h-3.5" />
+                  Simulate Webhook
+                </button>
+                <button
+                  onClick={() => handleSaveConfig('whatsapp', { 
+                    phone: platformConfigs.whatsapp.phone,
+                    phoneId: platformConfigs.whatsapp.phoneId
+                  })}
+                  className="col-span-2 sm:col-span-1 w-full sm:w-auto sm:ml-2 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 text-xs font-semibold rounded-xl transition shadow-sm text-center flex items-center justify-center"
+                >
+                  Save
+                </button>
+              </div>
             </div>
-          </div>
-
-          {/* Test & Diagnostics Column */}
-          <div className="lg:w-1/4 flex flex-col justify-center gap-3 lg:border-l lg:border-dashed lg:border-white/10 lg:pl-8">
-            <span className="text-[10px] font-mono uppercase tracking-wider opacity-60 block">System Diagnostics</span>
-            <button
-              onClick={() => handleTestHandshake('whatsapp')}
-              disabled={testingPlatform === 'whatsapp'}
-              className={`w-full h-11 rounded-xl border border-white/10 text-xs font-mono font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition hover:bg-white/5 ${
-                testingPlatform === 'whatsapp' ? 'opacity-50' : ''
-              }`}
-            >
-              <RefreshCw className={`w-4 h-4 ${testingPlatform === 'whatsapp' ? 'animate-spin' : ''}`} />
-              {testingPlatform === 'whatsapp' ? "Diagnostics..." : "Test Pipeline"}
-            </button>
-
-            <button
-              onClick={() => handleSimulateWebhook('whatsapp')}
-              disabled={simulatingPlatform === 'whatsapp'}
-              className="w-full h-11 rounded-xl bg-neon-blue/15 border border-neon-blue/30 text-neon-blue text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition hover:bg-neon-blue hover:text-dark-bg"
-            >
-              <Play className="w-4 h-4" />
-              {simulatingPlatform === 'whatsapp' ? "Dispatching..." : "Simulate Payload"}
-            </button>
           </div>
         </div>
 
         {/* Instagram Row */}
-        <div className={`p-6 md:p-8 rounded-3xl border flex flex-col lg:flex-row lg:items-stretch gap-8 transition-all ${isLightMode ? 'bg-white border-black/10 shadow-sm' : 'bg-white/[0.02] border-white/5'}`}>
+        <div className={`p-4 sm:p-6 md:p-8 rounded-3xl border flex flex-col lg:flex-row gap-8 transition-all ${isLightMode ? 'bg-white border-zinc-200/80 shadow-sm' : 'bg-zinc-900/50 border-zinc-800/80 shadow-xl'}`}>
           {/* Identity & Control Column */}
-          <div className="flex flex-col justify-between lg:w-1/3 space-y-6 lg:border-r lg:border-dashed lg:border-white/10 lg:pr-8">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-pink-500/10 text-pink-500 rounded-2xl">
-                  <Instagram className="w-6 h-6" />
+          <div className="w-full lg:w-[280px] shrink-0 border-b lg:border-b-0 lg:border-r border-zinc-100 dark:border-zinc-800/50 pb-5 lg:pb-0 lg:pr-8 flex flex-col justify-between space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-pink-500/10 text-pink-500 rounded-2xl border border-pink-500/15">
+                    <Instagram className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-base text-zinc-900 dark:text-zinc-50">Instagram</h3>
+                    <span className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider block">Graph API</span>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-bold font-display text-lg uppercase tracking-tight">Instagram</h3>
-                  <span className={`text-xs font-mono uppercase tracking-wider ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Graph API Integration</span>
-                </div>
+                <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${
+                  connectedPlatforms.instagram 
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20' 
+                    : 'bg-zinc-50 text-zinc-500 border-zinc-200 dark:bg-zinc-800/50 dark:text-zinc-400 dark:border-zinc-800'
+                }`}>
+                  {connectedPlatforms.instagram ? "Connected" : "Inactive"}
+                </span>
               </div>
-              <span className={`text-[10px] font-mono uppercase tracking-widest px-3 py-1.5 rounded-full ${
-                connectedPlatforms.instagram ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'
-              }`}>
-                {connectedPlatforms.instagram ? "Connected" : "Disconnected"}
-              </span>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Engage customers via Instagram Direct Messages linked to your system inbox.
+              </p>
             </div>
 
-            <div className={`p-4 rounded-2xl space-y-3 ${isLightMode ? 'bg-black/[0.02]' : 'bg-white/[0.01]'}`}>
-              <div className="flex items-center justify-between text-xs">
-                <span className="opacity-60 font-medium">Webhook Ingestion</span>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-xs py-1">
+                <span className="text-zinc-400 font-medium">Channel Ingestion</span>
                 <button 
                   onClick={() => handleTogglePlatformWebhook('instagram')}
-                  className={`text-xs font-mono font-bold uppercase tracking-widest px-3 py-1.5 rounded-full transition ${
+                  className={`text-[10px] font-semibold uppercase tracking-wider px-3 py-1 rounded-lg transition ${
                     platformToggles.instagram 
-                      ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/30' 
-                      : 'bg-white/5 text-white/40 border border-white/5'
+                      ? 'bg-violet-600 text-white shadow-sm' 
+                      : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400'
                   }`}
                 >
-                  {platformToggles.instagram ? "Active" : "Inactive"}
+                  {platformToggles.instagram ? "Active" : "Disabled"}
                 </button>
               </div>
 
-              <div className="flex items-center justify-between text-xs">
-                <span className="opacity-60 font-medium font-mono text-[10px] uppercase">Service Status</span>
+              <div className="flex items-center justify-between text-xs py-1 border-t border-zinc-100 dark:border-zinc-800/40 pt-3">
+                <span className="text-zinc-400 font-medium">Platform Link</span>
                 <button 
                   onClick={() => handleTogglePlatformConnection('instagram')}
-                  className={`text-[10px] font-mono uppercase tracking-widest px-3 py-1.5 rounded-full transition ${
+                  className={`text-[10px] font-semibold uppercase tracking-wider px-3 py-1 rounded-lg transition border ${
                     connectedPlatforms.instagram 
-                      ? 'bg-red-500/20 text-red-400 border border-red-500/30' 
-                      : 'bg-green-500/20 text-green-400 border border-green-500/30'
+                      ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20 dark:hover:bg-red-500/20' 
+                      : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-300 dark:border-zinc-800 dark:hover:bg-zinc-800'
                   }`}
                 >
-                  {connectedPlatforms.instagram ? "Disconnect" : "Connect Link"}
+                  {connectedPlatforms.instagram ? "Disconnect" : "Link Connect"}
                 </button>
               </div>
             </div>
           </div>
 
           {/* Credentials Column */}
-          <div className="flex-1 flex flex-col justify-between space-y-4">
-            <div className="space-y-1">
-              <span className="text-[10px] font-mono uppercase tracking-wider opacity-60">Platform API Credentials</span>
-              <p className={`text-xs ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Specify Instagram Business Account mapping and long-lived system user Access Token.</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex-1 flex flex-col justify-between space-y-6 lg:pl-4">
+            <div className="space-y-4">
               <div>
-                <label className="text-[10px] uppercase tracking-wider block mb-1 opacity-50">Instagram Account ID</label>
-                <input 
-                  type="text"
-                  placeholder="e.g. 178414012345678"
-                  value={platformConfigs.instagram?.accountId || ''}
-                  onChange={(e) => setPlatformConfigs({
-                    ...platformConfigs,
-                    instagram: { ...platformConfigs.instagram, accountId: e.target.value }
-                  })}
-                  className={`w-full h-11 px-4 rounded-xl border text-xs font-mono outline-none transition ${
-                    isLightMode 
-                      ? 'bg-black/5 border-black/10 focus:border-neon-purple/50' 
-                      : 'bg-white/5 border-white/10 focus:border-neon-purple/50'
-                  }`}
-                />
+                <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block mb-1">Developer Credentials</span>
+                <p className="text-xs text-zinc-400">Instagram Professional account mappings and secure system users.</p>
               </div>
-              <div>
-                <label className="text-[10px] uppercase tracking-wider block mb-1 opacity-50">Graph Access Token</label>
-                <input 
-                  type="password"
-                  placeholder="••••••••••••••••"
-                  value={platformConfigs.instagram?.accessToken || ''}
-                  onChange={(e) => setPlatformConfigs({
-                    ...platformConfigs,
-                    instagram: { ...platformConfigs.instagram, accessToken: e.target.value }
-                  })}
-                  className={`w-full h-11 px-4 rounded-xl border text-xs font-mono outline-none transition ${
-                    isLightMode 
-                      ? 'bg-black/5 border-black/10 focus:border-neon-purple/50' 
-                      : 'bg-white/5 border-white/10 focus:border-neon-purple/50'
-                  }`}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Instagram Account ID</label>
+                  <input 
+                    type="text"
+                    placeholder="e.g. 178414012345678"
+                    value={platformConfigs.instagram?.accountId || ''}
+                    onChange={(e) => setPlatformConfigs({
+                      ...platformConfigs,
+                      instagram: { ...platformConfigs.instagram, accountId: e.target.value }
+                    })}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
+                      isLightMode 
+                        ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
+                        : 'bg-zinc-950/40 border-zinc-800 text-zinc-100 focus:bg-zinc-950'
+                    }`}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Graph Access Token</label>
+                  <input 
+                    type="password"
+                    placeholder="••••••••••••••••"
+                    value={platformConfigs.instagram?.accessToken || ''}
+                    onChange={(e) => setPlatformConfigs({
+                      ...platformConfigs,
+                      instagram: { ...platformConfigs.instagram, accessToken: e.target.value }
+                    })}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
+                      isLightMode 
+                        ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
+                        : 'bg-zinc-950/40 border-zinc-800 text-zinc-100 focus:bg-zinc-950'
+                    }`}
+                  />
+                </div>
               </div>
             </div>
-            <div className="flex justify-end pt-2">
-              <button
-                onClick={() => handleSaveConfig('instagram', { 
-                  accountId: platformConfigs.instagram.accountId,
-                  accessToken: platformConfigs.instagram.accessToken
-                })}
-                className="px-6 h-11 rounded-xl bg-neon-purple text-white text-xs font-bold uppercase tracking-widest transition hover:bg-neon-purple/80 w-full md:w-auto"
-              >
-                Save Instagram Configuration
-              </button>
+
+            <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950/40 border border-zinc-100 dark:border-zinc-800/60 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="space-y-0.5">
+                <span className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Pipeline Sandbox</span>
+                <p className="text-xs text-zinc-400">Validate connection or dispatch simulated webhook events.</p>
+              </div>
+              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => handleTestHandshake('instagram')}
+                  disabled={testingPlatform === 'instagram'}
+                  className="w-full sm:w-auto px-4 py-2 bg-white hover:bg-zinc-50 border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 dark:hover:bg-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 font-medium rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${testingPlatform === 'instagram' ? 'animate-spin' : ''}`} />
+                  Test Pipeline
+                </button>
+                <button
+                  onClick={() => handleSimulateWebhook('instagram')}
+                  disabled={simulatingPlatform === 'instagram'}
+                  className="w-full sm:w-auto px-4 py-2 bg-violet-50 hover:bg-violet-100 dark:bg-violet-500/10 dark:hover:bg-violet-500/20 border border-violet-100 dark:border-violet-500/20 text-xs text-violet-700 dark:text-violet-400 font-medium rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  <Play className="w-3.5 h-3.5" />
+                  Simulate Webhook
+                </button>
+                <button
+                  onClick={() => handleSaveConfig('instagram', { 
+                    accountId: platformConfigs.instagram.accountId,
+                    accessToken: platformConfigs.instagram.accessToken
+                  })}
+                  className="col-span-2 sm:col-span-1 w-full sm:w-auto sm:ml-2 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 text-xs font-semibold rounded-xl transition shadow-sm text-center flex items-center justify-center"
+                >
+                  Save
+                </button>
+              </div>
             </div>
-          </div>
-
-          {/* Test & Diagnostics Column */}
-          <div className="lg:w-1/4 flex flex-col justify-center gap-3 lg:border-l lg:border-dashed lg:border-white/10 lg:pl-8">
-            <span className="text-[10px] font-mono uppercase tracking-wider opacity-60 block">System Diagnostics</span>
-            <button
-              onClick={() => handleTestHandshake('instagram')}
-              disabled={testingPlatform === 'instagram'}
-              className={`w-full h-11 rounded-xl border border-white/10 text-xs font-mono font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition hover:bg-white/5 ${
-                testingPlatform === 'instagram' ? 'opacity-50' : ''
-              }`}
-            >
-              <RefreshCw className={`w-4 h-4 ${testingPlatform === 'instagram' ? 'animate-spin' : ''}`} />
-              {testingPlatform === 'instagram' ? "Diagnostics..." : "Test Pipeline"}
-            </button>
-
-            <button
-              onClick={() => handleSimulateWebhook('instagram')}
-              disabled={simulatingPlatform === 'instagram'}
-              className="w-full h-11 rounded-xl bg-neon-blue/15 border border-neon-blue/30 text-neon-blue text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition hover:bg-neon-blue hover:text-dark-bg"
-            >
-              <Play className="w-4 h-4" />
-              {simulatingPlatform === 'instagram' ? "Dispatching..." : "Simulate Payload"}
-            </button>
           </div>
         </div>
 
         {/* Facebook Messenger Row */}
-        <div className={`p-6 md:p-8 rounded-3xl border flex flex-col lg:flex-row lg:items-stretch gap-8 transition-all ${isLightMode ? 'bg-white border-black/10 shadow-sm' : 'bg-white/[0.02] border-white/5'}`}>
+        <div className={`p-4 sm:p-6 md:p-8 rounded-3xl border flex flex-col lg:flex-row gap-8 transition-all ${isLightMode ? 'bg-white border-zinc-200/80 shadow-sm' : 'bg-zinc-900/50 border-zinc-800/80 shadow-xl'}`}>
           {/* Identity & Control Column */}
-          <div className="flex flex-col justify-between lg:w-1/3 space-y-6 lg:border-r lg:border-dashed lg:border-white/10 lg:pr-8">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-blue-500/10 text-blue-500 rounded-2xl">
-                  <Facebook className="w-6 h-6" />
+          <div className="w-full lg:w-[280px] shrink-0 border-b lg:border-b-0 lg:border-r border-zinc-100 dark:border-zinc-800/50 pb-5 lg:pb-0 lg:pr-8 flex flex-col justify-between space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-blue-500/10 text-blue-500 rounded-2xl border border-blue-500/15">
+                    <Facebook className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-base text-zinc-900 dark:text-zinc-50">Messenger</h3>
+                    <span className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider block">Facebook Page</span>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-bold font-display text-lg uppercase tracking-tight">Messenger</h3>
-                  <span className={`text-xs font-mono uppercase tracking-wider ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Messenger Platform API</span>
-                </div>
+                <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${
+                  connectedPlatforms.facebook 
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20' 
+                    : 'bg-zinc-50 text-zinc-500 border-zinc-200 dark:bg-zinc-800/50 dark:text-zinc-400 dark:border-zinc-800'
+                }`}>
+                  {connectedPlatforms.facebook ? "Connected" : "Inactive"}
+                </span>
               </div>
-              <span className={`text-[10px] font-mono uppercase tracking-widest px-3 py-1.5 rounded-full ${
-                connectedPlatforms.facebook ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'
-              }`}>
-                {connectedPlatforms.facebook ? "Connected" : "Disconnected"}
-              </span>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Connect Messenger interactions and business Pages directly to the central inbox.
+              </p>
             </div>
 
-            <div className={`p-4 rounded-2xl space-y-3 ${isLightMode ? 'bg-black/[0.02]' : 'bg-white/[0.01]'}`}>
-              <div className="flex items-center justify-between text-xs">
-                <span className="opacity-60 font-medium">Webhook Ingestion</span>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-xs py-1">
+                <span className="text-zinc-400 font-medium">Channel Ingestion</span>
                 <button 
                   onClick={() => handleTogglePlatformWebhook('facebook')}
-                  className={`text-xs font-mono font-bold uppercase tracking-widest px-3 py-1.5 rounded-full transition ${
+                  className={`text-[10px] font-semibold uppercase tracking-wider px-3 py-1 rounded-lg transition ${
                     platformToggles.facebook 
-                      ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/30' 
-                      : 'bg-white/5 text-white/40 border border-white/5'
+                      ? 'bg-violet-600 text-white shadow-sm' 
+                      : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400'
                   }`}
                 >
-                  {platformToggles.facebook ? "Active" : "Inactive"}
+                  {platformToggles.facebook ? "Active" : "Disabled"}
                 </button>
               </div>
 
-              <div className="flex items-center justify-between text-xs">
-                <span className="opacity-60 font-medium font-mono text-[10px] uppercase">Service Status</span>
+              <div className="flex items-center justify-between text-xs py-1 border-t border-zinc-100 dark:border-zinc-800/40 pt-3">
+                <span className="text-zinc-400 font-medium">Platform Link</span>
                 <button 
                   onClick={() => handleTogglePlatformConnection('facebook')}
-                  className={`text-[10px] font-mono uppercase tracking-widest px-3 py-1.5 rounded-full transition ${
+                  className={`text-[10px] font-semibold uppercase tracking-wider px-3 py-1 rounded-lg transition border ${
                     connectedPlatforms.facebook 
-                      ? 'bg-red-500/20 text-red-400 border border-red-500/30' 
-                      : 'bg-green-500/20 text-green-400 border border-green-500/30'
+                      ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20 dark:hover:bg-red-500/20' 
+                      : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-300 dark:border-zinc-800 dark:hover:bg-zinc-800'
                   }`}
                 >
-                  {connectedPlatforms.facebook ? "Disconnect" : "Connect Link"}
+                  {connectedPlatforms.facebook ? "Disconnect" : "Link Connect"}
                 </button>
               </div>
             </div>
           </div>
 
           {/* Credentials Column */}
-          <div className="flex-1 flex flex-col justify-between space-y-4">
-            <div className="space-y-1">
-              <span className="text-[10px] font-mono uppercase tracking-wider opacity-60">Platform API Credentials</span>
-              <p className={`text-xs ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Specify Facebook Page registration and authorized permanent Page Access Token.</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex-1 flex flex-col justify-between space-y-6 lg:pl-4">
+            <div className="space-y-4">
               <div>
-                <label className="text-[10px] uppercase tracking-wider block mb-1 opacity-50">Facebook Page ID</label>
-                <input 
-                  type="text"
-                  placeholder="e.g. 1029485720194"
-                  value={platformConfigs.facebook?.pageId || ''}
-                  onChange={(e) => setPlatformConfigs({
-                    ...platformConfigs,
-                    facebook: { ...platformConfigs.facebook, pageId: e.target.value }
-                  })}
-                  className={`w-full h-11 px-4 rounded-xl border text-xs font-mono outline-none transition ${
-                    isLightMode 
-                      ? 'bg-black/5 border-black/10 focus:border-neon-purple/50' 
-                      : 'bg-white/5 border-white/10 focus:border-neon-purple/50'
-                  }`}
-                />
+                <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block mb-1">Developer Credentials</span>
+                <p className="text-xs text-zinc-400">Map specific Facebook Pages and authorized permanent Page Access Tokens.</p>
               </div>
-              <div>
-                <label className="text-[10px] uppercase tracking-wider block mb-1 opacity-50">Page Access Token</label>
-                <input 
-                  type="password"
-                  placeholder="••••••••••••••••"
-                  value={platformConfigs.facebook?.pageAccessToken || ''}
-                  onChange={(e) => setPlatformConfigs({
-                    ...platformConfigs,
-                    facebook: { ...platformConfigs.facebook, pageAccessToken: e.target.value }
-                  })}
-                  className={`w-full h-11 px-4 rounded-xl border text-xs font-mono outline-none transition ${
-                    isLightMode 
-                      ? 'bg-black/5 border-black/10 focus:border-neon-purple/50' 
-                      : 'bg-white/5 border-white/10 focus:border-neon-purple/50'
-                  }`}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Facebook Page ID</label>
+                  <input 
+                    type="text"
+                    placeholder="e.g. 1029485720194"
+                    value={platformConfigs.facebook?.pageId || ''}
+                    onChange={(e) => setPlatformConfigs({
+                      ...platformConfigs,
+                      facebook: { ...platformConfigs.facebook, pageId: e.target.value }
+                    })}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
+                      isLightMode 
+                        ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
+                        : 'bg-zinc-950/40 border-zinc-800 text-zinc-100 focus:bg-zinc-950'
+                    }`}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Page Access Token</label>
+                  <input 
+                    type="password"
+                    placeholder="••••••••••••••••"
+                    value={platformConfigs.facebook?.pageAccessToken || ''}
+                    onChange={(e) => setPlatformConfigs({
+                      ...platformConfigs,
+                      facebook: { ...platformConfigs.facebook, pageAccessToken: e.target.value }
+                    })}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
+                      isLightMode 
+                        ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
+                        : 'bg-zinc-950/40 border-zinc-800 text-zinc-100 focus:bg-zinc-950'
+                    }`}
+                  />
+                </div>
               </div>
             </div>
-            <div className="flex justify-end pt-2">
-              <button
-                onClick={() => handleSaveConfig('facebook', { 
-                  pageId: platformConfigs.facebook.pageId,
-                  pageAccessToken: platformConfigs.facebook.pageAccessToken
-                })}
-                className="px-6 h-11 rounded-xl bg-neon-purple text-white text-xs font-bold uppercase tracking-widest transition hover:bg-neon-purple/80 w-full md:w-auto"
-              >
-                Save Messenger Configuration
-              </button>
+
+            <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950/40 border border-zinc-100 dark:border-zinc-800/60 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="space-y-0.5">
+                <span className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Pipeline Sandbox</span>
+                <p className="text-xs text-zinc-400">Validate connection or dispatch simulated webhook events.</p>
+              </div>
+              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => handleTestHandshake('facebook')}
+                  disabled={testingPlatform === 'facebook'}
+                  className="w-full sm:w-auto px-4 py-2 bg-white hover:bg-zinc-50 border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 dark:hover:bg-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 font-medium rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${testingPlatform === 'facebook' ? 'animate-spin' : ''}`} />
+                  Test Pipeline
+                </button>
+                <button
+                  onClick={() => handleSimulateWebhook('facebook')}
+                  disabled={simulatingPlatform === 'facebook'}
+                  className="w-full sm:w-auto px-4 py-2 bg-violet-50 hover:bg-violet-100 dark:bg-violet-500/10 dark:hover:bg-violet-500/20 border border-violet-100 dark:border-violet-500/20 text-xs text-violet-700 dark:text-violet-400 font-medium rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  <Play className="w-3.5 h-3.5" />
+                  Simulate Webhook
+                </button>
+                <button
+                  onClick={() => handleSaveConfig('facebook', { 
+                    pageId: platformConfigs.facebook.pageId,
+                    pageAccessToken: platformConfigs.facebook.pageAccessToken
+                  })}
+                  className="col-span-2 sm:col-span-1 w-full sm:w-auto sm:ml-2 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 text-xs font-semibold rounded-xl transition shadow-sm text-center flex items-center justify-center"
+                >
+                  Save
+                </button>
+              </div>
             </div>
-          </div>
-
-          {/* Test & Diagnostics Column */}
-          <div className="lg:w-1/4 flex flex-col justify-center gap-3 lg:border-l lg:border-dashed lg:border-white/10 lg:pl-8">
-            <span className="text-[10px] font-mono uppercase tracking-wider opacity-60 block">System Diagnostics</span>
-            <button
-              onClick={() => handleTestHandshake('facebook')}
-              disabled={testingPlatform === 'facebook'}
-              className={`w-full h-11 rounded-xl border border-white/10 text-xs font-mono font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition hover:bg-white/5 ${
-                testingPlatform === 'facebook' ? 'opacity-50' : ''
-              }`}
-            >
-              <RefreshCw className={`w-4 h-4 ${testingPlatform === 'facebook' ? 'animate-spin' : ''}`} />
-              {testingPlatform === 'facebook' ? "Diagnostics..." : "Test Pipeline"}
-            </button>
-
-            <button
-              onClick={() => handleSimulateWebhook('facebook')}
-              disabled={simulatingPlatform === 'facebook'}
-              className="w-full h-11 rounded-xl bg-neon-blue/15 border border-neon-blue/30 text-neon-blue text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition hover:bg-neon-blue hover:text-dark-bg"
-            >
-              <Play className="w-4 h-4" />
-              {simulatingPlatform === 'facebook' ? "Dispatching..." : "Simulate Payload"}
-            </button>
           </div>
         </div>
       </div>
@@ -899,25 +930,25 @@ export function AdminMetaIntegrations() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
-            className={`p-6 rounded-3xl border ${
+            className={`p-6 rounded-2xl border ${
               testResult 
                 ? testResult.success 
-                  ? 'bg-green-500/5 border-green-500/25 text-green-400' 
-                  : 'bg-red-500/5 border-red-500/25 text-red-400'
-                : 'bg-neon-blue/5 border-neon-blue/25 text-neon-blue'
+                  ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' 
+                  : 'bg-red-500/5 border-red-500/20 text-red-600 dark:text-red-400'
+                : 'bg-violet-500/5 border-violet-500/20 text-violet-600 dark:text-violet-400'
             }`}
           >
-            <div className="flex items-start gap-3.5">
-              <div className="p-2 rounded-xl bg-black/40">
+            <div className="flex items-start gap-4">
+              <div className="p-2.5 rounded-xl bg-white dark:bg-zinc-900 shadow-sm border border-zinc-100 dark:border-zinc-800/40">
                 {testResult ? (
-                  testResult.success ? <CheckCircle2 className="w-5 h-5 text-green-400 animate-pulse" /> : <AlertCircle className="w-5 h-5 text-red-400 animate-pulse" />
+                  testResult.success ? <CheckCircle2 className="w-5 h-5 text-emerald-500" /> : <AlertCircle className="w-5 h-5 text-red-500" />
                 ) : (
-                  <RefreshCw className="w-5 h-5 text-neon-blue animate-spin" />
+                  <RefreshCw className="w-5 h-5 text-violet-500 animate-spin" />
                 )}
               </div>
               <div className="flex-1 space-y-1">
                 <span className="text-xs uppercase tracking-wider font-bold">
-                  {testingPlatform ? `${testingPlatform.toUpperCase()} Diagnostics Interface` : "Diagnostics Result"}
+                  {testingPlatform ? `${testingPlatform.toUpperCase()} Diagnostics Console` : "Pipeline Status Report"}
                 </span>
                 <p className="text-sm font-mono whitespace-pre-wrap leading-relaxed">
                   {testingPlatform ? testProgress : testResult?.message}
@@ -925,9 +956,9 @@ export function AdminMetaIntegrations() {
               </div>
               <button 
                 onClick={() => { setTestingPlatform(null); setTestResult(null); }}
-                className="p-1 rounded-lg hover:bg-white/10"
+                className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
               >
-                <X className="w-4 h-4 opacity-50 hover:opacity-100" />
+                <X className="w-4 h-4 text-zinc-400 dark:text-zinc-500" />
               </button>
             </div>
           </motion.div>
