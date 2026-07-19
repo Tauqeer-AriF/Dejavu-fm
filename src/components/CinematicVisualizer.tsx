@@ -23,7 +23,6 @@ export function CinematicVisualizer({ isOpen, onClose }: { isOpen: boolean, onCl
     if (!ctx) return;
 
     const analyser = getAnalyser();
-    if (!analyser) return;
 
     // Use full width and height
     const resizeCanvas = () => {
@@ -33,7 +32,7 @@ export function CinematicVisualizer({ isOpen, onClose }: { isOpen: boolean, onCl
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    const dataArray = analyser ? new Uint8Array(analyser.frequencyBinCount) : null;
 
     let lastTime = performance.now();
     let smoothedBass = 0;
@@ -56,63 +55,111 @@ export function CinematicVisualizer({ isOpen, onClose }: { isOpen: boolean, onCl
         return;
       }
 
-      analyser.getByteFrequencyData(dataArray);
+      if (analyser && dataArray) {
+        analyser.getByteFrequencyData(dataArray);
 
-      // Calculate bass energy (first few bins)
-      let bassSum = 0;
-      const bassBins = 8;
-      for (let i = 0; i < bassBins; i++) {
-        bassSum += dataArray[i];
-      }
-      const bassAvg = bassSum / bassBins;
-      
-      // Smooth bass for scaling the circle (pulse)
-      smoothedBass = smoothedBass * 0.8 + bassAvg * 0.2;
-      const scale = 1 + (smoothedBass / 255) * 0.15;
-      setPulseScale(scale); // animate UI elements based on bass
+        // Calculate bass energy (first few bins)
+        let bassSum = 0;
+        const bassBins = 8;
+        for (let i = 0; i < bassBins; i++) {
+          bassSum += dataArray[i];
+        }
+        const bassAvg = bassSum / bassBins;
+        
+        // Smooth bass for scaling the circle (pulse)
+        smoothedBass = smoothedBass * 0.8 + bassAvg * 0.2;
+        const scale = 1 + (smoothedBass / 255) * 0.15;
+        setPulseScale(scale); // animate UI elements based on bass
 
-      const count = analyser.frequencyBinCount / 4; // Use lower half of freq
-      const radius = Math.min(width, height) * 0.25;
-
-      ctx.beginPath();
-      // Draw circular waves
-      for (let i = 0; i < count; i++) {
-        const val = dataArray[i];
-        const barHeight = (val / 255) * (Math.min(width, height) * 0.3);
-        const angle = (i * 2 * Math.PI) / count;
-
-        const x1 = cx + Math.cos(angle) * (radius + barHeight * 0.05);
-        const y1 = cy + Math.sin(angle) * (radius + barHeight * 0.05);
-        const x2 = cx + Math.cos(angle) * (radius + barHeight);
-        const y2 = cy + Math.sin(angle) * (radius + barHeight);
-
-        // Calculate dynamic color based on freq bin and amplitude
-        const hue = (i / count) * 360 + (time * 0.05);
-        ctx.strokeStyle = `hsla(${hue}, 100%, 65%, ${0.5 + (val / 255) * 0.5})`;
-        ctx.lineWidth = 4 + (val / 255) * 6;
-        ctx.lineCap = 'round';
+        const count = analyser.frequencyBinCount / 4; // Use lower half of freq
+        const radius = Math.min(width, height) * 0.25;
 
         ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-      }
-      
-      // Draw outer secondary rings
-      const outerCount = analyser.frequencyBinCount / 2;
-      for (let i = 0; i < outerCount; i += 2) {
-        const val = dataArray[i];
-        if (val < 100) continue;
-        const angle = -(i * 2 * Math.PI) / outerCount + (time * 0.001);
-        const dist = radius + (val / 255) * radius * 1.5;
+        // Draw circular waves
+        for (let i = 0; i < count; i++) {
+          const val = dataArray[i];
+          const barHeight = (val / 255) * (Math.min(width, height) * 0.3);
+          const angle = (i * 2 * Math.PI) / count;
+
+          const x1 = cx + Math.cos(angle) * (radius + barHeight * 0.05);
+          const y1 = cy + Math.sin(angle) * (radius + barHeight * 0.05);
+          const x2 = cx + Math.cos(angle) * (radius + barHeight);
+          const y2 = cy + Math.sin(angle) * (radius + barHeight);
+
+          // Calculate dynamic color based on freq bin and amplitude
+          const hue = (i / count) * 360 + (time * 0.05);
+          ctx.strokeStyle = `hsla(${hue}, 100%, 65%, ${0.5 + (val / 255) * 0.5})`;
+          ctx.lineWidth = 4 + (val / 255) * 6;
+          ctx.lineCap = 'round';
+
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+        }
         
-        const px = cx + Math.cos(angle) * dist;
-        const py = cy + Math.sin(angle) * dist;
-        
-        ctx.fillStyle = `hsla(${(i / outerCount) * 360 + (time * 0.1)}, 100%, 75%, ${val / 255})`;
-        ctx.beginPath();
-        ctx.arc(px, py, 2 + (val / 255) * 4, 0, Math.PI * 2);
-        ctx.fill();
+        // Draw outer secondary rings
+        const outerCount = analyser.frequencyBinCount / 2;
+        for (let i = 0; i < outerCount; i += 2) {
+          const val = dataArray[i];
+          if (val < 100) continue;
+          const angle = -(i * 2 * Math.PI) / outerCount + (time * 0.001);
+          const dist = radius + (val / 255) * radius * 1.5;
+          
+          const px = cx + Math.cos(angle) * dist;
+          const py = cy + Math.sin(angle) * dist;
+          
+          ctx.fillStyle = `hsla(${(i / outerCount) * 360 + (time * 0.1)}, 100%, 75%, ${val / 255})`;
+          ctx.beginPath();
+          ctx.arc(px, py, 2 + (val / 255) * 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        // Fallback procedural animation for iOS/Safari without Analyser
+        const pulse = Math.sin(time * 0.003) * 0.5 + 0.5; // 0 to 1 pulse
+        const scale = 1 + pulse * 0.08;
+        setPulseScale(scale);
+
+        const count = 64;
+        const radius = Math.min(width, height) * 0.25;
+
+        // Draw ambient glowing procedural rings
+        for (let i = 0; i < count; i++) {
+          const angle = (i * 2 * Math.PI) / count;
+          // Generate a wave-like pattern using sine/cosine based on time and index
+          const noise = Math.sin(i * 0.2 + time * 0.002) * Math.cos(i * 0.05 - time * 0.001);
+          const val = (noise + 1) / 2; // 0 to 1
+          
+          const barHeight = val * (Math.min(width, height) * 0.15);
+          const x1 = cx + Math.cos(angle) * (radius + barHeight * 0.1);
+          const y1 = cy + Math.sin(angle) * (radius + barHeight * 0.1);
+          const x2 = cx + Math.cos(angle) * (radius + barHeight);
+          const y2 = cy + Math.sin(angle) * (radius + barHeight);
+
+          const hue = (i / count) * 360 + (time * 0.02);
+          ctx.strokeStyle = `hsla(${hue}, 100%, 65%, ${0.3 + val * 0.4})`;
+          ctx.lineWidth = 3 + val * 4;
+          ctx.lineCap = 'round';
+
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+        }
+
+        // Draw some ambient particle nodes swirling around the ring
+        const particlesCount = 20;
+        for (let i = 0; i < particlesCount; i++) {
+          const orbitAngle = (i * 2 * Math.PI) / particlesCount + (time * 0.0003);
+          const distance = radius + Math.sin(time * 0.001 + i) * 30 + 50;
+          const px = cx + Math.cos(orbitAngle) * distance;
+          const py = cy + Math.sin(orbitAngle) * distance;
+
+          ctx.fillStyle = `hsla(${(i / particlesCount) * 360 + (time * 0.05)}, 100%, 75%, 0.4)`;
+          ctx.beginPath();
+          ctx.arc(px, py, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     };
 

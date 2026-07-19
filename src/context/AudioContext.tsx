@@ -67,6 +67,24 @@ const getSavedQuality = (): AudioQuality => {
   return ['low', 'medium', 'high'].includes(saved) ? saved : 'medium';
 };
 
+const getSavedStreamUrl = () => {
+  if (typeof window === 'undefined') return "";
+  return localStorage.getItem('dejavufm_stream_url') || "";
+};
+
+const getSavedQualityUrls = (): Record<AudioQuality, string> => {
+  if (typeof window === 'undefined') {
+    return { low: "", medium: "", high: "" };
+  }
+  try {
+    const saved = localStorage.getItem('dejavufm_quality_urls');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {}
+  return { low: "", medium: "", high: "" };
+};
+
 const updateMediaMetadata = (currentTrack: string, onAirInfo: AudioStore['onAirInfo']) => {
   if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
     let title = currentTrack && currentTrack !== "Dejavu FM Live" ? currentTrack : "Dejavu FM Live";
@@ -111,13 +129,9 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
   isCinematicOpen: false,
   volume: getSavedVolume(),
   currentTrack: "Dejavu FM Live",
-  streamUrl: "",
+  streamUrl: getSavedStreamUrl(),
   quality: getSavedQuality(),
-  qualityUrls: {
-    low: "",
-    medium: "",
-    high: ""
-  },
+  qualityUrls: getSavedQualityUrls(),
   onAirInfo: null,
 
   togglePlay: () => {
@@ -130,8 +144,65 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
       targetUrl = qualityUrls[quality];
     }
     
+    if (!isPlaying && !targetUrl) {
+      toast.error("Connecting to station feed...");
+      // Trigger a direct, synchronous-feeling fetch inside the click gesture flow
+      fetch('/api/public/settings')
+        .then(res => res.json())
+        .then(settings => {
+          if (settings && settings.stream_url) {
+            const lowUrl = settings.stream_url_low || settings.stream_url;
+            const medUrl = settings.stream_url_medium || settings.stream_url;
+            const hiUrl = settings.stream_url_high || settings.stream_url;
+            const fetchedUrls = { low: lowUrl, medium: medUrl, high: hiUrl };
+            const selectedUrl = fetchedUrls[quality];
+            
+            // Instantly cache in localStorage so it's always ready immediately next time
+            localStorage.setItem('dejavufm_stream_url', settings.stream_url);
+            localStorage.setItem('dejavufm_quality_urls', JSON.stringify(fetchedUrls));
+            
+            set({ 
+              streamUrl: settings.stream_url,
+              qualityUrls: fetchedUrls
+            });
+            
+            if (audio) {
+              audio.src = selectedUrl;
+              audio.load();
+              audio.volume = volume;
+              
+              set({ isPlaying: true });
+              if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+              
+              audio.play().catch(e => {
+                console.error("Delayed load stream play failed:", e);
+                toast.error("Playback failed. Please try again.");
+                set({ isPlaying: false });
+                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+              });
+            }
+          } else {
+            toast.error("Station broadcast feed is currently unavailable.");
+          }
+        })
+        .catch(err => {
+          console.error("Direct fallback fetch failed:", err);
+          toast.error("Network error. Please try again in a moment.");
+        });
+      return;
+    }
+    
     // Init Audio Context on first play if needed
-    if (!isPlaying && !audioContext) {
+    const isIOS = typeof navigator !== 'undefined' && (
+      /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    );
+    const isSafari = typeof navigator !== 'undefined' && (
+      /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+    );
+    const shouldBypassAudioContext = isIOS || isSafari;
+
+    if (!isPlaying && !audioContext && !shouldBypassAudioContext) {
       try {
         const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
         if (AudioContextClass) {
@@ -142,7 +213,7 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
           analyserNode.fftSize = 64; // Will yield 32 frequency bins
           analyserNode.smoothingTimeConstant = 0.8;
           analyser = analyserNode;
-
+          
           // Master Compression / Normalization
           const compressor = ctx.createDynamicsCompressor();
           compressor.threshold.setValueAtTime(-24, ctx.currentTime);
@@ -171,10 +242,12 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
          audio.load();
       }
       audio.volume = volume;
+      
+      // Set playing to true immediately to render a pause icon and lock state to prevent click-spamming
+      set({ isPlaying: true });
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+
       audio.play().then(() => {
-        set({ isPlaying: true });
-        if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-        
         // Track stream start
         fetch('/api/public/analytics/track', {
           method: 'POST',
@@ -187,7 +260,7 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
            return;
         }
         console.error("Autoplay blocked or playback failed:", e);
-        toast.error("Failed to connect to stream. Retrying...");
+        toast.error("Failed to connect to stream. Please try again.");
         set({ isPlaying: false });
         if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
       });
@@ -212,6 +285,9 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
 
   setStreamUrl: (val: string) => {
     const { isPlaying } = get();
+    if (val) {
+      localStorage.setItem('dejavufm_stream_url', val);
+    }
     if (audio && audio.src !== val) {
       audio.src = val;
       audio.load();
@@ -252,6 +328,7 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
   },
 
   setQualityUrls: (urls: Record<AudioQuality, string>) => {
+    localStorage.setItem('dejavufm_quality_urls', JSON.stringify(urls));
     set({ qualityUrls: urls });
     
     // If we're currently playing the default stream, update it to the active quality
@@ -356,6 +433,54 @@ if (typeof window !== 'undefined' && audio) {
     if (recoveryTimeout) {
       clearTimeout(recoveryTimeout);
       recoveryTimeout = null;
+    }
+  });
+
+  // Keep Zustand state perfectly in sync with native audio actions (headphone unplugs, lock screen, bluetooth, etc.)
+  audio.addEventListener('play', () => {
+    useAudioStore.setState({ isPlaying: true });
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+  });
+
+  audio.addEventListener('pause', () => {
+    useAudioStore.setState({ isPlaying: false });
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+  });
+
+  // Handle minimizing/reopening or locking/unlocking background-to-foreground PWA state recovery
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      console.log("[Audio] App brought to foreground. Checking stream synchronization...");
+      const store = useAudioStore.getState();
+      
+      // If our app state thinks it should be playing, but the hardware audio element is paused/ended
+      if (store.isPlaying && audio) {
+        if (audio.paused || audio.ended || audio.readyState < 2) {
+          console.warn("[Audio] Audio output is out of sync with state (paused/stalled in background). Recovering...");
+          const currentSrc = audio.src || store.streamUrl || store.qualityUrls[store.quality];
+          if (currentSrc) {
+            audio.src = ''; // Reset buffer
+            setTimeout(() => {
+              if (audio) {
+                audio.src = currentSrc;
+                audio.load();
+                audio.play()
+                  .then(() => {
+                    console.log("[Audio] Foreground automatic stream recovery successful.");
+                  })
+                  .catch(e => {
+                    console.warn("[Audio] Foreground recovery auto-play blocked by browser. Resetting visual button.", e);
+                    // Safely put the button back to Play state if browser completely blocked resume without tap
+                    useAudioStore.setState({ isPlaying: false });
+                    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+                  });
+              }
+            }, 100);
+          } else {
+            useAudioStore.setState({ isPlaying: false });
+          }
+        }
+      }
     }
   });
 }

@@ -24,8 +24,8 @@ export function PullToRefresh() {
 
   useEffect(() => {
     // Disable native overscroll bounce where supported, giving our custom refresh full control
-    document.body.style.overscrollBehaviorY = 'contain';
-    document.documentElement.style.overscrollBehaviorY = 'contain';
+    document.body.style.overscrollBehaviorY = 'none';
+    document.documentElement.style.overscrollBehaviorY = 'none';
 
     const handleStart = (pageY: number, pageX: number, pointerId?: number) => {
       const scrollTop = window.scrollY || document.documentElement.scrollTop;
@@ -313,10 +313,10 @@ export function PullToRefresh() {
     };
 
     // Register active non-passive listeners for touch
-    window.addEventListener('touchstart', onTouchStart, { passive: true });
-    window.addEventListener('touchmove', onTouchMove, { passive: false });
-    window.addEventListener('touchend', onTouchEnd, { passive: true });
-    window.addEventListener('touchcancel', onTouchEnd, { passive: true });
+    document.addEventListener('touchstart', onTouchStart, { passive: true });
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', onTouchEnd, { passive: true });
+    document.addEventListener('touchcancel', onTouchEnd, { passive: true });
 
     // Register listeners for mouse pointer
     window.addEventListener('pointerdown', onPointerDown, { passive: true });
@@ -328,10 +328,10 @@ export function PullToRefresh() {
     window.addEventListener('selectstart', onSelectStart, { capture: true });
 
     return () => {
-      window.removeEventListener('touchstart', onTouchStart);
-      window.removeEventListener('touchmove', onTouchMove);
-      window.removeEventListener('touchend', onTouchEnd);
-      window.removeEventListener('touchcancel', onTouchEnd);
+      document.removeEventListener('touchstart', onTouchStart);
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
+      document.removeEventListener('touchcancel', onTouchEnd);
 
       window.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
