@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { Instagram, Music, Search, X, UserX } from 'lucide-react';
+import { Instagram, Music, Search, X, UserX, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useLogo } from '../hooks/useLogo';
 
@@ -100,6 +100,7 @@ function DjCard({ dj, index, resolveDjImage, logoUrl, isLightMode, settings }: {
 
 export default function DJs() {
   const [query, setQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   const { data: settings } = useQuery({
     queryKey: ['settings'],
@@ -125,6 +126,18 @@ export default function DJs() {
       dj.bio?.toLowerCase().includes(normalizedQuery)
     );
   }, [djs, query]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [query]);
+
+  const ITEMS_PER_PAGE = 9;
+  const totalPages = Math.ceil(filteredDjs.length / ITEMS_PER_PAGE);
+
+  const paginatedDjs = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredDjs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredDjs, currentPage]);
 
   if (isLoading) {
     return (
@@ -193,12 +206,64 @@ export default function DJs() {
           <p className="text-white/30 uppercase tracking-[0.3em] text-[10px] font-black">Summoning Artists...</p>
         </div>
       ) : filteredDjs.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 md:gap-10 px-4">
-          {filteredDjs.map((dj, index) => (
-            <div key={dj.id}>
-              <DjCard dj={dj} index={index} resolveDjImage={resolveDjImage} logoUrl={logoUrl} isLightMode={isLightMode} settings={settings} />
+        <div className="space-y-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 md:gap-10 px-4">
+            {paginatedDjs.map((dj, index) => (
+              <div key={dj.id}>
+                <DjCard dj={dj} index={index} resolveDjImage={resolveDjImage} logoUrl={logoUrl} isLightMode={isLightMode} settings={settings} />
+              </div>
+            ))}
+          </div>
+
+          {/* Premium Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 pt-8 pb-4">
+              <button
+                onClick={() => {
+                  setCurrentPage(prev => Math.max(prev - 1, 1));
+                  window.scrollTo({ top: 300, behavior: 'smooth' });
+                }}
+                disabled={currentPage === 1}
+                className="w-12 h-12 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/20 hover:bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition-all disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:border-white/5"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              
+              <div className="flex items-center gap-2">
+                {Array.from({ length: totalPages }, (_, i) => {
+                  const pageNum = i + 1;
+                  const isActive = currentPage === pageNum;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => {
+                        setCurrentPage(pageNum);
+                        window.scrollTo({ top: 300, behavior: 'smooth' });
+                      }}
+                      className={`w-12 h-12 rounded-2xl text-xs font-black transition-all flex items-center justify-center ${
+                        isActive
+                          ? "bg-neon-purple text-white border border-neon-purple/30 glow-box shadow-lg shadow-neon-purple/10"
+                          : "bg-white/[0.02] text-white/40 border border-white/5 hover:bg-white/5 hover:text-white"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => {
+                  setCurrentPage(prev => Math.min(prev + 1, totalPages));
+                  window.scrollTo({ top: 300, behavior: 'smooth' });
+                }}
+                disabled={currentPage === totalPages}
+                className="w-12 h-12 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/20 hover:bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition-all disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:border-white/5"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
             </div>
-          ))}
+          )}
         </div>
       ) : (
         <div className="mx-4 py-20 text-center glass-panel rounded-2xl border-dashed flex flex-col items-center justify-center gap-4">
