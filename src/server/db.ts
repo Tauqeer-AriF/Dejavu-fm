@@ -232,11 +232,12 @@ export function initDb() {
 
     CREATE TABLE IF NOT EXISTS schedule (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      dj_id INTEGER,
+      dj_id TEXT,
       day_of_week INTEGER, -- 0 (Sunday) to 6 (Saturday)
       start_time TEXT, -- HH:mm format
       end_time TEXT, -- HH:mm format
       show_name TEXT,
+      image_url TEXT,
       FOREIGN KEY (dj_id) REFERENCES djs (id)
     );
 
@@ -401,6 +402,7 @@ export function initDb() {
   };
 
   // Migrations for existing databases
+  runMigration('schedule_image_url_v1', "ALTER TABLE schedule ADD COLUMN image_url TEXT DEFAULT NULL;");
   runMigration('admin_profile_fields', "ALTER TABLE admins ADD COLUMN bio TEXT; ALTER TABLE admins ADD COLUMN photo_url TEXT;");
   runMigration('dj_social_fields', "ALTER TABLE djs ADD COLUMN image_url TEXT; ALTER TABLE djs ADD COLUMN instagram TEXT; ALTER TABLE djs ADD COLUMN soundcloud TEXT; ALTER TABLE djs ADD COLUMN mixcloud TEXT;");
   runMigration('user_source_field', "ALTER TABLE users ADD COLUMN source TEXT DEFAULT 'register';");
