@@ -17,6 +17,8 @@ export function AdminChatUsers({ isAdminUser }: { isAdminUser: boolean }) {
   const itemsPerPage = 10;
   const { showConfirm, showAlert } = useModal();
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
 
   const load = () => fetchAdmin("/api/admin/chat_users").then(r => r.json()).then(setUsers);
   useEffect(() => { load(); }, []);
@@ -177,35 +179,75 @@ export function AdminChatUsers({ isAdminUser }: { isAdminUser: boolean }) {
             <input 
               type="file" 
               accept=".csv" 
-              className="absolute inset-0 opacity-0 cursor-pointer z-10"
-              onChange={async (e) => {
+              className={`absolute inset-0 opacity-0 ${importing ? "pointer-events-none cursor-not-allowed" : "cursor-pointer"} z-10`}
+              disabled={importing}
+              onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
                 
+                setImporting(true);
+                setImportProgress(0);
                 const formData = new FormData();
                 formData.append('csv', file);
                 
-                try {
-                  const res = await fetchAdmin("/api/admin/chat_users/import", {
-                    method: "POST",
-                    body: formData
-                  });
-                  const data = await res.json();
-                  if (res.ok) {
-                    showAlert({ title: "Import Successful", message: `Imported ${data.count} users successfully.`, style: "success" });
-                    load();
-                  } else {
-                    showAlert({ title: "Import Failed", message: data.error || "Failed to import users.", style: "danger" });
-                  }
-                } catch (err) {
-                  showAlert({ title: "Import Failed", message: "Network error during import.", style: "danger" });
+                const xhr = new XMLHttpRequest();
+                xhr.open("POST", "/api/admin/chat_users/import");
+                
+                const token = localStorage.getItem("admin_token");
+                if (token) {
+                  xhr.setRequestHeader("Authorization", `Bearer ${token}`);
                 }
+                
+                xhr.upload.addEventListener("progress", (event) => {
+                  if (event.lengthComputable) {
+                    const percent = Math.round((event.loaded / event.total) * 100);
+                    setImportProgress(percent);
+                  }
+                });
+                
+                xhr.addEventListener("load", () => {
+                  setImporting(false);
+                  setImportProgress(0);
+                  try {
+                    const responseData = JSON.parse(xhr.responseText);
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                      showAlert({ title: "Import Successful", message: `Imported ${responseData.count || 0} users successfully.`, style: "success" });
+                      load();
+                    } else {
+                      showAlert({ title: "Import Failed", message: responseData.error || "Failed to import users.", style: "danger" });
+                    }
+                  } catch (err) {
+                    showAlert({ title: "Import Failed", message: "Failed to parse import response.", style: "danger" });
+                  }
+                });
+                
+                xhr.addEventListener("error", () => {
+                  setImporting(false);
+                  setImportProgress(0);
+                  showAlert({ title: "Import Failed", message: "Network error during import.", style: "danger" });
+                });
+                
+                xhr.send(formData);
                 e.target.value = '';
               }}
             />
-            <button className="px-4 py-2 bg-white/5 hover:bg-neon-purple/20 border border-white/10 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap text-neon-purple flex items-center gap-2">
-              <Upload className="w-3 h-3" />
-              Import CSV
+            <button 
+              disabled={importing}
+              className={`px-4 py-2 bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap text-neon-purple flex items-center gap-2 ${
+                importing ? "opacity-50 cursor-not-allowed" : "hover:bg-neon-purple/20"
+              }`}
+            >
+              {importing ? (
+                <>
+                  <RefreshCw className="w-3 h-3 animate-spin text-neon-purple" />
+                  {importProgress < 100 ? `Uploading (${importProgress}%)` : "Processing..."}
+                </>
+              ) : (
+                <>
+                  <Upload className="w-3 h-3" />
+                  Import CSV
+                </>
+              )}
             </button>
           </div>
           <button onClick={() => {

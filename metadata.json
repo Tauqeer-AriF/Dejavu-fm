@@ -1,6 +1,6 @@
 {
   "name": "Dejavu FM",
-  "description": "Premium Radio Station Platform with lives stream, DJ schedules, and podcasts.",
-  "requestFramePermissions": ["microphone"],
+  "description": "The Sound of London underground radio station stream player and podcast catcher.",
+  "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
