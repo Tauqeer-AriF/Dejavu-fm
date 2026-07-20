@@ -213,101 +213,157 @@ export default function Schedule() {
         </div>
       </div>
 
-      {/* Tabs navigation */}
-      <div className={`border-b ${isLightMode ? "border-slate-200" : "border-white/5"} pb-2`}>
-        <div className="flex items-center justify-between gap-4">
-          <div className="relative w-full -mx-4 px-4 sm:mx-0 sm:px-0">
-            {/* Ambient edge fades for mobile scroll indicator */}
-            <div className="absolute left-4 top-1 bottom-1 w-10 bg-gradient-to-r from-dark-bg to-transparent pointer-events-none z-20 sm:hidden" />
-            <div className="absolute right-4 top-1 bottom-1 w-10 bg-gradient-to-l from-dark-bg to-transparent pointer-events-none z-20 sm:hidden" />
-            
-            <div className={`flex items-center ${
-              isLightMode ? "bg-slate-100/80 border-slate-200" : "bg-[#0d0d0f]/60 border-white/5"
-            } border p-1 rounded-2xl md:rounded-full overflow-x-auto scrollbar-none max-w-full gap-1`}>
-              {/* 'All' Tab */}
-              <button
-                onClick={() => setActiveTab('all')}
-                className={`px-3 py-2 sm:px-5 sm:py-2.5 rounded-xl md:rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest flex items-center gap-1.5 transition-all relative shrink-0 z-10 ${
-                  activeTab === 'all'
-                    ? (isLightMode ? "text-slate-900" : "text-white")
-                    : (isLightMode ? "text-slate-500 hover:text-slate-900" : "text-white/40 hover:text-white/80")
-                }`}
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span>Full Week</span>
-                <span className={`px-1.5 py-0.5 rounded text-[8px] sm:text-[9px] font-mono ${
-                  activeTab === 'all'
-                    ? (isLightMode ? "bg-slate-900/10 text-slate-900" : "bg-white/10 text-white")
-                    : (isLightMode ? "bg-slate-200/50 text-slate-500" : "bg-white/5 text-white/50")
-                }`}>
-                  {totalShows}
-                </span>
-                {activeTab === 'all' && (
-                  <motion.div
-                    layoutId="activeTabPill"
-                    className={`absolute inset-0 rounded-xl md:rounded-full ${
-                      isLightMode
-                        ? "bg-gradient-to-r from-neon-purple/15 to-neon-blue/15 border border-neon-purple/20 shadow-sm shadow-neon-purple/5"
-                        : "bg-gradient-to-r from-neon-purple/20 to-neon-blue/20 border border-neon-purple/30 shadow-lg shadow-neon-purple/5"
-                    } -z-10`}
-                    transition={{ type: "spring", stiffness: 350, damping: 26 }}
-                  />
-                )}
-              </button>
-
-              {/* Separator */}
-              <div className={`h-5 w-[1px] ${isLightMode ? "bg-slate-200" : "bg-white/10"} shrink-0 mx-1 self-center`} />
-
-              {/* Daily Tabs */}
+      {/* Mobile/Desktop Navigation Switch */}
+      <div className={`border-b ${isLightMode ? "border-slate-200" : "border-white/5"} pb-6 mt-[60px] mr-0`}>
+        {/* Mobile Dropdown Navigation */}
+        <div className="block sm:hidden relative w-full">
+          <label className={`text-[10px] font-black uppercase tracking-widest ${isLightMode ? "text-slate-500" : "text-white/40"} mb-2.5 block`}>
+            Select Schedule View
+          </label>
+          <div className="relative">
+            <select
+              id="mobile-schedule-select"
+              value={activeTab === 'all' ? 'all' : activeTab}
+              onChange={(e) => {
+                const val = e.target.value;
+                setActiveTab(val === 'all' ? 'all' : parseInt(val, 10));
+              }}
+              className={`w-full px-4 py-4 pr-12 text-xs font-black uppercase tracking-[0.1em] rounded-2xl border appearance-none transition-all cursor-pointer outline-none ${
+                isLightMode 
+                  ? "bg-slate-100 border-slate-200 text-slate-900 focus:border-neon-purple focus:ring-1 focus:ring-neon-purple"
+                  : "bg-white/5 border-white/10 text-white focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/20"
+              }`}
+            >
+              <option value="all" className={isLightMode ? "text-slate-900 bg-white" : "text-white bg-dark-bg"}>
+                Full Week ({totalShows} shows)
+              </option>
               {DAYS.map((dayName, index) => {
                 const isToday = currentDay === index;
                 const showCount = dayCounts[index];
-                const isActive = activeTab === index;
-
                 return (
-                  <button
-                    key={dayName}
-                    onClick={() => setActiveTab(index)}
-                    className={`px-3 py-2 sm:px-5 sm:py-2.5 rounded-xl md:rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest flex items-center gap-1.5 transition-all relative shrink-0 z-10 ${
-                      isActive
-                        ? (isLightMode ? "text-slate-900" : "text-white")
-                        : (isLightMode ? "text-slate-500 hover:text-slate-900" : "text-white/40 hover:text-white/80")
-                    }`}
+                  <option 
+                    key={dayName} 
+                    value={index}
+                    className={isLightMode ? "text-slate-900 bg-white" : "text-white bg-[#121214]"}
                   >
-                    {isToday && (
-                      <span className="relative flex h-1.5 w-1.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-purple opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-neon-purple"></span>
-                      </span>
-                    )}
-                    {/* Desktop name & mobile name */}
-                    <span className="hidden sm:inline">{dayName}</span>
-                    <span className="inline sm:hidden">{SHORT_DAYS[index]}</span>
-                    
-                    {showCount > 0 && (
-                      <span className={`px-1.5 py-0.5 rounded text-[8px] sm:text-[9px] font-mono ${
-                        isActive
-                          ? (isLightMode ? "bg-slate-900/10 text-slate-900" : "bg-white/15 text-white")
-                          : (isLightMode ? "bg-slate-200/50 text-slate-500" : "bg-white/5 text-white/50")
-                      }`}>
-                        {showCount}
-                      </span>
-                    )}
-
-                    {isActive && (
-                      <motion.div
-                        layoutId="activeTabPill"
-                        className={`absolute inset-0 rounded-xl md:rounded-full ${
-                          isLightMode
-                            ? "bg-gradient-to-r from-neon-purple/15 to-neon-blue/15 border border-neon-purple/20 shadow-sm shadow-neon-purple/5"
-                            : "bg-gradient-to-r from-neon-purple/20 to-neon-blue/20 border border-neon-purple/30 shadow-lg shadow-neon-purple/5"
-                        } -z-10`}
-                        transition={{ type: "spring", stiffness: 350, damping: 26 }}
-                      />
-                    )}
-                  </button>
+                    {dayName} {isToday ? "• Today " : ""}({showCount} {showCount === 1 ? 'show' : 'shows'})
+                  </option>
                 );
               })}
+            </select>
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-2">
+              {activeTab !== 'all' && currentDay === activeTab && (
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-purple opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-neon-purple"></span>
+                </span>
+              )}
+              <svg
+                className={`w-4 h-4 ${isLightMode ? "text-slate-600" : "text-white/45"}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop Tabs Navigation */}
+        <div className="hidden sm:block">
+          <div className="flex items-center justify-between gap-4">
+            <div className="relative w-full">
+              <div className={`flex items-center ${
+                isLightMode ? "bg-slate-100/80 border-slate-200" : "bg-[#0d0d0f]/60 border-white/5"
+              } border p-1 rounded-full overflow-x-auto scrollbar-none max-w-full gap-1`}>
+                {/* 'All' Tab */}
+                <button
+                  id="tab-all"
+                  onClick={() => setActiveTab('all')}
+                  className={`px-3 py-2 sm:px-5 sm:py-2.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest flex items-center gap-1.5 transition-all relative shrink-0 z-10 ${
+                    activeTab === 'all'
+                      ? (isLightMode ? "text-slate-900" : "text-white")
+                      : (isLightMode ? "text-slate-500 hover:text-slate-900" : "text-white/40 hover:text-white/80")
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>Full Week</span>
+                  <span className={`px-1.5 py-0.5 rounded text-[8px] sm:text-[9px] font-mono ${
+                    activeTab === 'all'
+                      ? (isLightMode ? "bg-slate-900/10 text-slate-900" : "bg-white/10 text-white")
+                      : (isLightMode ? "bg-slate-200/50 text-slate-500" : "bg-white/5 text-white/50")
+                  }`}>
+                    {totalShows}
+                  </span>
+                  {activeTab === 'all' && (
+                    <motion.div
+                      layoutId="activeTabPill"
+                      className={`absolute inset-0 rounded-full ${
+                        isLightMode
+                          ? "bg-gradient-to-r from-neon-purple/15 to-neon-blue/15 border border-neon-purple/20 shadow-sm shadow-neon-purple/5"
+                          : "bg-gradient-to-r from-neon-purple/20 to-neon-blue/20 border border-neon-purple/30 shadow-lg shadow-neon-purple/5"
+                      } -z-10`}
+                      transition={{ type: "spring", stiffness: 350, damping: 26 }}
+                    />
+                  )}
+                </button>
+
+                {/* Separator */}
+                <div className={`h-5 w-[1px] ${isLightMode ? "bg-slate-200" : "bg-white/10"} shrink-0 mx-1 self-center`} />
+
+                {/* Daily Tabs */}
+                {DAYS.map((dayName, index) => {
+                  const isToday = currentDay === index;
+                  const showCount = dayCounts[index];
+                  const isActive = activeTab === index;
+
+                  return (
+                    <button
+                      id={`tab-day-${index}`}
+                      key={dayName}
+                      onClick={() => setActiveTab(index)}
+                      className={`px-3 py-2 sm:px-5 sm:py-2.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest flex items-center gap-1.5 transition-all relative shrink-0 z-10 ${
+                        isActive
+                          ? (isLightMode ? "text-slate-900" : "text-white")
+                          : (isLightMode ? "text-slate-500 hover:text-slate-900" : "text-white/40 hover:text-white/80")
+                      }`}
+                    >
+                      {isToday && (
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-purple opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-neon-purple"></span>
+                        </span>
+                      )}
+                      {/* Desktop name & mobile name */}
+                      <span className="hidden sm:inline">{dayName}</span>
+                      <span className="inline sm:hidden">{SHORT_DAYS[index]}</span>
+                      
+                      {showCount > 0 && (
+                        <span className={`px-1.5 py-0.5 rounded text-[8px] sm:text-[9px] font-mono ${
+                          isActive
+                            ? (isLightMode ? "bg-slate-900/10 text-slate-900" : "bg-white/15 text-white")
+                            : (isLightMode ? "bg-slate-200/50 text-slate-500" : "bg-white/5 text-white/50")
+                        }`}>
+                          {showCount}
+                        </span>
+                      )}
+
+                      {isActive && (
+                        <motion.div
+                          layoutId="activeTabPill"
+                          className={`absolute inset-0 rounded-full ${
+                            isLightMode
+                              ? "bg-gradient-to-r from-neon-purple/15 to-neon-blue/15 border border-neon-purple/20 shadow-sm shadow-neon-purple/5"
+                              : "bg-gradient-to-r from-neon-purple/20 to-neon-blue/20 border border-neon-purple/30 shadow-lg shadow-neon-purple/5"
+                          } -z-10`}
+                          transition={{ type: "spring", stiffness: 350, damping: 26 }}
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
