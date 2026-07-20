@@ -449,9 +449,9 @@ export default function Schedule() {
                             />
                             <div className="relative shrink-0 w-24 h-24 z-10">
                               <div className={`w-full h-full rounded-xl overflow-hidden border border-white/5 ${
-                                resolveDjImage(show.dj_photo) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''
+                                resolveDjImage(show.image_url || show.dj_photo) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''
                               }`}>
-                                <img src={resolveDjImage(show.dj_photo)} alt={show.dj_name} className={`w-full h-full filter grayscale group-hover:grayscale-0 transition-all duration-500 ${resolveDjImage(show.dj_photo) === logoUrl && logoUrl ? 'object-contain p-2' : 'object-cover'}`} />
+                                <img src={resolveDjImage(show.image_url || show.dj_photo)} alt={show.dj_name} className={`w-full h-full filter grayscale group-hover:grayscale-0 transition-all duration-500 ${resolveDjImage(show.image_url || show.dj_photo) === logoUrl && logoUrl ? 'object-contain p-2' : 'object-cover'}`} />
                               </div>
                               {isLive && (
                                 <div className="absolute inset-0 border-2 border-neon-purple rounded-xl scale-105 animate-pulse pointer-events-none"></div>
@@ -612,9 +612,9 @@ export default function Schedule() {
                               />
                               <div className="relative shrink-0 w-24 h-24 z-10">
                                 <div className={`w-full h-full rounded-xl overflow-hidden border border-white/5 ${
-                                  resolveDjImage(show.dj_photo) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''
+                                  resolveDjImage(show.image_url || show.dj_photo) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''
                                 }`}>
-                                  <img src={resolveDjImage(show.dj_photo)} alt={show.dj_name} className={`w-full h-full filter grayscale group-hover:grayscale-0 transition-all duration-500 ${resolveDjImage(show.dj_photo) === logoUrl && logoUrl ? 'object-contain p-2' : 'object-cover'}`} />
+                                  <img src={resolveDjImage(show.image_url || show.dj_photo)} alt={show.dj_name} className={`w-full h-full filter grayscale group-hover:grayscale-0 transition-all duration-500 ${resolveDjImage(show.image_url || show.dj_photo) === logoUrl && logoUrl ? 'object-contain p-2' : 'object-cover'}`} />
                                 </div>
                                 {isLive && (
                                   <div className="absolute inset-0 border-2 border-neon-purple rounded-xl scale-105 animate-pulse pointer-events-none"></div>
