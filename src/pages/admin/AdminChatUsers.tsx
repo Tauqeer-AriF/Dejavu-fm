@@ -16,6 +16,7 @@ export function AdminChatUsers({ isAdminUser }: { isAdminUser: boolean }) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const { showConfirm, showAlert } = useModal();
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
   const load = () => fetchAdmin("/api/admin/chat_users").then(r => r.json()).then(setUsers);
   useEffect(() => { load(); }, []);
@@ -39,7 +40,14 @@ export function AdminChatUsers({ isAdminUser }: { isAdminUser: boolean }) {
     return filteredUsers.slice(start, start + itemsPerPage);
   }, [filteredUsers, currentPage]);
 
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, showBannedOnly]);
+  useEffect(() => { 
+    setCurrentPage(1); 
+    setSelectedIds([]);
+  }, [searchTerm, showBannedOnly]);
+
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [currentPage]);
 
   const handleDeleteUser = async (id: number, username: string) => {
     const confirmed = await showConfirm({
@@ -50,7 +58,83 @@ export function AdminChatUsers({ isAdminUser }: { isAdminUser: boolean }) {
     });
     if (confirmed) {
       await fetchAdmin(`/api/admin/chat_users/${id}`, { method: "DELETE" });
+      setSelectedIds(prev => prev.filter(item => item !== id));
       load();
+    }
+  };
+
+  const handleToggleBan = async (user: any, ban: boolean) => {
+    try {
+      const endpoint = ban ? "/api/admin/chat_users/ban" : "/api/admin/chat_users/unban";
+      const res = await fetchAdmin(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: user.username })
+      });
+      if (res.ok) {
+        showAlert({
+          title: ban ? "User Banned" : "User Unbanned",
+          message: `Successfully ${ban ? 'banned' : 'unbanned'} '@${user.username}'.`,
+          style: "success"
+        });
+        load();
+      } else {
+        const err = await res.json();
+        showAlert({ title: "Error", message: err.error || "Action failed", style: "danger" });
+      }
+    } catch (e) {
+      showAlert({ title: "Error", message: "Network error occurred", style: "danger" });
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    const confirmed = await showConfirm({
+      title: "Bulk Delete Users",
+      message: `Are you sure you want to permanently delete the ${selectedIds.length} selected chat users?`,
+      style: "danger",
+      confirmText: "Delete All"
+    });
+    if (!confirmed) return;
+
+    try {
+      await Promise.all(selectedIds.map(id => 
+        fetchAdmin(`/api/admin/chat_users/${id}`, { method: "DELETE" })
+      ));
+      showAlert({ title: "Deleted", message: `${selectedIds.length} users removed successfully.`, style: "success" });
+      setSelectedIds([]);
+      load();
+    } catch (err) {
+      showAlert({ title: "Error", message: "Some deletions might have failed.", style: "danger" });
+    }
+  };
+
+  const handleBulkBan = async (ban: boolean) => {
+    if (selectedIds.length === 0) return;
+    const actionText = ban ? "ban" : "unban";
+    const confirmed = await showConfirm({
+      title: `Bulk ${ban ? 'Ban' : 'Unban'} Users`,
+      message: `Are you sure you want to ${actionText} the ${selectedIds.length} selected chat users?`,
+      style: "warning",
+      confirmText: ban ? "Ban All" : "Unban All"
+    });
+    if (!confirmed) return;
+
+    try {
+      const endpoint = ban ? "/api/admin/chat_users/ban" : "/api/admin/chat_users/unban";
+      const usersToActOn = users.filter(u => selectedIds.includes(u.id));
+      await Promise.all(usersToActOn.map(u => 
+        fetchAdmin(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: u.username })
+        })
+      ));
+      showAlert({ title: "Success", message: `${selectedIds.length} users ${ban ? 'banned' : 'unbanned'} successfully.`, style: "success" });
+      setSelectedIds([]);
+      load();
+    } catch (err) {
+      showAlert({ title: "Error", message: "Some status updates might have failed.", style: "danger" });
     }
   };
 
@@ -86,25 +170,7 @@ export function AdminChatUsers({ isAdminUser }: { isAdminUser: boolean }) {
     <div className="space-y-6 max-w-4xl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/10 pb-4 gap-4">
         <h3 className="text-2xl font-bold">Chat Users</h3>
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="relative w-full sm:w-48">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-            <input 
-              type="text"
-              placeholder="Search users..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-10 pr-4 text-[10px] focus:outline-none focus:border-neon-purple/50 transition-all placeholder:text-white/20 text-white"
-            />
-          </div>
-          <label className="flex items-center gap-2 cursor-pointer group">
-            <div className="relative">
-              <input type="checkbox" checked={showBannedOnly} onChange={e => setShowBannedOnly(e.target.checked)} className="sr-only peer" />
-              <div className="w-10 h-5 bg-white/10 rounded-full peer peer-checked:bg-red-500/50 transition-colors"></div>
-              <div className="absolute left-1 top-1 w-3 h-3 bg-white/40 rounded-full peer-checked:left-6 peer-checked:bg-red-500 transition-all"></div>
-            </div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Banned Only</span>
-          </label>
+        <div className="flex flex-wrap items-center gap-2.5">
           <button onClick={exportChatUsersToCSV} className="px-4 py-2 bg-white/5 hover:bg-neon-blue/20 border border-white/10 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap text-neon-blue">Export CSV</button>
           
           <div className="relative group/import">
@@ -160,52 +226,177 @@ export function AdminChatUsers({ isAdminUser }: { isAdminUser: boolean }) {
         <AddChatUserForm onAdd={load} />
       )}
 
+      {/* Bulk Actions Control Bar */}
+      <div className="bg-white/5 border border-white/10 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
+        <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              checked={paginatedUsers.length > 0 && paginatedUsers.every(u => selectedIds.includes(u.id))}
+              ref={el => {
+                if (el) {
+                  const someSelected = paginatedUsers.some(u => selectedIds.includes(u.id));
+                  const allSelected = paginatedUsers.every(u => selectedIds.includes(u.id));
+                  el.indeterminate = someSelected && !allSelected;
+                }
+              }}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  const newSelected = Array.from(new Set([...selectedIds, ...paginatedUsers.map(u => u.id)]));
+                  setSelectedIds(newSelected);
+                } else {
+                  const paginatedIds = paginatedUsers.map(u => u.id);
+                  setSelectedIds(selectedIds.filter(id => !paginatedIds.includes(id)));
+                }
+              }}
+              className="w-4 h-4 rounded border-white/20 bg-white/5 text-neon-purple focus:ring-neon-purple cursor-pointer accent-neon-purple"
+            />
+            <span className="font-semibold text-white/70">
+              {selectedIds.length > 0 
+                ? `${selectedIds.length} user(s) selected` 
+                : "Select users for bulk actions"
+              }
+            </span>
+          </div>
+
+          <div className="h-4 w-[1px] bg-white/10 hidden sm:block"></div>
+
+          <label className="flex items-center gap-2 cursor-pointer group">
+            <div className="relative">
+              <input type="checkbox" checked={showBannedOnly} onChange={e => setShowBannedOnly(e.target.checked)} className="sr-only peer" />
+              <div className="w-10 h-5 bg-white/10 rounded-full peer peer-checked:bg-red-500/50 transition-colors"></div>
+              <div className="absolute left-1 top-1 w-3 h-3 bg-white/40 rounded-full peer-checked:left-6 peer-checked:bg-red-500 transition-all"></div>
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-widest text-white/40 group-hover:text-white/60 transition-colors">Banned Only</span>
+          </label>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-2">
+          {selectedIds.length > 0 ? (
+            <>
+              <button
+                onClick={() => handleBulkBan(true)}
+                className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 text-[10px] font-black uppercase tracking-widest rounded-lg transition-colors"
+              >
+                Bulk Ban
+              </button>
+              <button
+                onClick={() => handleBulkBan(false)}
+                className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase tracking-widest rounded-lg transition-colors"
+              >
+                Bulk Unban
+              </button>
+              {isAdminUser && (
+                <button
+                  onClick={handleBulkDelete}
+                  className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-[10px] font-black uppercase tracking-widest rounded-lg transition-colors"
+                >
+                  Bulk Delete
+                </button>
+              )}
+              <button
+                onClick={() => setSelectedIds([])}
+                className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-colors"
+              >
+                Clear
+              </button>
+            </>
+          ) : (
+            <span className="text-[10px] text-white/30 uppercase font-black tracking-widest">Select user checkboxes below</span>
+          )}
+        </div>
+      </div>
+
+      {/* Real-time Search Input */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+        <input 
+          type="text"
+          placeholder="Search chat users by username or email..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-10 pr-10 text-xs focus:outline-none focus:border-neon-purple/50 transition-all placeholder:text-white/20 text-white"
+        />
+        {searchTerm && (
+          <button
+            type="button"
+            onClick={() => setSearchTerm("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors"
+            title="Clear search"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
       <div className="space-y-2">
         {paginatedUsers.map(u => (
           <div key={u.id} className="bg-dark-bg/50 border border-white/10 p-4 rounded-xl flex flex-col">
             {editingId === u.id ? (
               <EditChatUserForm user={u} onSave={() => { setEditingId(null); load(); }} onCancel={() => setEditingId(null)} />
             ) : (
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 min-w-0">
-                <div className="min-w-0 flex-1 space-y-3">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[10px] text-white/30 uppercase font-black tracking-widest">Username:</span>
-                    <span className="font-bold text-lg text-white block truncate">@{u.username}</span>
-                    <span className={`text-[8px] px-1.5 py-0.5 rounded border font-black uppercase tracking-tighter ${
-                      u.source === 'shoutout' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
-                      u.source === 'admin' ? 'bg-neon-blue/10 text-neon-blue border-neon-blue/20' :
-                      'bg-neon-purple/10 text-neon-purple border-neon-purple/20'
-                    }`}>{u.source || 'register'}</span>
-                    {u.is_banned === 1 && (
-                      <span className="text-[8px] px-1.5 py-0.5 rounded border font-black uppercase tracking-tighter bg-red-500/10 text-red-500 border-red-500/20">
-                        Banned
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <span className="text-[10px] text-white/30 uppercase font-black tracking-widest block">Email Address</span>
-                      <span className="text-white/80 font-mono text-sm break-all bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 block">{u.email || 'N/A'}</span>
+              <div className="flex items-start gap-4">
+                <div className="pt-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(u.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedIds([...selectedIds, u.id]);
+                      } else {
+                        setSelectedIds(selectedIds.filter(id => id !== u.id));
+                      }
+                    }}
+                    className="w-4 h-4 rounded border-white/20 bg-white/5 text-neon-purple focus:ring-neon-purple cursor-pointer accent-neon-purple"
+                  />
+                </div>
+                
+                <div className="flex-1 flex flex-col sm:flex-row sm:items-start justify-between gap-4 min-w-0">
+                  <div className="min-w-0 flex-1 space-y-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] text-white/30 uppercase font-black tracking-widest">Username:</span>
+                      <span className="font-bold text-lg text-white block truncate">@{u.username}</span>
+                      <span className={`text-[8px] px-1.5 py-0.5 rounded border font-black uppercase tracking-tighter ${
+                        u.source === 'shoutout' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
+                        u.source === 'admin' ? 'bg-neon-blue/10 text-neon-blue border-neon-blue/20' :
+                        'bg-neon-purple/10 text-neon-purple border-neon-purple/20'
+                      }`}>{u.source || 'register'}</span>
+                      {u.is_banned === 1 && (
+                        <span className="text-[8px] px-1.5 py-0.5 rounded border font-black uppercase tracking-tighter bg-red-500/10 text-red-500 border-red-500/20">
+                          Banned
+                        </span>
+                      )}
                     </div>
-                    <div className="space-y-1">
-                      <span className="text-[10px] text-white/30 uppercase font-black tracking-widest block">Password</span>
-                      <div className="bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 block min-h-[38px]">
-                        <UserPasswordDisplay password={u.password_plain} />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-white/30 uppercase font-black tracking-widest block">Email Address</span>
+                        <span className="text-white/80 font-mono text-sm break-all bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 block">{u.email || 'N/A'}</span>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-white/30 uppercase font-black tracking-widest block">Password</span>
+                        <div className="bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 block min-h-[38px]">
+                          <UserPasswordDisplay password={u.password_plain} />
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex justify-between items-center text-[10px] text-white/30 uppercase font-black tracking-widest pt-1">
-                    <span>Joined: {new Date(u.created_at).toLocaleDateString()}</span>
-                    <span>ID: {u.id}</span>
+                    <div className="flex justify-between items-center text-[10px] text-white/30 uppercase font-black tracking-widest pt-1">
+                      <span>Joined: {new Date(u.created_at).toLocaleDateString()}</span>
+                      <span>ID: {u.id}</span>
+                    </div>
                   </div>
-                </div>
-                <div className="flex space-x-2 items-center self-end sm:self-start">
-                  <button onClick={() => setEditingId(u.id)} className="text-neon-blue hover:text-white transition-colors px-3 py-1.5 text-sm bg-white/5 rounded-lg border border-white/10">Edit</button>
-                  {isAdminUser && ( // Only allow 'admin' role to delete chat users
-                    <button onClick={() => handleDeleteUser(u.id, u.username)} className="text-red-500 hover:text-red-400 text-sm bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/10 transition-colors">Remove</button>
-                  )}
+                  <div className="flex space-x-2 items-center self-end sm:self-start">
+                    {u.is_banned === 1 ? (
+                      <button onClick={() => handleToggleBan(u, false)} className="text-emerald-500 hover:text-emerald-400 text-sm bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/10 transition-colors">Unban</button>
+                    ) : (
+                      <button onClick={() => handleToggleBan(u, true)} className="text-amber-500 hover:text-amber-400 text-sm bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/10 transition-colors">Ban</button>
+                    )}
+                    <button onClick={() => setEditingId(u.id)} className="text-neon-blue hover:text-white transition-colors px-3 py-1.5 text-sm bg-white/5 rounded-lg border border-white/10">Edit</button>
+                    {isAdminUser && ( // Only allow 'admin' role to delete chat users
+                      <button onClick={() => handleDeleteUser(u.id, u.username)} className="text-red-500 hover:text-red-400 text-sm bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/10 transition-colors">Remove</button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
