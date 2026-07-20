@@ -48,8 +48,9 @@ function HeroVisualizer({ isPlaying, isLightMode }: { isPlaying: boolean; isLigh
       const primaryColor = style.getPropertyValue('--color-neon-purple').trim() || '#b026ff';
       const secondaryColor = style.getPropertyValue('--color-neon-blue').trim() || '#00d2ff';
 
-      const width = canvas.width;
-      const height = canvas.height;
+      const dpr = window.devicePixelRatio || 1;
+      const width = canvas.width / dpr;
+      const height = canvas.height / dpr;
       if (width === 0 || height === 0) return;
       
       ctx.clearRect(0, 0, width, height);
@@ -60,33 +61,50 @@ function HeroVisualizer({ isPlaying, isLightMode }: { isPlaying: boolean; isLigh
 
       const centerX = width / 2;
       const centerY = height / 2;
-      const baseSize = Math.min(width, height) * 0.4;
+
+      // Calculate responsive image bounds so the visualizer sits perfectly outside the image
+      const viewportWidth = window.innerWidth;
+      let imgWidth = 280;
+      if (viewportWidth < 640) {
+        imgWidth = Math.min(viewportWidth - 32, 280);
+      } else if (viewportWidth < 768) {
+        imgWidth = 340;
+      } else if (viewportWidth < 1024) {
+        imgWidth = 400;
+      } else {
+        imgWidth = 480;
+      }
+      const imgRadius = imgWidth / 2;
+      
+      // Scale baseSize to sit beautifully just outside the image container
+      const isMobile = viewportWidth < 640;
+      const baseSize = isMobile ? imgRadius * 1.08 : imgRadius * 1.04;
       
       ctx.beginPath();
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = isMobile ? 2.5 : 1.5;
       ctx.strokeStyle = primaryColor + '66'; // 40% opacity
       
       // Outer subtle ring
-      ctx.arc(centerX, centerY, baseSize * 1.4, 0, Math.PI * 2);
+      const outerRingScale = isMobile ? 1.18 : 1.35;
+      ctx.arc(centerX, centerY, baseSize * outerRingScale, 0, Math.PI * 2);
       ctx.stroke();
 
       ctx.beginPath();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = isPlaying 
-        ? primaryColor + '99' // 60% opacity
-        : isLightMode 
-          ? 'rgba(0, 0, 0, 0.6)' 
-          : 'rgba(255, 255, 255, 0.6)';
+      ctx.lineWidth = isMobile ? 4 : 3; // Thicker lines on mobile for better visibility
+      ctx.strokeStyle = primaryColor + 'cc'; // Higher opacity for extra brightness!
       
+      const waveExpansion = isMobile ? 0.22 : 0.45;
+      const cpExpansion = isMobile ? 0.08 : 0.15;
+
       for (let i = 0; i < dataArray.length; i += 4) {
         const value = dataArray[i];
         const percent = value / 255;
-        const radius = baseSize + (percent * (baseSize * 0.6));
+        const radius = baseSize + (percent * (baseSize * waveExpansion));
         const angle = (i * 2 * Math.PI) / dataArray.length;
         const x = centerX + Math.cos(angle) * radius;
         const y = centerY + Math.sin(angle) * radius;
         
-        const cpRadius = baseSize + (percent * (baseSize * 0.2));
+        const cpRadius = baseSize + (percent * (baseSize * cpExpansion));
         const cpx = centerX + Math.cos(angle) * cpRadius;
         const cpy = centerY + Math.sin(angle) * cpRadius;
 
@@ -98,27 +116,30 @@ function HeroVisualizer({ isPlaying, isLightMode }: { isPlaying: boolean; isLigh
 
       // Spinning orbiting dots
       const time = Date.now() * 0.001;
+      const orbitBaseScale = isMobile ? 1.12 : 1.2;
+      const orbitSpacing = isMobile ? 0.04 : 0.08;
+      
       for (let i = 0; i < 3; i++) {
         const orbitAngle = time * (0.5 + i * 0.2);
-        const orbitRadius = baseSize * 1.25 + i * (baseSize * 0.1);
+        const orbitRadius = baseSize * orbitBaseScale + i * (baseSize * orbitSpacing);
         const dotX = centerX + Math.cos(orbitAngle) * orbitRadius;
         const dotY = centerY + Math.sin(orbitAngle) * orbitRadius;
         
         ctx.beginPath();
         ctx.fillStyle = i === 0 ? primaryColor : secondaryColor;
-        ctx.arc(dotX, dotY, 3, 0, Math.PI * 2);
+        ctx.arc(dotX, dotY, isMobile ? 4.5 : 3, 0, Math.PI * 2); // Larger, brighter dots on mobile
         ctx.fill();
-        ctx.shadowBlur = 15;
+        ctx.shadowBlur = isMobile ? 20 : 15;
         ctx.shadowColor = i === 0 ? primaryColor : secondaryColor;
       }
       ctx.shadowBlur = 0;
 
-      // Inner pulsating glow
+      // Inner pulsating glow (drawing from the image edge outward)
       const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
       const glowScale = 1 + (avg / 255) * 0.5;
       
-      const gradient = ctx.createRadialGradient(centerX, centerY, 50, centerX, centerY, baseSize * 1.2 * glowScale);
-      gradient.addColorStop(0, primaryColor + '1a'); // 10% opacity
+      const gradient = ctx.createRadialGradient(centerX, centerY, imgRadius, centerX, centerY, baseSize * (isMobile ? 1.22 : 1.35) * glowScale);
+      gradient.addColorStop(0, primaryColor + '33'); // Stronger 20% opacity glow at the image edge
       gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
       
       ctx.fillStyle = gradient;
@@ -130,8 +151,11 @@ function HeroVisualizer({ isPlaying, isLightMode }: { isPlaying: boolean; isLigh
   }, [getAnalyser, isPlaying]);
 
   return (
-    <div ref={containerRef} className="absolute inset-0 w-full h-full pointer-events-none">
-      <canvas ref={canvasRef} className="w-full h-full opacity-60" />
+    <div 
+      ref={containerRef} 
+      className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none w-[460px] h-[460px] sm:w-[580px] sm:h-[580px] md:w-[680px] md:h-[680px] lg:w-[820px] lg:h-[820px]"
+    >
+      <canvas ref={canvasRef} className="w-full h-full opacity-80 sm:opacity-60" />
     </div>
   );
 }
@@ -307,7 +331,7 @@ export default function Home() {
           initial={{ opacity: 0, scale: 0.85 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.2, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        className="relative group w-full lg:w-[45%] flex justify-center py-0 md:py-6 lg:py-12"
+        className="relative group w-full lg:w-[45%] flex justify-center py-8 sm:py-12 md:py-6 lg:py-12"
         >
           <HeroVisualizer isPlaying={isPlaying && activeType === 'radio'} isLightMode={isLightMode} />
           
@@ -376,17 +400,7 @@ export default function Home() {
           </button>
         </motion.div>
 
-        {/* Elegant Scroll Indicator */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 hidden lg:flex flex-col items-center space-y-1 opacity-30 hover:opacity-70 transition-opacity duration-300">
-          <span className="text-[9px] font-mono uppercase tracking-[0.3em] text-white/40">Scroll to explore</span>
-          <motion.div 
-            animate={{ y: [0, 6, 0] }}
-            transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-            className="w-5 h-5 flex items-center justify-center"
-          >
-            <ChevronDown className="w-4 h-4 text-white/50" />
-          </motion.div>
-        </div>
+
       </div>
 
       {nextShow && (
