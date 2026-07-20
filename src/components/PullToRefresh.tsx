@@ -1,10 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { RefreshCw, ArrowDown, Sparkles } from 'lucide-react';
-import { useLogo } from '../hooks/useLogo';
 
 export function PullToRefresh() {
   const [pullState, setPullState] = useState<'idle' | 'pulling' | 'ready' | 'refreshing'>('idle');
-  const { isLightMode } = useLogo();
   
   // Refs for high-performance direct DOM manipulation
   const containerRef = useRef<HTMLDivElement>(null);
@@ -113,10 +111,9 @@ export function PullToRefresh() {
               textRef.current.textContent = nextState === 'ready' ? 'Release to Refresh' : 'Pull to Refresh';
             }
             if (spinnerRef.current) {
-              const isLight = document.documentElement.classList.contains('light');
               if (nextState === 'ready') {
                 spinnerRef.current.classList.add('border-neon-purple', 'shadow-[0_0_20px_rgba(176,38,255,0.45)]');
-                spinnerRef.current.classList.remove('border-white/10', 'border-black/10');
+                spinnerRef.current.classList.remove('border-white/10');
                 
                 // Trigger a light tactile "tick" when reaching the trigger threshold
                 if (typeof navigator !== 'undefined' && navigator.vibrate) {
@@ -126,8 +123,7 @@ export function PullToRefresh() {
                 }
               } else {
                 spinnerRef.current.classList.remove('border-neon-purple', 'shadow-[0_0_20px_rgba(176,38,255,0.45)]');
-                spinnerRef.current.classList.remove('border-white/10', 'border-black/10');
-                spinnerRef.current.classList.add(isLight ? 'border-black/10' : 'border-white/10');
+                spinnerRef.current.classList.add('border-white/10');
               }
             }
             return nextState;
@@ -230,12 +226,10 @@ export function PullToRefresh() {
       }
 
       if (spinnerRef.current) {
-        const isLight = document.documentElement.classList.contains('light');
         spinnerRef.current.style.transition = 'transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)';
         spinnerRef.current.style.transform = 'scale(0.85)';
         spinnerRef.current.classList.remove('border-neon-purple', 'shadow-[0_0_20px_rgba(176,38,255,0.45)]');
-        spinnerRef.current.classList.remove('border-white/10', 'border-black/10');
-        spinnerRef.current.classList.add(isLight ? 'border-black/10' : 'border-white/10');
+        spinnerRef.current.classList.add('border-white/10');
       }
 
       cleanup();
@@ -383,47 +377,37 @@ export function PullToRefresh() {
         opacity: 0,
       }}
     >
-      {/* Premium dark backdrop blur glow - styled as invisible container to keep JS refs intact */}
+      {/* Premium dark backdrop blur glow */}
       <div 
         ref={glowRef}
-        className="absolute inset-0 opacity-0 pointer-events-none"
+        className="absolute inset-0 bg-gradient-to-b from-black/90 to-transparent backdrop-blur-[6px] border-b border-white/[0.03] opacity-0"
       />
 
       <div className="relative flex flex-col items-center justify-center gap-2.5 z-10">
         {/* Record/Vinyl visual design with glowing ring */}
         <div 
           ref={spinnerRef}
-          className={`relative w-10 h-10 rounded-full shadow-2xl flex items-center justify-center overflow-hidden transition-all duration-300 ${
-            isLightMode ? 'border border-black/10' : 'border border-white/10'
-          }`}
-          style={{ backgroundColor: isLightMode ? '#ffffff' : '#08090d' }}
+          className="relative w-10 h-10 rounded-full bg-[#08090d] border border-white/10 shadow-2xl flex items-center justify-center overflow-hidden transition-all duration-300"
         >
           {/* Authentic record style vinyl grooves */}
-          <div className={`absolute inset-1 rounded-full border opacity-40 ${isLightMode ? 'border-black/5' : 'border-white/5'}`} />
-          <div className={`absolute inset-2 rounded-full border opacity-25 ${isLightMode ? 'border-black/5' : 'border-white/5'}`} />
-          <div className={`absolute inset-3 rounded-full border opacity-15 ${isLightMode ? 'border-black/5' : 'border-white/5'}`} />
+          <div className="absolute inset-1 rounded-full border border-white/5 opacity-40" />
+          <div className="absolute inset-2 rounded-full border border-white/5 opacity-25" />
+          <div className="absolute inset-3 rounded-full border border-white/5 opacity-15" />
           <div className="absolute w-2.5 h-2.5 rounded-full bg-neon-purple/60 z-20" />
 
           <div ref={iconRef} className="relative z-10 transition-colors duration-300">
             {pullState === 'refreshing' ? (
               <RefreshCw className="w-4 h-4 text-neon-purple animate-spin" />
             ) : (
-              <ArrowDown className={`w-4 h-4 transition-colors duration-300 ${pullState === 'ready' ? 'text-neon-purple' : isLightMode ? 'text-black/60' : 'text-white/60'}`} />
+              <ArrowDown className={`w-4 h-4 transition-colors duration-300 ${pullState === 'ready' ? 'text-neon-purple' : 'text-white/60'}`} />
             )}
           </div>
         </div>
 
-        {/* Glossy label container with no visual background container */}
-        <div className="flex items-center gap-1.5 py-0.5">
-          <Sparkles className="w-2.5 h-2.5 text-neon-purple animate-pulse drop-shadow-[0_0_8px_rgba(176,38,255,0.8)]" />
-          <span 
-            ref={textRef} 
-            className={`text-[9px] uppercase tracking-[0.25em] font-black font-sans ${
-              isLightMode 
-                ? 'text-gray-800 drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]' 
-                : 'text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]'
-            }`}
-          >
+        {/* Glossy label */}
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/50 border border-white/10 backdrop-blur-md shadow-lg">
+          <Sparkles className="w-2.5 h-2.5 text-neon-purple animate-pulse" />
+          <span ref={textRef} className="text-[9px] uppercase tracking-[0.25em] font-black text-white/80 font-sans">
             Pull to Refresh
           </span>
         </div>
