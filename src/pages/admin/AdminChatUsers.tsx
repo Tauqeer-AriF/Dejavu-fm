@@ -42,14 +42,18 @@ export function AdminChatUsers({ isAdminUser }: { isAdminUser: boolean }) {
     return filteredUsers.slice(start, start + itemsPerPage);
   }, [filteredUsers, currentPage]);
 
+  const allOnPageSelected = useMemo(() => {
+    return paginatedUsers.length > 0 && paginatedUsers.every(u => selectedIds.includes(u.id));
+  }, [paginatedUsers, selectedIds]);
+
+  const allFilteredSelected = useMemo(() => {
+    return filteredUsers.length > 0 && filteredUsers.every(u => selectedIds.includes(u.id));
+  }, [filteredUsers, selectedIds]);
+
   useEffect(() => { 
     setCurrentPage(1); 
     setSelectedIds([]);
   }, [searchTerm, showBannedOnly]);
-
-  useEffect(() => {
-    setSelectedIds([]);
-  }, [currentPage]);
 
   const handleDeleteUser = async (id: number, username: string) => {
     const confirmed = await showConfirm({
@@ -100,14 +104,21 @@ export function AdminChatUsers({ isAdminUser }: { isAdminUser: boolean }) {
     if (!confirmed) return;
 
     try {
-      await Promise.all(selectedIds.map(id => 
-        fetchAdmin(`/api/admin/chat_users/${id}`, { method: "DELETE" })
-      ));
-      showAlert({ title: "Deleted", message: `${selectedIds.length} users removed successfully.`, style: "success" });
-      setSelectedIds([]);
-      load();
+      const res = await fetchAdmin("/api/admin/chat_users/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: selectedIds })
+      });
+      if (res.ok) {
+        showAlert({ title: "Deleted", message: `${selectedIds.length} users removed successfully.`, style: "success" });
+        setSelectedIds([]);
+        load();
+      } else {
+        const err = await res.json();
+        showAlert({ title: "Error", message: err.error || "Deletions failed.", style: "danger" });
+      }
     } catch (err) {
-      showAlert({ title: "Error", message: "Some deletions might have failed.", style: "danger" });
+      showAlert({ title: "Error", message: "Failed to perform bulk deletion.", style: "danger" });
     }
   };
 
@@ -123,20 +134,24 @@ export function AdminChatUsers({ isAdminUser }: { isAdminUser: boolean }) {
     if (!confirmed) return;
 
     try {
-      const endpoint = ban ? "/api/admin/chat_users/ban" : "/api/admin/chat_users/unban";
       const usersToActOn = users.filter(u => selectedIds.includes(u.id));
-      await Promise.all(usersToActOn.map(u => 
-        fetchAdmin(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: u.username })
-        })
-      ));
-      showAlert({ title: "Success", message: `${selectedIds.length} users ${ban ? 'banned' : 'unbanned'} successfully.`, style: "success" });
-      setSelectedIds([]);
-      load();
+      const usernames = usersToActOn.map(u => u.username);
+
+      const res = await fetchAdmin("/api/admin/chat_users/bulk-ban", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usernames, ban })
+      });
+      if (res.ok) {
+        showAlert({ title: "Success", message: `${selectedIds.length} users ${ban ? 'banned' : 'unbanned'} successfully.`, style: "success" });
+        setSelectedIds([]);
+        load();
+      } else {
+        const err = await res.json();
+        showAlert({ title: "Error", message: err.error || "Status updates failed.", style: "danger" });
+      }
     } catch (err) {
-      showAlert({ title: "Error", message: "Some status updates might have failed.", style: "danger" });
+      showAlert({ title: "Error", message: "Failed to perform bulk status updates.", style: "danger" });
     }
   };
 
@@ -269,84 +284,125 @@ export function AdminChatUsers({ isAdminUser }: { isAdminUser: boolean }) {
       )}
 
       {/* Bulk Actions Control Bar */}
-      <div className="bg-white/5 border border-white/10 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
-        <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              checked={paginatedUsers.length > 0 && paginatedUsers.every(u => selectedIds.includes(u.id))}
-              ref={el => {
-                if (el) {
-                  const someSelected = paginatedUsers.some(u => selectedIds.includes(u.id));
-                  const allSelected = paginatedUsers.every(u => selectedIds.includes(u.id));
-                  el.indeterminate = someSelected && !allSelected;
+      <div className="space-y-2">
+        <div className="bg-white/5 border border-white/10 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={paginatedUsers.length > 0 && paginatedUsers.every(u => selectedIds.includes(u.id))}
+                ref={el => {
+                  if (el) {
+                    const someSelected = paginatedUsers.some(u => selectedIds.includes(u.id));
+                    const allSelected = paginatedUsers.every(u => selectedIds.includes(u.id));
+                    el.indeterminate = someSelected && !allSelected;
+                  }
+                }}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    const newSelected = Array.from(new Set([...selectedIds, ...paginatedUsers.map(u => u.id)]));
+                    setSelectedIds(newSelected);
+                  } else {
+                    const paginatedIds = paginatedUsers.map(u => u.id);
+                    setSelectedIds(selectedIds.filter(id => !paginatedIds.includes(id)));
+                  }
+                }}
+                className="w-4 h-4 rounded border-white/20 bg-white/5 text-neon-purple focus:ring-neon-purple cursor-pointer accent-neon-purple"
+              />
+              <span className="font-semibold text-white/70">
+                {selectedIds.length > 0 
+                  ? `${selectedIds.length} user(s) selected` 
+                  : "Select users for bulk actions"
                 }
-              }}
-              onChange={(e) => {
-                if (e.target.checked) {
-                  const newSelected = Array.from(new Set([...selectedIds, ...paginatedUsers.map(u => u.id)]));
-                  setSelectedIds(newSelected);
-                } else {
-                  const paginatedIds = paginatedUsers.map(u => u.id);
-                  setSelectedIds(selectedIds.filter(id => !paginatedIds.includes(id)));
-                }
-              }}
-              className="w-4 h-4 rounded border-white/20 bg-white/5 text-neon-purple focus:ring-neon-purple cursor-pointer accent-neon-purple"
-            />
-            <span className="font-semibold text-white/70">
-              {selectedIds.length > 0 
-                ? `${selectedIds.length} user(s) selected` 
-                : "Select users for bulk actions"
-              }
-            </span>
-          </div>
-
-          <div className="h-4 w-[1px] bg-white/10 hidden sm:block"></div>
-
-          <label className="flex items-center gap-2 cursor-pointer group">
-            <div className="relative">
-              <input type="checkbox" checked={showBannedOnly} onChange={e => setShowBannedOnly(e.target.checked)} className="sr-only peer" />
-              <div className="w-10 h-5 bg-white/10 rounded-full peer peer-checked:bg-red-500/50 transition-colors"></div>
-              <div className="absolute left-1 top-1 w-3 h-3 bg-white/40 rounded-full peer-checked:left-6 peer-checked:bg-red-500 transition-all"></div>
+              </span>
             </div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-white/40 group-hover:text-white/60 transition-colors">Banned Only</span>
-          </label>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-2">
-          {selectedIds.length > 0 ? (
-            <>
-              <button
-                onClick={() => handleBulkBan(true)}
-                className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 text-[10px] font-black uppercase tracking-widest rounded-lg transition-colors"
-              >
-                Bulk Ban
-              </button>
-              <button
-                onClick={() => handleBulkBan(false)}
-                className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase tracking-widest rounded-lg transition-colors"
-              >
-                Bulk Unban
-              </button>
-              {isAdminUser && (
+
+            <div className="h-4 w-[1px] bg-white/10 hidden sm:block"></div>
+
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <div className="relative">
+                <input type="checkbox" checked={showBannedOnly} onChange={e => setShowBannedOnly(e.target.checked)} className="sr-only peer" />
+                <div className="w-10 h-5 bg-white/10 rounded-full peer peer-checked:bg-red-500/50 transition-colors"></div>
+                <div className="absolute left-1 top-1 w-3 h-3 bg-white/40 rounded-full peer-checked:left-6 peer-checked:bg-red-500 transition-all"></div>
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-white/40 group-hover:text-white/60 transition-colors">Banned Only</span>
+            </label>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-2">
+            {selectedIds.length > 0 ? (
+              <>
                 <button
-                  onClick={handleBulkDelete}
-                  className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-[10px] font-black uppercase tracking-widest rounded-lg transition-colors"
+                  onClick={() => handleBulkBan(true)}
+                  className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 text-[10px] font-black uppercase tracking-widest rounded-lg transition-colors"
                 >
-                  Bulk Delete
+                  Bulk Ban
+                </button>
+                <button
+                  onClick={() => handleBulkBan(false)}
+                  className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase tracking-widest rounded-lg transition-colors"
+                >
+                  Bulk Unban
+                </button>
+                {isAdminUser && (
+                  <button
+                    onClick={handleBulkDelete}
+                    className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-[10px] font-black uppercase tracking-widest rounded-lg transition-colors"
+                  >
+                    Bulk Delete
+                  </button>
+                )}
+                <button
+                  onClick={() => setSelectedIds([])}
+                  className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-colors"
+                >
+                  Clear
+                </button>
+              </>
+            ) : (
+              <span className="text-[10px] text-white/30 uppercase font-black tracking-widest">Select user checkboxes below</span>
+            )}
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {allOnPageSelected && filteredUsers.length > paginatedUsers.length && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="bg-neon-purple/10 border border-neon-purple/20 p-3 rounded-xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 overflow-hidden"
+            >
+              <span className="text-white/80">
+                {allFilteredSelected ? (
+                  <>All <strong>{filteredUsers.length}</strong> users across all pages are selected.</>
+                ) : (
+                  <>All <strong>{paginatedUsers.length}</strong> users on this page are selected.</>
+                )}
+              </span>
+              {allFilteredSelected ? (
+                <button 
+                  onClick={() => {
+                    const paginatedIds = paginatedUsers.map(u => u.id);
+                    setSelectedIds(paginatedIds);
+                  }}
+                  className="text-neon-blue hover:text-neon-blue/80 font-bold uppercase tracking-wider text-[10px] transition-colors"
+                >
+                  Select only current page
+                </button>
+              ) : (
+                <button 
+                  onClick={() => {
+                    setSelectedIds(filteredUsers.map(u => u.id));
+                  }}
+                  className="text-neon-blue hover:text-neon-blue/80 font-bold uppercase tracking-wider text-[10px] transition-colors"
+                >
+                  Select all {filteredUsers.length} users across all pages
                 </button>
               )}
-              <button
-                onClick={() => setSelectedIds([])}
-                className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-colors"
-              >
-                Clear
-              </button>
-            </>
-          ) : (
-            <span className="text-[10px] text-white/30 uppercase font-black tracking-widest">Select user checkboxes below</span>
+            </motion.div>
           )}
-        </div>
+        </AnimatePresence>
       </div>
 
       {/* Real-time Search Input */}

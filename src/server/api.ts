@@ -2447,6 +2447,74 @@ apiRouter.post("/admin/users", authMiddleware, authorizeRole('admin'), (req: Req
   }
 });
 
+apiRouter.post("/admin/users/bulk-delete", authMiddleware, authorizeRole('admin'), (req, res) => {
+  const { usernames } = req.body;
+  if (!Array.isArray(usernames) || usernames.length === 0) {
+    return res.status(400).json({ error: "No usernames provided" });
+  }
+  // Filter out 'admin' (case-insensitive)
+  const deletable = usernames.filter(un => un.trim().toLowerCase() !== 'admin');
+  if (deletable.length === 0) {
+    return res.status(400).json({ error: "No deletable usernames provided" });
+  }
+
+  try {
+    db.transaction(() => {
+      const stmt = db.prepare("DELETE FROM admins WHERE LOWER(TRIM(username)) = LOWER(TRIM(?))");
+      for (const username of deletable) {
+        stmt.run(username.trim());
+      }
+    })();
+    logAction(req, 'BULK_DELETE', 'admin_users', null, { count: deletable.length });
+    res.json({ success: true, count: deletable.length });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete staff accounts" });
+  }
+});
+
+apiRouter.post("/admin/users/bulk-role", authMiddleware, authorizeRole('admin'), (req, res) => {
+  const { usernames, role } = req.body;
+  if (!Array.isArray(usernames) || usernames.length === 0) {
+    return res.status(400).json({ error: "No usernames provided" });
+  }
+  if (!['admin', 'dj'].includes(role)) {
+    return res.status(400).json({ error: "Invalid role specified" });
+  }
+
+  try {
+    db.transaction(() => {
+      const stmt = db.prepare("UPDATE admins SET role = ? WHERE LOWER(TRIM(username)) = LOWER(TRIM(?))");
+      for (const username of usernames) {
+        stmt.run(role, username.trim());
+      }
+    })();
+    logAction(req, 'BULK_ROLE', 'admin_users', null, { role, count: usernames.length });
+    res.json({ success: true, count: usernames.length });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update staff roles" });
+  }
+});
+
+apiRouter.post("/admin/users/bulk-dj-link", authMiddleware, authorizeRole('admin'), (req, res) => {
+  const { usernames, dj_profile_id } = req.body;
+  if (!Array.isArray(usernames) || usernames.length === 0) {
+    return res.status(400).json({ error: "No usernames provided" });
+  }
+
+  try {
+    db.transaction(() => {
+      const stmt = db.prepare("UPDATE admins SET dj_profile_id = ? WHERE LOWER(TRIM(username)) = LOWER(TRIM(?))");
+      for (const username of usernames) {
+        stmt.run(dj_profile_id || null, username.trim());
+      }
+    })();
+    logAction(req, 'BULK_DJ_LINK', 'admin_users', null, { dj_profile_id, count: usernames.length });
+    res.json({ success: true, count: usernames.length });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update staff DJ profile links" });
+  }
+});
+
 apiRouter.put("/admin/users/:username", authorizeRole('admin'), (req, res) => {
   const { password, email, role, dj_profile_id } = req.body;
   const targetUsername = req.params.username.trim();
@@ -2584,6 +2652,55 @@ apiRouter.post("/admin/chat_users/unban", authorizeRole('admin'), (req, res) => 
   // the user to log back in normally.
   logAction(req, 'UNBAN', 'chat_user', email);
   res.json({ success: true });
+});
+
+apiRouter.post("/admin/chat_users/bulk-delete", authorizeRole('admin'), (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: "No user IDs provided" });
+  }
+
+  try {
+    db.transaction(() => {
+      const stmt = db.prepare("DELETE FROM users WHERE id = ?");
+      for (const id of ids) {
+        stmt.run(id);
+      }
+    })();
+    logAction(req, 'BULK_DELETE', 'chat_users', null, { count: ids.length });
+    res.json({ success: true, count: ids.length });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete chat users" });
+  }
+});
+
+apiRouter.post("/admin/chat_users/bulk-ban", authorizeRole('admin'), (req, res) => {
+  const { usernames, ban } = req.body;
+  if (!Array.isArray(usernames) || usernames.length === 0) {
+    return res.status(400).json({ error: "No usernames provided" });
+  }
+
+  const isBannedVal = ban ? 1 : 0;
+  try {
+    db.transaction(() => {
+      const stmt = db.prepare("UPDATE users SET is_banned = ? WHERE username = ?");
+      for (const username of usernames) {
+        stmt.run(isBannedVal, username);
+      }
+    })();
+
+    const io = req.app.get('io');
+    if (io && ban) {
+      for (const username of usernames) {
+        io.emit('user_banned', { email: username });
+      }
+    }
+
+    logAction(req, ban ? 'BULK_BAN' : 'BULK_UNBAN', 'chat_users', null, { count: usernames.length });
+    res.json({ success: true, count: usernames.length });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update ban status of chat users" });
+  }
 });
 
 apiRouter.put("/admin/chat_users/:id", authorizeRole('admin'), (req, res) => {

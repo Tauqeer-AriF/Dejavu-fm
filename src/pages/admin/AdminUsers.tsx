@@ -88,14 +88,18 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
     return filteredUsers.slice(start, start + itemsPerPage);
   }, [filteredUsers, currentPage]);
 
+  const allOnPageSelected = React.useMemo(() => {
+    return paginatedUsers.length > 0 && paginatedUsers.every(u => selectedUsernames.includes(u.username));
+  }, [paginatedUsers, selectedUsernames]);
+
+  const allFilteredSelected = React.useMemo(() => {
+    return filteredUsers.length > 0 && filteredUsers.every(u => selectedUsernames.includes(u.username));
+  }, [filteredUsers, selectedUsernames]);
+
   useEffect(() => {
     setCurrentPage(1);
     setSelectedUsernames([]);
   }, [users, roleFilter, searchQuery]);
-
-  useEffect(() => {
-    setSelectedUsernames([]);
-  }, [currentPage]);
 
   const handleBulkDelete = async () => {
     const deletable = selectedUsernames.filter(username => username.toLowerCase() !== "admin");
@@ -119,31 +123,19 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
     setLoading(true);
 
     try {
-      let successCount = 0;
-      let failCount = 0;
-
-      for (const username of deletable) {
-        try {
-          const res = await fetchAdmin(`/api/admin/users/${username}`, {
-            method: "DELETE"
-          });
-          if (res.ok) {
-            successCount++;
-          } else {
-            failCount++;
-          }
-        } catch (e) {
-          failCount++;
-        }
+      const res = await fetchAdmin("/api/admin/users/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usernames: deletable })
+      });
+      if (res.ok) {
+        setSuccess(`Successfully deleted ${deletable.length} staff account(s).`);
+        setSelectedUsernames([]);
+        loadUsers();
+      } else {
+        const err = await res.json();
+        setError(err.error || "Failed to delete selected staff accounts.");
       }
-
-      if (successCount > 0) {
-        setSuccess(`Successfully deleted ${successCount} staff account(s).${failCount > 0 ? ` Failed to delete ${failCount} account(s).` : ""}`);
-      } else if (failCount > 0) {
-        setError(`Failed to delete selected staff accounts.`);
-      }
-      setSelectedUsernames([]);
-      loadUsers();
     } catch (err) {
       console.error(err);
       setError("Failed to complete bulk delete operation.");
@@ -170,32 +162,19 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
     setLoading(true);
 
     try {
-      let successCount = 0;
-      let failCount = 0;
-
-      for (const username of selectedUsernames) {
-        try {
-          const res = await fetchAdmin(`/api/admin/users/${username}`, {
-            method: "PUT",
-            body: { role }
-          });
-          if (res.ok) {
-            successCount++;
-          } else {
-            failCount++;
-          }
-        } catch (e) {
-          failCount++;
-        }
+      const res = await fetchAdmin("/api/admin/users/bulk-role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usernames: selectedUsernames, role })
+      });
+      if (res.ok) {
+        setSuccess(`Successfully changed role to ${role === "admin" ? "Administrator" : "DJ / Presenter"} for ${selectedUsernames.length} user(s).`);
+        setSelectedUsernames([]);
+        loadUsers();
+      } else {
+        const err = await res.json();
+        setError(err.error || "Failed to update roles for selected users.");
       }
-
-      if (successCount > 0) {
-        setSuccess(`Successfully changed role to ${role === "admin" ? "Administrator" : "DJ / Presenter"} for ${successCount} user(s).${failCount > 0 ? ` Failed for ${failCount} user(s).` : ""}`);
-      } else if (failCount > 0) {
-        setError(`Failed to update roles for selected users.`);
-      }
-      setSelectedUsernames([]);
-      loadUsers();
     } catch (err) {
       console.error(err);
       setError("An error occurred during bulk role change.");
@@ -223,32 +202,19 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
     setLoading(true);
 
     try {
-      let successCount = 0;
-      let failCount = 0;
-
-      for (const username of selectedUsernames) {
-        try {
-          const res = await fetchAdmin(`/api/admin/users/${username}`, {
-            method: "PUT",
-            body: { dj_profile_id }
-          });
-          if (res.ok) {
-            successCount++;
-          } else {
-            failCount++;
-          }
-        } catch (e) {
-          failCount++;
-        }
+      const res = await fetchAdmin("/api/admin/users/bulk-dj-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usernames: selectedUsernames, dj_profile_id })
+      });
+      if (res.ok) {
+        setSuccess(`Successfully updated DJ links for ${selectedUsernames.length} user(s).`);
+        setSelectedUsernames([]);
+        loadUsers();
+      } else {
+        const err = await res.json();
+        setError(err.error || "Failed to update DJ links for selected users.");
       }
-
-      if (successCount > 0) {
-        setSuccess(`Successfully updated DJ links for ${successCount} user(s).${failCount > 0 ? ` Failed for ${failCount} user(s).` : ""}`);
-      } else if (failCount > 0) {
-        setError(`Failed to update DJ links for selected users.`);
-      }
-      setSelectedUsernames([]);
-      loadUsers();
     } catch (err) {
       console.error(err);
       setError("An error occurred during bulk DJ linkage.");
@@ -661,19 +627,21 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
             <div className="flex items-center gap-3">
               <input
                 type="checkbox"
-                checked={filteredUsers.length > 0 && filteredUsers.every(u => selectedUsernames.includes(u.username))}
+                checked={paginatedUsers.length > 0 && paginatedUsers.every(u => selectedUsernames.includes(u.username))}
                 ref={el => {
                   if (el) {
-                    const someSelected = filteredUsers.some(u => selectedUsernames.includes(u.username));
-                    const allSelected = filteredUsers.every(u => selectedUsernames.includes(u.username));
+                    const someSelected = paginatedUsers.some(u => selectedUsernames.includes(u.username));
+                    const allSelected = paginatedUsers.every(u => selectedUsernames.includes(u.username));
                     el.indeterminate = someSelected && !allSelected;
                   }
                 }}
                 onChange={(e) => {
                   if (e.target.checked) {
-                    setSelectedUsernames(filteredUsers.map(u => u.username));
+                    const newSelected = Array.from(new Set([...selectedUsernames, ...paginatedUsers.map(u => u.username)]));
+                    setSelectedUsernames(newSelected);
                   } else {
-                    setSelectedUsernames([]);
+                    const paginatedUsernames = paginatedUsers.map(u => u.username);
+                    setSelectedUsernames(selectedUsernames.filter(un => !paginatedUsernames.includes(un)));
                   }
                 }}
                 className="w-4 h-4 rounded border-white/20 bg-white/5 text-neon-purple focus:ring-neon-purple cursor-pointer accent-neon-purple"
@@ -763,6 +731,45 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
                 </span>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Dynamic select-all-pages banner */}
+        {!loading && allOnPageSelected && filteredUsers.length > paginatedUsers.length && (
+          <div 
+            className={`px-6 py-3 border-b text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 transition-all ${
+              isLightMode 
+                ? 'bg-neon-purple/5 border-black/10 text-slate-800' 
+                : 'bg-neon-purple/10 border-white/10 text-white/80'
+            }`}
+          >
+            <span>
+              {allFilteredSelected ? (
+                <>All <strong>{filteredUsers.length}</strong> staff members across all pages are selected.</>
+              ) : (
+                <>All <strong>{paginatedUsers.length}</strong> staff members on this page are selected.</>
+              )}
+            </span>
+            {allFilteredSelected ? (
+              <button 
+                onClick={() => {
+                  const paginatedUsernames = paginatedUsers.map(u => u.username);
+                  setSelectedUsernames(paginatedUsernames);
+                }}
+                className="text-neon-purple hover:underline font-bold uppercase tracking-wider text-[10px] transition-colors"
+              >
+                Select only current page
+              </button>
+            ) : (
+              <button 
+                onClick={() => {
+                  setSelectedUsernames(filteredUsers.map(u => u.username));
+                }}
+                className="text-neon-purple hover:underline font-bold uppercase tracking-wider text-[10px] transition-colors"
+              >
+                Select all {filteredUsers.length} staff members across all pages
+              </button>
+            )}
           </div>
         )}
 
