@@ -141,7 +141,7 @@ function QualitySelector() {
 }
 
 export function PlayerBar() {
-  const { isPlaying, togglePlay, volume, setVolume, onAirInfo, toggleCinematic, activeType, podcastTrack } = useAudio();
+  const { isPlaying, isBuffering, togglePlay, volume, setVolume, onAirInfo, toggleCinematic, activeType, podcastTrack } = useAudio();
   const { logoUrl, isLightMode, settings, resolveDjImage } = useLogo();
   
   const [isMinimized, setIsMinimized] = useState(true);
@@ -209,9 +209,9 @@ export function PlayerBar() {
               <div className="flex-1 min-w-0 pr-2">
                 <div className="flex items-center space-x-2 md:space-x-3 mb-1 flex-wrap gap-y-1">
                   <p className="text-white/60 text-[8px] md:text-xs uppercase tracking-[0.2em] font-black flex items-center shrink-0">
-                    <span className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full mr-2 glow-box shrink-0 ${isPlaying ? 'bg-neon-blue animate-pulse' : 'bg-white/20'}`}></span>
+                    <span className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full mr-2 glow-box shrink-0 ${isBuffering ? 'bg-amber-500 animate-pulse' : isPlaying ? 'bg-neon-blue animate-pulse' : 'bg-white/20'}`}></span>
                     <span className="truncate">
-                      {activeType === 'podcast' ? 'Podcast Player' : (onAirInfo ? 'Broadcasting Live' : 'Auto-Mix Mode')}
+                      {isBuffering ? 'Buffering feed...' : (activeType === 'podcast' ? 'Podcast Player' : (onAirInfo ? 'Broadcasting Live' : 'Auto-Mix Mode'))}
                     </span>
                   </p>
                 </div>
@@ -242,7 +242,9 @@ export function PlayerBar() {
                 onClick={togglePlay}
                 className="w-12 h-12 md:w-20 md:h-20 rounded-full bg-white text-dark-bg flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_40px_rgba(255,255,255,0.3)] relative group/play z-10"
               >
-                {isPlaying ? (
+                {isBuffering ? (
+                  <div className="w-6 h-6 md:w-10 md:h-10 rounded-full border-4 border-dark-bg border-t-neon-blue animate-spin" />
+                ) : isPlaying ? (
                   <Pause className="w-6 h-6 md:w-10 md:h-10 fill-current" />
                 ) : (
                   <Play className="w-6 h-6 md:w-10 md:h-10 ml-1 fill-current" />
@@ -311,7 +313,9 @@ export function PlayerBar() {
               onClick={togglePlay}
               className="w-12 h-12 rounded-full bg-white text-dark-bg flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_10px_30px_rgba(255,255,255,0.3)]"
             >
-              {isPlaying ? (
+              {isBuffering ? (
+                <div className="w-5 h-5 rounded-full border-2 border-dark-bg border-t-neon-blue animate-spin" />
+              ) : isPlaying ? (
                 <Pause className="w-5 h-5 fill-current" />
               ) : (
                 <Play className="w-5 h-5 ml-1 fill-current" />
