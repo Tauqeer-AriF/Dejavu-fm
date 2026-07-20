@@ -54,10 +54,26 @@ function HeroVisualizer({ isPlaying, isLightMode }: { isPlaying: boolean; isLigh
       if (width === 0 || height === 0) return;
       
       ctx.clearRect(0, 0, width, height);
-      if (!isPlaying || !analyser) return;
+      if (!isPlaying) return;
 
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      analyser.getByteFrequencyData(dataArray);
+      let dataArray: Uint8Array;
+      if (analyser) {
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(dataArray);
+      } else {
+        // Fallback procedural/simulated frequency data for iOS/Safari without Analyser context
+        const simulatedSize = 32;
+        dataArray = new Uint8Array(simulatedSize);
+        const timeMs = Date.now();
+        for (let i = 0; i < simulatedSize; i++) {
+          // Generate wave-like pulsating frequencies
+          const baseWave = Math.sin(timeMs * 0.003 + i * 0.3) * 0.4 + 0.5;
+          const highFrequencyBuzz = Math.sin(timeMs * 0.015 + i * 0.8) * 0.15;
+          const bassHit = Math.sin(timeMs * 0.005) > 0.6 ? 0.35 : 0;
+          const finalPercent = Math.max(0.1, Math.min(1.0, baseWave + highFrequencyBuzz + bassHit));
+          dataArray[i] = finalPercent * 180;
+        }
+      }
 
       const centerX = width / 2;
       const centerY = height / 2;
