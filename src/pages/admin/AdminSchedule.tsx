@@ -114,9 +114,19 @@ export function AdminSchedule() {
                             <span className="font-mono text-xs font-semibold px-2.5 py-1 rounded bg-white/5 text-neon-blue border border-white/5 shrink-0 inline-block text-center sm:w-28">
                               {s.start_time} - {s.end_time}
                             </span>
-                            <div>
-                              <span className="font-bold text-white text-sm">{s.dj_name}</span> 
-                              <span className="text-xs text-white/50 ml-2">({s.show_name})</span>
+                            <div className="flex items-center gap-3">
+                              {s.image_url && (
+                                <img
+                                  src={s.image_url}
+                                  alt={s.show_name}
+                                  className="w-10 h-10 object-cover rounded-lg border border-white/10 shrink-0"
+                                  referrerPolicy="no-referrer"
+                                />
+                              )}
+                              <div>
+                                <span className="font-bold text-white text-sm">{s.dj_name}</span> 
+                                <span className="text-xs text-white/50 ml-2">({s.show_name})</span>
+                              </div>
                             </div>
                           </div>
                           <div className="flex items-center space-x-4 shrink-0 border-t sm:border-t-0 border-white/5 pt-2 sm:pt-0 justify-end">
@@ -166,18 +176,27 @@ export function AdminSchedule() {
 
 function EditScheduleForm({schedule, djs, onSave, onCancel}: {schedule: any, djs: any[], onSave: ()=>void, onCancel: ()=>void}) {
   const queryClient = useQueryClient();
-  const [djId, setDjId] = useState(schedule.dj_id.toString());
+  const [selectedDjIds, setSelectedDjIds] = useState<string[]>(() => {
+    if (schedule.dj_ids && Array.isArray(schedule.dj_ids)) {
+      return schedule.dj_ids.map((id: any) => id.toString());
+    }
+    if (schedule.dj_id) {
+      return schedule.dj_id.toString().split(',').map((id: string) => id.trim()).filter(Boolean);
+    }
+    return [];
+  });
   const [day, setDay] = useState(schedule.day_of_week.toString());
   const [start, setStart] = useState(schedule.start_time);
   const [end, setEnd] = useState(schedule.end_time);
   const [show, setShow] = useState(schedule.show_name);
+  const [imageUrl, setImageUrl] = useState(schedule.image_url || "");
   const { showAlert } = useModal();
 
   const handleSave = async (e: any) => {
     e.preventDefault();
     const res = await fetchAdmin(`/api/admin/schedule/${schedule.id}`, {
       method: "PUT", headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({dj_id: djId, day_of_week: parseInt(day), start_time: start, end_time: end, show_name: show})
+      body: JSON.stringify({dj_id: selectedDjIds, day_of_week: parseInt(day), start_time: start, end_time: end, show_name: show, image_url: imageUrl || null})
     });
     if (res.ok) {
       showAlert({ title: "Success", message: "Schedule entry updated!", style: "success" });
@@ -195,31 +214,57 @@ function EditScheduleForm({schedule, djs, onSave, onCancel}: {schedule: any, djs
 
   return (
     <form onSubmit={handleSave} className="space-y-4 w-full">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <div>
           <label className="block text-xs uppercase mb-1">Day</label>
-          <select required value={day} onChange={e=>setDay(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5 focus:outline-none focus:border-neon-purple text-sm">
+          <select required value={day} onChange={e=>setDay(e.target.value)} className="w-full bg-[#0d0d0f] border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-neon-purple text-white">
             {['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map((d,i) => <option key={i} value={i}>{d}</option>)}
           </select>
         </div>
         <div>
           <label className="block text-xs uppercase mb-1">Start (HH:mm)</label>
-          <input required type="time" value={start} onChange={e=>setStart(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5 text-sm" />
+          <input required type="time" value={start} onChange={e=>setStart(e.target.value)} className="w-full bg-[#0d0d0f] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-neon-purple" />
         </div>
         <div>
           <label className="block text-xs uppercase mb-1">End (HH:mm)</label>
-          <input required type="time" value={end} onChange={e=>setEnd(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5 text-sm" />
-        </div>
-        <div>
-          <label className="block text-xs uppercase mb-1">DJ</label>
-          <select required value={djId} onChange={e=>setDjId(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5 focus:outline-none focus:border-neon-purple text-sm">
-            <option value="">Select DJ...</option>
-            {djs.map(dj => <option key={dj.id} value={dj.id}>{dj.name}</option>)}
-          </select>
+          <input required type="time" value={end} onChange={e=>setEnd(e.target.value)} className="w-full bg-[#0d0d0f] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-neon-purple" />
         </div>
         <div>
           <label className="block text-xs uppercase mb-1">Show Name</label>
-          <input required value={show} onChange={e=>setShow(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5 text-sm" />
+          <input required value={show} onChange={e=>setShow(e.target.value)} className="w-full bg-[#0d0d0f] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-neon-purple" />
+        </div>
+        <div className="col-span-1 sm:col-span-2 md:col-span-4">
+          <label className="block text-xs uppercase mb-1.5 font-bold text-white/60">DJs (Leave all unchecked for "Resident DJ")</label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 bg-[#0d0d0f]/50 border border-white/10 rounded-xl p-3 max-h-32 overflow-y-auto">
+            {djs.map(dj => {
+              const isChecked = selectedDjIds.includes(dj.id.toString());
+              return (
+                <label key={dj.id} className="flex items-center space-x-2 text-xs text-white/80 cursor-pointer hover:text-white transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => {
+                      if (isChecked) {
+                        setSelectedDjIds(selectedDjIds.filter(id => id !== dj.id.toString()));
+                      } else {
+                        setSelectedDjIds([...selectedDjIds, dj.id.toString()]);
+                      }
+                    }}
+                    className="rounded border-white/10 bg-[#0d0d0f] text-neon-purple focus:ring-neon-purple/50 focus:ring-offset-0"
+                  />
+                  <span>{dj.name}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+        <div className="col-span-1 sm:col-span-2 md:col-span-4">
+          <ImageUploadField
+            label="Schedule Artwork / Banner (Optional)"
+            value={imageUrl}
+            onChange={setImageUrl}
+            placeholder="Enter artwork image URL or upload..."
+          />
         </div>
       </div>
       <div className="flex space-x-2">
@@ -232,23 +277,24 @@ function EditScheduleForm({schedule, djs, onSave, onCancel}: {schedule: any, djs
 
 function AddScheduleForm({djs, onAdd}: {djs: any[], onAdd: ()=>void}) {
   const queryClient = useQueryClient();
-  const [djId, setDjId] = useState("");
+  const [selectedDjIds, setSelectedDjIds] = useState<string[]>([]);
   const [day, setDay] = useState("0");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [show, setShow] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
   const { showAlert } = useModal();
 
   const handleAdd = async (e: any) => {
     e.preventDefault();
     const res = await fetchAdmin("/api/admin/schedule", {
       method: "POST", headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({dj_id: djId, day_of_week: parseInt(day), start_time: start, end_time: end, show_name: show})
+      body: JSON.stringify({dj_id: selectedDjIds, day_of_week: parseInt(day), start_time: start, end_time: end, show_name: show, image_url: imageUrl || null})
     });
     if (res.ok) {
       showAlert({ title: "Success", message: "Show added to the schedule!", style: "success" });
       queryClient.invalidateQueries({ queryKey: ['schedule'] });
-      setDjId(""); setDay("0"); setStart(""); setEnd(""); setShow("");
+      setSelectedDjIds([]); setDay("0"); setStart(""); setEnd(""); setShow(""); setImageUrl("");
       onAdd();
     } else {
       let errMsg = "Failed to add show";
@@ -266,14 +312,7 @@ function AddScheduleForm({djs, onAdd}: {djs: any[], onAdd: ()=>void}) {
         <Plus className="w-4 h-4 text-neon-purple" />
         <h4 className="font-bold text-white uppercase text-xs tracking-wider">Add Schedule Slot</h4>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <div>
-          <label className="block text-[10px] uppercase font-black tracking-widest text-white/40 mb-1">DJ</label>
-          <select required value={djId} onChange={e=>setDjId(e.target.value)} className="w-full bg-[#0d0d0f] border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-neon-purple text-white">
-            <option value="">Select DJ...</option>
-            {djs.map(dj => <option key={dj.id} value={dj.id}>{dj.name}</option>)}
-          </select>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <div>
           <label className="block text-[10px] uppercase font-black tracking-widest text-white/40 mb-1">Day</label>
           <select required value={day} onChange={e=>setDay(e.target.value)} className="w-full bg-[#0d0d0f] border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-neon-purple text-white">
@@ -288,9 +327,42 @@ function AddScheduleForm({djs, onAdd}: {djs: any[], onAdd: ()=>void}) {
           <label className="block text-[10px] uppercase font-black tracking-widest text-white/40 mb-1">End (HH:mm)</label>
           <input required type="time" value={end} onChange={e=>setEnd(e.target.value)} className="w-full bg-[#0d0d0f] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-neon-purple" />
         </div>
-        <div className="sm:col-span-2 md:col-span-1 lg:col-span-1">
+        <div>
           <label className="block text-[10px] uppercase font-black tracking-widest text-white/40 mb-1">Show Name</label>
           <input required value={show} onChange={e=>setShow(e.target.value)} className="w-full bg-[#0d0d0f] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-neon-purple" />
+        </div>
+        <div className="col-span-1 sm:col-span-2 md:col-span-4">
+          <label className="block text-[10px] uppercase font-black tracking-widest text-white/40 mb-1.5">DJs (Leave all unchecked for "Resident DJ")</label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 bg-[#0d0d0f]/50 border border-white/10 rounded-xl p-3 max-h-32 overflow-y-auto">
+            {djs.map(dj => {
+              const isChecked = selectedDjIds.includes(dj.id.toString());
+              return (
+                <label key={dj.id} className="flex items-center space-x-2 text-xs text-white/80 cursor-pointer hover:text-white transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => {
+                      if (isChecked) {
+                        setSelectedDjIds(selectedDjIds.filter(id => id !== dj.id.toString()));
+                      } else {
+                        setSelectedDjIds([...selectedDjIds, dj.id.toString()]);
+                      }
+                    }}
+                    className="rounded border-white/10 bg-[#0d0d0f] text-neon-purple focus:ring-neon-purple/50 focus:ring-offset-0"
+                  />
+                  <span>{dj.name}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+        <div className="col-span-1 sm:col-span-2 md:col-span-4">
+          <ImageUploadField
+            label="Schedule Artwork / Banner (Optional)"
+            value={imageUrl}
+            onChange={setImageUrl}
+            placeholder="Enter artwork image URL or upload..."
+          />
         </div>
       </div>
       <div className="flex justify-end pt-1">
