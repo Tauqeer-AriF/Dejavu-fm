@@ -324,14 +324,56 @@ apiRouter.get("/public/djs", (req, res) => {
 });
 
 apiRouter.get("/public/schedule", (req, res) => {
-  const schedule = db.prepare(`
-    SELECT s.*, COALESCE(d.name, 'Resident DJ') as dj_name, d.image_url as dj_photo, d.bio as dj_bio,
-           d.instagram, d.soundcloud, d.mixcloud
-    FROM schedule s
-    LEFT JOIN djs d ON s.dj_id = d.id
-    ORDER BY s.day_of_week, s.start_time
-  `).all();
-  res.json(schedule);
+  try {
+    const schedules = db.prepare("SELECT * FROM schedule ORDER BY day_of_week, start_time").all() as any[];
+    const djs = db.prepare("SELECT * FROM djs").all() as any[];
+    const djsMap = new Map<string, any>(djs.map(dj => [dj.id.toString(), dj]));
+
+    const result = schedules.map(s => {
+      let matchingDjs: any[] = [];
+      if (s.dj_id) {
+        const ids = s.dj_id.toString().split(',').map((id: string) => id.trim()).filter(Boolean);
+        matchingDjs = ids.map((id: string) => djsMap.get(id)).filter(Boolean);
+      }
+
+      let dj_name = 'Resident DJ';
+      let dj_photo = null;
+      let dj_bio = null;
+      let instagram = null;
+      let soundcloud = null;
+      let mixcloud = null;
+
+      if (matchingDjs.length > 0) {
+        const names = matchingDjs.map(d => d.name);
+        if (names.length === 1) {
+          dj_name = names[0];
+        } else {
+          dj_name = names.slice(0, -1).join(", ") + " & " + names[names.length - 1];
+        }
+        dj_photo = matchingDjs[0].image_url;
+        dj_bio = matchingDjs[0].bio;
+        instagram = matchingDjs[0].instagram;
+        soundcloud = matchingDjs[0].soundcloud;
+        mixcloud = matchingDjs[0].mixcloud;
+      }
+
+      return {
+        ...s,
+        dj_name,
+        dj_photo,
+        dj_bio,
+        instagram,
+        soundcloud,
+        mixcloud,
+        dj_ids: s.dj_id ? s.dj_id.toString().split(',').map((id: string) => id.trim()).filter(Boolean) : []
+      };
+    });
+
+    res.json(result);
+  } catch (error: any) {
+    console.error("[API] Error fetching schedule:", error);
+    res.status(500).json({ error: "Failed to fetch schedule" });
+  }
 });
 
 import { getPodcastFeed, clearPodcastCache } from "./utils.js";
@@ -1583,16 +1625,28 @@ apiRouter.get("/admin/analytics", (req: any, res: any) => {
     // Fallback: DJ with most scheduled shows
     if (!mostListenedDj) {
       try {
-        const scheduleDjRow = db.prepare(`
-          SELECT d.name, COUNT(*) as count 
-          FROM schedule s 
-          JOIN djs d ON s.dj_id = d.id 
-          GROUP BY d.id 
-          ORDER BY count DESC 
-          LIMIT 1
-        `).get() as any;
-        if (scheduleDjRow) {
-          mostListenedDj = scheduleDjRow.name;
+        const schedules = db.prepare("SELECT dj_id FROM schedule").all() as any[];
+        const djs = db.prepare("SELECT id, name FROM djs").all() as any[];
+        const djMap = new Map(djs.map(d => [d.id.toString(), d.name]));
+        const counts = new Map<string, number>();
+        for (const s of schedules) {
+          if (s.dj_id) {
+            const ids = s.dj_id.toString().split(',').map((x: string) => x.trim()).filter(Boolean);
+            for (const id of ids) {
+              counts.set(id, (counts.get(id) || 0) + 1);
+            }
+          }
+        }
+        let maxCount = 0;
+        let maxDjId = '';
+        for (const [id, count] of counts.entries()) {
+          if (count > maxCount) {
+            maxCount = count;
+            maxDjId = id;
+          }
+        }
+        if (maxDjId && djMap.has(maxDjId)) {
+          mostListenedDj = djMap.get(maxDjId);
         }
       } catch (e) {}
     }
@@ -1869,8 +1923,22 @@ apiRouter.delete("/admin/djs/:id", (req, res) => {
       }
     }
 
-    // Disassociate schedule entries by setting dj_id to NULL to preserve the schedules
-    db.prepare("UPDATE schedule SET dj_id = NULL WHERE dj_id = ? OR CAST(dj_id AS TEXT) = ?").run(id, id);
+    // Disassociate schedule entries by removing deleted DJ ID from the comma-separated lists
+    try {
+      const schedules = db.prepare("SELECT id, dj_id FROM schedule").all() as any[];
+      for (const s of schedules) {
+        if (s.dj_id) {
+          const ids = s.dj_id.toString().split(',').map((x: string) => x.trim()).filter(Boolean);
+          if (ids.includes(id.toString())) {
+            const newIds = ids.filter((x: string) => x !== id.toString());
+            const newVal = newIds.length > 0 ? newIds.join(',') : null;
+            db.prepare("UPDATE schedule SET dj_id = ? WHERE id = ?").run(newVal, s.id);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("[API] Failed to disassociate schedule entries for deleted DJ:", e);
+    }
 
     // Disassociate bookings by setting dj_id to NULL to preserve the bookings
     try {
@@ -2368,30 +2436,48 @@ function checkScheduleOverlap(day_of_week: number, start_time: string, end_time:
 }
 
 apiRouter.post("/admin/schedule", (req, res) => {
-  const { dj_id, day_of_week, start_time, end_time, show_name } = req.body;
+  const { dj_id, day_of_week, start_time, end_time, show_name, image_url } = req.body;
   
   const overlapError = checkScheduleOverlap(Number(day_of_week), start_time, end_time);
   if (overlapError) {
     return res.status(400).json({ error: overlapError });
   }
 
-  const info = db.prepare("INSERT INTO schedule (dj_id, day_of_week, start_time, end_time, show_name) VALUES (?, ?, ?, ?, ?)").run(
-    dj_id, day_of_week, start_time, end_time, show_name
+  let normalized_dj_id = null;
+  if (Array.isArray(dj_id)) {
+    const filtered = dj_id.map(x => x?.toString().trim()).filter(Boolean);
+    normalized_dj_id = filtered.length > 0 ? filtered.join(",") : null;
+  } else if (dj_id !== undefined && dj_id !== null) {
+    const trimmed = dj_id.toString().trim();
+    normalized_dj_id = (trimmed === "" || trimmed === "null" || trimmed === "undefined") ? null : trimmed;
+  }
+
+  const info = db.prepare("INSERT INTO schedule (dj_id, day_of_week, start_time, end_time, show_name, image_url) VALUES (?, ?, ?, ?, ?, ?)").run(
+    normalized_dj_id, day_of_week, start_time, end_time, show_name, image_url || null
   );
   logAction(req, 'CREATE', 'schedule', info.lastInsertRowid, { show_name });
   res.json({ id: info.lastInsertRowid });
 });
 
 apiRouter.put("/admin/schedule/:id", (req, res) => {
-  const { dj_id, day_of_week, start_time, end_time, show_name } = req.body;
+  const { dj_id, day_of_week, start_time, end_time, show_name, image_url } = req.body;
 
   const overlapError = checkScheduleOverlap(Number(day_of_week), start_time, end_time, req.params.id);
   if (overlapError) {
     return res.status(400).json({ error: overlapError });
   }
 
-  db.prepare("UPDATE schedule SET dj_id=?, day_of_week=?, start_time=?, end_time=?, show_name=? WHERE id=?").run(
-    dj_id, day_of_week, start_time, end_time, show_name, req.params.id
+  let normalized_dj_id = null;
+  if (Array.isArray(dj_id)) {
+    const filtered = dj_id.map(x => x?.toString().trim()).filter(Boolean);
+    normalized_dj_id = filtered.length > 0 ? filtered.join(",") : null;
+  } else if (dj_id !== undefined && dj_id !== null) {
+    const trimmed = dj_id.toString().trim();
+    normalized_dj_id = (trimmed === "" || trimmed === "null" || trimmed === "undefined") ? null : trimmed;
+  }
+
+  db.prepare("UPDATE schedule SET dj_id=?, day_of_week=?, start_time=?, end_time=?, show_name=?, image_url=? WHERE id=?").run(
+    normalized_dj_id, day_of_week, start_time, end_time, show_name, image_url || null, req.params.id
   );
   logAction(req, 'UPDATE', 'schedule', req.params.id, { show_name });
   res.json({ success: true });
