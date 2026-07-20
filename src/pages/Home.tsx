@@ -177,7 +177,7 @@ function HeroVisualizer({ isPlaying, isLightMode }: { isPlaying: boolean; isLigh
 }
 
 export default function Home() {
-  const { togglePlay, playRadio, isPlaying, activeType, onAirInfo } = useAudio();
+  const { togglePlay, playRadio, isPlaying, isBuffering, activeType, onAirInfo } = useAudio();
 
   const handleMainPlayerClick = () => {
     if (activeType === 'podcast') {
@@ -408,7 +408,9 @@ export default function Home() {
                 : 'bg-white text-dark-bg shadow-2xl hover:shadow-[0_20px_80px_rgba(255,255,255,0.6)] border-4 border-white/20'
             }`}
           >
-            {isPlaying && activeType === 'radio' ? (
+            {isBuffering && activeType === 'radio' ? (
+              <div className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full border-4 border-t-neon-blue animate-spin ${isLightMode ? 'border-white/20' : 'border-dark-bg/20'}`} />
+            ) : isPlaying && activeType === 'radio' ? (
               <Pause className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 fill-current group-hover/btn:text-neon-purple transition-colors duration-300 ${isLightMode ? 'text-white' : 'text-black'}`} />
             ) : (
               <Play className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 ml-1 fill-current group-hover/btn:text-neon-blue transition-colors duration-300 ${isLightMode ? 'text-white' : 'text-black'}`} />
