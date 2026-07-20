@@ -24,6 +24,7 @@ export type AudioQuality = 'low' | 'medium' | 'high';
 
 interface AudioStore {
   isPlaying: boolean;
+  isBuffering: boolean;
   volume: number;
   currentTrack: string;
   streamUrl: string;
@@ -152,6 +153,7 @@ const updateMediaMetadata = (currentTrack: string, onAirInfo: AudioStore['onAirI
 
 export const useAudioStore = create<AudioStore>((set, get) => ({
   isPlaying: false,
+  isBuffering: false,
   isCinematicOpen: false,
   volume: getSavedVolume(),
   currentTrack: "Dejavu FM Live",
@@ -253,20 +255,22 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
     }
     
     // Init Audio Context on first play if needed
-    const isIOS = typeof navigator !== 'undefined' && (
-      /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    // Bypassing AudioContext on all mobile devices is vital for reliable background sleep playback
+    const isMobile = typeof navigator !== 'undefined' && (
+      /Mobi|Android|iPhone|iPad|iPod|Windows Phone|IEMobile|BlackBerry|Opera Mini/i.test(navigator.userAgent) ||
+      (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
     );
     const isSafari = typeof navigator !== 'undefined' && (
       /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
     );
-    const shouldBypassAudioContext = isIOS || isSafari;
+    const shouldBypassAudioContext = isMobile || isSafari;
 
     if (!isPlaying && !audioContext && !shouldBypassAudioContext) {
       try {
         const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
         if (AudioContextClass) {
-          const ctx = new AudioContextClass();
+          // Use 'playback' latencyHint to optimize buffering/performance on desktop
+          const ctx = new AudioContextClass({ latencyHint: 'playback' });
           audioContext = ctx;
           
           const analyserNode = ctx.createAnalyser();
@@ -297,9 +301,14 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
     }
     
     if (!isPlaying) {
-      if (audio.src !== targetUrl) {
-         audio.src = targetUrl;
-         audio.load();
+      // For live radio, always force load a fresh stream to pull the latest live segment.
+      // This prevents the browser from trying to resume a dead/stale HTTP stream buffer.
+      if (activeType === 'radio') {
+        audio.src = targetUrl;
+        audio.load();
+      } else if (audio.src !== targetUrl) {
+        audio.src = targetUrl;
+        audio.load();
       }
       audio.volume = volume;
       
@@ -326,6 +335,11 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
       });
     } else {
       audio.pause();
+      if (activeType === 'radio') {
+        // Disconnect stream completely when paused to save user data,
+        // prevent server connection slots leak, and ensure fresh play on resume.
+        audio.src = '';
+      }
       set({ isPlaying: false });
       if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
     }
@@ -419,6 +433,8 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
     
     if (activeType !== 'radio') {
       audio.pause();
+      // Clear audio source to ensure we fetch fresh stream next
+      audio.src = '';
       set({ activeType: 'radio', isPlaying: false });
     }
     
@@ -532,6 +548,11 @@ if (typeof window !== 'undefined' && audio) {
   let retryCount = 0;
   const MAX_RETRIES = 5;
 
+  let silenceCheckInterval: ReturnType<typeof setInterval> | null = null;
+  let lastPosition = 0;
+  let stuckTicks = 0;
+  let silenceTicks = 0;
+
   const attemptRecovery = () => {
     const store = useAudioStore.getState();
     if (store.activeType === 'podcast') return; // Do not recover for podcasts
@@ -540,16 +561,17 @@ if (typeof window !== 'undefined' && audio) {
     isRecovering = true;
     retryCount++;
     console.log(`Audio stream interrupted. Attempting recovery ${retryCount}/${MAX_RETRIES}...`);
+    useAudioStore.setState({ isBuffering: true });
     
     // Slight delay to handle brief network switching (e.g., WiFi to Cellular)
     if (recoveryTimeout) clearTimeout(recoveryTimeout);
     recoveryTimeout = setTimeout(() => {
       if (useAudioStore.getState().isPlaying && audio) {
         console.log("Reloading stream buffer...");
-        const currentSrc = audio.src;
+        const currentSrc = audio.src || store.streamUrl || store.qualityUrls[store.quality];
         audio.src = ''; // Force resource release
         setTimeout(() => {
-          if (audio) {
+          if (audio && currentSrc) {
             audio.src = currentSrc;
             audio.load();
             audio.play().catch(e => {
@@ -559,6 +581,8 @@ if (typeof window !== 'undefined' && audio) {
             }).finally(() => {
               isRecovering = false;
             });
+          } else {
+            isRecovering = false;
           }
         }, 100);
       } else {
@@ -567,13 +591,99 @@ if (typeof window !== 'undefined' && audio) {
     }, 1500);
   };
 
+  const startSilenceMonitor = () => {
+    if (silenceCheckInterval) clearInterval(silenceCheckInterval);
+    
+    if (audio) {
+      lastPosition = audio.currentTime;
+    }
+    stuckTicks = 0;
+    silenceTicks = 0;
+
+    silenceCheckInterval = setInterval(() => {
+      const store = useAudioStore.getState();
+      if (!store.isPlaying || !audio) {
+        stopSilenceMonitor();
+        return;
+      }
+
+      // Check 1: Is playhead moving?
+      const currentPos = audio.currentTime;
+      if (currentPos === lastPosition && !audio.paused) {
+        stuckTicks++;
+        console.log(`[Audio Monitor] Audio playhead is stuck. Stuck count: ${stuckTicks}`);
+      } else {
+        stuckTicks = 0;
+        lastPosition = currentPos;
+      }
+
+      // Check 2: Silence check using Web Audio Analyser if active
+      let isSilent = false;
+      if (analyser && audioContext && audioContext.state === 'running') {
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i];
+        }
+        if (sum < 5) {
+          isSilent = true;
+          silenceTicks++;
+          console.log(`[Audio Monitor] Audio output is silent. Silence count: ${silenceTicks}`);
+        } else {
+          silenceTicks = 0;
+        }
+      }
+
+      // Trigger recovery if:
+      // - Playhead is stuck for 3 ticks (4.5s)
+      // - OR live stream is totally silent for 4 ticks (6.0s)
+      const isRadio = store.activeType === 'radio';
+      if (stuckTicks >= 3 || (isRadio && silenceTicks >= 4)) {
+        console.warn(`[Audio Monitor] Detecting dead/silent stream (stuckTicks: ${stuckTicks}, silenceTicks: ${silenceTicks}). Reconnecting...`);
+        stuckTicks = 0;
+        silenceTicks = 0;
+        attemptRecovery();
+      }
+    }, 1500);
+  };
+
+  const stopSilenceMonitor = () => {
+    if (silenceCheckInterval) {
+      clearInterval(silenceCheckInterval);
+      silenceCheckInterval = null;
+    }
+  };
+
   audio.addEventListener('error', attemptRecovery);
-  audio.addEventListener('stalled', attemptRecovery);
   
+  // Note: We deliberately DO NOT listen to the 'stalled' event for recovery.
+  // The 'stalled' event fires normally when the browser halts downloading because the buffer is completely full.
+  // Triggering recovery on 'stalled' would wipe the buffer and disconnect the stream, causing endless buffering.
+
+  audio.addEventListener('waiting', () => {
+    console.log("[Audio] Waiting for data (buffering)...");
+    useAudioStore.setState({ isBuffering: true });
+  });
+
+  audio.addEventListener('stalled', () => {
+    console.log("[Audio] Stream stalled...");
+    // Just indicate buffering, don't trigger full recovery here unless stuckTicks triggers it
+    useAudioStore.setState({ isBuffering: true });
+  });
+
+  audio.addEventListener('canplay', () => {
+    useAudioStore.setState({ isBuffering: false });
+  });
+
+  audio.addEventListener('canplaythrough', () => {
+    useAudioStore.setState({ isBuffering: false });
+  });
+
   audio.addEventListener('ended', () => {
     const store = useAudioStore.getState();
     if (store.activeType === 'podcast') {
-      useAudioStore.setState({ isPlaying: false, podcastProgress: 0 });
+      useAudioStore.setState({ isPlaying: false, podcastProgress: 0, isBuffering: false });
     } else {
       attemptRecovery();
     }
@@ -594,22 +704,37 @@ if (typeof window !== 'undefined' && audio) {
   });
   
   audio.addEventListener('playing', () => {
+    console.log("[Audio] Playback started/resumed successfully.");
+    useAudioStore.setState({ isBuffering: false });
     isRecovering = false;
+    retryCount = 0; // Reset retry counter on successful play!
     if (recoveryTimeout) {
       clearTimeout(recoveryTimeout);
       recoveryTimeout = null;
     }
+    startSilenceMonitor();
   });
 
   // Keep Zustand state perfectly in sync with native audio actions (headphone unplugs, lock screen, bluetooth, etc.)
   audio.addEventListener('play', () => {
     useAudioStore.setState({ isPlaying: true });
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+    startSilenceMonitor();
   });
 
   audio.addEventListener('pause', () => {
-    useAudioStore.setState({ isPlaying: false });
+    useAudioStore.setState({ isPlaying: false, isBuffering: false });
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+    stopSilenceMonitor();
+  });
+
+  // Handle network restoration online/offline events
+  window.addEventListener('online', () => {
+    console.log("[Audio] Network connection restored online. Testing stream connectivity...");
+    const store = useAudioStore.getState();
+    if (store.isPlaying) {
+      attemptRecovery();
+    }
   });
 
   // Handle minimizing/reopening or locking/unlocking background-to-foreground PWA state recovery
@@ -618,34 +743,55 @@ if (typeof window !== 'undefined' && audio) {
       console.log("[Audio] App brought to foreground. Checking stream synchronization...");
       const store = useAudioStore.getState();
       
+      // Auto-resume AudioContext if it was suspended by the browser (desktop)
+      if (audioContext && audioContext.state === 'suspended') {
+        audioContext.resume().then(() => {
+          console.log("[Audio] AudioContext resumed on foreground visibility.");
+        }).catch(err => {
+          console.error("[Audio] Failed to resume AudioContext on visibilitychange:", err);
+        });
+      }
+      
       // If our app state thinks it should be playing, but the hardware audio element is paused/ended
       if (store.isPlaying && audio) {
-        if (audio.paused || audio.ended || audio.readyState < 2) {
-          console.warn("[Audio] Audio output is out of sync with state (paused/stalled in background). Recovering...");
-          const currentSrc = store.activeType === 'podcast'
-            ? getProxiedPodcastUrl(store.podcastTrack?.audioUrl)
-            : (audio.src || store.streamUrl || store.qualityUrls[store.quality]);
-          if (currentSrc) {
-            audio.src = ''; // Reset buffer
-            setTimeout(() => {
-              if (audio) {
-                audio.src = currentSrc;
-                audio.load();
-                audio.play()
-                  .then(() => {
-                    console.log("[Audio] Foreground automatic stream recovery successful.");
-                  })
-                  .catch(e => {
-                    console.warn("[Audio] Foreground recovery auto-play blocked by browser. Resetting visual button.", e);
-                    // Safely put the button back to Play state if browser completely blocked resume without tap
-                    useAudioStore.setState({ isPlaying: false });
-                    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
-                  });
+        if (audio.paused || audio.ended) {
+          console.warn("[Audio] Audio is paused/ended but state is playing. Attempting smooth play resume...");
+          useAudioStore.setState({ isBuffering: true });
+          audio.play()
+            .then(() => {
+              console.log("[Audio] Smooth play resume successful.");
+              useAudioStore.setState({ isBuffering: false });
+            })
+            .catch(e => {
+              console.warn("[Audio] Smooth play resume blocked. Retrying with full stream reload...", e);
+              // Only reload the source as a fallback if standard play() is blocked or fails
+              const currentSrc = store.activeType === 'podcast'
+                ? getProxiedPodcastUrl(store.podcastTrack?.audioUrl)
+                : (audio.src || store.streamUrl || store.qualityUrls[store.quality]);
+              if (currentSrc) {
+                audio.src = ''; // Force release
+                setTimeout(() => {
+                  if (audio) {
+                    audio.src = currentSrc;
+                    audio.load();
+                    audio.play()
+                      .then(() => {
+                        console.log("[Audio] Foreground automatic stream recovery successful.");
+                      })
+                      .catch(err => {
+                        console.warn("[Audio] Foreground recovery auto-play blocked by browser.", err);
+                        useAudioStore.setState({ isPlaying: false, isBuffering: false });
+                        if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+                      });
+                  }
+                }, 100);
+              } else {
+                useAudioStore.setState({ isPlaying: false, isBuffering: false });
               }
-            }, 100);
-          } else {
-            useAudioStore.setState({ isPlaying: false });
-          }
+            });
+        } else {
+          // If it's already playing, ensure silence monitor is fully active
+          startSilenceMonitor();
         }
       }
     }
