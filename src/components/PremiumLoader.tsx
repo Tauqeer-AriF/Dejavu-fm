@@ -2,6 +2,7 @@ import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Mic } from "lucide-react";
 import { useLogo } from "../hooks/useLogo";
+import { createPortal } from "react-dom";
 
 interface PremiumLoaderProps {
   onComplete?: () => void;
@@ -26,12 +27,13 @@ export function PremiumLoader({ onComplete }: PremiumLoaderProps) {
     return () => clearInterval(timer);
   }, [onComplete]);
 
-  return (
+  return createPortal(
     <motion.div
       initial={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 1.1, filter: "blur(20px)" }}
       transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
       className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden ${isLightMode ? 'bg-[#f8f9fa]' : 'bg-[#050505]'}`}
+      style={{ width: '100vw', height: '100vh', top: 0, left: 0 }}
     >
       {/* Dynamic Background Glows */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -156,6 +158,7 @@ export function PremiumLoader({ onComplete }: PremiumLoaderProps) {
           STREAM: 320KBPS
         </div>
       </div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 }

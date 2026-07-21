@@ -237,8 +237,7 @@ export function initDb() {
       start_time TEXT, -- HH:mm format
       end_time TEXT, -- HH:mm format
       show_name TEXT,
-      image_url TEXT,
-      FOREIGN KEY (dj_id) REFERENCES djs (id)
+      image_url TEXT
     );
 
     CREATE TABLE IF NOT EXISTS admins (
@@ -450,6 +449,20 @@ export function initDb() {
   runMigration('public_messages_table_v1', "CREATE TABLE IF NOT EXISTS public_messages (id TEXT PRIMARY KEY, sender TEXT NOT NULL, text TEXT, imageUrl TEXT, imageName TEXT, audioUrl TEXT, audioName TEXT, videoUrl TEXT, videoName TEXT, timestamp INTEGER NOT NULL); CREATE INDEX IF NOT EXISTS idx_public_messages_timestamp ON public_messages(timestamp);");
   runMigration('public_messages_add_avatar_url', "ALTER TABLE public_messages ADD COLUMN avatar_url TEXT;");
   runMigration('room_messages_table_v1', "CREATE TABLE IF NOT EXISTS room_messages (id TEXT PRIMARY KEY, room_id TEXT NOT NULL, sender_name TEXT, text TEXT, image_url TEXT, audio_url TEXT, video_url TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP); CREATE INDEX IF NOT EXISTS idx_room_messages_room_id ON room_messages(room_id);");
+  runMigration('schedule_remove_fk_constraint', `
+    CREATE TABLE schedule_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      dj_id TEXT,
+      day_of_week INTEGER,
+      start_time TEXT,
+      end_time TEXT,
+      show_name TEXT,
+      image_url TEXT
+    );
+    INSERT INTO schedule_new SELECT id, dj_id, day_of_week, start_time, end_time, show_name, image_url FROM schedule;
+    DROP TABLE schedule;
+    ALTER TABLE schedule_new RENAME TO schedule;
+  `);
   runMigration('admin_dj_profile_link_v2', "ALTER TABLE admins ADD COLUMN dj_profile_id TEXT DEFAULT NULL;");
   runMigration('default_theme_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('default_theme', 'dark');");
   try {
