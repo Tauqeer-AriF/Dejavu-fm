@@ -1386,9 +1386,12 @@ apiRouter.get('/admin/media', (req: any, res: any) => {
           type: getMediaType(filename),
           size: stats.size,
           created_at: stats.mtime.toISOString(),
+          mtimeMs: stats.mtimeMs,
           usages: searchMediaUsages(filename),
         };
-      });
+      })
+      .sort((a, b) => b.mtimeMs - a.mtimeMs)
+      .map(({ mtimeMs, ...rest }) => rest);
 
     res.json(files);
   } catch (err) {
