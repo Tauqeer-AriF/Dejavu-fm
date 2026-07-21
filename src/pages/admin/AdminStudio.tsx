@@ -150,6 +150,81 @@ const PlatformBadge = ({ platform, thread }: { platform?: string; thread?: UserT
   );
 };
 
+const replaceTextEmojis = (text: string): string => {
+  if (!text) return "";
+  let processed = text;
+  processed = processed.replace(/>:?\s*\(/g, "😠"); // matches >(, >:(, > (, >: (
+  processed = processed.replace(/>:?\s*\)/g, "😈"); // matches >), >:), > ), >: )
+  processed = processed.replace(/<3/g, "❤️");
+  processed = processed.replace(/:\s*\)/g, "😊");
+  processed = processed.replace(/:\s*-\s*\)/g, "😊");
+  processed = processed.replace(/:\s*\(/g, "😢");
+  processed = processed.replace(/:\s*-\s*\(/g, "😢");
+  processed = processed.replace(/;\s*\)/g, "😉");
+  processed = processed.replace(/;\s*-\s*\)/g, "😉");
+  processed = processed.replace(/:\s*[pP]/g, "😛");
+  processed = processed.replace(/:\s*-\s*[pP]/g, "😛");
+  processed = processed.replace(/:\s*[dD]/g, "😀");
+  processed = processed.replace(/:\s*-\s*[dD]/g, "😀");
+  processed = processed.replace(/:\s*[oO]/g, "😮");
+  processed = processed.replace(/:\s*-\s*[oO]/g, "😮");
+  processed = processed.replace(/:\s*\//g, "😕");
+  processed = processed.replace(/\\s*:\s*/g, "😕");
+  processed = processed.replace(/o_O|O_O|o_o/g, "😳");
+  processed = processed.replace(/B\)/g, "😎");
+  processed = processed.replace(/:\'-\)/g, "😂");
+  processed = processed.replace(/:\'\(/g, "😭");
+  return processed;
+};
+
+const parseEmojisAndEmotes = (text: string) => {
+  if (!text) return null;
+  const replaced = replaceTextEmojis(text);
+  const words = replaced.split(/(\s+)/);
+
+  const twitchEmoteMap: Record<string, { emoji: string, color: string }> = {
+    'Kappa': { emoji: '😏', color: 'bg-purple-500/15 text-purple-300 border-purple-500/30 shadow-[0_0_8px_rgba(168,85,247,0.2)]' },
+    'Keepo': { emoji: '🐱', color: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.2)]' },
+    'LUL': { emoji: '😂', color: 'bg-amber-500/15 text-amber-300 border-amber-500/30 shadow-[0_0_8px_rgba(245,158,11,0.2)]' },
+    'PogChamp': { emoji: '😲', color: 'bg-red-500/15 text-red-300 border-red-500/30 shadow-[0_0_8px_rgba(239,68,68,0.2)]' },
+    'BibleThump': { emoji: '😭', color: 'bg-blue-500/15 text-blue-300 border-blue-500/30 shadow-[0_0_8px_rgba(59,130,246,0.2)]' },
+    'ResidentSleeper': { emoji: '😴', color: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30 shadow-[0_0_8px_rgba(99,102,241,0.2)]' },
+    'Kreygasm': { emoji: '😍', color: 'bg-pink-500/15 text-pink-300 border-pink-500/30 shadow-[0_0_8px_rgba(236,72,153,0.2)]' },
+    'monkaS': { emoji: '😰', color: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/30 shadow-[0_0_8px_rgba(234,179,8,0.2)]' },
+    'MonkaS': { emoji: '😰', color: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/30 shadow-[0_0_8px_rgba(234,179,8,0.2)]' },
+    'monkaW': { emoji: '😨', color: 'bg-orange-500/15 text-orange-300 border-orange-500/30 shadow-[0_0_8px_rgba(249,115,22,0.2)]' },
+    'MonkaW': { emoji: '😨', color: 'bg-orange-500/15 text-orange-300 border-orange-500/30 shadow-[0_0_8px_rgba(249,115,22,0.2)]' },
+    'Sadge': { emoji: '😔', color: 'bg-slate-500/15 text-slate-300 border-slate-500/30 shadow-[0_0_8px_rgba(100,116,139,0.2)]' },
+    'PepeHands': { emoji: '😭', color: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30 shadow-[0_0_8px_rgba(6,182,212,0.2)]' },
+    'POGGERS': { emoji: '🤩', color: 'bg-teal-500/15 text-teal-300 border-teal-500/30 shadow-[0_0_8px_rgba(20,184,166,0.2)]' },
+    'EZ': { emoji: '😎', color: 'bg-green-500/15 text-green-300 border-green-500/30 shadow-[0_0_8px_rgba(34,197,94,0.2)]' },
+    'Clap': { emoji: '👏', color: 'bg-amber-500/15 text-amber-300 border-amber-500/30 shadow-[0_0_8px_rgba(245,158,11,0.2)]' },
+    'AYAYA': { emoji: '🥳', color: 'bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30 shadow-[0_0_8px_rgba(217,70,239,0.2)]' },
+  };
+
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-1 whitespace-pre-wrap">
+      {words.map((word, idx) => {
+        const trimmed = word.trim();
+        if (twitchEmoteMap[trimmed]) {
+          const emote = twitchEmoteMap[trimmed];
+          return (
+            <span 
+              key={idx} 
+              className={`inline-flex items-center gap-1 px-1.5 py-0.5 mx-0.5 text-xs font-bold rounded border ${emote.color} cursor-help transition-all duration-200 hover:scale-105`}
+              title={trimmed}
+            >
+              <span className="text-sm select-none">{emote.emoji}</span>
+              <span className="text-[10px] tracking-wide font-mono font-medium opacity-85">{trimmed}</span>
+            </span>
+          );
+        }
+        return <span key={idx}>{word}</span>;
+      })}
+    </span>
+  );
+};
+
 const PlatformFieldInput = ({
   platformId,
   fieldKey,
@@ -2750,7 +2825,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                         </div>
                       </div>
                       <p className="text-[11px] text-white/40 truncate pr-2">
-                        {thread.messages.slice(-1)[0]?.text || 'No messages'}
+                        {thread.messages.slice(-1)[0] ? replaceTextEmojis(thread.messages.slice(-1)[0].text) : 'No messages'}
                       </p>
                     </div>
                   </div>
@@ -2913,7 +2988,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                         </div>
                         
                         <div className={`p-4 rounded-2xl border text-sm text-white/90 leading-relaxed shadow-lg transition-all ${isAdminReply ? 'bg-gradient-to-br from-[#7C3AED] to-[#5B21B6] border-purple-500/10 rounded-tr-none text-left' : 'bg-white/[0.02] hover:bg-white/[0.04] border-white/5 rounded-tl-none'}`}>
-                          {msg.text && <p className="whitespace-pre-wrap">{msg.text}</p>}
+                          {msg.text && <p className="whitespace-pre-wrap">{parseEmojisAndEmotes(msg.text)}</p>}
                           
                           {msg.imageUrl && (
                             <div className="mt-2 rounded-xl overflow-hidden border border-white/5 max-w-sm bg-black/40">
