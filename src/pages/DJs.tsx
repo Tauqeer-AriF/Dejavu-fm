@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Instagram, Music, Search, X, UserX, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useLogo } from '../hooks/useLogo';
+import { PremiumRingLoader } from '../components/PremiumRingLoader';
 
 interface DJ {
   id: string;
@@ -202,7 +203,7 @@ export default function DJs() {
 
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-40 space-y-6">
-          <div className="w-16 h-16 border-4 border-white/10 border-t-neon-purple rounded-full animate-spin"></div>
+          <PremiumRingLoader size="md" />
           <p className="text-white/30 uppercase tracking-[0.3em] text-[10px] font-black">Summoning Artists...</p>
         </div>
       ) : filteredDjs.length > 0 ? (

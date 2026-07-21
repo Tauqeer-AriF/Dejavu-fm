@@ -287,6 +287,7 @@ const getThreadUserAndKey = (
 };
 
 import { PremiumLoader } from "../../components/PremiumLoader";
+import { PremiumRingLoader } from "../../components/PremiumRingLoader";
 
 export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   const { isLightMode } = useLogo();
@@ -315,6 +316,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     }
   });
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isTabTransitioning, setIsTabTransitioning] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -423,6 +425,8 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   const [slideDirection, setSlideDirection] = useState<number>(0); // -1 = left, 1 = right
 
   const navigateToTab = (newTab: 'chats' | 'connections' | 'broadcast' | 'settings' | 'profile') => {
+    if (newTab === activeTab) return;
+
     const tabs: ('chats' | 'connections' | 'broadcast' | 'profile' | 'settings')[] = [
       'chats',
       'connections',
@@ -440,7 +444,12 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     } else {
       setSlideDirection(0);
     }
-    setActiveTab(newTab);
+    
+    setIsTabTransitioning(true);
+    setTimeout(() => {
+      setActiveTab(newTab);
+      setIsTabTransitioning(false);
+    }, 350);
   };
 
   // Swipe gesture refs and handlers for MobileBottomBar
@@ -2666,8 +2675,25 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         </div>
       </div>
 
-      <AnimatePresence mode="wait" custom={slideDirection}>
-        {activeTab === 'chats' && (
+      <div className="flex-1 relative overflow-hidden flex flex-col">
+        <AnimatePresence mode="wait">
+          {isTabTransitioning && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className={`absolute inset-0 z-50 flex items-center justify-center ${
+                studioTheme === 'light' ? 'bg-[#fcfcfc]' : 'bg-[#070913]'
+              }`}
+            >
+              <PremiumRingLoader size="lg" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence mode="wait" custom={slideDirection}>
+          {activeTab === 'chats' && (
           <motion.div
             key="chats"
             custom={slideDirection}
@@ -3056,7 +3082,8 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             {renderProfileView()}
           </motion.div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>
+      </div>
 
       {/* Floating Bottom Tab Bar for Mobile App View with Swipe Support & Slide/Scale Transitions */}
       <div

@@ -28,13 +28,31 @@ const AdminStudio = React.lazy(() => import("./admin/AdminStudio").then(m => ({ 
 import { AdminApiKeys } from "./admin/AdminApiKeys";
 const AdminMetaIntegrations = React.lazy(() => import("./admin/AdminMetaIntegrations").then(m => ({ default: m.AdminMetaIntegrations })));
 import { useLogo } from "../hooks/useLogo";
+import { PremiumRingLoader } from "../components/PremiumRingLoader";
+import { PremiumLoader } from "../components/PremiumLoader";
 
 export default function Admin() {
   const [isLogged, setIsLogged] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [sessionChecking, setSessionChecking] = useState(true);
+  const [premiumLoading, setPremiumLoading] = useState(true);
+  const [tabLoading, setTabLoading] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    // Avoid triggering tab loader if not logged in, or if navigating to studio or during initial load
+    if (!isLogged || location.pathname.startsWith('/admin/studio') || sessionChecking || premiumLoading) {
+      return;
+    }
+
+    setTabLoading(true);
+    const timer = setTimeout(() => {
+      setTabLoading(false);
+    }, 450); // 450ms transition time
+
+    return () => clearTimeout(timer);
+  }, [location.pathname]);
 
   useEffect(() => {
     const verifySession = async () => {
@@ -48,7 +66,7 @@ export default function Admin() {
       } catch (err) {
         console.warn("[Admin Auth] Session check failed (likely network error or unauthenticated).");
       } finally {
-        setLoading(false);
+        setSessionChecking(false);
       }
     };
 
@@ -102,12 +120,8 @@ export default function Admin() {
     window.dispatchEvent(new Event('dashboard-theme-change'));
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-4 border-neon-purple rounded-full animate-spin shadow-[0_0_15px_rgba(176,38,255,0.5)]" />
-      </div>
-    );
+  if (sessionChecking || premiumLoading) {
+    return <PremiumLoader onComplete={() => setPremiumLoading(false)} />;
   }
 
   if (!isLogged) {
@@ -132,7 +146,7 @@ export default function Admin() {
       return <Navigate to="/admin/live-tools" replace />;
     }
     return (
-      <Suspense fallback={<LoadingFallback />}>
+      <Suspense fallback={<PremiumLoader onComplete={() => {}} />}>
         <AdminStudio onLogout={handleLogout} />
       </Suspense>
     );
@@ -208,33 +222,37 @@ export default function Admin() {
                 className="min-h-full"
               >
                 <Suspense fallback={<LoadingFallback />}>
-                  <Routes location={location}>
-                    <Route path="/" element={userRole === 'admin' ? <AdminAnalytics isAdminUser={true} /> : <Navigate to="/admin/live-tools" replace />} />
-                    <Route path="/live-tools" element={<AdminLiveTools />} />
-                    <Route path="/djs" element={userRole === 'admin' ? <AdminDJs /> : <Navigate to="/admin/live-tools" replace />} />
-                    <Route path="/features" element={userRole === 'admin' ? <AdminFeatures /> : <Navigate to="/admin/live-tools" replace />} />
-                    <Route path="/popup" element={userRole === 'admin' ? <AdminPopup /> : <Navigate to="/admin/live-tools" replace />} />
-                    <Route path="/ads" element={userRole === 'admin' ? <AdminAds /> : <Navigate to="/admin/live-tools" replace />} />
-                    <Route path="/shoutouts" element={<AdminShoutouts isAdminUser={userRole === 'admin'} />} />
-                    <Route path="/bookings" element={userRole === 'admin' ? <AdminBookings /> : <Navigate to="/admin/live-tools" replace />} />
-                    <Route path="/schedule" element={userRole === 'admin' ? <AdminSchedule /> : <Navigate to="/admin/live-tools" replace />} />
-                    <Route path="/profile" element={<AdminProfile />} />
+                  {tabLoading ? (
+                    <LoadingFallback />
+                  ) : (
+                    <Routes location={location}>
+                      <Route path="/" element={userRole === 'admin' ? <AdminAnalytics isAdminUser={true} /> : <Navigate to="/admin/live-tools" replace />} />
+                      <Route path="/live-tools" element={<AdminLiveTools />} />
+                      <Route path="/djs" element={userRole === 'admin' ? <AdminDJs /> : <Navigate to="/admin/live-tools" replace />} />
+                      <Route path="/features" element={userRole === 'admin' ? <AdminFeatures /> : <Navigate to="/admin/live-tools" replace />} />
+                      <Route path="/popup" element={userRole === 'admin' ? <AdminPopup /> : <Navigate to="/admin/live-tools" replace />} />
+                      <Route path="/ads" element={userRole === 'admin' ? <AdminAds /> : <Navigate to="/admin/live-tools" replace />} />
+                      <Route path="/shoutouts" element={<AdminShoutouts isAdminUser={userRole === 'admin'} />} />
+                      <Route path="/bookings" element={userRole === 'admin' ? <AdminBookings /> : <Navigate to="/admin/live-tools" replace />} />
+                      <Route path="/schedule" element={userRole === 'admin' ? <AdminSchedule /> : <Navigate to="/admin/live-tools" replace />} />
+                      <Route path="/profile" element={<AdminProfile />} />
 
-                    <Route path="/settings" element={userRole === 'admin' ? <AdminSettings /> : <Navigate to="/admin" replace />} />
-                    <Route path="/seo" element={userRole === 'admin' ? <AdminSEO /> : <Navigate to="/admin" replace />} />
-                    <Route path="/media" element={userRole === 'admin' ? <AdminMedia /> : <Navigate to="/admin" replace />} />
-                    <Route path="/advanced" element={userRole === 'admin' ? <AdminAdvanced /> : <Navigate to="/admin" replace />} />
-                    <Route path="/branding" element={userRole === 'admin' ? <AdminBranding /> : <Navigate to="/admin" replace />} />
-                    <Route path="/users" element={userRole === 'admin' ? <AdminUsers isAdminUser={userRole === 'admin'} /> : <Navigate to="/admin" replace />} />
-                    <Route path="/chat-users" element={userRole === 'admin' ? <AdminChatUsers isAdminUser={userRole === 'admin'} /> : <Navigate to="/admin" replace />} />
-                    <Route path="/chat-room-setting" element={userRole === 'admin' ? <AdminChatRoomSettings /> : <Navigate to="/admin" replace />} />
-                    <Route path="/audit-logs" element={userRole === 'admin' ? <AdminAuditLogs /> : <Navigate to="/admin" replace />} />
-                    <Route path="/backup" element={userRole === 'admin' ? <AdminBackup /> : <Navigate to="/admin" replace />} />
-                    <Route path="/api-keys" element={userRole === 'admin' ? <AdminApiKeys /> : <Navigate to="/admin" replace />} />
-                    <Route path="/meta-integrations" element={userRole === 'admin' ? <AdminMetaIntegrations /> : <Navigate to="/admin" replace />} />
+                      <Route path="/settings" element={userRole === 'admin' ? <AdminSettings /> : <Navigate to="/admin" replace />} />
+                      <Route path="/seo" element={userRole === 'admin' ? <AdminSEO /> : <Navigate to="/admin" replace />} />
+                      <Route path="/media" element={userRole === 'admin' ? <AdminMedia /> : <Navigate to="/admin" replace />} />
+                      <Route path="/advanced" element={userRole === 'admin' ? <AdminAdvanced /> : <Navigate to="/admin" replace />} />
+                      <Route path="/branding" element={userRole === 'admin' ? <AdminBranding /> : <Navigate to="/admin" replace />} />
+                      <Route path="/users" element={userRole === 'admin' ? <AdminUsers isAdminUser={userRole === 'admin'} /> : <Navigate to="/admin" replace />} />
+                      <Route path="/chat-users" element={userRole === 'admin' ? <AdminChatUsers isAdminUser={userRole === 'admin'} /> : <Navigate to="/admin" replace />} />
+                      <Route path="/chat-room-setting" element={userRole === 'admin' ? <AdminChatRoomSettings /> : <Navigate to="/admin" replace />} />
+                      <Route path="/audit-logs" element={userRole === 'admin' ? <AdminAuditLogs /> : <Navigate to="/admin" replace />} />
+                      <Route path="/backup" element={userRole === 'admin' ? <AdminBackup /> : <Navigate to="/admin" replace />} />
+                      <Route path="/api-keys" element={userRole === 'admin' ? <AdminApiKeys /> : <Navigate to="/admin" replace />} />
+                      <Route path="/meta-integrations" element={userRole === 'admin' ? <AdminMetaIntegrations /> : <Navigate to="/admin" replace />} />
 
-                    <Route path="*" element={<Navigate to="/admin" replace />} />
-                  </Routes>
+                      <Route path="*" element={<Navigate to="/admin" replace />} />
+                    </Routes>
+                  )}
                 </Suspense>
               </motion.div>
             </AnimatePresence>

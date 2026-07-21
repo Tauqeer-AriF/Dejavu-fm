@@ -9,7 +9,7 @@ import { fetchAdmin } from "./adminApi";
 import { ImageUploadField } from "./ImageUploadField";
 import { useLogo } from "../../hooks/useLogo";
 
-import { PremiumLoader } from "../../components/PremiumLoader";
+import { PremiumRingLoader } from "../../components/PremiumRingLoader";
 
 export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
   const { isLightMode } = useLogo();
@@ -212,7 +212,13 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
     };
   }, [range]);
 
-  if (loading && !stats) return <PremiumLoader onComplete={() => setLoading(false)} />;
+  if (loading && !stats) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh] w-full py-12">
+        <PremiumRingLoader size="md" />
+      </div>
+    );
+  }
 
   if (error && !stats) return (
     <div className="p-8 space-y-4">

@@ -24,6 +24,7 @@ import { CinematicVisualizer } from './components/CinematicVisualizer';
 import { PremiumLoader } from './components/PremiumLoader';
 import { ThemeAccessibilityDropdown } from './components/ThemeAccessibilityDropdown';
 import { ShareModal } from './components/ShareModal';
+import { PremiumRingLoader } from './components/PremiumRingLoader';
 
 // Pages
 import Home from './pages/Home';
@@ -564,8 +565,8 @@ function AnimatedRoutes() {
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       >
         <Suspense fallback={
-          <div className="flex items-center justify-center min-h-[40vh] w-full">
-            <div className="w-8 h-8 border-4 border-neon-purple border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(176,38,255,0.3)]" />
+          <div className="flex items-center justify-center min-h-[45vh] w-full py-12">
+            <PremiumRingLoader size="md" />
           </div>
         }>
           <Routes location={location}>
@@ -580,7 +581,11 @@ function AnimatedRoutes() {
             <Route path="/features/:slug" element={<FeatureDetail />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
-            <Route path="/admin/*" element={<Admin />} />
+            <Route path="/admin/*" element={
+              <Suspense fallback={<PremiumLoader onComplete={() => {}} />}>
+                <Admin />
+              </Suspense>
+            } />
           </Routes>
         </Suspense>
       </motion.div>
@@ -914,7 +919,7 @@ function MainLayout() {
       
       <main className={location.pathname.startsWith('/admin/studio') ? "flex-1 w-full relative" : "flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 relative"}>
         {!location.pathname.startsWith('/admin') && <AdvertisementSliders position="top" />}
-        <ErrorBoundary key={location.pathname}>
+        <ErrorBoundary key={location.pathname.startsWith('/admin') ? '/admin' : location.pathname}>
           <AnimatedRoutes />
         </ErrorBoundary>
         {!location.pathname.startsWith('/admin') && <AdvertisementSliders position="bottom" />}

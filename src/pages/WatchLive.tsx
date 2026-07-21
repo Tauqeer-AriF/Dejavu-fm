@@ -236,7 +236,7 @@ export default function WatchLive() {
           </div>
 
           <div className="flex-1 w-full relative bg-black group flex items-center justify-center aspect-[4/3] sm:aspect-video lg:aspect-auto">
-            {getEmbedUrl(studioVideoUrl) ? (
+            {getEmbedUrl(studioVideoUrl) && !isSplitActive ? (
               <iframe 
                 key={`${playerKey}-${getEmbedUrl(studioVideoUrl) || 'empty'}`}
                 src={getEmbedUrl(studioVideoUrl) || undefined} 
@@ -244,6 +244,12 @@ export default function WatchLive() {
                 allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; clipboard-write; gyroscope"
                 allowFullScreen>
               </iframe>
+            ) : getEmbedUrl(studioVideoUrl) && isSplitActive ? (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/95 text-center p-6">
+                <Radio className="w-12 h-12 text-neon-blue animate-pulse mb-3" />
+                <p className="text-xs font-black uppercase tracking-[0.25em] text-white/50">Playing in Split View Mode</p>
+                <p className="text-[10px] text-white/30 uppercase tracking-widest mt-1">Exit Split View to return to normal player</p>
+              </div>
             ) : (
               <>
                 <div className="absolute inset-0 z-0">

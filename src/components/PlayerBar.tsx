@@ -173,9 +173,9 @@ export function PlayerBar() {
           transition={{ type: 'spring', damping: 25, stiffness: 200 }}
           className="hidden sm:block fixed bottom-[104px] sm:bottom-[112px] xl:bottom-8 left-0 right-0 z-50 px-3 sm:px-6 pointer-events-none"
         >
-          <div className="max-w-6xl mx-auto bg-dark-bg/95 backdrop-blur-3xl rounded-2xl md:rounded-3xl h-20 md:h-28 flex items-center px-4 md:px-10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 relative group pointer-events-auto overflow-hidden">
+          <div className="max-w-6xl mx-auto bg-dark-bg/95 backdrop-blur-3xl rounded-2xl md:rounded-3xl h-20 md:h-28 flex items-center px-4 md:px-10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 relative group pointer-events-auto">
             {/* Progress bar background (always 100% since it's a live stream) */}
-            <div className="absolute top-0 left-0 h-1 bg-gradient-to-r from-neon-purple/50 via-neon-blue/50 to-neon-purple/50 w-full opacity-30"></div>
+            <div className="absolute top-0 left-0 h-1 bg-gradient-to-r from-neon-purple/50 via-neon-blue/50 to-neon-purple/50 w-full opacity-30 rounded-t-2xl md:rounded-t-3xl"></div>
             
             {/* Close/Minimize Button */}
             <button 
