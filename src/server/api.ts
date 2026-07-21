@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import Database from 'better-sqlite3';
-import { db, dbPath, backupDir, pruneBackups, backupDatabase, reopenDatabaseConnection, getUploadsDir } from "./db.js";
+import { db, dbPath, backupDir, pruneBackups, backupDatabase, reopenDatabaseConnection, getUploadsDir, pruneHistoricalData } from "./db.js";
 import { request as httpRequest } from "http";
 import { request as httpsRequest } from "https";
 import { URL } from "url";
@@ -1492,7 +1492,8 @@ apiRouter.delete('/admin/media', (req: any, res: any) => {
 apiRouter.get("/admin/analytics", (req: any, res: any) => {
   const { range } = req.query; // 'today', '7d', '30d', 'all'
   const io = req.app.get('io');
-  const realtimeListeners = io?.engine.clientsCount || 0;
+  const getUniqueCount = req.app.get('getUniqueConnectionCount');
+  const realtimeListeners = getUniqueCount ? getUniqueCount() : (io?.engine.clientsCount || 0);
 
   let timeFilter = "";
   if (range === 'today') timeFilter = " AND timestamp >= date('now')";
@@ -2327,7 +2328,7 @@ apiRouter.put("/admin/settings", authorizeRole('admin'), (req, res) => {
 apiRouter.get("/admin/chat-room-settings", authorizeRole('admin'), (req, res) => {
   const settingsRows = db.prepare(`
     SELECT key, value FROM settings
-    WHERE key IN ('chat_auto_delete_enabled', 'chat_auto_delete_hours', 'chat_auto_delete_last_run')
+    WHERE key IN ('chat_auto_delete_enabled', 'chat_auto_delete_hours', 'chat_auto_delete_last_run', 'data_prune_enabled', 'data_prune_days', 'data_prune_last_run')
   `).all() as { key: string; value: string }[];
   const settings = settingsRows.reduce<Record<string, string>>((acc, row) => {
     acc[row.key] = row.value;
@@ -2337,6 +2338,8 @@ apiRouter.get("/admin/chat-room-settings", authorizeRole('admin'), (req, res) =>
   const publicCount = db.prepare("SELECT COUNT(*) as count FROM public_messages").get() as { count: number };
   const privateCount = db.prepare("SELECT COUNT(*) as count FROM private_messages").get() as { count: number };
   const shoutoutCount = db.prepare("SELECT COUNT(*) as count FROM shoutouts").get() as { count: number };
+  const auditCount = db.prepare("SELECT COUNT(*) as count FROM audit_logs").get() as { count: number };
+  const analyticsCount = db.prepare("SELECT COUNT(*) as count FROM analytics_events").get() as { count: number };
 
   const mediaCounts = db.prepare(`
     SELECT 
@@ -2360,31 +2363,67 @@ apiRouter.get("/admin/chat-room-settings", authorizeRole('admin'), (req, res) =>
     shoutoutCount: shoutoutCount?.count || 0,
     imageCount: mediaCounts?.images || 0,
     audioCount: mediaCounts?.audios || 0,
-    videoCount: mediaCounts?.videos || 0
+    videoCount: mediaCounts?.videos || 0,
+    
+    // Historical data prune settings
+    dataPruneEnabled: settings.data_prune_enabled !== '0', // enabled by default
+    dataPruneDays: (settings.data_prune_days !== undefined && !isNaN(parseInt(settings.data_prune_days, 10))) ? parseInt(settings.data_prune_days, 10) : 90,
+    dataPruneLastRun: settings.data_prune_last_run || "",
+    auditCount: auditCount?.count || 0,
+    analyticsCount: analyticsCount?.count || 0
   });
 });
 
 apiRouter.put("/admin/chat-room-settings", authorizeRole('admin'), (req, res) => {
-  const enabled = req.body.enabled === true || req.body.enabled === '1' || req.body.enabled === 1;
-  const hours = Number(req.body.hours);
-
-  if (!Number.isInteger(hours) || hours < 1 || hours > 8760) {
-    return res.status(400).json({ error: "Timer must be between 1 and 8760 hours." });
-  }
-
-  const currentEnabledRow = db.prepare("SELECT value FROM settings WHERE key = 'chat_auto_delete_enabled'").get() as { value: string } | undefined;
-  const lastRunRow = db.prepare("SELECT value FROM settings WHERE key = 'chat_auto_delete_last_run'").get() as { value: string } | undefined;
   const updateStmt = db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value");
 
-  updateStmt.run('chat_auto_delete_enabled', enabled ? '1' : '0');
-  updateStmt.run('chat_auto_delete_hours', hours.toString());
-
-  if (enabled && (currentEnabledRow?.value !== '1' || !lastRunRow?.value)) {
-    updateStmt.run('chat_auto_delete_last_run', new Date().toISOString());
+  // Chat auto-delete settings
+  if (req.body.enabled !== undefined) {
+    const enabled = req.body.enabled === true || req.body.enabled === '1' || req.body.enabled === 1;
+    const currentEnabledRow = db.prepare("SELECT value FROM settings WHERE key = 'chat_auto_delete_enabled'").get() as { value: string } | undefined;
+    const lastRunRow = db.prepare("SELECT value FROM settings WHERE key = 'chat_auto_delete_last_run'").get() as { value: string } | undefined;
+    
+    updateStmt.run('chat_auto_delete_enabled', enabled ? '1' : '0');
+    if (enabled && (currentEnabledRow?.value !== '1' || !lastRunRow?.value)) {
+      updateStmt.run('chat_auto_delete_last_run', new Date().toISOString());
+    }
   }
 
-  logAction(req, 'UPDATE', 'chat_room_settings', null, { enabled, hours });
+  if (req.body.hours !== undefined) {
+    const hours = Number(req.body.hours);
+    if (!Number.isInteger(hours) || hours < 1 || hours > 8760) {
+      return res.status(400).json({ error: "Timer must be between 1 and 8760 hours." });
+    }
+    updateStmt.run('chat_auto_delete_hours', hours.toString());
+  }
+
+  // Historical data pruning settings
+  if (req.body.dataPruneEnabled !== undefined) {
+    const dataPruneEnabled = req.body.dataPruneEnabled === true || req.body.dataPruneEnabled === '1' || req.body.dataPruneEnabled === 1;
+    updateStmt.run('data_prune_enabled', dataPruneEnabled ? '1' : '0');
+  }
+
+  if (req.body.dataPruneDays !== undefined) {
+    const dataPruneDays = Number(req.body.dataPruneDays);
+    if (!Number.isInteger(dataPruneDays) || dataPruneDays < 0 || dataPruneDays > 3650) {
+      return res.status(400).json({ error: "Retention days must be between 0 and 3650 days." });
+    }
+    updateStmt.run('data_prune_days', dataPruneDays.toString());
+  }
+
+  logAction(req, 'UPDATE', 'system_operations_settings', null, req.body);
   res.json({ success: true });
+});
+
+apiRouter.post("/admin/chat-room-settings/prune-data", authorizeRole('admin'), (req, res) => {
+  const days = req.body.days !== undefined ? Number(req.body.days) : undefined;
+  if (days !== undefined && (isNaN(days) || days < 0)) {
+    return res.status(400).json({ error: "Invalid retention days specified." });
+  }
+
+  const result = pruneHistoricalData(days);
+  logAction(req, 'PRUNE', 'historical_data_manual', null, { daysRequested: days, ...result });
+  res.json({ success: true, ...result });
 });
 
 apiRouter.delete("/admin/chat-room-settings/data", authorizeRole('admin'), (req, res) => {

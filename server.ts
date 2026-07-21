@@ -8,7 +8,7 @@ import { apiRouter } from "./src/server/api.ts";
 import { externalApiRouter } from "./src/server/v1_external_api.ts";
 import { webhookRouter } from "./src/server/meta/webhook.routes.ts";
 import { MetaService } from "./src/server/meta/meta.service.ts";
-import { initDb, db, backupDatabase, getUploadsDir } from "./src/server/db.ts";
+import { initDb, db, backupDatabase, getUploadsDir, pruneHistoricalData } from "./src/server/db.ts";
 import { apiKeyCache } from "./src/server/api_key_cache.ts";
 import http from "http";
 import { Server as SocketIOServer } from "socket.io";
@@ -544,9 +544,28 @@ async function startServer() {
     return next(new Error('Authentication error: Invalid API Key'));
   });
 
+  const getUniqueConnectionCount = () => {
+    const ips = new Set<string>();
+    io.sockets.sockets.forEach((s) => {
+      const forwarded = s.handshake.headers['x-forwarded-for'];
+      let ip = '';
+      if (typeof forwarded === 'string') {
+        ip = forwarded.split(',')[0].trim();
+      } else if (Array.isArray(forwarded) && forwarded.length > 0) {
+        ip = forwarded[0].trim();
+      }
+      if (!ip) {
+        ip = s.handshake.address || s.conn.remoteAddress || s.id;
+      }
+      ips.add(ip);
+    });
+    return ips.size || io.sockets.sockets.size || 0;
+  };
+  app.set('getUniqueConnectionCount', getUniqueConnectionCount);
+
   io.on('connection', (socket) => {
     const emitCounts = () => {
-      const count = io.sockets.sockets.size;
+      const count = getUniqueConnectionCount();
       io.emit('onlineCount', count);
       io.emit('stats_update', { realtimeListeners: count });
     };
@@ -902,6 +921,25 @@ async function startServer() {
   const backupCheckInterval = 15 * 60 * 1000; // Check every 15 minutes for better responsiveness to setting changes
   setInterval(performAutoBackup, backupCheckInterval);
   setTimeout(performAutoBackup, 5000); // Initial check 5 seconds after startup
+
+  // Nightly Pruning of Historical Analytics/Audit Log Records (Once every 24 hours)
+  const performNightlyPruning = () => {
+    if (!db.open) return;
+    try {
+      const enabledRow = db.prepare("SELECT value FROM settings WHERE key = 'data_prune_enabled'").get() as {value: string} | undefined;
+      // If setting exists and is set to '0', skip pruning
+      if (enabledRow && enabledRow.value === '0') {
+        console.log("[Nightly Pruning Task] Automatic pruning is disabled in settings.");
+        return;
+      }
+      pruneHistoricalData();
+    } catch (e) {
+      console.error("[Nightly Pruning Task] Error:", e);
+    }
+  };
+  const NIGHTLY_PRUNE_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
+  setInterval(performNightlyPruning, NIGHTLY_PRUNE_INTERVAL);
+  setTimeout(performNightlyPruning, 30000); // Initial pruning check 30 seconds after startup
 
   const performChatRetentionCheck = () => {
     if (!db.open) return;

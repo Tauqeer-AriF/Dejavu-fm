@@ -634,6 +634,17 @@ export function initDb() {
       CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp);
       CREATE INDEX IF NOT EXISTS idx_private_messages_timestamp ON private_messages(timestamp);
       CREATE INDEX IF NOT EXISTS idx_room_messages_created_at ON room_messages(created_at);
+      
+      -- Explicit indexes on foreign-key-like columns and reference fields for maximum performance
+      CREATE INDEX IF NOT EXISTS idx_admins_dj_profile_id ON admins(dj_profile_id);
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_username ON audit_logs(username);
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_resource_id ON audit_logs(resource_id);
+      CREATE INDEX IF NOT EXISTS idx_room_messages_sender_name ON room_messages(sender_name);
+      CREATE INDEX IF NOT EXISTS idx_private_messages_sender ON private_messages(sender);
+      CREATE INDEX IF NOT EXISTS idx_private_messages_recipient ON private_messages(recipient);
+      CREATE INDEX IF NOT EXISTS idx_public_messages_sender ON public_messages(sender);
+      CREATE INDEX IF NOT EXISTS idx_users_id ON users(id);
+      CREATE INDEX IF NOT EXISTS idx_shoutouts_id ON shoutouts(id);
     `);
     console.log("[DB] High-performance indexes verified / created successfully.");
   } catch (indexErr) {
@@ -645,6 +656,79 @@ export function initDb() {
   console.error("[DB] CRITICAL ERROR during database initialization:", err);
   throw err;
 }
+}
+
+/**
+ * Prunes audit logs and analytics events older than a specified number of days (default 90).
+ * Keeps the database lightweight and highly performant.
+ */
+export function pruneHistoricalData(customDays?: number) {
+  if (!db.open) return { auditDeleted: 0, analyticsDeleted: 0 };
+  try {
+    let days = 90;
+    if (customDays !== undefined && !isNaN(customDays)) {
+      days = customDays;
+    } else {
+      const daysRow = db.prepare("SELECT value FROM settings WHERE key = 'data_prune_days'").get() as {value: string} | undefined;
+      if (daysRow) {
+        days = parseInt(daysRow.value, 10) || 90;
+      }
+    }
+
+    console.log(`[DB] Starting automatic pruning of historical data (${days}-day retention)...`);
+    
+    let auditChanges = 0;
+    let analyticsChanges = 0;
+
+    if (days === 0) {
+      // Complete manual prune of all entries
+      const auditResult = db.prepare("DELETE FROM audit_logs").run();
+      const analyticsResult = db.prepare("DELETE FROM analytics_events").run();
+      
+      // Clear geo and podcast cumulative stats
+      db.prepare("DELETE FROM geo_stats").run();
+      db.prepare("DELETE FROM podcast_analytics").run();
+      
+      // Reset site-wide stats (e.g., site views, page views, peak listeners)
+      db.prepare("UPDATE site_stats SET count = 0").run();
+      db.prepare("INSERT INTO site_stats (category, count) VALUES (?, ?) ON CONFLICT(category) DO UPDATE SET count = 0").run('peak_listeners', 0);
+      
+      // Reset hourly peak statistics
+      db.prepare("UPDATE hourly_stats SET peak_listeners = 0").run();
+
+      auditChanges = auditResult.changes;
+      analyticsChanges = analyticsResult.changes;
+    } else {
+      // 1. Delete audit logs older than specified days
+      const auditResult = db.prepare(`
+        DELETE FROM audit_logs 
+        WHERE timestamp < datetime('now', '-' || ? || ' days')
+      `).run(days);
+      
+      // 2. Delete analytics events older than specified days
+      const analyticsResult = db.prepare(`
+        DELETE FROM analytics_events 
+        WHERE timestamp < datetime('now', '-' || ? || ' days')
+      `).run(days);
+
+      auditChanges = auditResult.changes;
+      analyticsChanges = analyticsResult.changes;
+    }
+    
+    console.log(`[DB] Pruning complete. Removed ${auditChanges} expired audit logs and ${analyticsChanges} expired analytics events.`);
+    
+    // Track last run in settings
+    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+      .run("data_prune_last_run", new Date().toISOString());
+
+    return {
+      auditDeleted: auditChanges,
+      analyticsDeleted: analyticsChanges
+    };
+  } catch (err) {
+    console.error("[DB] Error pruning historical data:", err);
+    return { auditDeleted: 0, analyticsDeleted: 0 };
+  }
 }
 
 /**
