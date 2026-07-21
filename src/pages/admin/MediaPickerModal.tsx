@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchAdmin } from './adminApi';
 import { X, Search, Image as ImageIcon, Video, Music, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 
 export function MediaPickerModal({ isOpen, onClose, onSelect }: { isOpen: boolean, onClose: () => void, onSelect: (url: string) => void }) {
   const [search, setSearch] = useState('');

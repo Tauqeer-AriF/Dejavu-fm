@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { LogOut, Send, Paperclip, X, Maximize, Mic, MessageSquare, Search, ArrowLeft, Image as ImageIcon, Music, Video, Volume2, VolumeX, Ban, Trash2, Eraser, ShieldAlert, MailX, PlusCircle, Square, Pin, CheckSquare, MailOpen, Mail, Trash, Eye, EyeOff, Settings, Link2, Globe, RefreshCw, Download, Phone, Facebook, Instagram, Twitch, Activity, CheckCircle, AlertTriangle, Camera, Check, Sun, Moon, Megaphone, Share2, Radio } from "lucide-react";
 import { toast } from "sonner";
 import { fetchAdmin } from "./adminApi";
@@ -61,10 +61,13 @@ const normalizeThreads = (threads: Record<string, UserThread>) => {
       }
     });
 
+    const threadPlatform = thread.platform || filtered.find(m => m.platform)?.platform;
+
     normalized[key] = {
       ...thread,
       messages: filtered,
       lastMessageTimestamp: filtered.length ? filtered[filtered.length - 1].timestamp : thread.lastMessageTimestamp,
+      ...(threadPlatform ? { platform: threadPlatform } : {}),
     };
   });
   return normalized;
@@ -110,6 +113,15 @@ const getThreadSource = (thread: UserThread): string => {
   const referenceMsg = userMessages.length > 0 
     ? userMessages[userMessages.length - 1] 
     : messages[messages.length - 1];
+
+  if (referenceMsg.platform) {
+    return referenceMsg.platform.toLowerCase();
+  }
+
+  const platformMsg = messages.find(m => m.platform);
+  if (platformMsg?.platform) {
+    return platformMsg.platform.toLowerCase();
+  }
 
   if (referenceMsg.type === 'shoutout') {
     return 'shoutout';
@@ -1098,12 +1110,15 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             finalUnreadCount = 0;
           }
 
+          const threadPlatform = msg.platform || existing?.platform || threadMessages.find(m => m.platform)?.platform;
+
           nextThreads[userKey] = {
             user: user,
             avatar: existing?.avatar || msg.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user)}`,
             messages: threadMessages,
             lastMessageTimestamp: msg.timestamp,
             unreadCount: finalUnreadCount,
+            ...(threadPlatform ? { platform: threadPlatform } : {}),
           };
         });
         return nextThreads;
@@ -1163,12 +1178,15 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             finalUnreadCount = 0;
           }
 
+          const privateThreadPlatform = msg.platform || existing?.platform || threadMessages.find(m => m.platform)?.platform;
+
           nextThreads[userKey] = {
             user: user,
             avatar: existing?.avatar || msg.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user)}`,
             messages: threadMessages,
             lastMessageTimestamp: msg.timestamp,
             unreadCount: finalUnreadCount,
+            ...(privateThreadPlatform ? { platform: privateThreadPlatform } : {}),
           };
         });
         return nextThreads;
@@ -1232,12 +1250,15 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             finalUnreadCount = 0;
           }
 
+          const threadPlatform = existing?.platform || threadMessages.find(m => m.platform)?.platform;
+
           nextThreads[userKey] = {
             user: user,
             avatar: existing?.avatar || shoutout.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user)}`,
             messages: threadMessages,
             lastMessageTimestamp: ts,
             unreadCount: finalUnreadCount,
+            ...(threadPlatform ? { platform: threadPlatform } : {}),
           };
         });
         return nextThreads;
@@ -1259,6 +1280,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         audioUrl: msg.audioUrl,
         videoUrl: msg.videoUrl,
         recipient: msg.recipient,
+        platform: msg.platform,
       };
 
       addMessageToThread(incomingMessage);

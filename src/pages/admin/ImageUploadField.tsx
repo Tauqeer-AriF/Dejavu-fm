@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { fetchAdmin } from "./adminApi";
 import { UploadCloud, X, Image, Link, Loader2, Library } from "lucide-react";
 import { MediaPickerModal } from "./MediaPickerModal";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "motion/react";
 
 interface ImageUploadFieldProps {
   label?: string;

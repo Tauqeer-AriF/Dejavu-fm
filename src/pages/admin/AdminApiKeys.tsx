@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchAdmin } from "./adminApi";
 import { useModal } from "../../context/ModalContext";
 import { Key, Plus, Trash2, Copy, Code, Terminal, Send, Wifi, X, Mic2, Play, Cpu, Sparkles, Image as ImageIcon, Music as MusicIcon, Video as VideoIcon, Upload, CheckCircle2, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { useLogo } from "../../hooks/useLogo";
 
 export function AdminApiKeys() {
@@ -466,74 +467,77 @@ const SkeletonKey = () => (
 
   return (
     <div className="space-y-8 pb-12">
-      <AnimatePresence>
-        {isPromptOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-              onClick={() => setIsPromptOpen(false)}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className={`relative w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden z-10 transition-colors ${
-                isLightMode ? 'bg-white border-black/10 text-black' : 'bg-[#0f1015] border-white/10 text-white'
-              }`}
-            >
-              <div className="p-6 space-y-6">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className={`text-xl font-bold ${isLightMode ? 'text-black' : 'text-white'}`}>Generate API Key</h3>
-                    <p className={`text-sm mt-1 ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Provide a description to help you identify this key later.</p>
+      {typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {isPromptOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                onClick={() => setIsPromptOpen(false)}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className={`relative w-full max-w-md border rounded-3xl shadow-2xl overflow-hidden z-10 transition-colors ${
+                  isLightMode ? 'bg-white border-black/10 text-black' : 'bg-[#0f1015] border-white/10 text-white'
+                }`}
+              >
+                <div className="p-6 space-y-6">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className={`text-xl font-bold ${isLightMode ? 'text-black' : 'text-white'}`}>Generate API Key</h3>
+                      <p className={`text-sm mt-1 ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Provide a description to help you identify this key later.</p>
+                    </div>
+                    <button 
+                      onClick={() => setIsPromptOpen(false)} 
+                      className={`p-1.5 transition-colors rounded-full ${
+                        isLightMode ? 'text-black/40 hover:text-black hover:bg-black/5' : 'text-white/40 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
                   </div>
-                  <button 
-                    onClick={() => setIsPromptOpen(false)} 
-                    className={`p-1.5 transition-colors rounded-full ${
-                      isLightMode ? 'text-black/40 hover:text-black hover:bg-black/5' : 'text-white/40 hover:text-white hover:bg-white/5'
-                    }`}
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+                  <div className="space-y-2">
+                    <label className={`text-xs font-bold uppercase tracking-widest ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Description</label>
+                    <input
+                      type="text"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="e.g., My External App"
+                      className={`w-full rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-neon-purple transition-all border ${
+                        isLightMode ? 'bg-black/5 border-black/10 text-black' : 'bg-white/5 border-white/10 text-white'
+                      }`}
+                      autoFocus
+                    />
+                  </div>
+                  <div className="flex justify-end gap-3 pt-2">
+                    <button 
+                      onClick={() => setIsPromptOpen(false)} 
+                      className={`px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors ${
+                        isLightMode ? 'bg-black/5 hover:bg-black/10 text-black/80' : 'bg-white/10 hover:bg-white/20 text-white/80'
+                      }`}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={handleConfirmGeneration} 
+                      disabled={!description.trim()} 
+                      className="px-6 py-2 rounded-xl bg-neon-purple text-white text-xs font-bold uppercase tracking-widest hover:bg-neon-blue transition-colors disabled:opacity-50"
+                    >
+                      Generate
+                    </button>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <label className={`text-xs font-bold uppercase tracking-widest ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Description</label>
-                  <input
-                    type="text"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="e.g., My External App"
-                    className={`w-full rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-neon-purple transition-all border ${
-                      isLightMode ? 'bg-black/5 border-black/10 text-black' : 'bg-white/5 border-white/10 text-white'
-                    }`}
-                    autoFocus
-                  />
-                </div>
-                <div className="flex justify-end gap-3 pt-2">
-                  <button 
-                    onClick={() => setIsPromptOpen(false)} 
-                    className={`px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors ${
-                      isLightMode ? 'bg-black/5 hover:bg-black/10 text-black/80' : 'bg-white/10 hover:bg-white/20 text-white/80'
-                    }`}
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    onClick={handleConfirmGeneration} 
-                    disabled={!description.trim()} 
-                    className="px-6 py-2 rounded-xl bg-neon-purple text-white text-xs font-bold uppercase tracking-widest hover:bg-neon-blue transition-colors disabled:opacity-50"
-                  >
-                    Generate
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h2 className={`text-2xl sm:text-3xl font-display font-black uppercase text-neon-purple tracking-wider flex items-center ${isLightMode ? 'text-black' : 'text-white'}`}>

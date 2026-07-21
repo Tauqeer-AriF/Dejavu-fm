@@ -756,6 +756,12 @@ async function startServer() {
       (socket as any).username = username;
       if (!db.open) return;
       try {
+        const userCheck = db.prepare("SELECT is_banned FROM users WHERE LOWER(username) = ?").get(username.toLowerCase()) as any;
+        if (userCheck && userCheck.is_banned) {
+          socket.emit('user_banned', { email: username });
+          return;
+        }
+
         const adminCheck = db.prepare("SELECT 1 FROM admins WHERE LOWER(username) = ?").get(username.toLowerCase());
         const isUserAdmin = !!adminCheck;
 
@@ -801,9 +807,39 @@ async function startServer() {
     });
 
     socket.on('chatMessage', (msg) => {
+       if (!msg) return;
+       const sender = msg.user || (socket as any).username;
+       if (sender && db.open) {
+         try {
+           const userCheck = db.prepare("SELECT is_banned FROM users WHERE LOWER(username) = ?").get(sender.toLowerCase()) as any;
+           if (userCheck && userCheck.is_banned) {
+             socket.emit('user_banned', { email: sender });
+             return;
+           }
+         } catch (e) {}
+       }
+
        if (msg.recipient) {
          // Private message logic remains here as it's not part of the public API endpoint
          if (!db.open) return;
+
+         // Check if either user has blocked the other
+         try {
+           const isBlocked = db.prepare(
+             "SELECT 1 FROM user_blocks WHERE (LOWER(blocker) = LOWER(?) AND LOWER(blocked) = LOWER(?)) OR (LOWER(blocker) = LOWER(?) AND LOWER(blocked) = LOWER(?))"
+           ).get(msg.user, msg.recipient, msg.recipient, msg.user);
+           if (isBlocked) {
+             console.log(`[PM Blocked] Suppressed private message between '${msg.user}' and '${msg.recipient}' due to active user block.`);
+             socket.emit('chatMessageError', {
+               recipient: msg.recipient,
+               error: `Message restricted: A user block is active between you and @${msg.recipient}.`
+             });
+             return;
+           }
+         } catch (blockErr) {
+           console.error("[PM Block Check Error]", blockErr);
+         }
+
          const newMsg = { ...msg, id: crypto.randomUUID(), timestamp: Date.now() }; // Simplified for PM
          if (msg.platform === 'twitch') {
            TwitchService.sendChatMessage(msg.text).then(() => {

@@ -141,8 +141,9 @@ export class TwitchService {
       this.retryCount = 0;
 
       // Request tags and commands capability for richer chat metadata (names, colors, etc.)
+      const formattedPass = oauth.startsWith("oauth:") ? oauth : `oauth:${oauth}`;
       socket.send("CAP REQ :twitch.tv/tags twitch.tv/commands");
-      socket.send(`PASS ${oauth}`);
+      socket.send(`PASS ${formattedPass}`);
       socket.send(`NICK ${channel}`);
       socket.send(`JOIN #${channel}`);
 

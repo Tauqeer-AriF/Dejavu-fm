@@ -167,7 +167,7 @@ export default function PodcastsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 px-4">
           {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
             <div key={i} className="glass-panel h-full rounded-2xl flex flex-col relative overflow-hidden border border-white/10">
-              <div className="aspect-[16/9] w-full bg-white/10 animate-pulse border-b border-white/5"></div>
+              <div className="aspect-square w-full bg-white/10 animate-pulse border-b border-white/5"></div>
               <div className="p-5 flex-1 flex flex-col">
                 <div className="h-3 w-20 bg-white/10 animate-pulse rounded mt-1 mb-3"></div>
                 <div className="h-6 w-full bg-white/10 animate-pulse rounded mb-2"></div>
@@ -225,7 +225,7 @@ export default function PodcastsPage() {
                         isLightMode ? 'bg-neon-purple/[0.03]' : 'bg-neon-purple/5 group-hover:bg-neon-blue/10'
                       }`}></div>
                       
-                      <div className={`aspect-[16/9] overflow-hidden relative border-b ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
+                      <div className={`aspect-square overflow-hidden relative border-b ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
                         <img src={imageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
                         <div className={`absolute inset-0 bg-gradient-to-t ${isLightMode ? 'from-white/90 via-white/20' : 'from-dark-bg/90 via-dark-bg/20'} to-transparent`}></div>
                         <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">

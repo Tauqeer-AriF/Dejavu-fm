@@ -721,7 +721,7 @@ apiRouter.post("/public/auth/login", authLimiter, (req, res) => {
   const user = db.prepare("SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(email) = ?").get(identifier, identifier) as any;
   
   if (user && user.is_banned) {
-    return res.status(403).json({ error: "This account has been suspended." });
+    return res.status(403).json({ error: "You are banned. Please contact the admin." });
   }
 
   if (user && bcrypt.compareSync(password, user.password_hash)) {
@@ -748,9 +748,13 @@ apiRouter.post("/public/auth/forgot-password", authLimiter, (req, res) => {
     return res.status(400).json({ error: "Invalid email address" });
   }
 
-  const user = db.prepare("SELECT id, username, email FROM users WHERE LOWER(email) = ?").get(cleanEmail) as any;
+  const user = db.prepare("SELECT id, username, email, is_banned FROM users WHERE LOWER(email) = ?").get(cleanEmail) as any;
   if (!user) {
     return res.status(404).json({ error: "No chat user found with this email address" });
+  }
+
+  if (user.is_banned) {
+    return res.status(403).json({ error: "You are banned. Please contact the admin." });
   }
 
   const resetToken = jwt.sign(
@@ -778,9 +782,13 @@ apiRouter.post("/public/auth/reset-password", authLimiter, (req, res) => {
       return res.status(400).json({ error: "Invalid reset session" });
     }
 
-    const user = db.prepare("SELECT id FROM users WHERE id = ? AND LOWER(email) = ?").get(decoded.userId, decoded.email) as any;
+    const user = db.prepare("SELECT id, is_banned FROM users WHERE id = ? AND LOWER(email) = ?").get(decoded.userId, decoded.email) as any;
     if (!user) {
       return res.status(404).json({ error: "Chat user no longer exists" });
+    }
+
+    if (user.is_banned) {
+      return res.status(403).json({ error: "You are banned. Please contact the admin." });
     }
 
     const hash = bcrypt.hashSync(password, 10);
@@ -818,8 +826,12 @@ apiRouter.get("/public/auth/check", (req, res) => {
       }
     }
 
-    const user = db.prepare("SELECT username, email, avatar_url, created_at FROM users WHERE username = ?").get(decoded.username) as any;
+    const user = db.prepare("SELECT username, email, avatar_url, created_at, is_banned FROM users WHERE username = ?").get(decoded.username) as any;
     if (user) {
+      if (user.is_banned) {
+        res.clearCookie("user_token", { sameSite: "none", secure: true });
+        return res.json({ loggedIn: false, isBanned: true, error: "You are banned. Please contact the admin." });
+      }
       res.json({ 
         loggedIn: true, 
         username: user.username, 
@@ -841,6 +853,12 @@ apiRouter.put("/public/user/profile", (req: any, res: any) => {
 
   try {
     const decoded = jwt.verify(token, ACTUAL_SECRET) as any;
+    if (decoded && decoded.username) {
+      const userCheck = db.prepare("SELECT is_banned FROM users WHERE LOWER(username) = ?").get(decoded.username.toLowerCase()) as any;
+      if (userCheck && userCheck.is_banned) {
+        return res.status(403).json({ error: "You are banned. Please contact the admin." });
+      }
+    }
     const { avatar_url } = req.body;
     db.prepare("UPDATE users SET avatar_url = ? WHERE username = ?").run(avatar_url || null, decoded.username);
     res.json({ success: true, avatar_url });
@@ -855,6 +873,12 @@ apiRouter.post("/public/user/upload-avatar", upload.single("avatar"), async (req
 
   try {
     const decoded = jwt.verify(token, ACTUAL_SECRET) as any;
+    if (decoded && decoded.username) {
+      const userCheck = db.prepare("SELECT is_banned FROM users WHERE LOWER(username) = ?").get(decoded.username.toLowerCase()) as any;
+      if (userCheck && userCheck.is_banned) {
+        return res.status(403).json({ error: "You are banned. Please contact the admin." });
+      }
+    }
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
     const processedFilename = await processImage(req.file);
@@ -872,10 +896,18 @@ apiRouter.post("/public/chat/upload", (req: any, res: any) => {
 
   if (!token) return res.status(401).json({ error: "Unauthorized" });
 
+  let decoded: any;
   try {
-    jwt.verify(token, ACTUAL_SECRET);
+    decoded = jwt.verify(token, ACTUAL_SECRET);
   } catch (err) {
     return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  if (decoded && decoded.username) {
+    const userCheck = db.prepare("SELECT is_banned FROM users WHERE LOWER(username) = ?").get(decoded.username.toLowerCase()) as any;
+    if (userCheck && userCheck.is_banned) {
+      return res.status(403).json({ error: "You are banned. Please contact the admin." });
+    }
   }
 
   attachmentUpload.single("file")(req, res, async (err: any) => {
@@ -2780,8 +2812,287 @@ apiRouter.delete("/admin/users/:username", authorizeRole('admin'), (req, res) =>
 });
 
 apiRouter.get("/admin/chat_users", authorizeRole('admin'), (req, res) => {
-  const users = db.prepare("SELECT id, username, email, password_plain, source, is_banned, created_at FROM users").all();
+  const users = db.prepare(`
+    SELECT u.id, u.username, u.email, u.password_plain, u.source, u.is_banned, u.created_at, u.avatar_url,
+      (SELECT COUNT(*) FROM user_blocks WHERE LOWER(blocker) = LOWER(u.username)) as blocked_count,
+      (SELECT COUNT(*) FROM user_blocks WHERE LOWER(blocked) = LOWER(u.username)) as blocked_by_count
+    FROM users u
+  `).all() as any[];
+
   res.json(users);
+});
+
+apiRouter.get("/admin/user_blocks", authorizeRole('admin'), (req, res) => {
+  const blocks = db.prepare(`
+    SELECT b.id, b.blocker, b.blocked, b.reason, b.created_at,
+      u1.email as blocker_email, u1.avatar_url as blocker_avatar,
+      u2.email as blocked_email, u2.avatar_url as blocked_avatar
+    FROM user_blocks b
+    LEFT JOIN users u1 ON LOWER(u1.username) = LOWER(b.blocker)
+    LEFT JOIN users u2 ON LOWER(u2.username) = LOWER(b.blocked)
+    ORDER BY b.created_at DESC
+  `).all();
+  res.json(blocks);
+});
+
+apiRouter.post("/admin/user_blocks", authorizeRole('admin'), (req, res) => {
+  const { blocker, blocked, reason } = req.body;
+  if (!blocker || !blocked) {
+    return res.status(400).json({ error: "Both blocker and blocked usernames are required" });
+  }
+  const b1 = blocker.trim();
+  const b2 = blocked.trim();
+
+  if (b1.toLowerCase() === b2.toLowerCase()) {
+    return res.status(400).json({ error: "A user cannot block themselves" });
+  }
+
+  const existing = db.prepare("SELECT id FROM user_blocks WHERE LOWER(blocker) = LOWER(?) AND LOWER(blocked) = LOWER(?)").get(b1, b2);
+  if (existing) {
+    return res.status(400).json({ error: `'${b1}' has already blocked '${b2}'` });
+  }
+
+  try {
+    const stmt = db.prepare("INSERT INTO user_blocks (blocker, blocked, reason) VALUES (?, ?, ?)");
+    const info = stmt.run(b1, b2, reason?.trim() || "Admin Initiated Block");
+    
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('user_blocked_update', { blocker: b1, blocked: b2, action: 'block' });
+    }
+
+    logAction(req, 'BLOCK', 'user_blocks', `${b1} -> ${b2}`, { reason });
+    res.json({ success: true, id: info.lastInsertRowid });
+  } catch (err: any) {
+    if (err.message && err.message.includes('UNIQUE')) {
+      return res.status(400).json({ error: `'${b1}' has already blocked '${b2}'` });
+    }
+    res.status(500).json({ error: "Failed to create block record" });
+  }
+});
+
+apiRouter.post("/admin/user_blocks/unblock", authorizeRole('admin'), (req, res) => {
+  let { id, blocker, blocked } = req.body;
+  try {
+    let result;
+    if (id) {
+      const existing = db.prepare("SELECT blocker, blocked FROM user_blocks WHERE id = ?").get(id) as any;
+      if (existing) {
+        blocker = existing.blocker;
+        blocked = existing.blocked;
+      }
+      result = db.prepare("DELETE FROM user_blocks WHERE id = ?").run(id);
+    } else if (blocker && blocked) {
+      result = db.prepare("DELETE FROM user_blocks WHERE LOWER(blocker) = LOWER(?) AND LOWER(blocked) = LOWER(?)").run(blocker, blocked);
+    } else {
+      return res.status(400).json({ error: "Block ID or (blocker and blocked) required" });
+    }
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('user_blocked_update', { blocker, blocked, action: 'unblock' });
+    }
+
+    logAction(req, 'UNBLOCK', 'user_blocks', id || `${blocker} -> ${blocked}`);
+    res.json({ success: true, changes: result.changes });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to unblock user" });
+  }
+});
+
+apiRouter.post("/admin/user_blocks/bulk-unblock", authorizeRole('admin'), (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: "No block IDs provided" });
+  }
+
+  try {
+    let unblockedPairs: { blocker: string; blocked: string }[] = [];
+    db.transaction(() => {
+      const placeholders = ids.map(() => '?').join(',');
+      const rows = db.prepare(`SELECT blocker, blocked FROM user_blocks WHERE id IN (${placeholders})`).all(...ids) as any[];
+      unblockedPairs = rows;
+      const stmt = db.prepare("DELETE FROM user_blocks WHERE id = ?");
+      for (const id of ids) {
+        stmt.run(id);
+      }
+    })();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('user_blocked_update', { action: 'bulk-unblock', ids, pairs: unblockedPairs });
+    }
+
+    logAction(req, 'BULK_UNBLOCK', 'user_blocks', null, { count: ids.length });
+    res.json({ success: true, count: ids.length });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to perform bulk unblock" });
+  }
+});
+
+apiRouter.post("/chat/block", (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = req.cookies?.user_token || req.cookies?.admin_token || (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null);
+  
+  let blockerUsername = (req.body.blocker || "").trim();
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, ACTUAL_SECRET) as any;
+      if (decoded.username) {
+        blockerUsername = decoded.username.trim();
+      }
+    } catch (err) {}
+  }
+
+  if (blockerUsername) {
+    const userCheck = db.prepare("SELECT is_banned FROM users WHERE LOWER(username) = ?").get(blockerUsername.toLowerCase()) as any;
+    if (userCheck && userCheck.is_banned) {
+      return res.status(403).json({ error: "You are banned. Please contact the admin." });
+    }
+  }
+
+  const { blocked, reason } = req.body;
+  const targetBlocked = (blocked || "").trim();
+
+  if (!blockerUsername || !targetBlocked) {
+    return res.status(400).json({ error: "Both blocker and blocked usernames are required" });
+  }
+
+  if (blockerUsername.toLowerCase() === targetBlocked.toLowerCase()) {
+    return res.status(400).json({ error: "Cannot block yourself" });
+  }
+
+  try {
+    const existing = db.prepare("SELECT id FROM user_blocks WHERE LOWER(blocker) = LOWER(?) AND LOWER(blocked) = LOWER(?)").get(blockerUsername, targetBlocked);
+    if (!existing) {
+      db.prepare("INSERT INTO user_blocks (blocker, blocked, reason) VALUES (?, ?, ?)")
+        .run(blockerUsername, targetBlocked, reason || "User blocked via chat");
+    }
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('user_blocked_update', { blocker: blockerUsername, blocked: targetBlocked, action: 'block' });
+    }
+
+    res.json({ success: true, blocker: blockerUsername, blocked: targetBlocked });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to create block record" });
+  }
+});
+
+apiRouter.post("/chat/unblock", (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = req.cookies?.user_token || req.cookies?.admin_token || (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null);
+  
+  let blockerUsername = (req.body.blocker || "").trim();
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, ACTUAL_SECRET) as any;
+      if (decoded.username) {
+        blockerUsername = decoded.username.trim();
+      }
+    } catch (err) {}
+  }
+
+  if (blockerUsername) {
+    const userCheck = db.prepare("SELECT is_banned FROM users WHERE LOWER(username) = ?").get(blockerUsername.toLowerCase()) as any;
+    if (userCheck && userCheck.is_banned) {
+      return res.status(403).json({ error: "You are banned. Please contact the admin." });
+    }
+  }
+
+  const { blocked } = req.body;
+  const targetBlocked = (blocked || "").trim();
+
+  if (!blockerUsername || !targetBlocked) {
+    return res.status(400).json({ error: "Both blocker and blocked usernames are required" });
+  }
+
+  try {
+    const info = db.prepare("DELETE FROM user_blocks WHERE LOWER(blocker) = LOWER(?) AND LOWER(blocked) = LOWER(?)")
+      .run(blockerUsername, targetBlocked);
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('user_blocked_update', { blocker: blockerUsername, blocked: targetBlocked, action: 'unblock' });
+    }
+
+    res.json({ success: true, changes: info.changes });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to remove block" });
+  }
+});
+
+apiRouter.get("/chat/blocks", (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = req.cookies?.user_token || req.cookies?.admin_token || (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null);
+  
+  let blockerUsername = ((req.query.blocker as string) || "").trim();
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, ACTUAL_SECRET) as any;
+      if (decoded.username) {
+        blockerUsername = decoded.username.trim();
+      }
+    } catch (err) {}
+  }
+
+  if (!blockerUsername) {
+    return res.json([]);
+  }
+
+  try {
+    const userCheck = db.prepare("SELECT is_banned FROM users WHERE LOWER(username) = ?").get(blockerUsername.toLowerCase()) as any;
+    if (userCheck && userCheck.is_banned) {
+      return res.status(403).json({ error: "You are banned. Please contact the admin." });
+    }
+
+    const blocks = db.prepare("SELECT blocked, reason, created_at FROM user_blocks WHERE LOWER(blocker) = LOWER(?)").all(blockerUsername);
+    res.json(blocks);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch user blocks" });
+  }
+});
+
+apiRouter.get("/chat/block_check", (req, res) => {
+  const target = ((req.query.target as string) || "").trim();
+  const authHeader = req.headers.authorization;
+  const token = req.cookies?.user_token || req.cookies?.admin_token || (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null);
+  
+  let currentUsername = ((req.query.user as string) || "").trim();
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, ACTUAL_SECRET) as any;
+      if (decoded.username) {
+        currentUsername = decoded.username.trim();
+      }
+    } catch (err) {}
+  }
+
+  if (!currentUsername || !target) {
+    return res.json({ isBlocked: false, isBlockedBy: false, restricted: false });
+  }
+
+  try {
+    const userCheck = db.prepare("SELECT is_banned FROM users WHERE LOWER(username) = ?").get(currentUsername.toLowerCase()) as any;
+    if (userCheck && userCheck.is_banned) {
+      return res.status(403).json({ error: "You are banned. Please contact the admin." });
+    }
+
+    const blockedByMe = db.prepare("SELECT 1 FROM user_blocks WHERE LOWER(blocker) = LOWER(?) AND LOWER(blocked) = LOWER(?)").get(currentUsername, target);
+    const blockedMe = db.prepare("SELECT 1 FROM user_blocks WHERE LOWER(blocker) = LOWER(?) AND LOWER(blocked) = LOWER(?)").get(target, currentUsername);
+
+    res.json({
+      isBlocked: !!blockedByMe,
+      isBlockedBy: !!blockedMe,
+      restricted: !!(blockedByMe || blockedMe)
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to check block status" });
+  }
 });
 
 const csvUpload = multer({
@@ -2857,14 +3168,15 @@ apiRouter.post("/admin/chat_users/ban", authorizeRole('admin'), (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: "Email required" });
 
-  db.prepare("UPDATE users SET is_banned = 1 WHERE username = ?").run(email);
+  const target = email.trim().toLowerCase();
+  db.prepare("UPDATE users SET is_banned = 1 WHERE LOWER(username) = ? OR LOWER(email) = ?").run(target, target);
 
   const io = req.app.get('io');
   if (io) {
-    io.emit('user_banned', { email });
+    io.emit('user_banned', { email: target });
   }
 
-  logAction(req, 'BAN', 'chat_user', email);
+  logAction(req, 'BAN', 'chat_user', target);
   res.json({ success: true });
 });
 
@@ -2872,11 +3184,10 @@ apiRouter.post("/admin/chat_users/unban", authorizeRole('admin'), (req, res) => 
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: "Email required" });
 
-  db.prepare("UPDATE users SET is_banned = 0 WHERE username = ?").run(email);
+  const target = email.trim().toLowerCase();
+  db.prepare("UPDATE users SET is_banned = 0 WHERE LOWER(username) = ? OR LOWER(email) = ?").run(target, target);
 
-  // Note: We don't need a socket broadcast for unbanning as it simply allows 
-  // the user to log back in normally.
-  logAction(req, 'UNBAN', 'chat_user', email);
+  logAction(req, 'UNBAN', 'chat_user', target);
   res.json({ success: true });
 });
 
@@ -2909,16 +3220,17 @@ apiRouter.post("/admin/chat_users/bulk-ban", authorizeRole('admin'), (req, res) 
   const isBannedVal = ban ? 1 : 0;
   try {
     db.transaction(() => {
-      const stmt = db.prepare("UPDATE users SET is_banned = ? WHERE username = ?");
+      const stmt = db.prepare("UPDATE users SET is_banned = ? WHERE LOWER(username) = ? OR LOWER(email) = ?");
       for (const username of usernames) {
-        stmt.run(isBannedVal, username);
+        const lower = String(username).trim().toLowerCase();
+        stmt.run(isBannedVal, lower, lower);
       }
     })();
 
     const io = req.app.get('io');
     if (io && ban) {
       for (const username of usernames) {
-        io.emit('user_banned', { email: username });
+        io.emit('user_banned', { email: String(username).trim().toLowerCase() });
       }
     }
 

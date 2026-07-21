@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Trash2, Edit2, Plus, ExternalLink, Image as ImageIcon, Layout, Layers } from "lucide-react";
 import { useModal } from "../../context/ModalContext";
@@ -227,33 +228,36 @@ export function AdminAds() {
         ))}
       </div>
 
-      <AnimatePresence>
-        {showBulkForm && (
-          <BulkAdModal 
-            onClose={() => setShowBulkForm(false)}
-            onSaved={() => {
-              setShowBulkForm(false);
-              loadAds();
-              queryClient.invalidateQueries({ queryKey: ['publicAds'] });
-            }}
-          />
-        )}
-        {(showAddForm || editingAd) && (
-          <AdModal 
-            ad={editingAd} 
-            onClose={() => {
-              setShowAddForm(false);
-              setEditingAd(null);
-            }} 
-            onSaved={() => {
-              setShowAddForm(false);
-              setEditingAd(null);
-              loadAds();
-              queryClient.invalidateQueries({ queryKey: ['publicAds'] });
-            }}
-          />
-        )}
-      </AnimatePresence>
+      {typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {showBulkForm && (
+            <BulkAdModal 
+              onClose={() => setShowBulkForm(false)}
+              onSaved={() => {
+                setShowBulkForm(false);
+                loadAds();
+                queryClient.invalidateQueries({ queryKey: ['publicAds'] });
+              }}
+            />
+          )}
+          {(showAddForm || editingAd) && (
+            <AdModal 
+              ad={editingAd} 
+              onClose={() => {
+                setShowAddForm(false);
+                setEditingAd(null);
+              }} 
+              onSaved={() => {
+                setShowAddForm(false);
+                setEditingAd(null);
+                loadAds();
+                queryClient.invalidateQueries({ queryKey: ['publicAds'] });
+              }}
+            />
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

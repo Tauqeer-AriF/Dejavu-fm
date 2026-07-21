@@ -375,6 +375,17 @@ export function initDb() {
       last_used_at DATETIME
     );
     CREATE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys(key_prefix);
+
+    CREATE TABLE IF NOT EXISTS user_blocks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      blocker TEXT NOT NULL,
+      blocked TEXT NOT NULL,
+      reason TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(blocker, blocked)
+    );
+    CREATE INDEX IF NOT EXISTS idx_user_blocks_blocker ON user_blocks(blocker);
+    CREATE INDEX IF NOT EXISTS idx_user_blocks_blocked ON user_blocks(blocked);
   `);
 
   try {
@@ -467,6 +478,18 @@ export function initDb() {
   `);
   runMigration('admin_dj_profile_link_v2', "ALTER TABLE admins ADD COLUMN dj_profile_id TEXT DEFAULT NULL;");
   runMigration('default_theme_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('default_theme', 'dark');");
+  runMigration('user_blocks_table_v1', `
+    CREATE TABLE IF NOT EXISTS user_blocks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      blocker TEXT NOT NULL,
+      blocked TEXT NOT NULL,
+      reason TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(blocker, blocked)
+    );
+    CREATE INDEX IF NOT EXISTS idx_user_blocks_blocker ON user_blocks(blocker);
+    CREATE INDEX IF NOT EXISTS idx_user_blocks_blocked ON user_blocks(blocked);
+  `);
   try {
     db.prepare(`
       UPDATE admins 

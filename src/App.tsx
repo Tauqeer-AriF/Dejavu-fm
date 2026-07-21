@@ -356,12 +356,12 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                       <div className="flex flex-col">
                         <button 
                           onClick={() => item.setOpen?.(!item.isOpen)}
-                          className="flex items-center justify-between py-4 border-b border-white/5 transition-all w-full text-white/50 hover:text-white"
+                          className="flex items-center justify-between py-3 border-b border-white/5 transition-all w-full text-white/50 hover:text-white"
                         >
-                          <span className="text-3xl font-display font-medium tracking-tight">
+                          <span className="text-2xl font-display font-medium tracking-tight">
                             {item.label}
                           </span>
-                          <ChevronDown className={`w-6 h-6 transition-transform duration-300 ${item.isOpen ? 'rotate-180' : ''}`} />
+                          <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${item.isOpen ? 'rotate-180' : ''}`} />
                         </button>
                         <AnimatePresence>
                           {item.isOpen && (

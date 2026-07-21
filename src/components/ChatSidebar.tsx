@@ -2,7 +2,7 @@ import { ChatMessage } from "../types";
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { io, Socket } from 'socket.io-client';
-import { Send, User, LogOut, Loader2, X, MessageSquare, Users, Ban, ShieldAlert, Smile, Search, Paperclip, Music, Mic, Square, Trash2, ArrowLeft, Eye, EyeOff, Volume2, VolumeX, Video, Disc } from 'lucide-react';
+import { Send, User, LogOut, Loader2, X, MessageSquare, Users, Ban, ShieldAlert, WifiOff, Smile, Search, Paperclip, Music, Mic, Square, Trash2, ArrowLeft, Eye, EyeOff, Volume2, VolumeX, Video, Disc } from 'lucide-react';
 import { toast } from 'sonner';
 import { useModal } from '../context/ModalContext';
 import { useLogo } from '../hooks/useLogo';
@@ -134,6 +134,14 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
   const [activeDmUser, setActiveDmUser] = useState<string | null>(null);
   const [chatTab, setChatTab] = useState<'public' | 'private'>('public');
   const [showAdminClearToggle, setShowAdminClearToggle] = useState(false);
+  const [isConnected, setIsConnected] = useState<boolean>(true);
+  const [targetBlockStatus, setTargetBlockStatus] = useState<{ isBlocked: boolean; isBlockedBy: boolean; restricted: boolean } | null>(null);
+
+  const isDmRestricted = useMemo(() => {
+    if (chatTab !== 'private' || !activeDmUser) return false;
+    const isLocalBlocked = blockedUsers.some(u => u.toLowerCase() === activeDmUser.toLowerCase());
+    return isLocalBlocked || !!targetBlockStatus?.restricted;
+  }, [chatTab, activeDmUser, blockedUsers, targetBlockStatus]);
 
   const [drafts, setDrafts] = useState<Record<string, string>>(() => {
     try {
@@ -672,6 +680,10 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
             setIsAdmin(!!data.isAdmin);
           } else {
             setIsAdmin(false);
+            if (data.error && data.isBanned) {
+              setLoggedInUser(null);
+              toast.error(data.error);
+            }
           }
           setIsCheckingAuth(false);
         })
@@ -718,6 +730,21 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
       };
     }
     socketRef.current = socket;
+    setIsConnected(socket.connected ?? true);
+
+    const onConnect = () => setIsConnected(true);
+    const onDisconnect = () => setIsConnected(false);
+    const onConnectError = () => setIsConnected(false);
+    const onChatMessageError = (data: { recipient?: string; error: string }) => {
+      if (data?.error) {
+        toast.error(data.error);
+      }
+    };
+
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    socket.on('connect_error', onConnectError);
+    socket.on('chatMessageError', onChatMessageError);
 
     const onChatHistory = (history: ChatMessage[]) => {
       setMessages(history);
@@ -793,7 +820,55 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
       setMessages(prev => prev.filter(m => m.user !== email));
       if (loggedInUser === email) {
         handleLogout();
-        toast.error("Your session has been terminated by an administrator.");
+        toast.error("You are banned. Please contact the admin.");
+      }
+    };
+
+    const onUserBlockedUpdate = (data: { blocker?: string; blocked?: string; action: string; pairs?: any[] }) => {
+      const currentTarget = (loggedInUser || 'Guest').toLowerCase();
+
+      if (data.action === 'block') {
+        if (data.blocked) {
+          if (!data.blocker || data.blocker.toLowerCase() === currentTarget) {
+            setBlockedUsers(prev => {
+              const exists = prev.some(u => u.toLowerCase() === data.blocked!.toLowerCase());
+              if (exists) return prev;
+              const updated = [...prev, data.blocked!];
+              localStorage.setItem('dejavu_blocked_users', JSON.stringify(updated));
+              return updated;
+            });
+          }
+        }
+      } else if (data.action === 'unblock') {
+        if (data.blocked) {
+          setBlockedUsers(prev => {
+            const hasUser = prev.some(u => u.toLowerCase() === data.blocked!.toLowerCase());
+            if (!hasUser) return prev;
+            const updated = prev.filter(u => u.toLowerCase() !== data.blocked!.toLowerCase());
+            localStorage.setItem('dejavu_blocked_users', JSON.stringify(updated));
+            return updated;
+          });
+        }
+      } else if (data.action === 'bulk-unblock') {
+        if (Array.isArray(data.pairs) && data.pairs.length > 0) {
+          const unblockedNames = new Set(data.pairs.map((p: any) => (p.blocked || '').toLowerCase()).filter(Boolean));
+          setBlockedUsers(prev => {
+            const updated = prev.filter(u => !unblockedNames.has(u.toLowerCase()));
+            localStorage.setItem('dejavu_blocked_users', JSON.stringify(updated));
+            return updated;
+          });
+        } else {
+          fetch(`/api/chat/blocks?blocker=${encodeURIComponent(loggedInUser || 'Guest')}`)
+            .then(res => res.json())
+            .then(serverBlocks => {
+              if (Array.isArray(serverBlocks)) {
+                const serverUsernames = serverBlocks.map((b: any) => b.blocked);
+                setBlockedUsers(serverUsernames);
+                localStorage.setItem('dejavu_blocked_users', JSON.stringify(serverUsernames));
+              }
+            })
+            .catch(() => {});
+        }
       }
     };
 
@@ -804,6 +879,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     socket.on('messageDeleted', onMessageDeleted);
     socket.on('messagesCleared', onMessagesCleared);
     socket.on('user_banned', onUserBanned);
+    socket.on('user_blocked_update', onUserBlockedUpdate);
 
     if (loggedInUser) {
       socket.emit('registerUser', loggedInUser);
@@ -820,6 +896,11 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
       socket.off('messageDeleted', onMessageDeleted);
       socket.off('messagesCleared', onMessagesCleared);
       socket.off('user_banned', onUserBanned);
+      socket.off('user_blocked_update', onUserBlockedUpdate);
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('connect_error', onConnectError);
+      socket.off('chatMessageError', onChatMessageError);
     };
   }, [isOpen, loggedInUser]);
 
@@ -830,6 +911,21 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
   useEffect(() => {
     hasRestoredScrollRef.current = false;
   }, [chatTab, activeDmUser]);
+
+  useEffect(() => {
+    if (chatTab === 'private' && activeDmUser) {
+      fetch(`/api/chat/block_check?user=${encodeURIComponent(loggedInUser || 'Guest')}&target=${encodeURIComponent(activeDmUser)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && typeof data.restricted === 'boolean') {
+            setTargetBlockStatus(data);
+          }
+        })
+        .catch(() => {});
+    } else {
+      setTargetBlockStatus(null);
+    }
+  }, [chatTab, activeDmUser, loggedInUser, blockedUsers]);
 
   useEffect(() => {
     const messagesLoaded = chatTab === 'public' ? messages.length > 0 : privateMessages.length > 0;
@@ -949,9 +1045,9 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
       
-      if (res.ok) {
+      if (res.ok && data) {
         if (authMode === 'forgot') {
           setResetToken(data.resetToken || '');
           setAuthMode('reset');
@@ -994,13 +1090,23 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
         setAuthPassword('');
         setAuthUsername('');
       } else {
+        const errorText = data?.error || (res.status === 403 ? "You are banned. Please contact the admin." : "Authentication failed");
+        const isBanned = res.status === 403 || (errorText && errorText.toLowerCase().includes('banned'));
+
         if (authMode === 'login') {
-          setLoginFailed(true);
+          if (isBanned) {
+            setLoginFailed(false);
+          } else {
+            setLoginFailed(true);
+          }
         }
-        toast.error(data.error || 'Authentication failed');
+        toast.error(errorText);
       }
-    } catch (err) {
-      toast.error('Network error');
+    } catch (err: any) {
+      if (authMode === 'login') {
+        setLoginFailed(false);
+      }
+      toast.error(err?.message && !err.message.includes('fetch') ? err.message : "You are banned. Please contact the admin.");
     } finally {
       setAuthLoading(false);
     }
@@ -1020,6 +1126,8 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     setPrivateMessages([]);
     setActiveDmUser(null);
     setChatTab('public');
+    setBlockedUsers([]);
+    localStorage.removeItem('dejavu_blocked_users');
     toast.success('Logged out');
   };
 
@@ -1327,7 +1435,14 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     e.preventDefault();
     const hasText = !!inputText.trim();
     const hasAttachment = !!pendingAttachment;
-    if ((!hasText && !hasAttachment) || !socketRef.current || !loggedInUser) return;
+    if ((!hasText && !hasAttachment) || !socketRef.current || !loggedInUser || !isConnected || isDmRestricted) {
+      if (!isConnected) {
+        toast.error("Cannot send message: Chat connection is restricted or offline.");
+      } else if (isDmRestricted) {
+        toast.error(`Cannot send message: Communication with @${activeDmUser} is restricted.`);
+      }
+      return;
+    }
     
     const messagePayload: any = {
       user: loggedInUser,
@@ -1400,12 +1515,27 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     setShowClearConfirm(false);
   };
 
-  const handleBlockUser = (username: string) => {
-    if (username === loggedInUser || username === 'SYSTEM') return;
+  const handleBlockUser = async (username: string) => {
+    if (!username || username === loggedInUser || username === 'SYSTEM') return;
     const newBlocked = [...new Set([...blockedUsers, username])];
     setBlockedUsers(newBlocked);
     localStorage.setItem('dejavu_blocked_users', JSON.stringify(newBlocked));
     window.dispatchEvent(new CustomEvent('chat_block_sync', { detail: newBlocked }));
+
+    try {
+      await fetch('/api/chat/block', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          blocker: loggedInUser || 'Guest',
+          blocked: username,
+          reason: 'Blocked via Chat UI'
+        })
+      });
+    } catch (e) {
+      console.error('Failed to sync block to server:', e);
+    }
+
     toast.success(`User blocked. You will no longer see messages from ${username}.`);
   };
 
@@ -1435,12 +1565,64 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     }
   };
 
-  const handleUnblockAll = () => {
+  const handleUnblockSingleUser = async (username: string) => {
+    if (!username) return;
+    const newBlocked = blockedUsers.filter(u => u.toLowerCase() !== username.toLowerCase());
+    setBlockedUsers(newBlocked);
+    localStorage.setItem('dejavu_blocked_users', JSON.stringify(newBlocked));
+    window.dispatchEvent(new CustomEvent('chat_block_sync', { detail: newBlocked }));
+
+    try {
+      await fetch('/api/chat/unblock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          blocker: loggedInUser || 'Guest',
+          blocked: username
+        })
+      });
+    } catch (e) {
+      console.error('Failed to unblock on server:', e);
+    }
+
+    toast.success(`Unblocked @${username}`);
+  };
+
+  const handleUnblockAll = async () => {
+    const toUnblock = [...blockedUsers];
     setBlockedUsers([]);
     localStorage.removeItem('dejavu_blocked_users');
     window.dispatchEvent(new CustomEvent('chat_block_sync', { detail: [] }));
+
+    for (const bUser of toUnblock) {
+      try {
+        await fetch('/api/chat/unblock', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            blocker: loggedInUser || 'Guest',
+            blocked: bUser
+          })
+        });
+      } catch (e) {}
+    }
+
     toast.success('Block list cleared');
   };
+
+  useEffect(() => {
+    const blockerTarget = loggedInUser || 'Guest';
+    fetch(`/api/chat/blocks?blocker=${encodeURIComponent(blockerTarget)}`)
+      .then(res => res.json())
+      .then(serverBlocks => {
+        if (Array.isArray(serverBlocks)) {
+          const serverUsernames = serverBlocks.map((b: any) => b.blocked);
+          setBlockedUsers(serverUsernames);
+          localStorage.setItem('dejavu_blocked_users', JSON.stringify(serverUsernames));
+        }
+      })
+      .catch(() => {});
+  }, [loggedInUser]);
 
   
   useEffect(() => {
@@ -1451,9 +1633,15 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     return () => window.removeEventListener('chat_block_sync', handleBlockSync);
   }, []);
 
-  const visibleMessages = useMemo(() => 
-    messages.filter(msg => !blockedUsers.includes(msg.user)),
-  [messages, blockedUsers]);
+  const visibleMessages = useMemo(() => {
+    const blockedSet = new Set(blockedUsers.map(u => (u || '').toLowerCase()));
+    const currentSelf = (loggedInUser || '').toLowerCase();
+    return messages.filter(msg => {
+      const msgUser = (msg.user || '').toLowerCase();
+      if (msg.isSystem || (currentSelf && msgUser === currentSelf)) return true;
+      return !blockedSet.has(msgUser);
+    });
+  }, [messages, blockedUsers, loggedInUser]);
 
   return (
     <>
@@ -1526,17 +1714,6 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                   >
                     Chat Room
                   </h3>
-                  <div className="flex items-center gap-2 sm:gap-4">
-                    {blockedUsers.length > 0 && (
-                      <button 
-                        onClick={handleUnblockAll}
-                        className="text-[9px] text-red-500/50 hover:text-red-500 uppercase font-black tracking-widest transition-colors flex items-center gap-1"
-                      >
-                        <Ban className="w-2.5 h-2.5" />
-                        Unblock All ({blockedUsers.length})
-                      </button>
-                    )}
-                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
@@ -2343,6 +2520,37 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                     </button>
                   </div>
 
+                  {/* Visual Connection Restriction Feedback */}
+                  {!isConnected && (
+                    <div className="p-2.5 px-3.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 backdrop-blur-xl flex items-center gap-2.5 text-amber-400 text-xs font-semibold animate-pulse">
+                      <WifiOff className="w-4 h-4 shrink-0 text-amber-400" />
+                      <span className="truncate text-[11px]">Chat connection restricted or offline. Attempting to reconnect...</span>
+                    </div>
+                  )}
+
+                  {/* Visual Block / Restricted DM Interaction Feedback */}
+                  {chatTab === 'private' && activeDmUser && isDmRestricted && (
+                    <div className="p-3 rounded-2xl border border-red-500/30 bg-red-500/10 backdrop-blur-xl flex items-center justify-between gap-2.5 text-red-400 text-xs font-medium">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <ShieldAlert className="w-4 h-4 shrink-0 text-red-400" />
+                        <span className="truncate text-[11px] font-semibold">
+                          {targetBlockStatus?.isBlockedBy 
+                            ? `@${activeDmUser} has restricted direct messages with you.` 
+                            : `You have blocked @${activeDmUser}.`}
+                        </span>
+                      </div>
+                      {blockedUsers.some(u => u.toLowerCase() === activeDmUser?.toLowerCase()) && (
+                        <button
+                          type="button"
+                          onClick={() => handleUnblockSingleUser(activeDmUser)}
+                          className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg bg-red-500/20 hover:bg-red-500 hover:text-white transition-all text-red-300 shrink-0 cursor-pointer"
+                        >
+                          Unblock
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {/* Pending Attachment Preview / Upload Loading indicator */}
                   {(isUploadingAttachment || pendingAttachment) && (
                     <div className={`p-3 rounded-2xl border flex items-center justify-between backdrop-blur-xl animate-in slide-in-from-bottom-2 ${isLightMode ? 'bg-[#ffffff]/90 border-black/10' : 'bg-[#0c0a0f]/90 border-white/10'}`}>
@@ -2464,7 +2672,8 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
-                          className={`absolute ${embedded ? 'left-1.5 top-1.5 bottom-1.5 w-8' : 'left-2 top-2 bottom-2 w-10'} flex items-center justify-center rounded-xl transition-all ${isLightMode ? 'text-black/40 hover:text-black hover:bg-black/5' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                          disabled={!isConnected || isDmRestricted}
+                          className={`absolute ${embedded ? 'left-1.5 top-1.5 bottom-1.5 w-8' : 'left-2 top-2 bottom-2 w-10'} flex items-center justify-center rounded-xl transition-all disabled:opacity-30 disabled:pointer-events-none ${isLightMode ? 'text-black/40 hover:text-black hover:bg-black/5' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
                           title="Attach image or audio"
                         >
                           <Paperclip className={embedded ? "w-4 h-4" : "w-5 h-5"} />
@@ -2474,7 +2683,8 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                         <button
                           type="button"
                           onClick={startRecording}
-                          className={`absolute ${embedded ? 'left-9 top-1.5 bottom-1.5 w-8' : 'left-12 top-2 bottom-2 w-10'} flex items-center justify-center rounded-xl transition-all ${isLightMode ? 'text-black/40 hover:text-black hover:bg-black/5' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                          disabled={!isConnected || isDmRestricted}
+                          className={`absolute ${embedded ? 'left-9 top-1.5 bottom-1.5 w-8' : 'left-12 top-2 bottom-2 w-10'} flex items-center justify-center rounded-xl transition-all disabled:opacity-30 disabled:pointer-events-none ${isLightMode ? 'text-black/40 hover:text-black hover:bg-black/5' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
                           title="Record voice note"
                         >
                           <Mic className={embedded ? "w-4 h-4" : "w-5 h-5"} />
@@ -2486,15 +2696,23 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                           value={inputText}
                           onChange={(e) => handleInputChange(e.target.value)}
                           onKeyDown={handleKeyDown}
-                          placeholder="Say something to the station..."
-                          className={`w-full ${isLightMode ? 'bg-[#ffffff]/80 border-black/10 text-black placeholder-black/40' : 'bg-black/50 border-white/10 placeholder-white/20'} border rounded-2xl ${embedded ? 'pl-[76px] pr-20 py-2.5 text-xs' : 'pl-[88px] pr-24 py-4 text-sm'} focus:outline-none focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/50 transition-all`}
+                          disabled={!isConnected || isDmRestricted}
+                          placeholder={
+                            !isConnected
+                              ? "Connection restricted or offline..."
+                              : isDmRestricted
+                              ? "Messaging restricted due to block..."
+                              : "Say something to the station..."
+                          }
+                          className={`w-full ${isLightMode ? 'bg-[#ffffff]/80 border-black/10 text-black placeholder-black/40' : 'bg-black/50 border-white/10 placeholder-white/20'} border rounded-2xl ${embedded ? 'pl-[76px] pr-20 py-2.5 text-xs' : 'pl-[88px] pr-24 py-4 text-sm'} focus:outline-none focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/50 transition-all ${(!isConnected || isDmRestricted) ? 'opacity-50 cursor-not-allowed' : ''}`}
                         />
                         
                         {/* Emoji trigger button inside the input */}
                         <button
                           type="button"
                           onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                          className={`absolute ${embedded ? 'right-9 top-1.5 bottom-1.5 w-8' : 'right-12 top-2 bottom-2 w-10'} flex items-center justify-center rounded-xl transition-all ${
+                          disabled={!isConnected || isDmRestricted}
+                          className={`absolute ${embedded ? 'right-9 top-1.5 bottom-1.5 w-8' : 'right-12 top-2 bottom-2 w-10'} flex items-center justify-center rounded-xl transition-all disabled:opacity-30 disabled:pointer-events-none ${
                             showEmojiPicker ? 'text-neon-purple bg-neon-purple/10' : (isLightMode ? 'text-black/40 hover:text-black bg-transparent' : 'text-white/40 hover:text-white bg-transparent')
                           }`}
                           title="Add emoji"
@@ -2504,7 +2722,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
 
                         <button
                           type="submit"
-                          disabled={!inputText.trim() && !pendingAttachment}
+                          disabled={(!inputText.trim() && !pendingAttachment) || !isConnected || isDmRestricted}
                           className={`absolute ${embedded ? 'right-1.5 top-1.5 bottom-1.5 w-8' : 'right-2 top-2 bottom-2 w-10'} flex items-center justify-center rounded-xl bg-neon-purple text-white disabled:opacity-30 hover:bg-neon-blue transition-all`}
                         >
                           <Send className={embedded ? "w-3.5 h-3.5 ml-0.5" : "w-4 h-4 ml-0.5"} />
