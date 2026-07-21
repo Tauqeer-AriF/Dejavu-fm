@@ -8,6 +8,7 @@ import { apiRouter } from "./src/server/api.ts";
 import { externalApiRouter } from "./src/server/v1_external_api.ts";
 import { webhookRouter } from "./src/server/meta/webhook.routes.ts";
 import { MetaService } from "./src/server/meta/meta.service.ts";
+import { TwitchService } from "./src/server/twitch.service.ts";
 import { initDb, db, backupDatabase, getUploadsDir, pruneHistoricalData } from "./src/server/db.ts";
 import { apiKeyCache } from "./src/server/api_key_cache.ts";
 import http from "http";
@@ -141,6 +142,7 @@ async function startServer() {
     }
   });
   app.set('io', io);
+  await TwitchService.initialize(io);
 
   // Helper for meta tag injection
   let indexHtmlCache: string | null = null;
@@ -803,6 +805,13 @@ async function startServer() {
          // Private message logic remains here as it's not part of the public API endpoint
          if (!db.open) return;
          const newMsg = { ...msg, id: crypto.randomUUID(), timestamp: Date.now() }; // Simplified for PM
+         if (msg.platform === 'twitch') {
+           TwitchService.sendChatMessage(msg.text).then(() => {
+             console.log(`[Twitch Reply Dispatcher] Dispatched Twitch reply to ${msg.recipient} successfully`);
+           }).catch((err: any) => {
+             console.error(`[Twitch Reply Dispatcher] Error sending Twitch reply:`, err.message);
+           });
+         }
           if (msg.platform && ['whatsapp', 'instagram', 'facebook'].includes(msg.platform)) {
             MetaService.sendPlatformReply(msg.platform, msg.recipient, msg.text).then(() => {
               console.log(`[Meta Reply Dispatcher] Dispatched ${msg.platform} reply to ${msg.recipient} successfully`);

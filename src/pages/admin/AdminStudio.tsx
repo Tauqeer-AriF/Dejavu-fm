@@ -1708,7 +1708,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         });
         if (!res.ok) throw new Error("Failed to send shoutout reply.");
       } else {
-        const isMeta = ['whatsapp', 'instagram', 'facebook'].includes(source);
+        const isMeta = ['whatsapp', 'instagram', 'facebook', 'twitch'].includes(source);
         const isPrivate = source === 'private_dm' || isMeta;
 
         const chatPayload = {
@@ -1739,8 +1739,8 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           imageUrl: mediaType === 'image' && mediaUrl ? mediaUrl : undefined,
           audioUrl: mediaType === 'audio' && mediaUrl ? mediaUrl : undefined,
           videoUrl: mediaType === 'video' && mediaUrl ? mediaUrl : undefined,
-          recipient: ['private_dm', 'whatsapp', 'instagram', 'facebook'].includes(source) ? selectedUser : undefined,
-          platform: ['whatsapp', 'instagram', 'facebook'].includes(source) ? source : undefined,
+          recipient: ['private_dm', 'whatsapp', 'instagram', 'facebook', 'twitch'].includes(source) ? selectedUser : undefined,
+          platform: ['whatsapp', 'instagram', 'facebook', 'twitch'].includes(source) ? source : undefined,
         };
         setThreads(prev => ({
           ...prev,
