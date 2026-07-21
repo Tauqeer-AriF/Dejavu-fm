@@ -74,7 +74,10 @@ export function LiveLocationsModal({ isOpen, onClose, locations }: LiveLocations
                   </div>
                 ))
               ) : (
-                <div className="text-center p-4 opacity-50">No active locations detected.</div>
+                <div className="text-center p-8 opacity-50 space-y-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-current mx-auto" />
+                  <p className="text-xs">Loading active connections...</p>
+                </div>
               )}
             </div>
           </motion.div>
