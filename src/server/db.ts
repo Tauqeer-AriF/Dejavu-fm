@@ -285,6 +285,7 @@ export function initDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       category TEXT NOT NULL, 
       event_key TEXT,
+      value REAL,
       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     CREATE INDEX IF NOT EXISTS idx_analytics_timestamp ON analytics_events(timestamp);
@@ -436,6 +437,7 @@ export function initDb() {
   runMigration('popups_delay_column', "ALTER TABLE popups ADD COLUMN delay_ms INTEGER DEFAULT 10000;");
   runMigration('studio_profile_name', "INSERT OR IGNORE INTO settings (key, value) VALUES ('studio_name', 'DejavuFM Studio');");
   runMigration('studio_profile_image', "INSERT OR IGNORE INTO settings (key, value) VALUES ('studio_image', '/icon.svg');");
+  runMigration('analytics_events_value_column', "ALTER TABLE analytics_events ADD COLUMN value REAL;");
   runMigration('shoutout_reply_fields', "ALTER TABLE shoutouts ADD COLUMN reply_text TEXT; ALTER TABLE shoutouts ADD COLUMN replied_by TEXT; ALTER TABLE shoutouts ADD COLUMN replied_at DATETIME;");
   runMigration('user_avatar_field', "ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT NULL;");
   runMigration('shoutout_media_fields_v1', "ALTER TABLE shoutouts ADD COLUMN imageUrl TEXT; ALTER TABLE shoutouts ADD COLUMN audioUrl TEXT; ALTER TABLE shoutouts ADD COLUMN videoUrl TEXT;");

@@ -1102,16 +1102,18 @@ async function trackGeo(req: any) {
 }
 
 apiRouter.post("/public/analytics/track", (req: any, res: any) => {
-  const { category, event_key } = req.body;
+  const { category, event_key, value } = req.body;
   
-  if (['page_views', 'stream_starts', 'dj_view'].includes(category)) {
+  if (['page_views', 'stream_starts', 'dj_view', 'page_stay'].includes(category)) {
     // Only track page_views once per session (15 mins) to keep visits accurate
     if (category === 'page_views') {
       const lastTracked = req.cookies.last_visit_track;
       const now = Date.now();
       
       if (lastTracked && (now - parseInt(lastTracked)) < 15 * 60 * 1000) {
-        return res.json({ success: true, skipped: true });
+        // Still track the specific event but maybe skip geo
+        db.prepare("INSERT INTO analytics_events (category, event_key, value) VALUES (?, ?, ?)").run(category, event_key || null, value || null);
+        return res.json({ success: true, skipped_geo: true });
       }
       
       res.cookie('last_visit_track', now.toString(), { maxAge: 15 * 60 * 1000, httpOnly: true, sameSite: 'none', secure: true });
@@ -1120,16 +1122,18 @@ apiRouter.post("/public/analytics/track", (req: any, res: any) => {
 
     if (category === 'dj_view') {
       if (event_key) {
-        db.prepare("INSERT INTO analytics_events (category, event_key) VALUES (?, ?)").run('dj_view', event_key);
+        db.prepare("INSERT INTO analytics_events (category, event_key, value) VALUES (?, ?, ?)").run('dj_view', event_key, value || null);
       }
       return res.json({ success: true });
     }
 
     // Legacy counters
-    db.prepare("UPDATE site_stats SET count = count + 1 WHERE category = ?").run(category);
+    if (category !== 'page_stay') {
+      db.prepare("UPDATE site_stats SET count = count + 1 WHERE category = ?").run(category);
+    }
     
     // New event log
-    db.prepare("INSERT INTO analytics_events (category) VALUES (?)").run(category);
+    db.prepare("INSERT INTO analytics_events (category, event_key, value) VALUES (?, ?, ?)").run(category, event_key || null, value || null);
   }
   res.json({ success: true });
 });
@@ -1514,6 +1518,30 @@ apiRouter.get("/admin/analytics", (req: any, res: any) => {
       LIMIT 5
     `).all();
 
+    // Top Pages
+    const topPagesRows = db.prepare(`
+      SELECT 
+        event_key as path, 
+        COUNT(*) as visits,
+        AVG(CASE WHEN category = 'page_stay' THEN value END) as avg_stay
+      FROM analytics_events
+      WHERE (category = 'page_views' OR category = 'page_stay') 
+        AND event_key IS NOT NULL 
+        AND event_key NOT LIKE '/admin%'
+        AND event_key NOT LIKE '/dashboard%'
+        AND event_key NOT LIKE '/studio%'
+        ${timeFilter}
+      GROUP BY event_key
+      ORDER BY visits DESC
+      LIMIT 6
+    `).all() as any[];
+
+    const topPages = topPagesRows.map(row => ({
+      path: row.path,
+      visits: row.visits,
+      avgStay: Math.round(row.avg_stay || 0)
+    }));
+
     // Geo Data for the range
     const geoStats = db.prepare(`
       SELECT event_key as name, COUNT(*) as count 
@@ -1611,7 +1639,7 @@ apiRouter.get("/admin/analytics", (req: any, res: any) => {
     }
 
     // Calculate Location (Top geo reach name)
-    const topLocation = geoData[0]?.name || "N/A";
+    const topLocation = cityData[0]?.name || geoData[0]?.name || "N/A";
 
     // Calculate Most listened DJ
     let topDjRow = db.prepare(`
@@ -1795,7 +1823,8 @@ apiRouter.get("/admin/analytics", (req: any, res: any) => {
       peakListenerTime: peakHourStr,
       topLocation,
       mostListenedDj,
-      trendData
+      trendData,
+      topPages
     });
 
     const currentHour = new Date().getHours();

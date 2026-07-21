@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Image as ImageIcon, Video, Music, Trash2, Search, Loader2, Upload, Plus, CheckSquare, Square, ChevronLeft, ChevronRight, X, Clipboard, Check, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -43,7 +43,7 @@ export function AdminMedia() {
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [viewingReferences, setViewingReferences] = useState<MediaItem | null>(null);
-  const itemsPerPage = 18;
+  const itemsPerPage = 20;
 
   const { data: media = [], isLoading, isError } = useQuery<MediaItem[], Error>({
     queryKey: ['adminMedia'],
@@ -148,10 +148,10 @@ export function AdminMedia() {
     return filteredMedia.slice(start, start + itemsPerPage);
   }, [filteredMedia, currentPage]);
 
-  // Reset to first page when search changes
-  useState(() => {
+  // Reset to first page when search or filter changes
+  useEffect(() => {
     setCurrentPage(1);
-  });
+  }, [search, filterType]);
 
   const handleDelete = async (filename: string | string[]) => {
     const fileList = Array.isArray(filename) ? filename : [filename];

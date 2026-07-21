@@ -242,16 +242,25 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
     <div className="space-y-6 pb-12">
       {/* Header section with heading, filters, and buttons vertically integrated */}
       <div className="space-y-4">
-        <div>
-          <h3 className={`text-3xl font-black font-display uppercase tracking-tight ${isLightMode ? 'text-black' : 'text-white'}`}>
-            System <span className="text-neon-purple">Analytics</span>
-          </h3>
-          <p className={`text-sm mt-1 font-mono ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
-            Performance and listener insights.
-          </p>
+        <div className="flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <h3 className={`text-3xl font-black font-display uppercase tracking-tight ${isLightMode ? 'text-black' : 'text-white'}`}>
+              System <span className="text-neon-purple">Analytics</span>
+            </h3>
+            <p className={`text-sm mt-1 font-mono ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
+              Performance and listener insights.
+            </p>
+          </div>
+          
+          <div className={`flex items-center space-x-2 px-4 py-2 rounded-full h-fit shrink-0 border ${
+            isLightMode ? 'bg-red-500/10 border-red-500/20 text-red-600' : 'bg-red-500/5 border-red-500/20 text-red-500'
+          }`}>
+            <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+            <span className="text-[10px] font-black uppercase tracking-widest">{stats.realtimeListeners} Live</span>
+          </div>
         </div>
         
-        <div className="flex flex-wrap items-center gap-3 pt-1">
+        <div className="flex flex-wrap items-center justify-end gap-3 pt-1">
           {isAdminUser && (
             <button 
               onClick={purgeAnalytics}
@@ -299,13 +308,6 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
                 {r.label}
               </button>
             ))}
-          </div>
-          
-          <div className={`flex items-center space-x-2 px-4 py-2 rounded-full h-fit shrink-0 border ${
-            isLightMode ? 'bg-red-500/10 border-red-500/20 text-red-600' : 'bg-red-500/5 border-red-500/20 text-red-500'
-          }`}>
-            <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-widest">{stats.realtimeListeners} Live</span>
           </div>
         </div>
       </div>
@@ -609,6 +611,60 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
               </div>
             );
           })()}
+        </div>
+
+        {/* Top Pages */}
+        <div className={`p-6 rounded-3xl border ${isLightMode ? 'bg-white border-black/10 shadow-sm' : 'bg-white/5 border-white/10 backdrop-blur-md'}`}>
+          <h4 className={`text-lg font-bold mb-6 flex items-center space-x-2 ${isLightMode ? 'text-black' : 'text-white'}`}>
+            <FileText className="w-5 h-5 text-neon-blue" />
+            <span>Top Visited Pages</span>
+          </h4>
+          {stats.topPages && stats.topPages.length > 0 ? (
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats.topPages} layout="vertical" margin={{ left: 0, right: 30, top: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={isLightMode ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.05)"} horizontal={false} />
+                  <XAxis type="number" stroke={isLightMode ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.3)"} fontSize={10} tickLine={false} axisLine={false} />
+                  <YAxis 
+                    dataKey="path" 
+                    type="category" 
+                    stroke={isLightMode ? "#111827" : "#fff"} 
+                    fontSize={10} 
+                    width={isMobile ? 0 : 100} 
+                    tick={!isMobile}
+                    tickLine={false} 
+                    axisLine={false} 
+                  />
+                  <Tooltip 
+                    cursor={{ fill: isLightMode ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.05)' }}
+                    contentStyle={{ 
+                      backgroundColor: isLightMode ? '#ffffff' : '#18181b', 
+                      border: isLightMode ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.1)', 
+                      borderRadius: '12px',
+                      color: isLightMode ? '#111827' : '#ffffff'
+                    }}
+                    formatter={(value: any, name: string, props: any) => {
+                      if (name === 'visits') return [`${value} Visits`, 'Visits'];
+                      const stay = props.payload.avgStay;
+                      const mins = Math.floor(stay / 60);
+                      const secs = stay % 60;
+                      const stayStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+                      return [`${value} Visits (Avg. Stay: ${stayStr})`, 'Metrics'];
+                    }}
+                  />
+                  <Bar dataKey="visits" radius={[0, 4, 4, 0]} barSize={24}>
+                    {stats.topPages.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={getBrandColor(index)} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className={`h-[100px] flex items-center justify-center border border-dashed rounded-2xl ${isLightMode ? 'border-black/10' : 'border-white/10'}`}>
+              <p className={`text-sm ${isLightMode ? 'text-black/30' : 'text-white/30'}`}>No page visit data recorded yet.</p>
+            </div>
+          )}
         </div>
 
         {/* Top Podcasts */}

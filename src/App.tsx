@@ -673,17 +673,75 @@ function MainLayout() {
     setIsShareOpen(true);
   };
 
-  const hasTracked = useRef(false);
+  const lastPathname = useRef(location.pathname);
+  const entryTime = useRef(Date.now());
+
   useEffect(() => {
-    if (hasTracked.current) return;
-    hasTracked.current = true;
+    const handleRouteChange = () => {
+      if (lastPathname.current !== location.pathname) {
+        const duration = (Date.now() - entryTime.current) / 1000; // in seconds
+        
+        const isAdminPath = (path: string) => 
+          path.startsWith('/admin') || 
+          path.startsWith('/dashboard') || 
+          path.startsWith('/studio');
+
+        // Track the stay duration of the PREVIOUS page if not admin
+        if (!isAdminPath(lastPathname.current)) {
+          fetch('/api/public/analytics/track', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              category: 'page_stay', 
+              event_key: lastPathname.current,
+              value: duration
+            })
+          }).catch(() => {});
+        }
+
+        // Reset for the NEW page
+        lastPathname.current = location.pathname;
+        entryTime.current = Date.now();
+
+        // Track the NEW page view if not admin
+        if (!isAdminPath(location.pathname)) {
+          fetch('/api/public/analytics/track', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              category: 'page_views', 
+              event_key: location.pathname 
+            })
+          }).catch(() => {});
+        }
+      }
+    };
+
+    handleRouteChange();
     
-    fetch('/api/public/analytics/track', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ category: 'page_views' })
-    }).catch(() => {});
-  }, []);
+    // Also handle visibility change to track when user leaves the tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        const duration = (Date.now() - entryTime.current) / 1000;
+        fetch('/api/public/analytics/track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            category: 'page_stay', 
+            event_key: location.pathname,
+            value: duration
+          })
+        }).catch(() => {});
+      } else {
+        entryTime.current = Date.now();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [location.pathname]);
 
   useEffect(() => {
     const updateOnAir = () => {
