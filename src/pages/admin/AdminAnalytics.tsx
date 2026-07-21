@@ -9,6 +9,7 @@ import { fetchAdmin } from "./adminApi";
 import { ImageUploadField } from "./ImageUploadField";
 import { useLogo } from "../../hooks/useLogo";
 
+import { LiveLocationsModal } from '../../components/LiveLocationsModal';
 import { PremiumRingLoader } from "../../components/PremiumRingLoader";
 
 export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
@@ -66,6 +67,8 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
   };
 
   const [error, setError] = useState("");
+  const [showLiveLocations, setShowLiveLocations] = useState(false);
+  const [liveLocations, setLiveLocations] = useState<{ip: string, location: string, isp: string, region: string, city: string, browser: string, device: string}[]>([]);
 
   const purgeAnalytics = async () => {
     const confirmed = await showConfirm({
@@ -244,6 +247,17 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
     { label: "All Time", value: "all" },
   ];
 
+  const fetchLiveLocations = async () => {
+    try {
+      const resp = await fetch('/api/admin/analytics/live-locations');
+      const data = await resp.json();
+      setLiveLocations(data);
+      setShowLiveLocations(true);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   return (
     <div className="space-y-6 pb-12">
       {/* Header section with heading, filters, and buttons vertically integrated */}
@@ -258,13 +272,21 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
             </p>
           </div>
           
-          <div className={`flex items-center space-x-2 px-4 py-2 rounded-full h-fit shrink-0 border ${
-            isLightMode ? 'bg-red-500/10 border-red-500/20 text-red-600' : 'bg-red-500/5 border-red-500/20 text-red-500'
-          }`}>
+          <div 
+            onClick={fetchLiveLocations}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-full h-fit shrink-0 border cursor-pointer hover:opacity-80 transition-all ${
+              isLightMode ? 'bg-red-500/10 border-red-500/20 text-red-600' : 'bg-red-500/5 border-red-500/20 text-red-500'
+            }`}>
             <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
             <span className="text-[10px] font-black uppercase tracking-widest">{stats.realtimeListeners} Live</span>
           </div>
         </div>
+        
+        <LiveLocationsModal 
+          isOpen={showLiveLocations} 
+          onClose={() => setShowLiveLocations(false)} 
+          locations={liveLocations}
+        />
         
         <div className="flex flex-wrap items-center justify-end gap-3 pt-1">
           {isAdminUser && (

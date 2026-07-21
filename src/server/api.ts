@@ -7,6 +7,7 @@ import { URL } from "url";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Parser from "rss-parser";
+import { UAParser } from "ua-parser-js";
 import crypto from "crypto";
 import path from "path";
 import rateLimit from "express-rate-limit";
@@ -1487,6 +1488,63 @@ apiRouter.delete('/admin/media', (req: any, res: any) => {
     console.error('[API] Failed to perform bulk media delete', err);
     res.status(500).json({ error: 'Failed to delete media assets' });
   }
+});
+
+apiRouter.get("/admin/analytics/live-locations", async (req: any, res: any) => {
+  const io = req.app.get('io');
+  if (!io) return res.status(500).json({ error: "Socket.IO not initialized" });
+
+  const ips = new Set<string>();
+  io.sockets.sockets.forEach((s: any) => {
+    const forwarded = s.handshake.headers['x-forwarded-for'];
+    let ip = '';
+    if (typeof forwarded === 'string') {
+      ip = forwarded.split(',')[0].trim();
+    } else if (Array.isArray(forwarded) && forwarded.length > 0) {
+      ip = forwarded[0].trim();
+    }
+    if (!ip) {
+      ip = s.handshake.address || s.conn.remoteAddress || s.id;
+    }
+    
+    // Parse User Agent
+    const ua = s.handshake.headers['user-agent'] || '';
+    const parser = new UAParser(ua);
+    const result = parser.getResult();
+    
+    ips.add(JSON.stringify({
+      ip,
+      browser: `${result.browser.name || 'Unknown'} ${result.browser.version || ''}`,
+      device: `${result.os.name || 'Unknown'} ${result.device.type || 'Desktop'}`
+    }));
+  });
+
+  const locations = [];
+  for (const item of ips) {
+    const { ip, browser, device } = JSON.parse(item);
+    // Basic IP lookup
+    let locationInfo = { ip, browser, device, location: 'Unknown', isp: 'Unknown', region: 'Unknown', city: 'Unknown' };
+    try {
+      const resp = await fetch(`http://ip-api.com/json/${ip}`);
+      const data = await resp.json();
+      if (data && data.status === 'success') {
+        locationInfo = {
+            ip,
+            browser,
+            device,
+            location: `${data.city}, ${data.regionName}, ${data.country}`,
+            isp: data.isp,
+            region: data.regionName,
+            city: data.city
+        };
+      }
+    } catch (e) {
+      console.error(`Failed to resolve IP ${ip}`);
+    }
+    locations.push(locationInfo);
+  }
+
+  res.json(locations);
 });
 
 apiRouter.get("/admin/analytics", (req: any, res: any) => {
