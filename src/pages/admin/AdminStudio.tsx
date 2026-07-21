@@ -1893,6 +1893,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   }, [threads, searchQuery, pinnedThreads]);
 
   const currentThread = selectedUser ? threads[selectedUser.toLowerCase()] : null;
+  const isTwitchChat = currentThread ? (getThreadSource(currentThread) === 'twitch') : false;
 
   const renderBroadcastView = () => {
     const channels = [
@@ -2987,17 +2988,21 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
                 {attachment && <AttachmentPreview file={attachment} onRemove={() => setAttachment(null)} />}
                 <div className="flex items-center gap-2.5 pt-1">
-                  <button onClick={() => fileInputRef.current?.click()} className="p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-white/60 hover:text-white border border-white/5 hover:border-white/15 transition-colors shrink-0">
-                    <Paperclip className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={isRecording ? handleStopRecording : handleStartRecording}
-                    className={`p-3 rounded-xl border transition-all duration-300 shrink-0 ${isRecording ? 'bg-red-500/10 text-red-400 border-red-500/20 animate-pulse' : 'bg-white/[0.03] hover:bg-white/[0.08] text-white/60 hover:text-white border-white/5 hover:border-white/15'}`}
-                    title={isRecording ? "Stop Recording" : "Record Audio Clip"}
-                  >
-                    {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                  </button>
+                  {!isTwitchChat && (
+                    <>
+                      <button onClick={() => fileInputRef.current?.click()} className="p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-white/60 hover:text-white border border-white/5 hover:border-white/15 transition-colors shrink-0">
+                        <Paperclip className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={isRecording ? handleStopRecording : handleStartRecording}
+                        className={`p-3 rounded-xl border transition-all duration-300 shrink-0 ${isRecording ? 'bg-red-500/10 text-red-400 border-red-500/20 animate-pulse' : 'bg-white/[0.03] hover:bg-white/[0.08] text-white/60 hover:text-white border-white/5 hover:border-white/15'}`}
+                        title={isRecording ? "Stop Recording" : "Record Audio Clip"}
+                      >
+                        {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                      </button>
+                    </>
+                  )}
 
                   <input type="file" ref={fileInputRef} onChange={(e) => setAttachment(e.target.files?.[0] || null)} className="hidden" />
                   <div className="flex-1 relative">
