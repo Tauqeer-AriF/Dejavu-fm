@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { fetchAdmin } from "./adminApi";
-import { UploadCloud, X, Image, Link, Loader2 } from "lucide-react";
+import { UploadCloud, X, Image, Link, Loader2, Library } from "lucide-react";
+import { MediaPickerModal } from "./MediaPickerModal";
+import { AnimatePresence } from "framer-motion";
 
 interface ImageUploadFieldProps {
   label?: string;
@@ -22,6 +24,7 @@ export function ImageUploadField({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [hasError, setHasError] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -115,41 +118,52 @@ export function ImageUploadField({
 
         {/* Drag & Drop Upload Zone + Live Preview Pane - Flex Wrap */}
         <div className="flex flex-wrap gap-3 items-stretch">
-          {/* Drag & Drop Upload Zone */}
-          <div
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className={`flex-1 min-w-[180px] border border-dashed border-white/10 hover:border-neon-purple/40 hover:bg-white/[0.02] rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 relative overflow-hidden group/zone ${
-              uploading ? "pointer-events-none opacity-60" : ""
-            }`}
-          >
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              accept="image/*"
-              className="hidden"
-            />
+          <div className="flex flex-col gap-2 flex-1 min-w-[180px]">
+            {/* Drag & Drop Upload Zone */}
+            <div
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`flex-1 border border-dashed border-white/10 hover:border-neon-purple/40 hover:bg-white/[0.02] rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 relative overflow-hidden group/zone ${
+                uploading ? "pointer-events-none opacity-60" : ""
+              }`}
+            >
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept="image/*"
+                className="hidden"
+              />
 
-            {uploading ? (
-              <div className="flex flex-col items-center gap-2">
-                <Loader2 className="w-5 h-5 text-neon-purple animate-spin" />
-                <span className="text-xs text-white/40">Optimizing & Uploading...</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-3 w-full min-w-0 justify-center px-1">
-                <div className="p-2 bg-white/[0.04] border border-white/5 rounded-xl group-hover/zone:bg-neon-blue/10 group-hover/zone:border-neon-blue/20 transition-all duration-300 flex-shrink-0">
-                  <UploadCloud className="w-5 h-5 text-neon-blue group-hover/zone:scale-110 transition-transform duration-300" />
+              {uploading ? (
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="w-5 h-5 text-neon-purple animate-spin" />
+                  <span className="text-xs text-white/40">Optimizing & Uploading...</span>
                 </div>
-                <div className="text-left min-w-0 flex-1">
-                  <p className="text-xs font-semibold text-white/70 truncate group-hover/zone:text-white transition-colors duration-300">
-                    Click or drag image here to upload
-                  </p>
-                  <p className="text-[10px] text-white/30 truncate group-hover/zone:text-white/40 transition-colors duration-300">PNG, JPG, WEBP, GIF up to 5MB</p>
+              ) : (
+                <div className="flex items-center gap-3 w-full min-w-0 justify-center px-1">
+                  <div className="p-2 bg-white/[0.04] border border-white/5 rounded-xl group-hover/zone:bg-neon-blue/10 group-hover/zone:border-neon-blue/20 transition-all duration-300 flex-shrink-0">
+                    <UploadCloud className="w-5 h-5 text-neon-blue group-hover/zone:scale-110 transition-transform duration-300" />
+                  </div>
+                  <div className="text-left min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-white/70 truncate group-hover/zone:text-white transition-colors duration-300">
+                      Click or drag image here to upload
+                    </p>
+                    <p className="text-[10px] text-white/30 truncate group-hover/zone:text-white/40 transition-colors duration-300">PNG, JPG, WEBP, GIF up to 5MB</p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
+            
+            <button
+              type="button"
+              onClick={() => setShowPicker(true)}
+              className="flex items-center justify-center gap-2 w-full py-2.5 border border-white/10 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] text-xs text-white/70 hover:text-white transition-all"
+            >
+              <Library className="w-4 h-4" />
+              Select from Media Library
+            </button>
           </div>
 
           {/* Live Preview Pane */}
@@ -187,6 +201,16 @@ export function ImageUploadField({
 
       {description && <p className="text-[10px] text-white/30 italic leading-normal mt-1">{description}</p>}
       {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+
+      <AnimatePresence>
+        {showPicker && (
+          <MediaPickerModal 
+            isOpen={showPicker} 
+            onClose={() => setShowPicker(false)} 
+            onSelect={(url) => onChange(url)} 
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
