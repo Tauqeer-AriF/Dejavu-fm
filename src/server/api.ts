@@ -18,6 +18,7 @@ import * as tar from "tar";
 import { parse } from 'csv-parse/sync';
 import { Server } from "socket.io";
 import { apiKeyCache } from "./api_key_cache.ts";
+import { TwitchService } from "./twitch.service.ts";
 // `sharp` is optional at runtime; dynamically import when needed to avoid startup failure
 
 async function processImage(file: any): Promise<string> {
@@ -2246,7 +2247,7 @@ apiRouter.post("/admin/shoutouts/:id/reply", authMiddleware, (req: any, res: any
   }
 });
 
-apiRouter.post("/admin/broadcast", authMiddleware, (req: any, res: any) => {
+apiRouter.post("/admin/broadcast", authMiddleware, async (req: any, res: any) => {
   const { text, channels, imageUrl, audioUrl, videoUrl, studioName, studioImage } = req.body;
 
   if (!text && !imageUrl && !audioUrl && !videoUrl) {
@@ -2328,7 +2329,7 @@ apiRouter.post("/admin/broadcast", authMiddleware, (req: any, res: any) => {
     }
 
     // 4. Other Platform Simulations (handled by Studio UI locally via event)
-    const platformChannels = channels.filter((c: string) => ['whatsapp', 'instagram', 'facebook', 'twitch', 'tiktok'].includes(c));
+    const platformChannels = channels.filter((c: string) => ['whatsapp', 'instagram', 'facebook', 'tiktok'].includes(c));
     if (platformChannels.length > 0) {
       io.emit('platform_broadcast', {
         text,
@@ -2341,6 +2342,16 @@ apiRouter.post("/admin/broadcast", authMiddleware, (req: any, res: any) => {
         timestamp: Date.now()
       });
       results.push(...platformChannels);
+    }
+
+    // 5. Send to live Twitch Chat IRC if Twitch is selected
+    if (channels.includes('twitch') && text) {
+      try {
+        await TwitchService.sendChatMessage(text);
+        console.log(`[Twitch Service] Broadcast message sent to Twitch chat: "${text}"`);
+      } catch (err: any) {
+        console.warn(`[Twitch Service] Failed to send broadcast to Twitch: ${err.message}`);
+      }
     }
 
     logAction(req, 'BROADCAST', `channels:${results.join(',')}`);
