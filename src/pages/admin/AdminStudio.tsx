@@ -638,7 +638,14 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
   const handleSavePlatformConfig = (platform: string, config: Record<string, string>) => {
     setPlatformConfigs(prev => {
-      const updated = { ...prev, [platform]: { ...prev[platform], ...config } };
+      const finalConfig = { ...config };
+      if (platform === 'twitch' && finalConfig.oauthToken !== undefined) {
+        const trimmed = finalConfig.oauthToken.trim();
+        if (trimmed && !trimmed.startsWith('oauth:')) {
+          finalConfig.oauthToken = `oauth:${trimmed}`;
+        }
+      }
+      const updated = { ...prev, [platform]: { ...prev[platform], ...finalConfig } };
       localStorage.setItem('studio_platform_configs', JSON.stringify(updated)); syncSettingsToApi({ studio_platform_configs: updated });
       return updated;
     });
@@ -734,10 +741,10 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         });
         return;
       }
-      if (!oauthToken || !oauthToken.trim().startsWith('oauth:')) {
+      if (!oauthToken || oauthToken.trim().length < 5) {
         setTestResult({
           success: false,
-          message: "Validation Error: Twitch OAuth Token is invalid. It must begin with 'oauth:' prefix (e.g. oauth:abcdef123)."
+          message: "Validation Error: Twitch OAuth Token is missing or invalid."
         });
         return;
       }
