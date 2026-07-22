@@ -129,30 +129,56 @@ export default function WatchLive() {
 
   const [isSplitActive, setIsSplitActive] = useState(false);
   const [viewportHeight, setViewportHeight] = useState('100dvh');
+  const [viewportOffsetTop, setViewportOffsetTop] = useState(0);
 
   useEffect(() => {
     if (!isSplitActive) return;
-    
-    const updateHeight = () => {
-      if (window.visualViewport) {
-        setViewportHeight(`${window.visualViewport.height}px`);
-      } else {
-        setViewportHeight('100dvh');
+
+    const lockScroll = () => {
+      if (window.scrollY !== 0) {
+        window.scrollTo(0, 0);
+      }
+      if (document.body.scrollTop !== 0) {
+        document.body.scrollTop = 0;
       }
     };
 
-    updateHeight();
-    window.addEventListener('resize', updateHeight);
+    const handleFocusIn = () => {
+      lockScroll();
+      requestAnimationFrame(lockScroll);
+      setTimeout(lockScroll, 50);
+      setTimeout(lockScroll, 150);
+      setTimeout(lockScroll, 300);
+    };
+    
+    const updateViewport = () => {
+      lockScroll();
+      if (window.visualViewport) {
+        setViewportHeight(`${window.visualViewport.height}px`);
+        setViewportOffsetTop(window.visualViewport.offsetTop || 0);
+      } else {
+        setViewportHeight('100dvh');
+        setViewportOffsetTop(0);
+      }
+    };
+
+    updateViewport();
+    window.addEventListener('resize', updateViewport);
+    window.addEventListener('scroll', lockScroll, { passive: true });
+    window.addEventListener('focusin', handleFocusIn);
+
     if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', updateHeight);
-      window.visualViewport.addEventListener('scroll', updateHeight);
+      window.visualViewport.addEventListener('resize', updateViewport);
+      window.visualViewport.addEventListener('scroll', updateViewport);
     }
 
     return () => {
-      window.removeEventListener('resize', updateHeight);
+      window.removeEventListener('resize', updateViewport);
+      window.removeEventListener('scroll', lockScroll);
+      window.removeEventListener('focusin', handleFocusIn);
       if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', updateHeight);
-        window.visualViewport.removeEventListener('scroll', updateHeight);
+        window.visualViewport.removeEventListener('resize', updateViewport);
+        window.visualViewport.removeEventListener('scroll', updateViewport);
       }
     };
   }, [isSplitActive]);
@@ -427,10 +453,13 @@ export default function WatchLive() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
             transition={{ duration: 0.25, ease: 'easeOut' }}
-            className={`fixed inset-0 z-[2000] flex flex-col select-none overflow-hidden transition-all duration-300 ${
+            className={`fixed left-0 right-0 z-[2000] flex flex-col select-none overflow-hidden transition-all duration-150 ${
               isLightMode ? 'bg-[#f4f4f5] text-zinc-900' : 'bg-[#08090d] text-white'
             }`}
-            style={{ height: viewportHeight }}
+            style={{
+              top: `${viewportOffsetTop}px`,
+              height: viewportHeight,
+            }}
           >
             {/* Unified Header */}
             <div 
@@ -510,11 +539,11 @@ export default function WatchLive() {
             </div>
 
             {/* Split Content Body */}
-            <div className={`flex-1 min-h-0 w-full flex flex-col lg:flex-row transition-colors duration-300 overflow-y-auto lg:overflow-hidden ${isLightMode ? 'bg-[#f4f4f5]' : 'bg-[#030406]'}`}>
+            <div className={`flex-1 min-h-0 w-full flex flex-col lg:flex-row transition-colors duration-300 overflow-hidden ${isLightMode ? 'bg-[#f4f4f5]' : 'bg-[#030406]'}`}>
               {/* Left Portion: Video Player Section */}
-              <div className="w-full lg:w-1/2 shrink-0 flex flex-col bg-black z-30 h-auto lg:h-full aspect-video lg:aspect-auto border-b border-white/10 lg:border-b-0 sticky top-0 lg:relative lg:top-auto">
+              <div className="w-full lg:w-1/2 shrink-0 flex flex-col bg-black z-30 h-auto max-h-[28vh] sm:max-h-[35vh] lg:max-h-none lg:h-full border-b border-white/10 lg:border-b-0 sticky top-0 relative">
                 {/* On mobile, we enforce aspect-video; on desktop, it stretches to fill the left pane */}
-                <div className="w-full aspect-video lg:aspect-auto lg:flex-1 bg-black relative shrink-0 lg:shrink flex items-center justify-center">
+                <div className="w-full aspect-video lg:aspect-auto lg:flex-1 bg-black relative shrink-0 lg:shrink flex items-center justify-center max-h-[28vh] sm:max-h-[35vh] lg:max-h-none">
                   {getEmbedUrl(studioVideoUrl) ? (
                     <iframe 
                       key={`split-${playerKey}-${getEmbedUrl(studioVideoUrl)}`}
@@ -582,7 +611,7 @@ export default function WatchLive() {
               </div>
 
               {/* Right Portion: Chat Sidebar */}
-              <div className={`flex-1 min-h-0 w-full flex flex-col transition-colors duration-300 border-t lg:border-t-0 lg:border-l ${isLightMode ? 'border-zinc-200 bg-[#ffffff]' : 'border-zinc-800 bg-[#0b0c10]'}`}>
+              <div className={`flex-1 min-h-0 w-full flex flex-col overflow-hidden transition-colors duration-300 border-t lg:border-t-0 lg:border-l ${isLightMode ? 'border-zinc-200 bg-[#ffffff]' : 'border-zinc-800 bg-[#0b0c10]'}`}>
                 <ChatSidebar embedded={true} />
               </div>
             </div>
