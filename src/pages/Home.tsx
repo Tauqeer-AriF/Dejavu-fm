@@ -347,7 +347,7 @@ export default function Home() {
           initial={{ opacity: 0, scale: 0.85 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.2, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        className="relative group w-full lg:w-[45%] flex justify-center py-8 sm:py-12 md:py-6 lg:py-12"
+          className="relative -mt-10 sm:-mt-14 lg:mt-0 group w-full lg:w-[45%] flex justify-center pt-2 pb-8 sm:py-12 md:py-6 lg:py-12"
         >
           <HeroVisualizer isPlaying={isPlaying && activeType === 'radio'} isLightMode={isLightMode} />
           
@@ -394,7 +394,7 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1.5 }}
             onClick={handleMobileShoutout}
-            className="lg:hidden absolute -bottom-12 flex items-center space-x-2 px-6 py-3 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 text-white/70 hover:text-white transition-all active:scale-95 shadow-xl"
+            className="lg:hidden absolute -bottom-7 flex items-center space-x-2 px-6 py-3 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 text-white/70 hover:text-white transition-all active:scale-95 shadow-xl"
           >
             <MessageSquare className="w-4 h-4 text-neon-purple" />
             <span className="text-[10px] font-black uppercase tracking-widest">Send Shoutout</span>
