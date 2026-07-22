@@ -6,7 +6,6 @@ import { ChatSidebar } from './components/ChatSidebar';
 import { ShoutoutWidget } from './components/ShoutoutWidget';
 import { NotificationManager } from './components/NotificationManager';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
-import { PullToRefresh } from './components/PullToRefresh';
 import { AudioProvider, useAudio } from './context/AudioContext';
 import { ModalProvider, useModal } from './context/ModalContext';
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
@@ -322,9 +321,9 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
             : 'text-white/70'
         }`}>
           <div className="max-w-[100rem] mx-auto px-4 md:px-8 py-[5px] text-[10px] md:text-xs font-black uppercase tracking-[0.25em]">
-            <div className={`flex w-full ${
-              settings.under_header_align === 'left' ? 'justify-start text-left' :
-              settings.under_header_align === 'right' ? 'justify-end text-right' :
+            <div className={`flex w-full justify-center text-center ${
+              settings.under_header_align === 'left' ? 'md:justify-start md:text-left' :
+              settings.under_header_align === 'right' ? 'md:justify-end md:text-right' :
               'justify-center text-center'
             }`}>
               <span>{settings.under_header_text}</span>
@@ -1014,7 +1013,6 @@ function MainLayout() {
       {!isSplitActive && <PlayerBar />}
       {featCinematic && <CinematicVisualizer isOpen={isCinematicOpen} onClose={toggleCinematic} />}
       {featPWA && <PWAInstallPrompt />}
-      {!location.pathname.startsWith('/admin') && <PullToRefresh />}
       <ShareModal 
         isOpen={isShareOpen} 
         onClose={() => setIsShareOpen(false)} 
