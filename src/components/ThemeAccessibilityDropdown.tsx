@@ -197,7 +197,7 @@ export function ThemeAccessibilityDropdown() {
         onClick={() => setIsOpen(!isOpen)}
         className={`flex items-center justify-center p-2.5 rounded-full border transition-all duration-200 focus:outline-none shrink-0 ${
           mode === "neon"
-            ? "bg-black text-[#00ffcc] border-[#00ffcc] shadow-[0_0_10px_rgba(0,255,204,0.3)]"
+            ? "bg-black font-bold"
             : mode === "high-dark"
             ? "bg-black text-white border-white border-2"
             : mode === "high-light"
@@ -206,6 +206,7 @@ export function ThemeAccessibilityDropdown() {
             ? "bg-[#ffffff] text-slate-800 border-slate-200 hover:bg-slate-50 hover:text-black shadow-sm"
             : "text-white/60 hover:text-white bg-white/5 border border-white/5"
         }`}
+        style={mode === "neon" ? { color: "var(--color-neon-blue)", borderColor: "var(--color-neon-blue)", boxShadow: "0 0 10px var(--color-neon-blue)" } : undefined}
         title="Theme & Accessibility Options"
         id="theme-accessibility-trigger"
       >
@@ -221,7 +222,10 @@ export function ThemeAccessibilityDropdown() {
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
             style={{ 
-              backgroundColor: mode === "high-light" ? "#ffffff" : mode === "high-dark" || mode === "neon" ? "#000000" : isWidgetLight ? "#ffffff" : undefined
+              backgroundColor: mode === "high-light" ? "#ffffff" : mode === "high-dark" || mode === "neon" ? "#000000" : isWidgetLight ? "#ffffff" : undefined,
+              color: mode === "neon" ? "var(--color-neon-blue)" : undefined,
+              borderColor: mode === "neon" ? "var(--color-neon-blue)" : undefined,
+              boxShadow: mode === "neon" ? "0 0 20px var(--color-neon-blue)" : undefined
             }}
             className={`absolute right-[-56px] sm:right-0 top-[calc(100%+12px)] w-[calc(100vw-32px)] sm:w-80 rounded-3xl p-5 border shadow-2xl flex flex-col gap-4 backdrop-blur-3xl z-[1001] ${
               mode === "high-light"
@@ -229,7 +233,7 @@ export function ThemeAccessibilityDropdown() {
                 : mode === "high-dark"
                 ? "bg-black text-white border-white"
                 : mode === "neon"
-                ? "bg-black text-[#00ffcc] border-[#00ffcc] shadow-[0_0_20px_rgba(0,255,204,0.2)]"
+                ? "bg-black font-bold"
                 : isWidgetLight
                 ? "bg-[#ffffff] text-slate-900 border-slate-200 shadow-[0_15px_40px_rgba(0,0,0,0.12)]"
                 : "bg-[#090a10] text-white border-white/10 shadow-[0_15px_40px_rgba(0,0,0,0.5)]"
@@ -368,14 +372,18 @@ export function ThemeAccessibilityDropdown() {
                   onClick={() => handleModeChange("neon")}
                   className={`flex items-center justify-between p-2.5 rounded-xl text-left border text-xs transition-all ${
                     mode === "neon"
-                      ? "bg-black border-[#00ffcc] text-[#00ffcc] font-bold shadow-[0_0_10px_rgba(0,255,204,0.3)]"
+                      ? "bg-black font-bold"
                       : isWidgetLight
                       ? "bg-slate-50 border-transparent text-slate-700 hover:bg-slate-100 hover:text-slate-900"
-                      : "bg-black border-[#00ffcc]/30 text-white/80 hover:border-[#00ffcc] hover:text-[#00ffcc]"
+                      : "bg-black text-white/80"
                   }`}
+                  style={mode === "neon" 
+                    ? { color: "var(--color-neon-blue)", borderColor: "var(--color-neon-blue)", boxShadow: "0 0 10px var(--color-neon-blue)" } 
+                    : { borderColor: "color-mix(in srgb, var(--color-neon-blue) 30%, transparent)" }
+                  }
                 >
                   <span className="flex items-center gap-1">Neon <Sparkles className="w-3 h-3 text-neon-blue animate-pulse" /></span>
-                  {mode === "neon" && <Check className="w-3.5 h-3.5 text-[#00ffcc]" />}
+                  {mode === "neon" && <Check className="w-3.5 h-3.5" style={{ color: "var(--color-neon-blue)" }} />}
                 </button>
               </div>
             </div>

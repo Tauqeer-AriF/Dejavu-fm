@@ -142,7 +142,7 @@ export default function Admin() {
 
   // Render the Studio page as a full-screen, standalone component if the path matches
   if (location.pathname.startsWith('/admin/studio')) {
-    if (userRole !== 'admin') {
+    if (userRole !== 'admin' && userRole !== 'dj') {
       return <Navigate to="/admin/live-tools" replace />;
     }
     return (
@@ -177,7 +177,7 @@ export default function Admin() {
           </motion.div>
 
           <div className="flex items-center gap-3">
-            {userRole === 'admin' && (
+            {(userRole === 'admin' || userRole === 'dj') && (
               <Link
                 to="/admin/studio"
                 className="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-full border border-neon-purple/30 bg-neon-purple/10 text-neon-purple font-bold uppercase text-xs tracking-widest transition hover:bg-neon-purple hover:text-white hover:shadow-lg hover:shadow-neon-purple/20"

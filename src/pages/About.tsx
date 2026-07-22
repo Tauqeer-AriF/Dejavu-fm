@@ -10,7 +10,7 @@ export default function About() {
     >
       <div className="space-y-6 text-center pt-8">
         <h1 className="text-4xl md:text-6xl font-display font-bold uppercase tracking-tighter glow-text">
-          About <span className="text-neon-purple">Dejavu FM</span>
+          About <span className="text-neon-purple">DejavuFM</span>
         </h1>
         <p className="text-xl md:text-2xl text-neon-blue font-medium mt-4">
           The Contemporary sounds of UK Underground Music.

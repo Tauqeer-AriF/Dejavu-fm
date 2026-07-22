@@ -20,8 +20,8 @@ export function AdminSEO() {
         const res = await fetch('/api/public/settings');
         if (!res.ok) throw new Error('Failed to load settings');
         const data = await res.json();
-        setSeoTitle(data.seo_title || data.app_title || data.app_name || 'Dejavu FM');
-        setSeoDescription(data.seo_description || 'Dejavu FM is the underground radio station combining London beats with global energy.');
+        setSeoTitle(data.seo_title || data.app_title || data.app_name || 'DejavuFM');
+        setSeoDescription(data.seo_description || 'DejavuFM is the underground radio station combining London beats with global energy.');
         setSeoImage(data.seo_image || data.logo_url || data.favicon || '/icon.svg');
       } catch (error) {
         console.error(error);
@@ -121,9 +121,9 @@ export function AdminSEO() {
             <div className={`border rounded-3xl p-5 sm:p-6 transition-colors ${isLightMode ? 'bg-white border-black/10 shadow-sm text-black' : 'bg-dark-bg/50 border-white/10 text-white'}`}>
               <p className={`text-[10px] uppercase tracking-[0.2em] font-bold mb-6 ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Google Preview</p>
               <div className="space-y-1.5">
-                <p className="text-neon-purple text-base font-semibold hover:underline cursor-pointer truncate">{seoTitle || 'Dejavu FM | The Sound of London'}</p>
+                <p className="text-neon-purple text-base font-semibold hover:underline cursor-pointer truncate">{seoTitle || 'DejavuFM | The Sound of London'}</p>
                 <p className={`text-xs ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>https://dejavufm.com</p>
-                <p className={`text-sm leading-relaxed mt-2 ${isLightMode ? 'text-black/70' : 'text-white/70'}`}>{seoDescription || 'Dejavu FM is the underground radio station combining London beats with global energy.'}</p>
+                <p className={`text-sm leading-relaxed mt-2 ${isLightMode ? 'text-black/70' : 'text-white/70'}`}>{seoDescription || 'DejavuFM is the underground radio station combining London beats with global energy.'}</p>
               </div>
             </div>
 
@@ -140,9 +140,9 @@ export function AdminSEO() {
                   )}
                 </div>
                 <div className="space-y-1.5">
-                  <p className={`text-[10px] uppercase tracking-widest font-black ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>DEJAVU FM</p>
-                  <p className={`text-lg font-bold tracking-tight leading-tight ${isLightMode ? 'text-black' : 'text-white'}`}>{seoTitle || 'Dejavu FM | The Sound of London'}</p>
-                  <p className={`text-xs leading-relaxed line-clamp-2 ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>{seoDescription || 'Dejavu FM is the underground radio station combining London beats with global energy.'}</p>
+                  <p className={`text-[10px] uppercase tracking-widest font-black ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>DEJAVUFM</p>
+                  <p className={`text-lg font-bold tracking-tight leading-tight ${isLightMode ? 'text-black' : 'text-white'}`}>{seoTitle || 'DejavuFM | The Sound of London'}</p>
+                  <p className={`text-xs leading-relaxed line-clamp-2 ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>{seoDescription || 'DejavuFM is the underground radio station combining London beats with global energy.'}</p>
                 </div>
               </div>
             </div>

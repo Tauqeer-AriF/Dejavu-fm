@@ -173,8 +173,8 @@ async function startServer() {
     let html = indexHtmlCache;
     
     // Default meta tags
-    let title = "Dejavu FM | The Sound of London";
-    let description = "Direct from the heart of the capital. Since 2005, Dejavu FM has been the heartbeat of the underground.";
+    let title = "DejavuFM | The Sound of London";
+    let description = "Direct from the heart of the capital. Since 2005, DejavuFM has been the heartbeat of the underground.";
     let image = "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=1200";
 
     // Load admin SEO settings from database if available
@@ -218,7 +218,7 @@ async function startServer() {
       });
 
       if (podcast) {
-        title = `${podcast.title} | Dejavu FM Catch Up`;
+        title = `${podcast.title} | DejavuFM Catch Up`;
         description = (podcast.contentSnippet || podcast.content || description).substring(0, 160).replace(/<[^>]*>/g, '') + "...";
         image = podcast.itunes?.image || image;
       }
@@ -229,7 +229,7 @@ async function startServer() {
       if (db.open) {
         const dj = db.prepare("SELECT * FROM djs WHERE id = ?").get(id) as any;
         if (dj) {
-          title = `${dj.name} | Dejavu FM Resident`;
+          title = `${dj.name} | DejavuFM Resident`;
           description = (dj.bio || description).substring(0, 160);
           image = dj.image_url || image;
         }
@@ -248,7 +248,7 @@ async function startServer() {
       <meta property="og:image" content="${image}" />
       <meta property="og:url" content="${currentUrl}" />
       <meta property="og:type" content="website" />
-      <meta property="og:site_name" content="Dejavu FM" />
+      <meta property="og:site_name" content="DejavuFM" />
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="${title}" />
       <meta name="twitter:description" content="${description}" />
@@ -257,7 +257,7 @@ async function startServer() {
     `;
 
     // Replace the default title or insert before </head>
-    html = html.replace("<title>Dejavu FM</title>", metaTags);
+    html = html.replace("<title>DejavuFM</title>", metaTags);
     if (!html.includes(metaTags)) {
       html = html.replace("</head>", `${metaTags}</head>`);
     }

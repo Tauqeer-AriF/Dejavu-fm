@@ -315,6 +315,24 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
         </div>
       </nav>
 
+      {settings?.under_header_text && settings.under_header_text.trim() !== "" && (
+        <div className={`w-full bg-transparent transition-colors select-none ${
+          isLightMode 
+            ? 'text-black/70' 
+            : 'text-white/70'
+        }`}>
+          <div className="max-w-[100rem] mx-auto px-4 md:px-8 py-[5px] text-[10px] md:text-xs font-black uppercase tracking-[0.25em]">
+            <div className={`flex w-full ${
+              settings.under_header_align === 'left' ? 'justify-start text-left' :
+              settings.under_header_align === 'right' ? 'justify-end text-right' :
+              'justify-center text-center'
+            }`}>
+              <span>{settings.under_header_text}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div

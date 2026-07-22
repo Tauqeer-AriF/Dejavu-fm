@@ -113,7 +113,7 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
     const sections: string[] = [];
 
     // Header section
-    sections.push("=== DEJAVU FM SYSTEM ANALYTICS REPORT ===");
+    sections.push("=== DEJAVUFM SYSTEM ANALYTICS REPORT ===");
     sections.push(`Generated On,${new Date().toISOString().replace('T', ' ').split('.')[0]}`);
     sections.push(`Selected Range,${range.toUpperCase()}`);
     sections.push("");

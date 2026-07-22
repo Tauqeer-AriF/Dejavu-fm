@@ -41,7 +41,7 @@ export function NotificationManager() {
         if (local.dayOfWeek === targetDay && local.timeStr === targetTimeString) {
           const notificationKey = `${id}-${targetDay}-${targetTimeString}`;
           if (!lastNotifiedRef.current.has(notificationKey)) {
-            const title = 'Dejavu FM Reminder';
+            const title = 'DejavuFM Reminder';
             const body = `Don't miss ${show.dj_name}'s show starting in 10 minutes!`;
             
             if (Notification.permission === 'granted') {

@@ -131,6 +131,7 @@ export function AdminBranding() {
   const [logoLight, setLogoLight] = useState("");
   const [logoShape, setLogoShape] = useState("square");
   const [favicon, setFavicon] = useState("");
+  const [premiumLoaderImage, setPremiumLoaderImage] = useState("");
   const [primaryColor, setPrimaryColor] = useState("#b026ff");
   const [secondaryColor, setSecondaryColor] = useState("#00d2ff");
   const [fontSans, setFontSans] = useState("Inter");
@@ -142,6 +143,8 @@ export function AdminBranding() {
   const [socialYoutube, setSocialYoutube] = useState("");
   const [socialSoundcloud, setSocialSoundcloud] = useState("");
   const [socialMixcloud, setSocialMixcloud] = useState("");
+  const [underHeaderText, setUnderHeaderText] = useState("");
+  const [underHeaderAlign, setUnderHeaderAlign] = useState("center");
   const { showAlert, showConfirm } = useModal();
 
   // Live font preview: instantly updates variables in the document
@@ -162,19 +165,22 @@ export function AdminBranding() {
   }, [fontDisplay]);
 
   const DEFAULTS = {
-    appName: "DEJAVU FM",
-    appTitle: "DEJAVU FM | THE SOUND OF LONDON",
+    appName: "DEJAVUFM",
+    appTitle: "DEJAVUFM | THE SOUND OF LONDON",
     appTagline: "The Underground Worldwide",
     logo_url: "",
     logo_dark: "",
     logo_light: "",
     logo_shape: "square",
     favicon: "/favicon.ico",
+    premium_loader_image: "",
     primary_color: "#b026ff",
     secondary_color: "#00d2ff",
     font_sans: "Inter",
     font_display: "Inter",
-    default_theme: "dark"
+    default_theme: "dark",
+    under_header_text: "",
+    under_header_align: "center"
   };
 
   const fontOptions = [
@@ -185,7 +191,9 @@ export function AdminBranding() {
     { name: "JetBrains Mono (Technical)", value: "JetBrains Mono" },
     { name: "Bebas Neue (Bold Headline)", value: "Bebas Neue" },
     { name: "Syne (Artistic / Future)", value: "Syne" },
-    { name: "Plus Jakarta Sans (Minimal)", value: "Plus Jakarta Sans" }
+    { name: "Plus Jakarta Sans (Minimal)", value: "Plus Jakarta Sans" },
+    { name: "Oswald (Condensed Display)", value: "Oswald" },
+    { name: "Poppins (Modern Sans)", value: "Poppins" }
   ];
 
   const { data: serverSettings } = useQuery({
@@ -203,6 +211,7 @@ export function AdminBranding() {
       setLogoLight(serverSettings.logo_light || DEFAULTS.logo_light);
       setLogoShape(serverSettings.logo_shape !== undefined ? serverSettings.logo_shape : DEFAULTS.logo_shape);
       setFavicon(serverSettings.favicon || DEFAULTS.favicon);
+      setPremiumLoaderImage(serverSettings.premium_loader_image || DEFAULTS.premium_loader_image);
       setPrimaryColor(serverSettings.primary_color || DEFAULTS.primary_color);
       setSecondaryColor(serverSettings.secondary_color || DEFAULTS.secondary_color);
       setFontSans(serverSettings.font_sans || DEFAULTS.font_sans);
@@ -214,6 +223,8 @@ export function AdminBranding() {
       setSocialYoutube(serverSettings.social_youtube || "");
       setSocialSoundcloud(serverSettings.social_soundcloud || "");
       setSocialMixcloud(serverSettings.social_mixcloud || "");
+      setUnderHeaderText(serverSettings.under_header_text || "");
+      setUnderHeaderAlign(serverSettings.under_header_align || "center");
     }
   }, [serverSettings]);
 
@@ -267,6 +278,7 @@ export function AdminBranding() {
           logo_light: DEFAULTS.logo_light,
           logo_shape: DEFAULTS.logo_shape,
           favicon: DEFAULTS.favicon,
+          premium_loader_image: DEFAULTS.premium_loader_image,
           primary_color: DEFAULTS.primary_color,
           secondary_color: DEFAULTS.secondary_color,
           font_sans: DEFAULTS.font_sans,
@@ -277,7 +289,9 @@ export function AdminBranding() {
           social_facebook: "",
           social_youtube: "",
           social_soundcloud: "",
-          social_mixcloud: ""
+          social_mixcloud: "",
+          under_header_text: "",
+          under_header_align: "center"
         })
       });
       if (res.ok) {
@@ -291,6 +305,7 @@ export function AdminBranding() {
         setLogoLight(DEFAULTS.logo_light);
         setLogoShape(DEFAULTS.logo_shape);
         setFavicon(DEFAULTS.favicon);
+        setPremiumLoaderImage(DEFAULTS.premium_loader_image);
         setPrimaryColor(DEFAULTS.primary_color);
         setSecondaryColor(DEFAULTS.secondary_color);
         setFontSans(DEFAULTS.font_sans);
@@ -302,6 +317,8 @@ export function AdminBranding() {
         setSocialYoutube("");
         setSocialSoundcloud("");
         setSocialMixcloud("");
+        setUnderHeaderText("");
+        setUnderHeaderAlign("center");
       }
     } catch(e) {
       console.error(e);
@@ -324,6 +341,7 @@ export function AdminBranding() {
           logo_light: logoLight,
           logo_shape: logoShape,
           favicon: favicon,
+          premium_loader_image: premiumLoaderImage,
           primary_color: primaryColor,
           secondary_color: secondaryColor,
           font_sans: fontSans,
@@ -334,7 +352,9 @@ export function AdminBranding() {
           social_facebook: socialFacebook,
           social_youtube: socialYoutube,
           social_soundcloud: socialSoundcloud,
-          social_mixcloud: socialMixcloud
+          social_mixcloud: socialMixcloud,
+          under_header_text: underHeaderText,
+          under_header_align: underHeaderAlign
         })
       });
       if (res.ok) {
@@ -401,7 +421,7 @@ export function AdminBranding() {
                 value={appName} 
                 onChange={e=>setAppName(e.target.value)} 
                 className={`w-full rounded-xl px-4 py-3 text-sm focus:border-neon-purple outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
-                placeholder="DEJAVU FM"
+                placeholder="DEJAVUFM"
               />
             </div>
           </div>
@@ -425,6 +445,32 @@ export function AdminBranding() {
                 <option value="square">Square (1:1 Ratio)</option>
                 <option value="rectangle">Rectangle (Wide Ratio)</option>
               </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={`block text-[10px] uppercase mb-1 font-bold tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Under-Header Text</label>
+              <input 
+                value={underHeaderText} 
+                onChange={e=>setUnderHeaderText(e.target.value)} 
+                className={`w-full rounded-xl px-4 py-3 text-sm focus:border-neon-purple outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
+                placeholder="e.g. LIVE FROM THE LONDON STUDIO"
+              />
+              <span className="text-[10px] opacity-40 mt-1 block">Displays on the ticker/line below the main station navigation header.</span>
+            </div>
+            <div>
+              <label className={`block text-[10px] uppercase mb-1 font-bold tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Under-Header Text Alignment</label>
+              <select 
+                value={underHeaderAlign} 
+                onChange={e=>setUnderHeaderAlign(e.target.value)}
+                className={`w-full rounded-xl px-4 py-3 text-sm focus:border-neon-purple outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`}
+              >
+                <option value="left">Left</option>
+                <option value="center">Center</option>
+                <option value="right">Right</option>
+              </select>
+              <span className="text-[10px] opacity-40 mt-1 block">Alignment of the line text across the header container width.</span>
             </div>
           </div>
 
@@ -458,6 +504,7 @@ export function AdminBranding() {
               <ImageUploadField label="Light Mode Logo" value={logoLight} onChange={setLogoLight} description="Optimized for light backgrounds." />
             </div>
             <ImageUploadField label="Favicon URL" value={favicon} onChange={setFavicon} description="The browser tab icon (.ico or .png)." />
+            <ImageUploadField label="Premium Main Loader Custom Image" value={premiumLoaderImage} onChange={setPremiumLoaderImage} description="Custom image/logo displayed in the center of the loading animation." />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">

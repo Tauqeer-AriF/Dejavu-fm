@@ -219,16 +219,16 @@ export function PlayerBar() {
                 <h4 className="text-white font-display font-bold text-sm md:text-2xl truncate tracking-tight leading-tight mb-1">
                   {activeType === 'podcast' && podcastTrack ? (
                     <div className="flex items-center truncate">
-                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue font-black uppercase italic tracking-tighter mr-2 shrink-0">EPISODE</span>
+                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue font-black uppercase italic tracking-tighter mr-2 pr-2 shrink-0">EPISODE</span>
                       <span className="text-white opacity-80 font-medium truncate">{podcastTrack.title}</span>
                     </div>
                   ) : onAirInfo ? (
                     <div className="flex items-center truncate">
-                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue font-black uppercase italic tracking-tighter mr-2 shrink-0">{onAirInfo.djName}</span>
+                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue font-black uppercase italic tracking-tighter mr-2 pr-2 shrink-0">{onAirInfo.djName}</span>
                       <span className="text-white opacity-80 font-medium truncate">{onAirInfo.showName}</span>
                     </div>
                   ) : (
-                    <span className="opacity-80">Dejavu FM Global Stream</span>
+                    <span className="opacity-80">DejavuFM Global Stream</span>
                   )}
                 </h4>
                 <div className="lg:hidden flex items-center">

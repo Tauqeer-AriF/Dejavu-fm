@@ -10,8 +10,8 @@ export function CinematicVisualizer({ isOpen, onClose }: { isOpen: boolean, onCl
   const [pulseScale, setPulseScale] = useState(1);
 
   // Fallback metadata formatting
-  const title = currentTrack && currentTrack !== "Dejavu FM Live" ? currentTrack : (onAirInfo?.showName || "Dejavu FM Live");
-  const artist = onAirInfo ? (onAirInfo.djName || "Dejavu FM") : "Dejavu FM";
+  const title = currentTrack && currentTrack !== "DejavuFM Live" ? currentTrack : (onAirInfo?.showName || "DejavuFM Live");
+  const artist = onAirInfo ? (onAirInfo.djName || "DejavuFM") : "DejavuFM";
 
   useEffect(() => {
     if (!isOpen) return;

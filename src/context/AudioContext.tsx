@@ -114,15 +114,15 @@ const getSavedQualityUrls = (): Record<AudioQuality, string> => {
 
 const updateMediaMetadata = (currentTrack: string, onAirInfo: AudioStore['onAirInfo']) => {
   if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
-    let title = currentTrack && currentTrack !== "Dejavu FM Live" ? currentTrack : "Dejavu FM Live";
-    let artist = "Dejavu FM";
+    let title = currentTrack && currentTrack !== "DejavuFM Live" ? currentTrack : "DejavuFM Live";
+    let artist = "DejavuFM";
     let album = "Live Radio";
     let artwork: any[] = [];
 
     if (onAirInfo) {
       artist = onAirInfo.djName || artist;
       album = onAirInfo.showName || album;
-      if (title === "Dejavu FM Live" && onAirInfo.showName) {
+      if (title === "DejavuFM Live" && onAirInfo.showName) {
          title = onAirInfo.showName;
       }
       
@@ -156,7 +156,7 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
   isBuffering: false,
   isCinematicOpen: false,
   volume: getSavedVolume(),
-  currentTrack: "Dejavu FM Live",
+  currentTrack: "DejavuFM Live",
   streamUrl: getSavedStreamUrl(),
   quality: getSavedQuality(),
   qualityUrls: getSavedQualityUrls(),
@@ -474,7 +474,7 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
     if ('mediaSession' in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: track.title,
-        artist: 'Dejavu FM',
+        artist: 'DejavuFM',
         album: 'Podcast',
         artwork: [
           { src: track.imageUrl, sizes: '256x256', type: 'image/jpeg' },
@@ -516,8 +516,8 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
 
 if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
   navigator.mediaSession.metadata = new MediaMetadata({
-    title: 'Dejavu FM Live',
-    artist: 'Dejavu FM',
+    title: 'DejavuFM Live',
+    artist: 'DejavuFM',
     album: 'Live Radio',
   });
 

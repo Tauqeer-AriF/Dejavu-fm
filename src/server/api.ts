@@ -101,7 +101,7 @@ apiRouter.post("/admin/settings/secret", authMiddleware, authorizeRole('admin'),
   res.json({ success: true });
 });
 
-apiRouter.get("/admin/studio-settings", authMiddleware, authorizeRole('admin'), (req, res) => {
+apiRouter.get("/admin/studio-settings", authMiddleware, authorizeRole(['admin', 'dj']), (req, res) => {
   try {
     const keys = [
       'studio_connected_platforms',
@@ -128,7 +128,7 @@ apiRouter.get("/admin/studio-settings", authMiddleware, authorizeRole('admin'), 
   }
 });
 
-apiRouter.post("/admin/studio-settings", authMiddleware, authorizeRole('admin'), (req, res) => {
+apiRouter.post("/admin/studio-settings", authMiddleware, authorizeRole(['admin', 'dj']), (req, res) => {
   try {
     const settings = req.body;
     const stmt = db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
@@ -180,9 +180,10 @@ function authMiddleware(req: any, res: any, next: any) {
 }
 
 // Role Authorization Middleware
-function authorizeRole(role: string) {
+function authorizeRole(role: string | string[]) {
+  const roles = Array.isArray(role) ? role : [role];
   return (req: any, res: any, next: any) => {
-    if (req.user && req.user.role === role) {
+    if (req.user && roles.includes(req.user.role)) {
       next();
     } else {
       res.status(403).json({ error: "Forbidden: You do not have permission to perform this action." });
@@ -2394,7 +2395,7 @@ apiRouter.post("/admin/broadcast", authMiddleware, async (req: any, res: any) =>
   }
 });
 
-apiRouter.put("/admin/settings", authorizeRole('admin'), (req, res) => {
+apiRouter.put("/admin/settings", authorizeRole(['admin', 'dj']), (req, res) => {
   const updateStmt = db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value");
   
   const allowedKeys = [
@@ -2403,10 +2404,10 @@ apiRouter.put("/admin/settings", authorizeRole('admin'), (req, res) => {
     "app_title", "seo_title", "seo_description", "seo_image", "font_sans", "font_display", "is_on_air", "primary_color", 
     "secondary_color", "feat_chat", "feat_shoutouts", "feat_cinematic", 
     "feat_pwa", "feat_bookings", "feat_live_tools", "feat_stream_quality",
-    "logo_dark", "logo_light", "logo_shape", "favicon", "backup_retention_days",
+    "logo_dark", "logo_light", "logo_shape", "favicon", "premium_loader_image", "backup_retention_days",
     "backup_frequency_hours", "backup_enabled", "popup_delay", "studio_name", "studio_image",
     "social_instagram", "social_twitter", "social_facebook", "social_youtube", "social_soundcloud", "social_mixcloud",
-    "default_theme"
+    "default_theme", "under_header_text", "under_header_align"
   ];
   
   for (const key of allowedKeys) {
@@ -3164,7 +3165,7 @@ apiRouter.post("/admin/chat_users", authorizeRole('admin'), (req, res) => {
   }
 });
 
-apiRouter.post("/admin/chat_users/ban", authorizeRole('admin'), (req, res) => {
+apiRouter.post("/admin/chat_users/ban", authorizeRole(['admin', 'dj']), (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: "Email required" });
 
@@ -3559,7 +3560,7 @@ apiRouter.post("/admin/database/restore/upload-chunk", authorizeRole('admin'), r
           // Ensure critical settings table exists
           const settingsTable = checkDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='settings'").get();
           if (!settingsTable) {
-            throw new Error("Invalid database schema: 'settings' table missing. Is this a Dejavu FM backup?");
+            throw new Error("Invalid database schema: 'settings' table missing. Is this a DejavuFM backup?");
           }
 
           // Run PRAGMA integrity check

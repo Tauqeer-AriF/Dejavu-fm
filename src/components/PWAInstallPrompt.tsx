@@ -95,7 +95,7 @@ export default function PWAInstallPrompt() {
             <div className="pr-6">
               <h3 className="text-white font-bold text-lg mb-2 flex items-center">
                 <span className="w-2 h-2 bg-neon-purple rounded-full mr-2 animate-pulse"></span>
-                Install Dejavu FM App
+                Install DejavuFM App
               </h3>
               
               <p className="text-white/70 text-sm mb-4">

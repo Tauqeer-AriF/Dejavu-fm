@@ -1,7 +1,7 @@
 
 /**
  * Utility to handle London HQ time conversion to user local time.
- * Dejavu FM broadcasts from London (Europe/London).
+ * DejavuFM broadcasts from London (Europe/London).
  */
 
 export const LONDON_TIMEZONE = 'Europe/London';

@@ -297,7 +297,7 @@ export default function Home() {
               {onAirInfo ? (
                 <>
                   <span className="text-white drop-shadow-2xl">{onAirInfo.djName.split(' ')[0]}</span>
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple via-neon-blue to-neon-purple bg-[length:200%_auto] animate-[gradient_4s_linear_infinite] italic tracking-tighter -mt-1 md:-mt-2 lg:-mt-4 relative">
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple via-neon-blue to-neon-purple bg-[length:200%_auto] animate-[gradient_4s_linear_infinite] italic tracking-tighter -mt-1 md:-mt-2 lg:-mt-4 relative pr-6 pb-1">
                     {onAirInfo.djName.split(' ').slice(1).join(' ') || 'LIVE'}
                     <div className="absolute inset-0 bg-gradient-to-r from-neon-purple/20 via-neon-blue/20 to-neon-purple/20 blur-2xl -z-10"></div>
                   </span>
@@ -305,7 +305,7 @@ export default function Home() {
               ) : (
                 <>
                   <span className="text-white drop-shadow-2xl">{settings?.app_name?.split(' ')[0] || "DEJAVU"}</span>
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple via-neon-blue to-neon-purple bg-[length:200%_auto] animate-[gradient_4s_linear_infinite] italic tracking-tighter -mt-1 md:-mt-2 lg:-mt-4 relative">
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple via-neon-blue to-neon-purple bg-[length:200%_auto] animate-[gradient_4s_linear_infinite] italic tracking-tighter -mt-1 md:-mt-2 lg:-mt-4 relative pr-6 pb-1">
                     {settings?.app_name?.split(' ').slice(1).join(' ') || "FM RADIO"}
                     <div className="absolute inset-0 bg-gradient-to-r from-neon-purple/20 via-neon-blue/20 to-neon-purple/20 blur-2xl -z-10"></div>
                   </span>
@@ -411,9 +411,9 @@ export default function Home() {
             {isBuffering && activeType === 'radio' ? (
               <div className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full border-4 border-t-neon-blue animate-spin ${isLightMode ? 'border-white/20' : 'border-dark-bg/20'}`} />
             ) : isPlaying && activeType === 'radio' ? (
-              <Pause className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 fill-current group-hover/btn:text-neon-purple transition-colors duration-300 ${isLightMode ? 'text-white' : 'text-black'}`} />
+              <Pause className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 fill-current group-hover/btn:text-neon-blue transition-colors duration-300 ${isLightMode ? 'text-white' : 'text-neon-purple'}`} />
             ) : (
-              <Play className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 ml-1 fill-current group-hover/btn:text-neon-blue transition-colors duration-300 ${isLightMode ? 'text-white' : 'text-black'}`} />
+              <Play className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 ml-1 fill-current group-hover/btn:text-neon-blue transition-colors duration-300 ${isLightMode ? 'text-white' : 'text-neon-purple'}`} />
             )}
           </button>
         </motion.div>
@@ -487,7 +487,7 @@ export default function Home() {
             <div key={i} className="flex items-center space-x-12 md:space-x-16 shrink-0">
               <div className="flex items-center space-x-3">
                 <span className="w-1.5 h-1.5 bg-neon-purple rounded-full animate-pulse"></span>
-                <span className={`text-[10px] font-black uppercase tracking-[0.4em] ${isLightMode ? 'text-black/30' : 'text-white/30'}`}>Live on {settings?.app_name || "DEJAVU FM"}</span>
+                <span className={`text-[10px] font-black uppercase tracking-[0.4em] ${isLightMode ? 'text-black/30' : 'text-white/30'}`}>Live on {settings?.app_name || "DEJAVUFM"}</span>
               </div>
               <div className="flex items-center space-x-3">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neon-blue">Digital Signal Optimal</span>

@@ -10,7 +10,7 @@ export async function getPodcastFeed(forceRefresh: boolean = false) {
     if (!db.open) {
       console.warn("[Podcast] Database connection is closed, returning generic response.");
       return {
-        title: "Dejavu FM Podcasts",
+        title: "DejavuFM Podcasts",
         description: "Direct from London's heartbeat.",
         items: []
       };
@@ -72,7 +72,7 @@ export async function getPodcastFeed(forceRefresh: boolean = false) {
 
     // Ultimate fallback to prevent client crash
     return {
-      title: "Dejavu FM Podcasts",
+      title: "DejavuFM Podcasts",
       description: "Underground Radio Archives",
       items: [],
       error: true,

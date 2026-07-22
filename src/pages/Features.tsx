@@ -78,7 +78,7 @@ export default function Features() {
             Station <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue">Features</span>
           </h1>
           <p className="relative mt-6 text-white/50 text-lg max-w-2xl border-l-2 border-neon-purple/30 pl-6">
-            Stories, updates, artist notes, and culture from the Dejavu FM universe.
+            Stories, updates, artist notes, and culture from the DejavuFM universe.
           </p>
         </div>
 

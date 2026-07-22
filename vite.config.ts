@@ -26,8 +26,8 @@ export default defineConfig(() => {
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
         },
         manifest: {
-          name: 'Dejavu FM',
-          short_name: 'Dejavu FM',
+          name: 'DejavuFM',
+          short_name: 'DejavuFM',
           description: "The UK's #1 Underground Radio Station pushing the sound forward.",
           theme_color: '#B026FF',
           background_color: '#0a0a0f',

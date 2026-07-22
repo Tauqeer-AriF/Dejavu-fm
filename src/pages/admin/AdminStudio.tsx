@@ -876,7 +876,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       tiktok: ["@tiktok_dance_fm", "@shoutout_queen", "@basso_drop", "@remix_king_official"]
     };
     const texts = [
-      "Yo Dejavu FM! Play that new track from earlier! Absolute banger 🔥",
+      "Yo DejavuFM! Play that new track from earlier! Absolute banger 🔥",
       "Can I get a shoutout to Wayne and the crew from London? Loving the session!",
       "Best online radio stream hands down. Keeping me company at work right now 🙌",
       "Is the stream request line open? Would love to hear some old school garage vibes!",

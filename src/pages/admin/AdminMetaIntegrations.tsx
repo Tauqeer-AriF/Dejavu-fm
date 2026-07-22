@@ -283,7 +283,7 @@ export function AdminMetaIntegrations() {
 
   // Webhook Simulation State
   const [simulatingPlatform, setSimulatingPlatform] = useState<string | null>(null);
-  const [simText, setSimText] = useState("Hi Dejavu FM, please play some underground UK Garage beats! 🔥📻");
+  const [simText, setSimText] = useState("Hi DejavuFM, please play some underground UK Garage beats! 🔥📻");
   const [simSender, setSimSender] = useState("Marcus_FM");
 
   const handleSimulateWebhook = async (platformId: string) => {

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;900&family=Inter:wght@300;400;600;900&family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,900;1,400&family=Bebas+Neue&family=Syne:wght@400;800&family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;900&family=Inter:wght@300;400;600;900&family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,900;1,400&family=Bebas+Neue&family=Syne:wght@400;800&family=Plus+Jakarta+Sans:wght@300;400;600;800&family=Oswald:wght@300;400;700&family=Poppins:wght@300;400;600;800&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -816,8 +816,8 @@ button:not(.absolute) {
   --theme-panel-bg: #000000 !important;
   --theme-border: #ffffff !important;
   --theme-text: #ffffff !important;
-  --color-neon-purple: #f000ff !important;
-  --color-neon-blue: #00ffff !important;
+  --color-neon-purple: #f000ff;
+  --color-neon-blue: #00ffff;
   --color-dark-bg: #000000 !important;
   --color-panel-bg: #000000 !important;
   --color-glass-border: #ffffff !important;
@@ -852,14 +852,53 @@ button:not(.absolute) {
   color: #000000 !important;
 }
 
+/* Ensure gray, muted and semi-transparent text is fully white in high-contrast dark mode */
+:root.contrast-high-dark [class*="text-slate-"],
+:root.contrast-high-dark [class*="text-gray-"],
+:root.contrast-high-dark [class*="text-zinc-"],
+:root.contrast-high-dark [class*="text-neutral-"],
+:root.contrast-high-dark [class*="text-stone-"],
+:root.contrast-high-dark [class*="text-white/"],
+:root.contrast-high-dark [class*="text-black/"],
+:root.contrast-high-dark [class*="text-[#ffffff]/"],
+:root.contrast-high-dark [class*="text-[#000000]/"],
+:root.contrast-high-dark [class*="text-[#fff]/"],
+:root.contrast-high-dark [class*="text-[#000]/"],
+:root.contrast-high-dark [class*="text-slate/"],
+:root.contrast-high-dark [class*="text-zinc/"],
+:root.contrast-high-dark [class*="text-neutral/"],
+:root.contrast-high-dark [class*="text-gray/"] {
+  color: #ffffff !important;
+}
+
+:root.contrast-high-dark [class*="text-"].opacity-30,
+:root.contrast-high-dark [class*="text-"].opacity-40,
+:root.contrast-high-dark [class*="text-"].opacity-50,
+:root.contrast-high-dark [class*="text-"].opacity-60,
+:root.contrast-high-dark [class*="text-"].opacity-70,
+:root.contrast-high-dark [class*="text-"].opacity-80,
+:root.contrast-high-dark [class*="text-"].opacity-90,
+:root.contrast-high-dark p[class*="opacity-"],
+:root.contrast-high-dark span[class*="opacity-"],
+:root.contrast-high-dark small[class*="opacity-"],
+:root.contrast-high-dark label[class*="opacity-"],
+:root.contrast-high-dark h1[class*="opacity-"],
+:root.contrast-high-dark h2[class*="opacity-"],
+:root.contrast-high-dark h3[class*="opacity-"],
+:root.contrast-high-dark h4[class*="opacity-"],
+:root.contrast-high-dark h5[class*="opacity-"],
+:root.contrast-high-dark h6[class*="opacity-"] {
+  opacity: 1 !important;
+}
+
 /* 2. High Contrast Light Theme */
 :root.contrast-high-light {
   --theme-bg: #ffffff !important;
   --theme-panel-bg: #ffffff !important;
   --theme-border: #000000 !important;
   --theme-text: #000000 !important;
-  --color-neon-purple: #9900cc !important;
-  --color-neon-blue: #006699 !important;
+  --color-neon-purple: #9900cc;
+  --color-neon-blue: #006699;
   --color-dark-bg: #ffffff !important;
   --color-panel-bg: #ffffff !important;
   --color-glass-border: #000000 !important;
@@ -894,17 +933,56 @@ button:not(.absolute) {
   color: #ffffff !important;
 }
 
+/* Ensure gray, muted and semi-transparent text is fully black in high-contrast light mode */
+:root.contrast-high-light [class*="text-slate-"],
+:root.contrast-high-light [class*="text-gray-"],
+:root.contrast-high-light [class*="text-zinc-"],
+:root.contrast-high-light [class*="text-neutral-"],
+:root.contrast-high-light [class*="text-stone-"],
+:root.contrast-high-light [class*="text-white/"],
+:root.contrast-high-light [class*="text-black/"],
+:root.contrast-high-light [class*="text-[#ffffff]/"],
+:root.contrast-high-light [class*="text-[#000000]/"],
+:root.contrast-high-light [class*="text-[#fff]/"],
+:root.contrast-high-light [class*="text-[#000]/"],
+:root.contrast-high-light [class*="text-slate/"],
+:root.contrast-high-light [class*="text-zinc/"],
+:root.contrast-high-light [class*="text-neutral/"],
+:root.contrast-high-light [class*="text-gray/"] {
+  color: #000000 !important;
+}
+
+:root.contrast-high-light [class*="text-"].opacity-30,
+:root.contrast-high-light [class*="text-"].opacity-40,
+:root.contrast-high-light [class*="text-"].opacity-50,
+:root.contrast-high-light [class*="text-"].opacity-60,
+:root.contrast-high-light [class*="text-"].opacity-70,
+:root.contrast-high-light [class*="text-"].opacity-80,
+:root.contrast-high-light [class*="text-"].opacity-90,
+:root.contrast-high-light p[class*="opacity-"],
+:root.contrast-high-light span[class*="opacity-"],
+:root.contrast-high-light small[class*="opacity-"],
+:root.contrast-high-light label[class*="opacity-"],
+:root.contrast-high-light h1[class*="opacity-"],
+:root.contrast-high-light h2[class*="opacity-"],
+:root.contrast-high-light h3[class*="opacity-"],
+:root.contrast-high-light h4[class*="opacity-"],
+:root.contrast-high-light h5[class*="opacity-"],
+:root.contrast-high-light h6[class*="opacity-"] {
+  opacity: 1 !important;
+}
+
 /* 3. Neon Cyberpunk Contrast Theme */
 :root.contrast-neon {
   --theme-bg: #000000 !important;
   --theme-panel-bg: #050505 !important;
-  --theme-border: #00ffcc !important;
+  --theme-border: var(--color-neon-blue) !important;
   --theme-text: #ffffff !important;
-  --color-neon-purple: #ff0055 !important;
-  --color-neon-blue: #00ffcc !important;
+  --color-neon-purple: #ff0055;
+  --color-neon-blue: #00ffcc;
   --color-dark-bg: #000000 !important;
   --color-panel-bg: #050505 !important;
-  --color-glass-border: #00ffcc !important;
+  --color-glass-border: var(--color-neon-blue) !important;
   --color-white: #ffffff !important;
 }
 
@@ -913,8 +991,8 @@ button:not(.absolute) {
 :root.contrast-neon .player-bar,
 :root.contrast-neon .shoutout-widget {
   background: #000000 !important;
-  border: 2px solid #00ffcc !important;
-  box-shadow: 0 0 15px rgba(0, 255, 204, 0.25) !important;
+  border: 2px solid var(--color-neon-blue) !important;
+  box-shadow: 0 0 15px color-mix(in srgb, var(--color-neon-blue) 25%, transparent) !important;
 }
 
 :root.contrast-neon button,
@@ -922,17 +1000,17 @@ button:not(.absolute) {
 :root.contrast-neon input,
 :root.contrast-neon select,
 :root.contrast-neon textarea {
-  border: 1.5px solid #ff0055 !important;
+  border: 1.5px solid var(--color-neon-purple) !important;
   background-color: #000000 !important;
   color: #ffffff !important;
 }
 
 :root.contrast-neon button:hover,
 :root.contrast-neon a.button-style:hover {
-  background-color: #00ffcc !important;
+  background-color: var(--color-neon-blue) !important;
   color: #000000 !important;
-  border-color: #00ffcc !important;
-  box-shadow: 0 0 10px rgba(0, 255, 204, 0.5) !important;
+  border-color: var(--color-neon-blue) !important;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--color-neon-blue) 50%, transparent) !important;
 }
 
 /* 4. Font Size Scaler classes */

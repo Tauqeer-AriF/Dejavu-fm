@@ -10,7 +10,7 @@ interface PremiumLoaderProps {
 
 export function PremiumLoader({ onComplete }: PremiumLoaderProps) {
   const [progress, setProgress] = useState(0);
-  const { isLightMode } = useLogo();
+  const { isLightMode, settings } = useLogo();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -76,9 +76,19 @@ export function PremiumLoader({ onComplete }: PremiumLoaderProps) {
                 repeat: Infinity,
                 ease: "easeInOut",
               }}
-              className="relative z-10"
+              className="relative z-10 flex items-center justify-center"
             >
-              <Mic className={`w-12 h-12 md:w-16 md:h-16 ${isLightMode ? 'text-black drop-shadow-[0_0_15px_rgba(0,0,0,0.1)]' : 'text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]'}`} />
+              {settings?.premium_loader_image ? (
+                <img 
+                  src={settings.premium_loader_image} 
+                  alt="Loader Logo" 
+                  referrerPolicy="no-referrer"
+                  className="w-16 h-16 md:w-20 md:h-20 object-cover rounded-2xl overflow-hidden"
+                  style={{ filter: "drop-shadow(0 0 15px var(--color-neon-blue, #00d2ff))" }}
+                />
+              ) : (
+                <Mic className={`w-12 h-12 md:w-16 md:h-16 ${isLightMode ? 'text-black' : 'text-white'}`} style={{ filter: "drop-shadow(0 0 15px var(--color-neon-blue, #00d2ff))" }} />
+              )}
             </motion.div>
             
             {/* Interactive Pulse Rings */}
@@ -111,27 +121,16 @@ export function PremiumLoader({ onComplete }: PremiumLoaderProps) {
             className="flex flex-col items-center"
           >
             <h2 className={`font-display font-black text-3xl md:text-4xl uppercase tracking-tighter leading-none ${isLightMode ? 'text-black' : 'text-white'}`}>
-              DEJAVU<span className="text-neon-purple ml-1">FM</span>
+              DEJAVU<span className="text-neon-purple">FM</span>
             </h2>
             <div className={`h-px w-12 mt-4 ${isLightMode ? 'bg-gradient-to-r from-transparent via-black/10 to-transparent' : 'bg-gradient-to-r from-transparent via-white/20 to-transparent'}`} />
-          </motion.div>
-          
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.7 }}
-            className="flex items-center justify-center space-x-3"
-          >
-            <span className={`text-[9px] font-mono uppercase tracking-[0.4em] ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>
-              {progress < 30 ? "Syncing Airwaves" : progress < 70 ? "Filtering Signal" : "Ready for Broadcast"}
-            </span>
           </motion.div>
         </div>
 
         {/* Minimal Progress Bar */}
-        <div className="mt-16 w-64 md:w-80 group">
+        <div className="mt-8 w-64 md:w-80 group">
           <div className="flex justify-between items-end mb-2 px-1">
-            <span className={`text-[8px] font-black uppercase tracking-widest transition-colors ${isLightMode ? 'text-black/30 group-hover:text-black/50' : 'text-white/20 group-hover:text-white/40'}`}>System Data Stream</span>
+            <span className={`text-[8px] font-black uppercase tracking-widest transition-colors ${isLightMode ? 'text-black/30 group-hover:text-black/50' : 'text-white/20 group-hover:text-white/40'}`}>loading</span>
             <span className="text-[10px] font-mono text-neon-purple font-bold">{Math.round(progress)}%</span>
           </div>
           <div className={`h-[2px] w-full rounded-full overflow-hidden relative ${isLightMode ? 'bg-black/5' : 'bg-white/5'}`}>
