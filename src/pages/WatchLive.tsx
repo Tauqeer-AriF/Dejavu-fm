@@ -453,7 +453,7 @@ export default function WatchLive() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
             transition={{ duration: 0.25, ease: 'easeOut' }}
-            className={`fixed left-0 right-0 z-[2000] flex flex-col select-none overflow-hidden transition-all duration-150 ${
+            className={`fixed left-0 right-0 z-[2000] flex flex-col overflow-hidden transition-all duration-150 ${
               isLightMode ? 'bg-[#f4f4f5] text-zinc-900' : 'bg-[#08090d] text-white'
             }`}
             style={{
