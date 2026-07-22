@@ -408,7 +408,7 @@ export default function Home() {
                 : 'bg-white text-dark-bg shadow-2xl hover:shadow-[0_20px_80px_rgba(255,255,255,0.6)] border-4 border-white/20'
             }`}
           >
-            {isBuffering && activeType === 'radio' ? (
+            {isBuffering && isPlaying && activeType === 'radio' ? (
               <div className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full border-4 border-t-neon-blue animate-spin ${isLightMode ? 'border-white/20' : 'border-dark-bg/20'}`} />
             ) : isPlaying && activeType === 'radio' ? (
               <Pause className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 fill-current group-hover/btn:text-neon-blue transition-colors duration-300 ${isLightMode ? 'text-white' : 'text-neon-purple'}`} />

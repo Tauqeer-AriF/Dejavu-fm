@@ -556,7 +556,17 @@ if (typeof window !== 'undefined' && audio) {
   const attemptRecovery = () => {
     const store = useAudioStore.getState();
     if (store.activeType === 'podcast') return; // Do not recover for podcasts
-    if (!store.isPlaying || !audio || isRecovering || retryCount >= MAX_RETRIES) return;
+    if (!store.isPlaying || !audio || isRecovering) return;
+
+    if (retryCount >= MAX_RETRIES) {
+      console.warn(`[Audio] Max recovery retries (${MAX_RETRIES}) reached. Halting playback.`);
+      retryCount = 0;
+      isRecovering = false;
+      useAudioStore.setState({ isPlaying: false, isBuffering: false });
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+      toast.error("Stream connection timed out. Tap play to retry.");
+      return;
+    }
     
     isRecovering = true;
     retryCount++;
@@ -566,27 +576,28 @@ if (typeof window !== 'undefined' && audio) {
     // Slight delay to handle brief network switching (e.g., WiFi to Cellular)
     if (recoveryTimeout) clearTimeout(recoveryTimeout);
     recoveryTimeout = setTimeout(() => {
-      if (useAudioStore.getState().isPlaying && audio) {
+      const currentStore = useAudioStore.getState();
+      if (currentStore.isPlaying && audio) {
         console.log("Reloading stream buffer...");
-        const currentSrc = audio.src || store.streamUrl || store.qualityUrls[store.quality];
+        const currentSrc = audio.src || currentStore.streamUrl || currentStore.qualityUrls[currentStore.quality];
         audio.src = ''; // Force resource release
         setTimeout(() => {
-          if (audio && currentSrc) {
+          if (audio && currentSrc && useAudioStore.getState().isPlaying) {
             audio.src = currentSrc;
             audio.load();
             audio.play().catch(e => {
               if (e.name !== 'AbortError') console.error("Background stream recovery failed:", e);
-              // Do not togglePlay() here, let it keep retrying or stay 'playing' 
-              // until user pauses, so when network returns they can hit play again.
             }).finally(() => {
               isRecovering = false;
             });
           } else {
             isRecovering = false;
+            useAudioStore.setState({ isBuffering: false });
           }
         }, 100);
       } else {
         isRecovering = false;
+        useAudioStore.setState({ isBuffering: false });
       }
     }, 1500);
   };
@@ -663,13 +674,20 @@ if (typeof window !== 'undefined' && audio) {
 
   audio.addEventListener('waiting', () => {
     console.log("[Audio] Waiting for data (buffering)...");
-    useAudioStore.setState({ isBuffering: true });
+    if (useAudioStore.getState().isPlaying) {
+      useAudioStore.setState({ isBuffering: true });
+    } else {
+      useAudioStore.setState({ isBuffering: false });
+    }
   });
 
   audio.addEventListener('stalled', () => {
     console.log("[Audio] Stream stalled...");
-    // Just indicate buffering, don't trigger full recovery here unless stuckTicks triggers it
-    useAudioStore.setState({ isBuffering: true });
+    if (useAudioStore.getState().isPlaying) {
+      useAudioStore.setState({ isBuffering: true });
+    } else {
+      useAudioStore.setState({ isBuffering: false });
+    }
   });
 
   audio.addEventListener('canplay', () => {
@@ -793,6 +811,36 @@ if (typeof window !== 'undefined' && audio) {
           // If it's already playing, ensure silence monitor is fully active
           startSilenceMonitor();
         }
+      }
+    }
+  });
+}
+
+// Global Buffering Safety Watchdog to prevent endless loading spinner
+if (typeof window !== 'undefined') {
+  let bufferingSafetyTimer: ReturnType<typeof setTimeout> | null = null;
+
+  useAudioStore.subscribe((state) => {
+    if (state.isBuffering && state.isPlaying) {
+      if (!bufferingSafetyTimer) {
+        bufferingSafetyTimer = setTimeout(() => {
+          bufferingSafetyTimer = null;
+          const currentStore = useAudioStore.getState();
+          if (currentStore.isBuffering) {
+            console.warn("[Audio Watchdog] Buffering safety timeout (10s) reached. Force stopping buffer state.");
+            useAudioStore.setState({ isBuffering: false });
+            if (audio && (audio.paused || audio.readyState < 2)) {
+              useAudioStore.setState({ isPlaying: false });
+              if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+              toast.error("Stream connection timed out. Tap play to retry.");
+            }
+          }
+        }, 10000);
+      }
+    } else {
+      if (bufferingSafetyTimer) {
+        clearTimeout(bufferingSafetyTimer);
+        bufferingSafetyTimer = null;
       }
     }
   });
