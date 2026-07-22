@@ -315,7 +315,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
         </div>
       </nav>
 
-      {settings?.under_header_text && settings.under_header_text.trim() !== "" && (
+      {location.pathname === '/' && settings?.under_header_text && settings.under_header_text.trim() !== "" && (
         <div className={`w-full bg-transparent transition-colors select-none ${
           isLightMode 
             ? 'text-black/70' 
