@@ -8,7 +8,7 @@ import { NotificationManager } from './components/NotificationManager';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { AudioProvider, useAudio } from './context/AudioContext';
 import { ModalProvider, useModal } from './context/ModalContext';
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Toaster, toast } from 'sonner';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -616,7 +616,19 @@ function MainLayout() {
   const { showAlert } = useModal();
   const [appNameState, setAppNameState] = useState("DejavuFM"); // kept for backward compatibility if needed, but not necessary
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [isAppLoading, setIsAppLoading] = useState(true);
+  const [isAppLoading, setIsAppLoading] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return !sessionStorage.getItem('app_loaded_session');
+    }
+    return true;
+  });
+
+  const handleLoaderComplete = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('app_loaded_session', 'true');
+    }
+    setIsAppLoading(false);
+  }, []);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const { logoUrl } = useLogo();
 
@@ -928,7 +940,7 @@ function MainLayout() {
   return (
     <>
       <AnimatePresence>
-        {isAppLoading && <PremiumLoader onComplete={() => setIsAppLoading(false)} />}
+        {isAppLoading && <PremiumLoader onComplete={handleLoaderComplete} />}
       </AnimatePresence>
       
       <div className={`min-h-screen ${location.pathname.startsWith('/admin') || isSplitActive ? '' : 'pb-40 md:pb-32'} flex flex-col relative overflow-x-hidden bg-dark-bg selection:bg-neon-purple selection:text-white transition-opacity duration-1000 ${isAppLoading ? 'opacity-0' : 'opacity-100'}`}>
