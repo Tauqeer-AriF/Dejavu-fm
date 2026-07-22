@@ -1010,6 +1010,15 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     localStorage.setItem(storageKey, target.scrollTop.toString());
   };
 
+  const handleTouchStartContainer = (e: React.TouchEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    if (el.scrollTop <= 0) {
+      el.scrollTop = 1;
+    } else if (el.scrollTop + el.clientHeight >= el.scrollHeight) {
+      el.scrollTop = el.scrollHeight - el.clientHeight - 1;
+    }
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!authEmail) return;
@@ -1817,8 +1826,10 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
 
             <div 
               className={`flex-1 min-h-0 overflow-y-auto touch-pan-y overscroll-contain ${embedded ? 'p-3 space-y-3' : 'p-6 space-y-6'} no-scrollbar`} 
+              style={{ overscrollBehaviorY: 'contain', WebkitOverflowScrolling: 'touch' }}
               ref={scrollRef}
               onScroll={handleScroll}
+              onTouchStart={handleTouchStartContainer}
             >
               {chatTab === 'public' ? (
                 // Public layout
