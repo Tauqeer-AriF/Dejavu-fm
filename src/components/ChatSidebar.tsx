@@ -1695,7 +1695,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
             {/* Mobile Drag Handle Indicator */}
             <div className={`absolute left-2 top-1/2 -translate-y-1/2 w-1 h-16 rounded-full md:hidden pointer-events-none ${isLightMode ? 'bg-black/10' : 'bg-white/10'}`} />
 
-            <div className={`${embedded ? 'p-2.5 sm:p-3' : 'p-4 sm:p-6'} border-b flex items-center justify-between ${isLightMode ? 'border-black/10' : 'border-white/10'}`}>
+            <div className={`${embedded ? 'p-2.5 sm:p-3' : 'p-4 sm:p-6'} border-b shrink-0 flex items-center justify-between ${isLightMode ? 'border-black/10' : 'border-white/10'}`}>
               <div className="flex items-center space-x-2 sm:space-x-3">
                 <div className={`${embedded ? 'w-7 h-7' : 'w-9 h-9 sm:w-10 sm:h-10'} rounded-xl bg-neon-purple/20 flex items-center justify-center text-neon-purple shrink-0`}>
                   <MessageSquare className={embedded ? "w-4 h-4" : "w-5 h-5 sm:w-6 sm:h-6"} />
@@ -1816,7 +1816,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
             )}
 
             <div 
-              className={`flex-1 overflow-y-auto ${embedded ? 'p-3 space-y-3' : 'p-6 space-y-6'} no-scrollbar`} 
+              className={`flex-1 min-h-0 overflow-y-auto touch-pan-y overscroll-contain ${embedded ? 'p-3 space-y-3' : 'p-6 space-y-6'} no-scrollbar`} 
               ref={scrollRef}
               onScroll={handleScroll}
             >
@@ -2361,7 +2361,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
               )}
             </div>
 
-            <div className={`${embedded ? 'p-2.5 sm:p-3' : 'p-6'} border-t ${isLightMode ? 'bg-black/5 border-black/10' : 'bg-white/5 border-white/10'}`}>
+            <div className={`${embedded ? 'p-2.5 sm:p-3' : 'p-6'} border-t shrink-0 ${isLightMode ? 'bg-black/5 border-black/10' : 'bg-white/5 border-white/10'}`}>
               {isCheckingAuth ? (
                 <div className="flex justify-center py-4">
                   <Loader2 className="w-6 h-6 animate-spin text-neon-purple" />
