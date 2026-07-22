@@ -72,7 +72,7 @@ async function startServer() {
   // Trust all proxies for dynamic environments
   app.set('trust proxy', true);
 
-  const requestedPort = 3000;
+  const requestedPort = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
   const server = http.createServer(app);
   
   // Explicitly serve public folder for manifest.json and icons with standard cache-control headers
