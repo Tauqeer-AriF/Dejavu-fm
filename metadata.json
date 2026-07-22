@@ -1,6 +1,6 @@
 {
   "name": "DejavuFM",
-  "description": "The Sound of London underground radio station stream player and podcast catcher.",
+  "description": "The Sound of London underground radio station.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
