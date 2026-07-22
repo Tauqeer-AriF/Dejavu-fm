@@ -466,11 +466,11 @@ export function AdminBranding() {
                 onChange={e=>setUnderHeaderAlign(e.target.value)}
                 className={`w-full rounded-xl px-4 py-3 text-sm focus:border-neon-purple outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`}
               >
-                <option value="left">Left</option>
+                <option value="left">Left (Desktop)</option>
                 <option value="center">Center</option>
-                <option value="right">Right</option>
+                <option value="right">Right (Desktop)</option>
               </select>
-              <span className="text-[10px] opacity-40 mt-1 block">Alignment of the line text across the header container width.</span>
+              <span className="text-[10px] opacity-40 mt-1 block">Alignment on desktop screens (always centered on mobile).</span>
             </div>
           </div>
 
