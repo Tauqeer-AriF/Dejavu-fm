@@ -17,7 +17,8 @@ export function AdminProfile() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSavingPublic, setIsSavingPublic] = useState(false);
+  const [isSavingCredentials, setIsSavingCredentials] = useState(false);
   const { showAlert } = useModal();
 
   useEffect(() => {
@@ -34,7 +35,34 @@ export function AdminProfile() {
       });
   }, []);
 
-  const handleSave = async (e: any) => {
+  const handleSavePublicInfo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingPublic(true);
+    try {
+      const res = await fetchAdmin("/api/admin/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bio, photo_url: photoUrl })
+      });
+      setIsSavingPublic(false);
+      if (res.ok) {
+        const data = await res.json();
+        showAlert({ title: "Success", message: "Public Information updated successfully!", style: "success" });
+        if (data.profile) {
+          setBio(data.profile.bio);
+          setPhotoUrl(data.profile.photo_url);
+        }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        showAlert({ title: "Error", message: errData.error || "Failed to update public information", style: "danger" });
+      }
+    } catch (err: any) {
+      setIsSavingPublic(false);
+      showAlert({ title: "Error", message: err.message || "An unexpected error occurred.", style: "danger" });
+    }
+  };
+
+  const handleSaveCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password && password !== confirmPassword) {
       showAlert({ title: "Error", message: "Passwords do not match!", style: "danger" });
@@ -45,9 +73,9 @@ export function AdminProfile() {
       return;
     }
 
-    setIsSaving(true);
+    setIsSavingCredentials(true);
     try {
-      const payload: any = { bio, photo_url: photoUrl, email };
+      const payload: any = { email };
       if (password) {
         payload.password = password;
       }
@@ -56,17 +84,17 @@ export function AdminProfile() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-      setIsSaving(false);
+      setIsSavingCredentials(false);
       if (res.ok) {
-        showAlert({ title: "Success", message: "Profile updated successfully!", style: "success" });
+        showAlert({ title: "Success", message: "Account Credentials updated successfully!", style: "success" });
         setPassword("");
         setConfirmPassword("");
       } else {
         const errData = await res.json().catch(() => ({}));
-        showAlert({ title: "Error", message: errData.error || "Failed to update profile", style: "danger" });
+        showAlert({ title: "Error", message: errData.error || "Failed to update credentials", style: "danger" });
       }
     } catch (err: any) {
-      setIsSaving(false);
+      setIsSavingCredentials(false);
       showAlert({ title: "Error", message: err.message || "An unexpected error occurred.", style: "danger" });
     }
   };
@@ -113,11 +141,15 @@ export function AdminProfile() {
         </div>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-6">
-        <div className="space-y-4 bg-white/5 p-6 rounded-2xl border border-white/10">
-          <h5 className="text-sm font-bold uppercase tracking-wider text-neon-purple border-b border-white/5 pb-2">
-            Public Information
-          </h5>
+      <div className="space-y-6">
+        {/* Section 1: Public Information */}
+        <form onSubmit={handleSavePublicInfo} className="space-y-4 bg-white/5 p-6 rounded-2xl border border-white/10">
+          <div className="flex items-center justify-between border-b border-white/5 pb-2">
+            <h5 className="text-sm font-bold uppercase tracking-wider text-neon-purple">
+              Public Information
+            </h5>
+            <span className="text-[10px] text-white/40 font-mono">Visible on public schedule & DJ profiles</span>
+          </div>
           <ImageUploadField label="Profile Photo URL" value={photoUrl} onChange={setPhotoUrl} placeholder="https://..." />
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-white/70 mb-1">Bio</label>
@@ -129,12 +161,25 @@ export function AdminProfile() {
               placeholder="Tell us about yourself..."
             />
           </div>
-        </div>
+          <div className="flex justify-end pt-2">
+            <button 
+              type="submit" 
+              disabled={isSavingPublic}
+              className="bg-neon-purple px-6 py-2.5 rounded-xl font-bold hover:bg-neon-blue transition-colors disabled:opacity-50 text-white shadow-lg shadow-neon-purple/20 flex items-center gap-2 text-xs uppercase tracking-wider"
+            >
+              {isSavingPublic ? "Saving..." : "Save Public Info"}
+            </button>
+          </div>
+        </form>
 
-        <div className="space-y-4 bg-white/5 p-6 rounded-2xl border border-white/10">
-          <h5 className="text-sm font-bold uppercase tracking-wider text-neon-purple border-b border-white/5 pb-2">
-            Account Credentials
-          </h5>
+        {/* Section 2: Account Credentials */}
+        <form onSubmit={handleSaveCredentials} className="space-y-4 bg-white/5 p-6 rounded-2xl border border-white/10">
+          <div className="flex items-center justify-between border-b border-white/5 pb-2">
+            <h5 className="text-sm font-bold uppercase tracking-wider text-neon-purple">
+              Account Credentials
+            </h5>
+            <span className="text-[10px] text-white/40 font-mono">Private login details</span>
+          </div>
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-white/70 mb-1">Email Address</label>
             <div className="relative">
@@ -143,10 +188,9 @@ export function AdminProfile() {
               </span>
               <input 
                 type="email"
-                required
                 value={email} 
                 onChange={e => setEmail(e.target.value)} 
-                className="w-full bg-dark-bg border border-white/10 rounded-xl pl-10 pr-4 py-2.5 focus:border-neon-purple focus:ring-1 focus:ring-neon-purple outline-none transition-all text-white" 
+                className="w-full bg-dark-bg border border-white/10 rounded-xl pl-10 pr-4 py-2.5 focus:border-neon-purple focus:ring-1 focus:ring-neon-purple outline-none transition-all text-white text-sm" 
                 placeholder="you@dejavufm.com"
               />
             </div>
@@ -200,20 +244,19 @@ export function AdminProfile() {
             </div>
           </div>
           <p className="text-[10px] text-white/30 mt-1 font-mono leading-relaxed">
-            Leave password fields blank if you do not wish to update your login credentials.
+            Leave password fields blank if you do not wish to update your password.
           </p>
-        </div>
-
-        <div className="flex justify-end">
-          <button 
-            type="submit" 
-            disabled={isSaving}
-            className="bg-neon-purple px-8 py-3 rounded-xl font-bold hover:bg-neon-blue transition-colors disabled:opacity-50 text-white shadow-lg shadow-neon-purple/20 flex items-center gap-2 text-sm uppercase tracking-wider"
-          >
-            {isSaving ? "Saving..." : "Save Profile"}
-          </button>
-        </div>
-      </form>
+          <div className="flex justify-end pt-2">
+            <button 
+              type="submit" 
+              disabled={isSavingCredentials}
+              className="bg-neon-purple px-6 py-2.5 rounded-xl font-bold hover:bg-neon-blue transition-colors disabled:opacity-50 text-white shadow-lg shadow-neon-purple/20 flex items-center gap-2 text-xs uppercase tracking-wider"
+            >
+              {isSavingCredentials ? "Saving..." : "Save Credentials"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

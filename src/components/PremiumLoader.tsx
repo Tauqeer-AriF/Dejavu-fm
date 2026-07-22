@@ -1,6 +1,5 @@
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
-import { Mic } from "lucide-react";
 import { useLogo } from "../hooks/useLogo";
 import { createPortal } from "react-dom";
 
@@ -10,7 +9,7 @@ interface PremiumLoaderProps {
 
 export function PremiumLoader({ onComplete }: PremiumLoaderProps) {
   const [progress, setProgress] = useState(0);
-  const { isLightMode, settings } = useLogo();
+  const { isLightMode } = useLogo();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -55,106 +54,110 @@ export function PremiumLoader({ onComplete }: PremiumLoaderProps) {
         />
       </div>
 
-      <div className="relative z-10 flex flex-col items-center">
-        {/* Mic Icon Container */}
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0, y: 20 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          transition={{ duration: 1, ease: "easeOut" }}
-          className="relative mb-16"
-        >
-          <div className={`w-28 h-28 md:w-36 md:h-36 rounded-[2.5rem] flex items-center justify-center relative group ${isLightMode ? 'bg-black/5 border border-black/10 shadow-[0_0_50px_rgba(0,0,0,0.05)]' : 'bg-white/5 border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)]'}`}>
-            <div className="absolute inset-x-0 inset-y-0 bg-gradient-to-tr from-neon-purple/20 to-neon-blue/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-[2.5rem]" />
-            
-            <motion.div
+      <div className="relative z-10 flex flex-col items-center justify-center">
+        {/* Glitch styled 'dejavufm' text matching the attachment */}
+        <div className="relative inline-block select-none py-2 px-4">
+          {/* Main Glitch Text Container */}
+          <div className={`relative font-black text-6xl sm:text-7xl md:text-8xl tracking-tighter font-sans lowercase leading-none ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
+            {/* Main solid text */}
+            <span className={`relative z-10 block ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
+              dejavufm
+            </span>
+
+            {/* Glitch Overlay Slice 1 - Top Offset */}
+            <motion.span
+              aria-hidden="true"
               animate={{
-                scale: [1, 1.1, 1],
-                rotate: [0, 5, -5, 0],
+                x: [-2, 3, -1, 4, -2, 0],
+                opacity: [0.9, 1, 0.8, 1, 0.9],
               }}
               transition={{
-                duration: 4,
+                duration: 2.5,
                 repeat: Infinity,
+                repeatType: "reverse",
                 ease: "easeInOut",
               }}
-              className="relative z-10 flex items-center justify-center"
+              className={`absolute inset-0 z-20 pointer-events-none lowercase ${isLightMode ? 'text-slate-900' : 'text-white'}`}
+              style={{
+                clipPath: "polygon(0 12%, 100% 12%, 100% 38%, 0 38%)",
+                transform: "translateX(-4px)",
+              }}
             >
-              {settings?.premium_loader_image ? (
-                <img 
-                  src={settings.premium_loader_image} 
-                  alt="Loader Logo" 
-                  referrerPolicy="no-referrer"
-                  className="w-16 h-16 md:w-20 md:h-20 object-cover rounded-2xl overflow-hidden"
-                  style={{ filter: "drop-shadow(0 0 15px var(--color-neon-blue, #00d2ff))" }}
-                />
-              ) : (
-                <Mic className={`w-12 h-12 md:w-16 md:h-16 ${isLightMode ? 'text-black' : 'text-white'}`} style={{ filter: "drop-shadow(0 0 15px var(--color-neon-blue, #00d2ff))" }} />
-              )}
-            </motion.div>
-            
-            {/* Interactive Pulse Rings */}
-            {[...Array(3)].map((_, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ 
-                  opacity: [0, 0.5, 0],
-                  scale: [0.8, 1.5],
-                }}
-                transition={{
-                  duration: 3,
-                  repeat: Infinity,
-                  delay: i * 1,
-                  ease: "easeOut",
-                }}
-                className={`absolute inset-0 border rounded-[2.5rem] ${isLightMode ? 'border-black/10' : 'border-white/20'}`}
+              dejavufm
+            </motion.span>
+
+            {/* Glitch Overlay Slice 2 - Middle Offset */}
+            <motion.span
+              aria-hidden="true"
+              animate={{
+                x: [3, -3, 2, -4, 1, 0],
+                opacity: [1, 0.7, 1, 0.8, 1],
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                repeatType: "reverse",
+                ease: "easeInOut",
+                delay: 0.2,
+              }}
+              className={`absolute inset-0 z-20 pointer-events-none lowercase ${isLightMode ? 'text-slate-900' : 'text-white'}`}
+              style={{
+                clipPath: "polygon(0 42%, 100% 42%, 100% 68%, 0 68%)",
+                transform: "translateX(5px)",
+              }}
+            >
+              dejavufm
+            </motion.span>
+
+            {/* Glitch Overlay Slice 3 - Lower Offset */}
+            <motion.span
+              aria-hidden="true"
+              animate={{
+                x: [-3, 2, -2, 3, -1, 0],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                repeatType: "reverse",
+                ease: "easeInOut",
+                delay: 0.4,
+              }}
+              className={`absolute inset-0 z-20 pointer-events-none lowercase ${isLightMode ? 'text-slate-900' : 'text-white'}`}
+              style={{
+                clipPath: "polygon(0 72%, 100% 72%, 100% 88%, 0 88%)",
+                transform: "translateX(-3px)",
+              }}
+            >
+              dejavufm
+            </motion.span>
+
+            {/* Horizontal Slice Cut Line Artifacts */}
+            <div className="absolute inset-0 z-30 pointer-events-none overflow-hidden">
+              {/* Slice artifact bar 1 across top left */}
+              <motion.div 
+                animate={{ opacity: [0.8, 0.2, 0.9, 0.4, 0.8] }}
+                transition={{ duration: 1.8, repeat: Infinity }}
+                className={`absolute top-[22%] left-[8%] w-[28%] h-[3px] ${isLightMode ? 'bg-slate-900' : 'bg-white'}`} 
               />
-            ))}
+              {/* Slice artifact bar 2 across middle 'j/a/v' */}
+              <motion.div 
+                animate={{ opacity: [0.3, 1, 0.4, 0.9, 0.3] }}
+                transition={{ duration: 2.2, repeat: Infinity, delay: 0.3 }}
+                className={`absolute top-[48%] left-[26%] w-[38%] h-[2px] ${isLightMode ? 'bg-slate-900' : 'bg-white'}`} 
+              />
+              {/* Slice artifact bar 3 across 'f/m' */}
+              <motion.div 
+                animate={{ opacity: [0.9, 0.3, 0.8, 0.2, 0.9] }}
+                transition={{ duration: 1.5, repeat: Infinity, delay: 0.5 }}
+                className={`absolute top-[64%] right-[12%] w-[25%] h-[3px] ${isLightMode ? 'bg-slate-900' : 'bg-white'}`} 
+              />
+              {/* Micro digital glitch blocks */}
+              <div className={`absolute top-[18%] left-[14%] w-3 h-1 ${isLightMode ? 'bg-slate-900' : 'bg-white'}`} />
+              <div className={`absolute top-[34%] left-[32%] w-2.5 h-[2px] ${isLightMode ? 'bg-slate-900' : 'bg-white'}`} />
+              <div className={`absolute top-[52%] left-[58%] w-4 h-[2px] ${isLightMode ? 'bg-slate-900' : 'bg-white'}`} />
+              <div className={`absolute top-[70%] left-[78%] w-3 h-[2px] ${isLightMode ? 'bg-slate-900' : 'bg-white'}`} />
+            </div>
           </div>
-        </motion.div>
-
-        {/* Text and Status */}
-        <div className="text-center space-y-3">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="flex flex-col items-center"
-          >
-            <h2 className={`font-display font-black text-3xl md:text-4xl uppercase tracking-tighter leading-none ${isLightMode ? 'text-black' : 'text-white'}`}>
-              DEJAVU<span className="text-neon-purple">FM</span>
-            </h2>
-            <div className={`h-px w-12 mt-4 ${isLightMode ? 'bg-gradient-to-r from-transparent via-black/10 to-transparent' : 'bg-gradient-to-r from-transparent via-white/20 to-transparent'}`} />
-          </motion.div>
-        </div>
-
-        {/* Minimal Progress Bar */}
-        <div className="mt-8 w-64 md:w-80 group">
-          <div className="flex justify-between items-end mb-2 px-1">
-            <span className={`text-[8px] font-black uppercase tracking-widest transition-colors ${isLightMode ? 'text-black/30 group-hover:text-black/50' : 'text-white/20 group-hover:text-white/40'}`}>loading</span>
-            <span className="text-[10px] font-mono text-neon-purple font-bold">{Math.round(progress)}%</span>
-          </div>
-          <div className={`h-[2px] w-full rounded-full overflow-hidden relative ${isLightMode ? 'bg-black/5' : 'bg-white/5'}`}>
-            <motion.div 
-              className="absolute inset-y-0 left-0 bg-gradient-to-r from-neon-purple to-neon-blue"
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              transition={{ ease: "easeOut" }}
-            />
-            <motion.div 
-              animate={{ x: ["-100%", "200%"] }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-              className={`absolute inset-y-0 w-20 skew-x-12 ${isLightMode ? 'bg-gradient-to-r from-transparent via-black/10 to-transparent' : 'bg-gradient-to-r from-transparent via-white/30 to-transparent'}`}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Decorative Cinematic Details */}
-      <div className={`absolute inset-0 pointer-events-none opacity-20`}>
-        <div className={`absolute top-10 left-10 text-[8px] font-mono tracking-[0.3em] uppercase ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Status: ONAIR_SYSTEM_BOOT</div>
-        <div className={`absolute bottom-10 right-10 text-[8px] font-mono tracking-[0.3em] uppercase text-right ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
-          LATENCY: 12ms<br />
-          STREAM: 320KBPS
         </div>
       </div>
     </motion.div>,

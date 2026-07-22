@@ -1955,35 +1955,43 @@ apiRouter.get("/admin/profile", (req: any, res: any) => {
 
 apiRouter.put("/admin/profile", (req: any, res: any) => {
   const { bio, photo_url, email, password } = req.body;
-  
+
+  const currentAdmin = db.prepare("SELECT * FROM admins WHERE username = ?").get(req.user.username) as any;
+  if (!currentAdmin) {
+    return res.status(404).json({ error: "Admin profile not found" });
+  }
+
+  const updatedBio = bio !== undefined ? bio : (currentAdmin.bio || "");
+  const updatedPhotoUrl = photo_url !== undefined ? photo_url : (currentAdmin.photo_url || "");
+  const updatedEmail = (email !== undefined && email !== null && email.trim() !== "") ? email.trim() : (currentAdmin.email || "");
+
   if (password) {
     if (password.length < 6) {
       return res.status(400).json({ error: "Password must be at least 6 characters" });
     }
     const hash = bcrypt.hashSync(password, 10);
     db.prepare("UPDATE admins SET bio=?, photo_url=?, email=?, password_hash=? WHERE username=?")
-      .run(bio || "", photo_url || "", email || "", hash, req.user.username);
+      .run(updatedBio, updatedPhotoUrl, updatedEmail, hash, req.user.username);
   } else {
     db.prepare("UPDATE admins SET bio=?, photo_url=?, email=? WHERE username=?")
-      .run(bio || "", photo_url || "", email || "", req.user.username);
+      .run(updatedBio, updatedPhotoUrl, updatedEmail, req.user.username);
   }
 
   // Senior Dev: Seamlessly sync profile photo and bio changes downstream to the public 'djs' database entry
   try {
-    const admin = db.prepare("SELECT dj_profile_id FROM admins WHERE username = ?").get(req.user.username) as any;
-    if (admin && admin.dj_profile_id) {
+    if (currentAdmin.dj_profile_id) {
       db.prepare("UPDATE djs SET bio = ?, image_url = ? WHERE id = ?")
-        .run(bio || "", photo_url || "", admin.dj_profile_id);
+        .run(updatedBio, updatedPhotoUrl, currentAdmin.dj_profile_id);
     } else {
       db.prepare("UPDATE djs SET bio = ?, image_url = ? WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))")
-        .run(bio || "", photo_url || "", req.user.username);
+        .run(updatedBio, updatedPhotoUrl, req.user.username);
     }
   } catch (syncErr) {
     console.error("[Sync] Failed to sync admin profile to public djs table:", syncErr);
   }
 
   logAction(req, 'UPDATE_PROFILE', 'admins', req.user.username);
-  res.json({ success: true });
+  res.json({ success: true, profile: { bio: updatedBio, photo_url: updatedPhotoUrl, email: updatedEmail } });
 });
 
 apiRouter.get("/admin/djs", (req, res) => {
