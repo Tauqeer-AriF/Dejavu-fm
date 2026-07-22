@@ -134,11 +134,16 @@ export default function WatchLive() {
   useEffect(() => {
     if (!isSplitActive) return;
 
+    const prevBodyOverscroll = document.body.style.overscrollBehaviorY;
+    const prevDocOverscroll = document.documentElement.style.overscrollBehaviorY;
+    document.body.style.overscrollBehaviorY = 'none';
+    document.documentElement.style.overscrollBehaviorY = 'none';
+
     const lockScroll = () => {
-      if (window.scrollY !== 0) {
+      if (window.scrollY > 10) {
         window.scrollTo(0, 0);
       }
-      if (document.body.scrollTop !== 0) {
+      if (document.body.scrollTop > 10) {
         document.body.scrollTop = 0;
       }
     };
@@ -173,6 +178,8 @@ export default function WatchLive() {
     }
 
     return () => {
+      document.body.style.overscrollBehaviorY = prevBodyOverscroll;
+      document.documentElement.style.overscrollBehaviorY = prevDocOverscroll;
       window.removeEventListener('resize', updateViewport);
       window.removeEventListener('scroll', lockScroll);
       window.removeEventListener('focusin', handleFocusIn);
