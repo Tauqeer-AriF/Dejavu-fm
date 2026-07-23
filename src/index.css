@@ -807,11 +807,11 @@ button:not(.absolute) {
 }
 
 /* ==========================================================================
-   Senior Accessibility & Contrast System
+   Senior Accessibility & Contrast System (Front-View Only)
    ========================================================================== */
 
 /* 1. High Contrast Dark Theme */
-:root.contrast-high-dark {
+:root:not(.in-admin-view).contrast-high-dark {
   --theme-bg: #000000 !important;
   --theme-panel-bg: #000000 !important;
   --theme-border: #ffffff !important;
@@ -824,10 +824,10 @@ button:not(.absolute) {
   --color-white: #ffffff !important;
 }
 
-:root.contrast-high-dark .glass-panel,
-:root.contrast-high-dark .now-playing-panel,
-:root.contrast-high-dark .player-bar,
-:root.contrast-high-dark .shoutout-widget {
+:root:not(.in-admin-view).contrast-high-dark .glass-panel:not(.admin-dashboard-container),
+:root:not(.in-admin-view).contrast-high-dark .now-playing-panel,
+:root:not(.in-admin-view).contrast-high-dark .player-bar,
+:root:not(.in-admin-view).contrast-high-dark .shoutout-widget {
   background: #000000 !important;
   border: 2px solid #ffffff !important;
   backdrop-filter: none !important;
@@ -835,64 +835,64 @@ button:not(.absolute) {
   box-shadow: none !important;
 }
 
-:root.contrast-high-dark button,
-:root.contrast-high-dark a.button-style,
-:root.contrast-high-dark input,
-:root.contrast-high-dark select,
-:root.contrast-high-dark textarea {
+:root:not(.in-admin-view).contrast-high-dark button:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark a.button-style:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark input:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark select:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark textarea:not(.admin-page-wrapper *):not(.admin-dashboard-container *) {
   border: 1.5px solid #ffffff !important;
   background-color: #000000 !important;
   color: #ffffff !important;
   text-shadow: none !important;
 }
 
-:root.contrast-high-dark button:hover,
-:root.contrast-high-dark a.button-style:hover {
+:root:not(.in-admin-view).contrast-high-dark button:not(.admin-page-wrapper *):not(.admin-dashboard-container *):hover,
+:root:not(.in-admin-view).contrast-high-dark a.button-style:not(.admin-page-wrapper *):not(.admin-dashboard-container *):hover {
   background-color: #ffffff !important;
   color: #000000 !important;
 }
 
 /* Ensure gray, muted and semi-transparent text is fully white in high-contrast dark mode */
-:root.contrast-high-dark [class*="text-slate-"],
-:root.contrast-high-dark [class*="text-gray-"],
-:root.contrast-high-dark [class*="text-zinc-"],
-:root.contrast-high-dark [class*="text-neutral-"],
-:root.contrast-high-dark [class*="text-stone-"],
-:root.contrast-high-dark [class*="text-white/"],
-:root.contrast-high-dark [class*="text-black/"],
-:root.contrast-high-dark [class*="text-[#ffffff]/"],
-:root.contrast-high-dark [class*="text-[#000000]/"],
-:root.contrast-high-dark [class*="text-[#fff]/"],
-:root.contrast-high-dark [class*="text-[#000]/"],
-:root.contrast-high-dark [class*="text-slate/"],
-:root.contrast-high-dark [class*="text-zinc/"],
-:root.contrast-high-dark [class*="text-neutral/"],
-:root.contrast-high-dark [class*="text-gray/"] {
+:root:not(.in-admin-view).contrast-high-dark [class*="text-slate-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark [class*="text-gray-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark [class*="text-zinc-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark [class*="text-neutral-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark [class*="text-stone-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark [class*="text-white/"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark [class*="text-black/"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark [class*="text-[#ffffff]/"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark [class*="text-[#000000]/"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark [class*="text-[#fff]/"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark [class*="text-[#000]/"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark [class*="text-slate/"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark [class*="text-zinc/"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark [class*="text-neutral/"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark [class*="text-gray/"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *) {
   color: #ffffff !important;
 }
 
-:root.contrast-high-dark [class*="text-"].opacity-30,
-:root.contrast-high-dark [class*="text-"].opacity-40,
-:root.contrast-high-dark [class*="text-"].opacity-50,
-:root.contrast-high-dark [class*="text-"].opacity-60,
-:root.contrast-high-dark [class*="text-"].opacity-70,
-:root.contrast-high-dark [class*="text-"].opacity-80,
-:root.contrast-high-dark [class*="text-"].opacity-90,
-:root.contrast-high-dark p[class*="opacity-"],
-:root.contrast-high-dark span[class*="opacity-"],
-:root.contrast-high-dark small[class*="opacity-"],
-:root.contrast-high-dark label[class*="opacity-"],
-:root.contrast-high-dark h1[class*="opacity-"],
-:root.contrast-high-dark h2[class*="opacity-"],
-:root.contrast-high-dark h3[class*="opacity-"],
-:root.contrast-high-dark h4[class*="opacity-"],
-:root.contrast-high-dark h5[class*="opacity-"],
-:root.contrast-high-dark h6[class*="opacity-"] {
+:root:not(.in-admin-view).contrast-high-dark [class*="text-"].opacity-30:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark [class*="text-"].opacity-40:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark [class*="text-"].opacity-50:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark [class*="text-"].opacity-60:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark [class*="text-"].opacity-70:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark [class*="text-"].opacity-80:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark [class*="text-"].opacity-90:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark p[class*="opacity-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark span[class*="opacity-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark small[class*="opacity-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark label[class*="opacity-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark h1[class*="opacity-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark h2[class*="opacity-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark h3[class*="opacity-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark h4[class*="opacity-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark h5[class*="opacity-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark h6[class*="opacity-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *) {
   opacity: 1 !important;
 }
 
 /* 2. High Contrast Light Theme */
-:root.contrast-high-light {
+:root:not(.in-admin-view).contrast-high-light {
   --theme-bg: #ffffff !important;
   --theme-panel-bg: #ffffff !important;
   --theme-border: #000000 !important;
@@ -905,10 +905,10 @@ button:not(.absolute) {
   --color-white: #000000 !important;
 }
 
-:root.contrast-high-light .glass-panel,
-:root.contrast-high-light .now-playing-panel,
-:root.contrast-high-light .player-bar,
-:root.contrast-high-light .shoutout-widget {
+:root:not(.in-admin-view).contrast-high-light .glass-panel:not(.admin-dashboard-container),
+:root:not(.in-admin-view).contrast-high-light .now-playing-panel,
+:root:not(.in-admin-view).contrast-high-light .player-bar,
+:root:not(.in-admin-view).contrast-high-light .shoutout-widget {
   background: #ffffff !important;
   border: 2px solid #000000 !important;
   backdrop-filter: none !important;
@@ -916,64 +916,64 @@ button:not(.absolute) {
   box-shadow: none !important;
 }
 
-:root.contrast-high-light button,
-:root.contrast-high-light a.button-style,
-:root.contrast-high-light input,
-:root.contrast-high-light select,
-:root.contrast-high-light textarea {
+:root:not(.in-admin-view).contrast-high-light button:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light a.button-style:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light input:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light select:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light textarea:not(.admin-page-wrapper *):not(.admin-dashboard-container *) {
   border: 1.5px solid #000000 !important;
   background-color: #ffffff !important;
   color: #000000 !important;
   text-shadow: none !important;
 }
 
-:root.contrast-high-light button:hover,
-:root.contrast-high-light a.button-style:hover {
+:root:not(.in-admin-view).contrast-high-light button:not(.admin-page-wrapper *):not(.admin-dashboard-container *):hover,
+:root:not(.in-admin-view).contrast-high-light a.button-style:not(.admin-page-wrapper *):not(.admin-dashboard-container *):hover {
   background-color: #000000 !important;
   color: #ffffff !important;
 }
 
 /* Ensure gray, muted and semi-transparent text is fully black in high-contrast light mode */
-:root.contrast-high-light [class*="text-slate-"],
-:root.contrast-high-light [class*="text-gray-"],
-:root.contrast-high-light [class*="text-zinc-"],
-:root.contrast-high-light [class*="text-neutral-"],
-:root.contrast-high-light [class*="text-stone-"],
-:root.contrast-high-light [class*="text-white/"],
-:root.contrast-high-light [class*="text-black/"],
-:root.contrast-high-light [class*="text-[#ffffff]/"],
-:root.contrast-high-light [class*="text-[#000000]/"],
-:root.contrast-high-light [class*="text-[#fff]/"],
-:root.contrast-high-light [class*="text-[#000]/"],
-:root.contrast-high-light [class*="text-slate/"],
-:root.contrast-high-light [class*="text-zinc/"],
-:root.contrast-high-light [class*="text-neutral/"],
-:root.contrast-high-light [class*="text-gray/"] {
+:root:not(.in-admin-view).contrast-high-light [class*="text-slate-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light [class*="text-gray-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light [class*="text-zinc-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light [class*="text-neutral-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light [class*="text-stone-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light [class*="text-white/"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light [class*="text-black/"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light [class*="text-[#ffffff]/"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light [class*="text-[#000000]/"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light [class*="text-[#fff]/"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light [class*="text-[#000]/"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light [class*="text-slate/"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light [class*="text-zinc/"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light [class*="text-neutral/"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light [class*="text-gray/"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *) {
   color: #000000 !important;
 }
 
-:root.contrast-high-light [class*="text-"].opacity-30,
-:root.contrast-high-light [class*="text-"].opacity-40,
-:root.contrast-high-light [class*="text-"].opacity-50,
-:root.contrast-high-light [class*="text-"].opacity-60,
-:root.contrast-high-light [class*="text-"].opacity-70,
-:root.contrast-high-light [class*="text-"].opacity-80,
-:root.contrast-high-light [class*="text-"].opacity-90,
-:root.contrast-high-light p[class*="opacity-"],
-:root.contrast-high-light span[class*="opacity-"],
-:root.contrast-high-light small[class*="opacity-"],
-:root.contrast-high-light label[class*="opacity-"],
-:root.contrast-high-light h1[class*="opacity-"],
-:root.contrast-high-light h2[class*="opacity-"],
-:root.contrast-high-light h3[class*="opacity-"],
-:root.contrast-high-light h4[class*="opacity-"],
-:root.contrast-high-light h5[class*="opacity-"],
-:root.contrast-high-light h6[class*="opacity-"] {
+:root:not(.in-admin-view).contrast-high-light [class*="text-"].opacity-30:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light [class*="text-"].opacity-40:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light [class*="text-"].opacity-50:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light [class*="text-"].opacity-60:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light [class*="text-"].opacity-70:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light [class*="text-"].opacity-80:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light [class*="text-"].opacity-90:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light p[class*="opacity-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light span[class*="opacity-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light small[class*="opacity-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light label[class*="opacity-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light h1[class*="opacity-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light h2[class*="opacity-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light h3[class*="opacity-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light h4[class*="opacity-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light h5[class*="opacity-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light h6[class*="opacity-"]:not(.admin-page-wrapper *):not(.admin-dashboard-container *) {
   opacity: 1 !important;
 }
 
 /* 3. Neon Cyberpunk Contrast Theme */
-:root.contrast-neon {
+:root:not(.in-admin-view).contrast-neon {
   --theme-bg: #000000 !important;
   --theme-panel-bg: #050505 !important;
   --theme-border: var(--color-neon-blue) !important;
@@ -986,27 +986,27 @@ button:not(.absolute) {
   --color-white: #ffffff !important;
 }
 
-:root.contrast-neon .glass-panel,
-:root.contrast-neon .now-playing-panel,
-:root.contrast-neon .player-bar,
-:root.contrast-neon .shoutout-widget {
+:root:not(.in-admin-view).contrast-neon .glass-panel:not(.admin-dashboard-container),
+:root:not(.in-admin-view).contrast-neon .now-playing-panel,
+:root:not(.in-admin-view).contrast-neon .player-bar,
+:root:not(.in-admin-view).contrast-neon .shoutout-widget {
   background: #000000 !important;
   border: 2px solid var(--color-neon-blue) !important;
   box-shadow: 0 0 15px color-mix(in srgb, var(--color-neon-blue) 25%, transparent) !important;
 }
 
-:root.contrast-neon button,
-:root.contrast-neon a.button-style,
-:root.contrast-neon input,
-:root.contrast-neon select,
-:root.contrast-neon textarea {
+:root:not(.in-admin-view).contrast-neon button:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-neon a.button-style:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-neon input:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-neon select:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-neon textarea:not(.admin-page-wrapper *):not(.admin-dashboard-container *) {
   border: 1.5px solid var(--color-neon-purple) !important;
   background-color: #000000 !important;
   color: #ffffff !important;
 }
 
-:root.contrast-neon button:hover,
-:root.contrast-neon a.button-style:hover {
+:root:not(.in-admin-view).contrast-neon button:not(.admin-page-wrapper *):not(.admin-dashboard-container *):hover,
+:root:not(.in-admin-view).contrast-neon a.button-style:not(.admin-page-wrapper *):not(.admin-dashboard-container *):hover {
   background-color: var(--color-neon-blue) !important;
   color: #000000 !important;
   border-color: var(--color-neon-blue) !important;
@@ -1014,20 +1014,34 @@ button:not(.absolute) {
 }
 
 /* 4. Font Size Scaler classes */
-:root.text-size-large {
-  font-size: 112.5%; /* Scale up document scale */
+:root:not(.in-admin-view).text-size-large {
+  font-size: 112.5%; /* Scale up document scale for front view */
 }
 
-:root.text-size-extra {
-  font-size: 125%; /* Scale up document scale even more */
+:root:not(.in-admin-view).text-size-extra {
+  font-size: 125%; /* Scale up document scale even more for front view */
 }
 
 /* 5. Dyslexic-Friendly Font Override */
-:root.accessibility-dyslexic * {
+:root:not(.in-admin-view).accessibility-dyslexic body *:not(.admin-page-wrapper *):not(.admin-dashboard-container *) {
   font-family: 'Comic Sans MS', 'Comic Sans', cursive, sans-serif !important;
   letter-spacing: 0.05em !important;
   word-spacing: 0.1em !important;
   line-height: 1.6 !important;
+}
+
+/* Strict Isolation Protection for Admin Dashboard & Studio Inbox */
+.admin-page-wrapper,
+.admin-dashboard-container,
+.in-admin-view {
+  font-size: 16px !important;
+}
+
+.admin-page-wrapper *,
+.admin-dashboard-container * {
+  font-family: inherit;
+  letter-spacing: normal;
+  word-spacing: normal;
 }
 
 @keyframes shine {

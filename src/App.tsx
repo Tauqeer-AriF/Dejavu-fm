@@ -26,6 +26,7 @@ import glitchLogoUrl from './assets/images/dejavufm_glitch_logo_1784796255055.pn
 import { ThemeAccessibilityDropdown } from './components/ThemeAccessibilityDropdown';
 import { ShareModal } from './components/ShareModal';
 import { PremiumRingLoader } from './components/PremiumRingLoader';
+import { suppressAccessibilityForAdmin, applyFrontAccessibilityOptions } from './utils/accessibility';
 
 // Pages
 import Home from './pages/Home';
@@ -927,6 +928,14 @@ function MainLayout() {
   }, [settings, setStreamUrl, setQualityUrls]);
 
   const [isSplitActive, setIsSplitActive] = useState(false);
+
+  useEffect(() => {
+    if (location.pathname.startsWith('/admin')) {
+      suppressAccessibilityForAdmin();
+    } else {
+      applyFrontAccessibilityOptions();
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     const handleSplitChange = (e: CustomEvent<{ active: boolean }>) => {

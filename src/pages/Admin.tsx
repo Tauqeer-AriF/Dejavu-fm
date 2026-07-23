@@ -30,6 +30,7 @@ const AdminMetaIntegrations = React.lazy(() => import("./admin/AdminMetaIntegrat
 import { useLogo } from "../hooks/useLogo";
 import { PremiumRingLoader } from "../components/PremiumRingLoader";
 import { AppLoader } from "../components/AppLoader";
+import { suppressAccessibilityForAdmin, applyFrontAccessibilityOptions } from "../utils/accessibility";
 
 export default function Admin() {
   const [isLogged, setIsLogged] = useState(false);
@@ -90,38 +91,34 @@ export default function Admin() {
   });
 
   useEffect(() => {
-    // Determine if the front-facing theme is light
-    const frontThemeIsLight = localStorage.getItem('theme') === 'light';
+    // Ensure Accessibility Hub options do not affect Creator Dashboard or Studio Inbox
+    suppressAccessibilityForAdmin();
 
     // If currently in studio inbox, sync documentElement class with studio_theme
     if (location.pathname.startsWith('/admin/studio')) {
       const savedStudioTheme = localStorage.getItem('studio_theme') || 'dark';
-      document.documentElement.classList.remove('light'); // Crucial: remove public/front light mode class to prevent dark-text contamination in Studio
       if (savedStudioTheme === 'light') {
         document.documentElement.classList.add('admin-light-mode');
       } else {
         document.documentElement.classList.remove('admin-light-mode');
       }
-      return;
+      return () => {
+        document.documentElement.classList.remove('admin-light-mode');
+        applyFrontAccessibilityOptions();
+      };
     }
 
     // Apply dashboard theme
     if (dashboardTheme === 'light') {
       document.documentElement.classList.add('admin-light-mode');
-      document.documentElement.classList.remove('light'); // Hide front light mode styling
     } else {
       document.documentElement.classList.remove('admin-light-mode');
-      document.documentElement.classList.remove('light'); // Ensure front light mode is disabled in admin dark mode
     }
 
-    // Cleanup: restore front-facing theme when leaving the dashboard
+    // Cleanup: restore front-facing theme & accessibility options when leaving dashboard/studio
     return () => {
       document.documentElement.classList.remove('admin-light-mode');
-      if (frontThemeIsLight) {
-        document.documentElement.classList.add('light');
-      } else {
-        document.documentElement.classList.remove('light');
-      }
+      applyFrontAccessibilityOptions();
     };
   }, [dashboardTheme, location.pathname]);
 
