@@ -32,7 +32,7 @@ export function PremiumLoader({ onComplete }: PremiumLoaderProps) {
   return createPortal(
     <div
       className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden select-none ${
-        isLightMode ? 'bg-slate-50' : 'bg-[#070913]'
+        isLightMode ? 'bg-white' : 'bg-black'
       }`}
       style={{ width: '100vw', height: '100vh', top: 0, left: 0 }}
     >
@@ -45,8 +45,8 @@ export function PremiumLoader({ onComplete }: PremiumLoaderProps) {
         className={`w-64 sm:w-80 md:w-[28rem] h-auto object-contain ${
           isDefaultGlitch
             ? isLightMode
-              ? "invert hue-rotate-180 mix-blend-multiply"
-              : "mix-blend-screen"
+              ? "invert"
+              : ""
             : ""
         }`}
       />

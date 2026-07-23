@@ -131,6 +131,7 @@ export function AdminBranding() {
   const [logoLight, setLogoLight] = useState("");
   const [logoShape, setLogoShape] = useState("square");
   const [favicon, setFavicon] = useState("");
+  const [premiumLoaderImage, setPremiumLoaderImage] = useState("");
   const [primaryColor, setPrimaryColor] = useState("#b026ff");
   const [secondaryColor, setSecondaryColor] = useState("#00d2ff");
   const [fontSans, setFontSans] = useState("Inter");
@@ -172,6 +173,7 @@ export function AdminBranding() {
     logo_light: "",
     logo_shape: "square",
     favicon: "/favicon.ico",
+    premium_loader_image: "",
     primary_color: "#b026ff",
     secondary_color: "#00d2ff",
     font_sans: "Inter",
@@ -209,6 +211,7 @@ export function AdminBranding() {
       setLogoLight(serverSettings.logo_light || DEFAULTS.logo_light);
       setLogoShape(serverSettings.logo_shape !== undefined ? serverSettings.logo_shape : DEFAULTS.logo_shape);
       setFavicon(serverSettings.favicon || DEFAULTS.favicon);
+      setPremiumLoaderImage(serverSettings.premium_loader_image || "");
       setPrimaryColor(serverSettings.primary_color || DEFAULTS.primary_color);
       setSecondaryColor(serverSettings.secondary_color || DEFAULTS.secondary_color);
       setFontSans(serverSettings.font_sans || DEFAULTS.font_sans);
@@ -275,6 +278,7 @@ export function AdminBranding() {
           logo_light: DEFAULTS.logo_light,
           logo_shape: DEFAULTS.logo_shape,
           favicon: DEFAULTS.favicon,
+          premium_loader_image: "",
           primary_color: DEFAULTS.primary_color,
           secondary_color: DEFAULTS.secondary_color,
           font_sans: DEFAULTS.font_sans,
@@ -301,6 +305,7 @@ export function AdminBranding() {
         setLogoLight(DEFAULTS.logo_light);
         setLogoShape(DEFAULTS.logo_shape);
         setFavicon(DEFAULTS.favicon);
+        setPremiumLoaderImage("");
         setPrimaryColor(DEFAULTS.primary_color);
         setSecondaryColor(DEFAULTS.secondary_color);
         setFontSans(DEFAULTS.font_sans);
@@ -336,6 +341,7 @@ export function AdminBranding() {
           logo_light: logoLight,
           logo_shape: logoShape,
           favicon: favicon,
+          premium_loader_image: premiumLoaderImage,
           primary_color: primaryColor,
           secondary_color: secondaryColor,
           font_sans: fontSans,
@@ -498,6 +504,7 @@ export function AdminBranding() {
               <ImageUploadField label="Light Mode Logo" value={logoLight} onChange={setLogoLight} description="Optimized for light backgrounds." />
             </div>
             <ImageUploadField label="Favicon URL" value={favicon} onChange={setFavicon} description="The browser tab icon (.ico or .png)." />
+            <ImageUploadField label="Premium Loader Image" value={premiumLoaderImage} onChange={setPremiumLoaderImage} description="Custom image for the Premium Loader (defaults to the white glitch logo if empty)." />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
