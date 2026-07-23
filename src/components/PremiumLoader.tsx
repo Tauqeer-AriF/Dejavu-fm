@@ -1,36 +1,20 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useLogo } from "../hooks/useLogo";
+// @ts-ignore
+import defaultGlitchLogo from "../assets/images/dejavufm_glitch_logo_1784796255055.png";
 
 interface PremiumLoaderProps {
   onComplete?: () => void;
 }
 
 export function PremiumLoader({ onComplete }: PremiumLoaderProps) {
-  const [isLight, setIsLight] = useState(false);
+  const { logoUrl: dynamicLogoUrl, isLightMode, settings } = useLogo();
   const onCompleteRef = useRef(onComplete);
 
   useEffect(() => {
     onCompleteRef.current = onComplete;
   }, [onComplete]);
-
-  useEffect(() => {
-    const checkTheme = () => {
-      const isHtmlLight = document.documentElement.classList.contains('light') || 
-                          document.documentElement.classList.contains('admin-light-mode');
-      const savedStudioTheme = localStorage.getItem('studio_theme');
-      const savedDbTheme = localStorage.getItem('dashboard_theme');
-      
-      setIsLight(isHtmlLight || savedStudioTheme === 'light' || savedDbTheme === 'light');
-    };
-
-    checkTheme();
-    
-    // Set up observer to track real-time theme updates
-    const observer = new MutationObserver(checkTheme);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    
-    return () => observer.disconnect();
-  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -40,19 +24,32 @@ export function PremiumLoader({ onComplete }: PremiumLoaderProps) {
     return () => clearTimeout(timer);
   }, []);
 
+  const logoToUse = settings?.premium_loader_image || dynamicLogoUrl || defaultGlitchLogo;
+  const isDefaultGlitch = logoToUse === defaultGlitchLogo;
+
   return createPortal(
     <div
-      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden transition-colors duration-200 select-none ${
-        isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#070913] text-white'
+      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden select-none ${
+        isLightMode ? 'bg-slate-50' : 'bg-[#070913]'
       }`}
       style={{ width: '100vw', height: '100vh', top: 0, left: 0 }}
     >
-      <div className="relative z-10 flex flex-col items-center justify-center">
-        <h1 className="font-black text-6xl sm:text-7xl md:text-8xl tracking-tighter font-sans lowercase leading-none">
-          dejavufm
-        </h1>
-      </div>
+      <img
+        src={logoToUse}
+        alt="dejavufm"
+        referrerPolicy="no-referrer"
+        loading="eager"
+        fetchPriority="high"
+        className={`w-64 sm:w-80 md:w-[28rem] h-auto object-contain ${
+          isDefaultGlitch
+            ? isLightMode
+              ? "invert hue-rotate-180 mix-blend-multiply"
+              : "mix-blend-screen"
+            : ""
+        }`}
+      />
     </div>,
     document.body
   );
 }
+

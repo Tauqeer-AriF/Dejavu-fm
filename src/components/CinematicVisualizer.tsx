@@ -2,12 +2,19 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAudio } from '../context/AudioContext';
 import { X, Maximize2, Minimize2 } from 'lucide-react';
+import { useLogo } from '../hooks/useLogo';
 
 export function CinematicVisualizer({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { getAnalyser, isPlaying, currentTrack, onAirInfo } = useAudio();
+  const { isLightMode } = useLogo();
   const animationRef = useRef<number>();
   const [pulseScale, setPulseScale] = useState(1);
+  const isLightModeRef = useRef(isLightMode);
+
+  useEffect(() => {
+    isLightModeRef.current = isLightMode;
+  }, [isLightMode]);
 
   // Fallback metadata formatting
   const title = currentTrack && currentTrack !== "DejavuFM Live" ? currentTrack : (onAirInfo?.showName || "DejavuFM Live");
@@ -47,7 +54,8 @@ export function CinematicVisualizer({ isOpen, onClose }: { isOpen: boolean, onCl
       const cx = width / 2;
       const cy = height / 2;
 
-      ctx.fillStyle = 'rgba(10, 10, 15, 0.2)'; // fade effect
+      // Respect light mode for fade background overlay
+      ctx.fillStyle = isLightModeRef.current ? 'rgba(248, 250, 252, 0.25)' : 'rgba(10, 10, 15, 0.2)';
       ctx.fillRect(0, 0, width, height);
 
       if (!isPlaying) {
@@ -86,9 +94,10 @@ export function CinematicVisualizer({ isOpen, onClose }: { isOpen: boolean, onCl
           const x2 = cx + Math.cos(angle) * (radius + barHeight);
           const y2 = cy + Math.sin(angle) * (radius + barHeight);
 
-          // Calculate dynamic color based on freq bin and amplitude
+          // Calculate dynamic color based on freq bin and amplitude, with distinct lightness for light mode contrast
           const hue = (i / count) * 360 + (time * 0.05);
-          ctx.strokeStyle = `hsla(${hue}, 100%, 65%, ${0.5 + (val / 255) * 0.5})`;
+          const lightness = isLightModeRef.current ? '50%' : '65%';
+          ctx.strokeStyle = `hsla(${hue}, 100%, ${lightness}, ${0.5 + (val / 255) * 0.5})`;
           ctx.lineWidth = 4 + (val / 255) * 6;
           ctx.lineCap = 'round';
 
@@ -109,7 +118,8 @@ export function CinematicVisualizer({ isOpen, onClose }: { isOpen: boolean, onCl
           const px = cx + Math.cos(angle) * dist;
           const py = cy + Math.sin(angle) * dist;
           
-          ctx.fillStyle = `hsla(${(i / outerCount) * 360 + (time * 0.1)}, 100%, 75%, ${val / 255})`;
+          const lightness = isLightModeRef.current ? '50%' : '75%';
+          ctx.fillStyle = `hsla(${(i / outerCount) * 360 + (time * 0.1)}, 100%, ${lightness}, ${val / 255})`;
           ctx.beginPath();
           ctx.arc(px, py, 2 + (val / 255) * 4, 0, Math.PI * 2);
           ctx.fill();
@@ -137,7 +147,8 @@ export function CinematicVisualizer({ isOpen, onClose }: { isOpen: boolean, onCl
           const y2 = cy + Math.sin(angle) * (radius + barHeight);
 
           const hue = (i / count) * 360 + (time * 0.02);
-          ctx.strokeStyle = `hsla(${hue}, 100%, 65%, ${0.3 + val * 0.4})`;
+          const lightness = isLightModeRef.current ? '50%' : '65%';
+          ctx.strokeStyle = `hsla(${hue}, 100%, ${lightness}, ${0.3 + val * 0.4})`;
           ctx.lineWidth = 3 + val * 4;
           ctx.lineCap = 'round';
 
@@ -155,7 +166,8 @@ export function CinematicVisualizer({ isOpen, onClose }: { isOpen: boolean, onCl
           const px = cx + Math.cos(orbitAngle) * distance;
           const py = cy + Math.sin(orbitAngle) * distance;
 
-          ctx.fillStyle = `hsla(${(i / particlesCount) * 360 + (time * 0.05)}, 100%, 75%, 0.4)`;
+          const lightness = isLightModeRef.current ? '50%' : '75%';
+          ctx.fillStyle = `hsla(${(i / particlesCount) * 360 + (time * 0.05)}, 100%, ${lightness}, 0.4)`;
           ctx.beginPath();
           ctx.arc(px, py, 3, 0, Math.PI * 2);
           ctx.fill();
@@ -181,7 +193,9 @@ export function CinematicVisualizer({ isOpen, onClose }: { isOpen: boolean, onCl
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 1.05 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="fixed inset-0 z-[20000] bg-[#0a0a0f] flex items-center justify-center overflow-hidden"
+          className={`fixed inset-0 z-[20000] flex items-center justify-center overflow-hidden transition-colors duration-300 ${
+            isLightMode ? 'bg-slate-50' : 'bg-[#0a0a0f]'
+          }`}
         >
           <canvas
             ref={canvasRef}
@@ -191,7 +205,11 @@ export function CinematicVisualizer({ isOpen, onClose }: { isOpen: boolean, onCl
           
           <button
             onClick={onClose}
-            className="absolute top-8 right-8 z-10 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-md transition-colors"
+            className={`absolute top-8 right-8 z-10 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 border ${
+              isLightMode
+                ? 'bg-white hover:bg-slate-100 border-slate-200 text-slate-800 shadow-md'
+                : 'bg-white/10 hover:bg-white/20 border-white/10 text-white backdrop-blur-md'
+            }`}
           >
             <X className="w-6 h-6" />
           </button>
@@ -201,9 +219,19 @@ export function CinematicVisualizer({ isOpen, onClose }: { isOpen: boolean, onCl
             style={{ scale: pulseScale }}
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
           >
-            <div className="bg-black/40 backdrop-blur-xl px-12 py-8 rounded-5xl border border-white/10 shadow-2xl text-center max-w-2xl px-6">
-              <h2 className="text-4xl md:text-5xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-neon-blue via-neon-purple to-neon-pink tracking-tight mb-4">{title}</h2>
-              <p className="text-xl md:text-2xl text-white/70 font-medium uppercase tracking-[0.2em]">{artist}</p>
+            <div className={`px-12 py-8 rounded-5xl border shadow-2xl text-center max-w-2xl px-6 transition-all duration-300 ${
+              isLightMode
+                ? 'bg-white border-slate-200/80 shadow-[0_12px_40px_rgba(0,0,0,0.06)]'
+                : 'bg-black/40 backdrop-blur-xl border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.5)]'
+            }`}>
+              <h2 className={`text-4xl md:text-5xl font-display font-black tracking-tight mb-4 ${
+                isLightMode
+                  ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent'
+                  : 'bg-gradient-to-r from-neon-blue via-neon-purple to-neon-pink bg-clip-text text-transparent'
+              }`}>{title}</h2>
+              <p className={`text-xl md:text-2xl font-medium uppercase tracking-[0.2em] ${
+                isLightMode ? 'text-slate-600' : 'text-white/70'
+              }`}>{artist}</p>
             </div>
           </motion.div>
         </motion.div>

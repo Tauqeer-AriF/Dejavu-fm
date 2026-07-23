@@ -21,6 +21,8 @@ import { SitePopup } from './components/SitePopup';
 import { AdvertisementSliders } from './components/AdvertisementSliders';
 import { CinematicVisualizer } from './components/CinematicVisualizer';
 import { PremiumLoader } from './components/PremiumLoader';
+// @ts-ignore
+import glitchLogoUrl from './assets/images/dejavufm_glitch_logo_1784796255055.png';
 import { ThemeAccessibilityDropdown } from './components/ThemeAccessibilityDropdown';
 import { ShareModal } from './components/ShareModal';
 import { PremiumRingLoader } from './components/PremiumRingLoader';
@@ -622,6 +624,12 @@ function MainLayout() {
     }
     return true;
   });
+
+  useEffect(() => {
+    // Preload the glitch logo image ASAP to guarantee it's cached when the premium loader is displayed
+    const img = new Image();
+    img.src = glitchLogoUrl;
+  }, []);
 
   const handleLoaderComplete = useCallback(() => {
     if (typeof window !== 'undefined') {
