@@ -521,6 +521,15 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       .catch(err => console.error("Failed to fetch studio settings", err));
   }, []);
 
+  const queryClient = useQueryClient();
+
+  const { data: authData } = useQuery({
+    queryKey: ['admin-auth-check'],
+    queryFn: () => fetchAdmin('/api/admin/check').then(res => res.json()),
+  });
+  const adminUsername = authData?.user?.username ?? authData?.username;
+  const isAdmin = authData?.user?.role === 'admin' || authData?.role === 'admin';
+
   const isSenderAdminMsg = (user: string) => {
     if (!user) return false;
     const lowerUser = user.toLowerCase();
@@ -532,7 +541,17 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   const [activeTab, setActiveTab] = useState<'chats' | 'connections' | 'broadcast' | 'settings' | 'profile'>('chats');
   const [slideDirection, setSlideDirection] = useState<number>(0); // -1 = left, 1 = right
 
+  useEffect(() => {
+    if (authData && !isAdmin && activeTab !== 'chats') {
+      setActiveTab('chats');
+    }
+  }, [authData, isAdmin, activeTab]);
+
   const navigateToTab = (newTab: 'chats' | 'connections' | 'broadcast' | 'settings' | 'profile') => {
+    if (!isAdmin && newTab !== 'chats') {
+      toast.error("Access restricted: DJs only have access to Studio Chat.");
+      return;
+    }
     if (newTab === activeTab) return;
 
     const tabs: ('chats' | 'connections' | 'broadcast' | 'profile' | 'settings')[] = [
@@ -956,14 +975,6 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
-  const queryClient = useQueryClient();
-
-  const { data: authData } = useQuery({
-    queryKey: ['admin-auth-check'],
-    queryFn: () => fetchAdmin('/api/admin/check').then(res => res.json()),
-  });
-  const adminUsername = authData?.user?.username ?? authData?.username;
-  const isAdmin = authData?.user?.role === 'admin' || authData?.role === 'admin';
 
   const banUserMutation = useMutation({
     mutationFn: (username: string) => fetchAdmin('/api/admin/chat_users/ban', {
@@ -2764,56 +2775,60 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             <span>Studio Chat</span>
           </button>
           
-          <button
-            onClick={() => navigateToTab('connections')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
-              activeTab === 'connections'
-                ? (studioTheme === 'light' ? 'bg-cyan-100 text-cyan-800 border border-cyan-300 shadow-sm' : 'bg-neon-blue/20 text-neon-blue border border-neon-blue/30 shadow-[0_0_15px_rgba(0,194,255,0.15)]')
-                : (studioTheme === 'light' ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent' : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05] border border-transparent')
-            }`}
-          >
-            <Link2 className="w-4 h-4" />
-            <span>Connection Hub</span>
-            {Object.values(connectedPlatforms).filter(Boolean).length > 0 && (
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            )}
-          </button>
+          {isAdmin && (
+            <>
+              <button
+                onClick={() => navigateToTab('connections')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+                  activeTab === 'connections'
+                    ? (studioTheme === 'light' ? 'bg-cyan-100 text-cyan-800 border border-cyan-300 shadow-sm' : 'bg-neon-blue/20 text-neon-blue border border-neon-blue/30 shadow-[0_0_15px_rgba(0,194,255,0.15)]')
+                    : (studioTheme === 'light' ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent' : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05] border border-transparent')
+                }`}
+              >
+                <Link2 className="w-4 h-4" />
+                <span>Connection Hub</span>
+                {Object.values(connectedPlatforms).filter(Boolean).length > 0 && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                )}
+              </button>
 
-          <button
-            onClick={() => navigateToTab('broadcast')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
-              activeTab === 'broadcast'
-                ? (studioTheme === 'light' ? 'bg-blue-100 text-blue-800 border border-blue-300 shadow-sm' : 'bg-neon-blue/20 text-neon-blue border border-neon-blue/30 shadow-[0_0_15px_rgba(0,194,255,0.15)]')
-                : (studioTheme === 'light' ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent' : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05] border border-transparent')
-            }`}
-          >
-            <Radio className="w-4 h-4" />
-            <span>Broadcast</span>
-          </button>
+              <button
+                onClick={() => navigateToTab('broadcast')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+                  activeTab === 'broadcast'
+                    ? (studioTheme === 'light' ? 'bg-blue-100 text-blue-800 border border-blue-300 shadow-sm' : 'bg-neon-blue/20 text-neon-blue border border-neon-blue/30 shadow-[0_0_15px_rgba(0,194,255,0.15)]')
+                    : (studioTheme === 'light' ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent' : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05] border border-transparent')
+                }`}
+              >
+                <Radio className="w-4 h-4" />
+                <span>Broadcast</span>
+              </button>
 
-          <button
-            onClick={() => navigateToTab('profile')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
-              activeTab === 'profile'
-                ? (studioTheme === 'light' ? 'bg-purple-100 text-purple-800 border border-purple-300 shadow-sm' : 'bg-neon-purple/20 text-neon-purple border border-neon-purple/30 shadow-[0_0_15px_rgba(124,58,237,0.15)]')
-                : (studioTheme === 'light' ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent' : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05] border border-transparent')
-            }`}
-          >
-            <Camera className="w-4 h-4" />
-            <span>Profile</span>
-          </button>
+              <button
+                onClick={() => navigateToTab('profile')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+                  activeTab === 'profile'
+                    ? (studioTheme === 'light' ? 'bg-purple-100 text-purple-800 border border-purple-300 shadow-sm' : 'bg-neon-purple/20 text-neon-purple border border-neon-purple/30 shadow-[0_0_15px_rgba(124,58,237,0.15)]')
+                    : (studioTheme === 'light' ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent' : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05] border border-transparent')
+                }`}
+              >
+                <Camera className="w-4 h-4" />
+                <span>Profile</span>
+              </button>
 
-          <button
-            onClick={() => navigateToTab('settings')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
-              activeTab === 'settings'
-                ? (studioTheme === 'light' ? 'bg-amber-100 text-amber-800 border border-amber-300 shadow-sm' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.15)]')
-                : (studioTheme === 'light' ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent' : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05] border border-transparent')
-            }`}
-          >
-            <Settings className="w-4 h-4" />
-            <span>Settings</span>
-          </button>
+              <button
+                onClick={() => navigateToTab('settings')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+                  activeTab === 'settings'
+                    ? (studioTheme === 'light' ? 'bg-amber-100 text-amber-800 border border-amber-300 shadow-sm' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.15)]')
+                    : (studioTheme === 'light' ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent' : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05] border border-transparent')
+                }`}
+              >
+                <Settings className="w-4 h-4" />
+                <span>Settings</span>
+              </button>
+            </>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
@@ -3255,131 +3270,133 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       </div>
 
       {/* Floating Bottom Tab Bar for Mobile App View with Swipe Support & Slide/Scale Transitions */}
-      <div
-        onTouchStart={handleBarTouchStart}
-        onTouchEnd={handleBarTouchEnd}
-        className="md:hidden fixed bottom-5 left-4 right-4 z-40 bg-[#0D0F1D]/95 backdrop-blur-2xl border border-white/10 px-4 py-2.5 rounded-2xl flex items-center justify-around shadow-[0_12px_40px_rgba(0,0,0,0.85)] select-none"
-      >
-        <motion.button
-          onClick={() => navigateToTab('chats')}
-          whileTap={{ scale: 0.92 }}
-          className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 ${
-            activeTab === 'chats' ? 'text-neon-purple' : 'text-white/40 hover:text-white/80'
-          }`}
+      {isAdmin && (
+        <div
+          onTouchStart={handleBarTouchStart}
+          onTouchEnd={handleBarTouchEnd}
+          className="md:hidden fixed bottom-5 left-4 right-4 z-40 bg-[#0D0F1D]/95 backdrop-blur-2xl border border-white/10 px-4 py-2.5 rounded-2xl flex items-center justify-around shadow-[0_12px_40px_rgba(0,0,0,0.85)] select-none"
         >
-          {activeTab === 'chats' && (
-            <motion.div
-              layoutId="activeTabGlow"
-              className="absolute inset-0 bg-white/5 rounded-full"
-              transition={{ type: "spring", stiffness: 380, damping: 30 }}
-            />
-          )}
-          <motion.div
-            animate={{ scale: activeTab === 'chats' ? 1.15 : 1 }}
-            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            className="relative z-10"
+          <motion.button
+            onClick={() => navigateToTab('chats')}
+            whileTap={{ scale: 0.92 }}
+            className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 ${
+              activeTab === 'chats' ? 'text-neon-purple' : 'text-white/40 hover:text-white/80'
+            }`}
           >
-            <MessageSquare className="w-6 h-6" />
-          </motion.div>
-        </motion.button>
+            {activeTab === 'chats' && (
+              <motion.div
+                layoutId="activeTabGlow"
+                className="absolute inset-0 bg-white/5 rounded-full"
+                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              />
+            )}
+            <motion.div
+              animate={{ scale: activeTab === 'chats' ? 1.15 : 1 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              className="relative z-10"
+            >
+              <MessageSquare className="w-6 h-6" />
+            </motion.div>
+          </motion.button>
 
-        <motion.button
-          onClick={() => navigateToTab('connections')}
-          whileTap={{ scale: 0.92 }}
-          className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 ${
-            activeTab === 'connections' ? 'text-neon-blue' : 'text-white/40 hover:text-white/80'
-          }`}
-        >
-          {activeTab === 'connections' && (
-            <motion.div
-              layoutId="activeTabGlow"
-              className="absolute inset-0 bg-white/5 rounded-full"
-              transition={{ type: "spring", stiffness: 380, damping: 30 }}
-            />
-          )}
-          <motion.div
-            animate={{ scale: activeTab === 'connections' ? 1.15 : 1 }}
-            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            className="relative z-10"
+          <motion.button
+            onClick={() => navigateToTab('connections')}
+            whileTap={{ scale: 0.92 }}
+            className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 ${
+              activeTab === 'connections' ? 'text-neon-blue' : 'text-white/40 hover:text-white/80'
+            }`}
           >
-            <div className="relative">
-              <Link2 className="w-6 h-6" />
-              {Object.values(connectedPlatforms).filter(Boolean).length > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              )}
-            </div>
-          </motion.div>
-        </motion.button>
+            {activeTab === 'connections' && (
+              <motion.div
+                layoutId="activeTabGlow"
+                className="absolute inset-0 bg-white/5 rounded-full"
+                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              />
+            )}
+            <motion.div
+              animate={{ scale: activeTab === 'connections' ? 1.15 : 1 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              className="relative z-10"
+            >
+              <div className="relative">
+                <Link2 className="w-6 h-6" />
+                {Object.values(connectedPlatforms).filter(Boolean).length > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                )}
+              </div>
+            </motion.div>
+          </motion.button>
 
-        <motion.button
-          onClick={() => navigateToTab('broadcast')}
-          whileTap={{ scale: 0.92 }}
-          className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 ${
-            activeTab === 'broadcast' ? 'text-neon-blue' : 'text-white/40 hover:text-white/80'
-          }`}
-        >
-          {activeTab === 'broadcast' && (
-            <motion.div
-              layoutId="activeTabGlow"
-              className="absolute inset-0 bg-white/5 rounded-full"
-              transition={{ type: "spring", stiffness: 380, damping: 30 }}
-            />
-          )}
-          <motion.div
-            animate={{ scale: activeTab === 'broadcast' ? 1.15 : 1 }}
-            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            className="relative z-10"
+          <motion.button
+            onClick={() => navigateToTab('broadcast')}
+            whileTap={{ scale: 0.92 }}
+            className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 ${
+              activeTab === 'broadcast' ? 'text-neon-blue' : 'text-white/40 hover:text-white/80'
+            }`}
           >
-            <Radio className="w-6 h-6" />
-          </motion.div>
-        </motion.button>
+            {activeTab === 'broadcast' && (
+              <motion.div
+                layoutId="activeTabGlow"
+                className="absolute inset-0 bg-white/5 rounded-full"
+                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              />
+            )}
+            <motion.div
+              animate={{ scale: activeTab === 'broadcast' ? 1.15 : 1 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              className="relative z-10"
+            >
+              <Radio className="w-6 h-6" />
+            </motion.div>
+          </motion.button>
 
-        <motion.button
-          onClick={() => navigateToTab('profile')}
-          whileTap={{ scale: 0.92 }}
-          className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 ${
-            activeTab === 'profile' ? 'text-neon-purple' : 'text-white/40 hover:text-white/80'
-          }`}
-        >
-          {activeTab === 'profile' && (
-            <motion.div
-              layoutId="activeTabGlow"
-              className="absolute inset-0 bg-white/5 rounded-full"
-              transition={{ type: "spring", stiffness: 380, damping: 30 }}
-            />
-          )}
-          <motion.div
-            animate={{ scale: activeTab === 'profile' ? 1.15 : 1 }}
-            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            className="relative z-10"
+          <motion.button
+            onClick={() => navigateToTab('profile')}
+            whileTap={{ scale: 0.92 }}
+            className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 ${
+              activeTab === 'profile' ? 'text-neon-purple' : 'text-white/40 hover:text-white/80'
+            }`}
           >
-            <Camera className="w-6 h-6" />
-          </motion.div>
-        </motion.button>
+            {activeTab === 'profile' && (
+              <motion.div
+                layoutId="activeTabGlow"
+                className="absolute inset-0 bg-white/5 rounded-full"
+                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              />
+            )}
+            <motion.div
+              animate={{ scale: activeTab === 'profile' ? 1.15 : 1 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              className="relative z-10"
+            >
+              <Camera className="w-6 h-6" />
+            </motion.div>
+          </motion.button>
 
-        <motion.button
-          onClick={() => navigateToTab('settings')}
-          whileTap={{ scale: 0.92 }}
-          className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 ${
-            activeTab === 'settings' ? 'text-amber-400' : 'text-white/40 hover:text-white/80'
-          }`}
-        >
-          {activeTab === 'settings' && (
-            <motion.div
-              layoutId="activeTabGlow"
-              className="absolute inset-0 bg-white/5 rounded-full"
-              transition={{ type: "spring", stiffness: 380, damping: 30 }}
-            />
-          )}
-          <motion.div
-            animate={{ scale: activeTab === 'settings' ? 1.15 : 1 }}
-            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            className="relative z-10"
+          <motion.button
+            onClick={() => navigateToTab('settings')}
+            whileTap={{ scale: 0.92 }}
+            className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 ${
+              activeTab === 'settings' ? 'text-amber-400' : 'text-white/40 hover:text-white/80'
+            }`}
           >
-            <Settings className="w-6 h-6" />
-          </motion.div>
-        </motion.button>
-      </div>
+            {activeTab === 'settings' && (
+              <motion.div
+                layoutId="activeTabGlow"
+                className="absolute inset-0 bg-white/5 rounded-full"
+                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              />
+            )}
+            <motion.div
+              animate={{ scale: activeTab === 'settings' ? 1.15 : 1 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              className="relative z-10"
+            >
+              <Settings className="w-6 h-6" />
+            </motion.div>
+          </motion.button>
+        </div>
+      )}
 
       {/* Create Custom Quick Reply Dialog */}
       <AnimatePresence>
