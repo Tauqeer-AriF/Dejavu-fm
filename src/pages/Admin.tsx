@@ -93,6 +93,18 @@ export default function Admin() {
     // Determine if the front-facing theme is light
     const frontThemeIsLight = localStorage.getItem('theme') === 'light';
 
+    // If currently in studio inbox, sync documentElement class with studio_theme
+    if (location.pathname.startsWith('/admin/studio')) {
+      const savedStudioTheme = localStorage.getItem('studio_theme') || 'dark';
+      document.documentElement.classList.remove('light'); // Crucial: remove public/front light mode class to prevent dark-text contamination in Studio
+      if (savedStudioTheme === 'light') {
+        document.documentElement.classList.add('admin-light-mode');
+      } else {
+        document.documentElement.classList.remove('admin-light-mode');
+      }
+      return;
+    }
+
     // Apply dashboard theme
     if (dashboardTheme === 'light') {
       document.documentElement.classList.add('admin-light-mode');
@@ -111,7 +123,7 @@ export default function Admin() {
         document.documentElement.classList.remove('light');
       }
     };
-  }, [dashboardTheme]);
+  }, [dashboardTheme, location.pathname]);
 
   const toggleTheme = () => {
     const next = dashboardTheme === 'light' ? 'dark' : 'light';
@@ -205,6 +217,18 @@ export default function Admin() {
               title="Toggle theme"
             >
               {dashboardTheme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className={`inline-flex items-center justify-center h-12 w-12 rounded-full border transition duration-200 ${
+                dashboardTheme === 'light'
+                  ? 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 shadow-sm'
+                  : 'border-red-500/20 bg-red-500/10 text-red-400/90 hover:bg-red-500/20 hover:text-red-400'
+              }`}
+              title="Logout"
+            >
+              <LogOut className="w-5 h-5" />
             </button>
           </div>
         </div>

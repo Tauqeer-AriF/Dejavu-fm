@@ -383,16 +383,37 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     try {
       const saved = localStorage.getItem('studio_theme');
       if (saved === 'light' || saved === 'dark') return saved;
-      return localStorage.getItem('dashboard_theme') === 'light' ? 'light' : 'dark';
+      return 'dark';
     } catch {
       return 'dark';
     }
   });
 
+  useEffect(() => {
+    document.documentElement.classList.remove('light'); // Crucial: prevent dark-text contamination from frontend light theme
+    if (studioTheme === 'light') {
+      document.documentElement.classList.add('admin-light-mode');
+    } else {
+      document.documentElement.classList.remove('admin-light-mode');
+    }
+
+    return () => {
+      // When unmounting AdminStudio (navigating back to dashboard), restore the main dashboard theme
+      const dbTheme = localStorage.getItem('dashboard_theme') || 'dark';
+      document.documentElement.classList.remove('light'); // Crucial: prevent front-end theme mixing
+      if (dbTheme === 'light') {
+        document.documentElement.classList.add('admin-light-mode');
+      } else {
+        document.documentElement.classList.remove('admin-light-mode');
+      }
+    };
+  }, [studioTheme]);
+
   const toggleStudioTheme = () => {
     const nextTheme = studioTheme === 'dark' ? 'light' : 'dark';
     setStudioTheme(nextTheme);
     localStorage.setItem('studio_theme', nextTheme);
+    window.dispatchEvent(new Event('dashboard-theme-change'));
     toast.success(`Switched to ${nextTheme === 'light' ? 'Light' : 'Dark'} mode`);
   };
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
@@ -2664,18 +2685,22 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   if (isInitialLoading) return <PremiumLoader onComplete={() => setIsInitialLoading(false)} />;
 
   return (
-    <div className={`w-full h-screen max-h-screen overflow-hidden ${studioTheme === 'light' ? 'admin-light-mode' : ''}`}>
-      <div className="h-full w-full flex flex-col bg-[#070913] text-white font-sans admin-dashboard-container">
-      <header className="flex items-center justify-between p-4 sm:px-6 sm:py-5 border-b border-white/5 bg-[#0D0F1D]/60 backdrop-blur-2xl shrink-0 z-10 shadow-[0_4px_30px_rgba(0,0,0,0.4)]">
+    <div className={`w-full h-screen max-h-screen overflow-hidden admin-dashboard-container ${studioTheme === 'light' ? 'admin-light-mode' : ''}`}>
+      <div className={`h-full w-full flex flex-col font-sans transition-colors duration-200 ${
+        studioTheme === 'light' ? 'bg-[#f8fafc] text-slate-900' : 'bg-[#070913] text-white'
+      }`}>
+      <header className={`flex items-center justify-between p-4 sm:px-6 sm:py-5 border-b shrink-0 z-10 transition-colors ${
+        studioTheme === 'light'
+          ? 'bg-white border-slate-200 text-slate-900 shadow-sm'
+          : 'bg-[#0D0F1D]/80 border-white/5 text-white shadow-[0_4px_30px_rgba(0,0,0,0.4)] backdrop-blur-2xl'
+      }`}>
         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
           <div className="w-10 h-10 sm:w-11 sm:h-11 bg-gradient-to-tr from-neon-purple/20 to-neon-blue/20 rounded-xl flex items-center justify-center border border-white/10 shadow-[0_0_15px_rgba(176,38,255,0.2)] shrink-0">
             <Mic className="w-5 h-5 text-neon-purple" />
           </div>
           <div className="min-w-0 hidden sm:block">
-            <h1 className={`text-sm sm:text-base font-black font-display uppercase tracking-[0.15em] bg-clip-text text-transparent bg-gradient-to-r whitespace-nowrap ${
-              studioTheme === 'light' 
-                ? 'from-slate-900 via-slate-800 to-slate-700' 
-                : 'from-white via-white/90 to-white/70'
+            <h1 className={`text-sm sm:text-base font-black font-display uppercase tracking-[0.15em] whitespace-nowrap ${
+              studioTheme === 'light' ? 'text-slate-900' : 'text-white'
             }`}>
               Studio Inbox
             </h1>
@@ -2687,34 +2712,52 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           </div>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <Link to="/admin" className="inline-flex items-center gap-1.5 px-2.5 py-2 sm:px-4 sm:py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-white/80 hover:text-white text-[11px] font-semibold uppercase tracking-wider transition-all border border-white/5 hover:border-white/15" title="Back to Dashboard">
+          <Link to="/admin" className={`inline-flex items-center gap-1.5 px-2.5 py-2 sm:px-4 sm:py-2 rounded-xl text-[11px] font-semibold uppercase tracking-wider transition-all border ${
+            studioTheme === 'light'
+              ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+              : 'bg-white/[0.05] hover:bg-white/10 text-white/80 hover:text-white border-white/10'
+          }`} title="Back to Dashboard">
             <ArrowLeft className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Dashboard</span>
           </Link>
-          <button onClick={toggleStudioTheme} className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] transition-all text-white/60 hover:text-white border border-white/5" title={`Switch to ${studioTheme === 'light' ? 'Dark' : 'Light'} Mode`}>
+          <button onClick={toggleStudioTheme} className={`p-2 sm:p-2.5 rounded-xl transition-all border ${
+            studioTheme === 'light'
+              ? 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200'
+              : 'bg-white/[0.05] hover:bg-white/10 text-white/70 hover:text-white border-white/10'
+          }`} title={`Switch to ${studioTheme === 'light' ? 'Dark' : 'Light'} Mode`}>
             {studioTheme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
           </button>
-          <button onClick={toggleSound} className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] transition-all text-white/60 hover:text-white border border-white/5" title="Toggle notification sounds">
+          <button onClick={toggleSound} className={`p-2 sm:p-2.5 rounded-xl transition-all border ${
+            studioTheme === 'light'
+              ? 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200'
+              : 'bg-white/[0.05] hover:bg-white/10 text-white/70 hover:text-white border-white/10'
+          }`} title="Toggle notification sounds">
             {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
           </button>
-          <a href="/" target="_blank" className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] transition-all text-white/60 hover:text-white border border-white/5" title="Open Main Site">
+          <a href="/" target="_blank" className={`p-2 sm:p-2.5 rounded-xl transition-all border ${
+            studioTheme === 'light'
+              ? 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200'
+              : 'bg-white/[0.05] hover:bg-white/10 text-white/70 hover:text-white border-white/10'
+          }`} title="Open Main Site">
             <Globe className="w-4 h-4" />
           </a>
-          <button onClick={onLogout} className="p-2 sm:p-2.5 rounded-xl bg-red-500/5 hover:bg-red-500/20 border border-red-500/10 hover:border-red-500/20 transition-all text-red-400/80 hover:text-red-400" title="Logout">
+          <button onClick={onLogout} className="p-2 sm:p-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 transition-all text-red-400/90 hover:text-red-400" title="Logout">
             <LogOut className="w-4 h-4" />
           </button>
         </div>
       </header>
 
       {/* Subheader Navigation Tabs */}
-      <div className="hidden md:flex items-center justify-between px-6 py-2 bg-[#0A0C16] border-b border-white/5 shrink-0">
+      <div className={`hidden md:flex items-center justify-between px-6 py-2 border-b shrink-0 transition-colors ${
+        studioTheme === 'light' ? 'bg-slate-100/90 border-slate-200' : 'bg-[#0A0C16] border-white/5'
+      }`}>
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => navigateToTab('chats')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
               activeTab === 'chats'
-                ? 'bg-neon-purple/10 text-neon-purple border border-neon-purple/20 shadow-[0_0_15px_rgba(176,38,255,0.15)]'
-                : 'text-white/40 hover:text-white/80 hover:bg-white/[0.02] border border-transparent'
+                ? (studioTheme === 'light' ? 'bg-purple-100 text-purple-800 border border-purple-300 shadow-sm' : 'bg-neon-purple/20 text-neon-purple border border-neon-purple/30 shadow-[0_0_15px_rgba(176,38,255,0.15)]')
+                : (studioTheme === 'light' ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent' : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05] border border-transparent')
             }`}
           >
             <MessageSquare className="w-4 h-4" />
@@ -2725,8 +2768,8 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             onClick={() => navigateToTab('connections')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
               activeTab === 'connections'
-                ? 'bg-neon-blue/10 text-neon-blue border border-neon-blue/20 shadow-[0_0_15px_rgba(0,194,255,0.15)]'
-                : 'text-white/40 hover:text-white/80 hover:bg-white/[0.02] border border-transparent'
+                ? (studioTheme === 'light' ? 'bg-cyan-100 text-cyan-800 border border-cyan-300 shadow-sm' : 'bg-neon-blue/20 text-neon-blue border border-neon-blue/30 shadow-[0_0_15px_rgba(0,194,255,0.15)]')
+                : (studioTheme === 'light' ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent' : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05] border border-transparent')
             }`}
           >
             <Link2 className="w-4 h-4" />
@@ -2740,8 +2783,8 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             onClick={() => navigateToTab('broadcast')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
               activeTab === 'broadcast'
-                ? 'bg-neon-blue/10 text-neon-blue border border-neon-blue/20 shadow-[0_0_15px_rgba(0,194,255,0.15)]'
-                : 'text-white/40 hover:text-white/80 hover:bg-white/[0.02] border border-transparent'
+                ? (studioTheme === 'light' ? 'bg-blue-100 text-blue-800 border border-blue-300 shadow-sm' : 'bg-neon-blue/20 text-neon-blue border border-neon-blue/30 shadow-[0_0_15px_rgba(0,194,255,0.15)]')
+                : (studioTheme === 'light' ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent' : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05] border border-transparent')
             }`}
           >
             <Radio className="w-4 h-4" />
@@ -2752,8 +2795,8 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             onClick={() => navigateToTab('profile')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
               activeTab === 'profile'
-                ? 'bg-neon-purple/10 text-neon-purple border border-neon-purple/20 shadow-[0_0_15px_rgba(124,58,237,0.15)]'
-                : 'text-white/40 hover:text-white/80 hover:bg-white/[0.02] border border-transparent'
+                ? (studioTheme === 'light' ? 'bg-purple-100 text-purple-800 border border-purple-300 shadow-sm' : 'bg-neon-purple/20 text-neon-purple border border-neon-purple/30 shadow-[0_0_15px_rgba(124,58,237,0.15)]')
+                : (studioTheme === 'light' ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent' : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05] border border-transparent')
             }`}
           >
             <Camera className="w-4 h-4" />
@@ -2764,8 +2807,8 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             onClick={() => navigateToTab('settings')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
               activeTab === 'settings'
-                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.15)]'
-                : 'text-white/40 hover:text-white/80 hover:bg-white/[0.02] border border-transparent'
+                ? (studioTheme === 'light' ? 'bg-amber-100 text-amber-800 border border-amber-300 shadow-sm' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.15)]')
+                : (studioTheme === 'light' ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent' : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05] border border-transparent')
             }`}
           >
             <Settings className="w-4 h-4" />
@@ -2774,8 +2817,10 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="text-[10px] text-white/30 uppercase font-mono tracking-widest hidden sm:block">
-            PIPELINES: <span className="text-emerald-400">{Object.values(connectedPlatforms).filter(Boolean).length} ACTIVE</span>
+          <div className={`text-[10px] uppercase font-mono tracking-widest hidden sm:block ${
+            studioTheme === 'light' ? 'text-slate-500' : 'text-white/40'
+          }`}>
+            PIPELINES: <span className="text-emerald-500 font-bold">{Object.values(connectedPlatforms).filter(Boolean).length} ACTIVE</span>
           </div>
         </div>
       </div>
@@ -2810,16 +2855,16 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           >
             <div className="flex flex-1 overflow-hidden">
         {/* User List Panel */}
-        <aside className={`w-full md:w-80 lg:w-96 border-r border-white/5 bg-[#0A0C16] flex flex-col shrink-0 transition-transform duration-300 ${selectedUser ? 'hidden md:flex' : 'flex'}`}>
+        <aside className={`w-full md:w-80 lg:w-96 border-r border-white/5 bg-[#0A0C16] flex flex-col shrink-0 transition-all ${selectedUser ? 'hidden md:flex' : 'flex'}`}>
           <div className="p-4 border-b border-white/5 bg-[#080911]/40">
             <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
               <input
                 type="text"
                 placeholder="Search live users..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 rounded-xl pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/20 transition-all placeholder-white/30"
+                className="w-full bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 text-white rounded-xl pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/20 transition-all placeholder:text-white/40"
               />
             </div>
           </div>
@@ -2830,7 +2875,11 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
               return (
                 <div
                   key={thread.user}
-                  className={`w-full text-left flex items-center gap-3 p-4 transition-all relative group/item ${isSelected ? 'bg-white/[0.03] border-l-2 border-y-0 border-r-0 border-neon-purple shadow-[inset_4px_0_15px_rgba(255,255,255,0.01)]' : 'hover:bg-white/[0.02]'}`}
+                  className={`w-full text-left flex items-center gap-3 p-4 transition-all relative group/item ${
+                    isSelected 
+                      ? 'bg-white/[0.04] border-l-2 border-y-0 border-r-0 border-neon-purple shadow-[inset_4px_0_15px_rgba(255,255,255,0.01)]'
+                      : 'hover:bg-white/[0.02]'
+                  }`}
                 >
                   <div onClick={() => handleSelectUser(thread.user)} className="flex-1 flex items-center gap-3.5 overflow-hidden cursor-pointer">
                     <div className="relative shrink-0">
@@ -2856,7 +2905,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                   <div className="relative shrink-0 flex items-center justify-end w-20 h-10">
                     {/* Default state: visible when NOT hovered */}
                     <div className="absolute right-0 flex flex-col items-end gap-1.5 transition-all duration-200 group-hover/item:opacity-0 group-hover/item:pointer-events-none">
-                      <span className="text-[9px] font-mono text-white/30">
+                      <span className="text-[9px] font-mono text-white/40">
                         {thread.messages.length > 0 ? new Date(thread.lastMessageTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                       </span>
                       <PlatformBadge platform={thread.platform} thread={thread} />
@@ -2885,7 +2934,11 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                           }
                         }}
                         title={isPinned ? "Unpin conversation" : "Pin conversation"}
-                        className={`p-1.5 rounded-lg transition-colors ${isPinned ? 'text-amber-400 hover:bg-amber-500/10' : 'text-white/40 hover:text-white/80 hover:bg-white/5'}`}
+                        className={`p-1.5 rounded-lg transition-colors ${
+                          isPinned 
+                            ? 'text-amber-400 hover:bg-amber-500/10' 
+                            : 'text-white/40 hover:text-white hover:bg-white/5'
+                        }`}
                       >
                         <Pin className={`w-3.5 h-3.5 ${isPinned ? 'fill-current' : ''}`} />
                       </button>
@@ -2904,7 +2957,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                           toast.success(`Conversation marked as ${isRead ? 'unread' : 'read'}.`);
                         }}
                         title={thread.unreadCount > 0 ? "Mark as Read" : "Mark as Unread"}
-                        className="p-1.5 rounded-lg text-white/40 hover:text-white/80 hover:bg-white/5 transition-colors"
+                        className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors"
                       >
                         {thread.unreadCount > 0 ? <MailOpen className="w-3.5 h-3.5" /> : <Mail className="w-3.5 h-3.5" />}
                       </button>
@@ -2950,7 +3003,6 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                         <PlatformBadge platform={currentThread.platform} thread={currentThread} />
                       </div>
                     </div>
-
                   </div>
                 </div>
                 
@@ -2959,18 +3011,18 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                     <>
                       <button
                         onClick={() => handleClearConversation(currentThread.user)}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 border border-amber-500/20 hover:border-amber-500/30 text-[10px] font-extrabold uppercase tracking-widest transition-all duration-200 shadow-[0_0_15px_rgba(245,158,11,0.05)]"
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/20 text-[10px] font-extrabold uppercase tracking-widest transition-all duration-200 shadow-sm"
                         title={`Clear all messages from ${currentThread.user}`}
                       >
-                        <Eraser className="w-3.5 h-3.5 text-amber-400" />
+                        <Eraser className="w-3.5 h-3.5" />
                         <span className="hidden xs:inline sm:inline">Clear</span>
                       </button>
                       <button
                         onClick={() => handleBanUser(currentThread.user)}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/30 text-[10px] font-extrabold uppercase tracking-widest transition-all duration-200 shadow-[0_0_15px_rgba(239,68,68,0.05)]"
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 text-[10px] font-extrabold uppercase tracking-widest transition-all duration-200 shadow-sm"
                         title={`Permanently ban ${currentThread.user}`}
                       >
-                        <Ban className="w-3.5 h-3.5 text-red-400" />
+                        <Ban className="w-3.5 h-3.5" />
                         <span className="hidden xs:inline sm:inline">Ban User</span>
                       </button>
                     </>
@@ -2983,7 +3035,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                   <div className="flex justify-center pb-4 pt-1">
                     <button
                       onClick={() => setMessageLimit(prev => prev + 50)}
-                      className="px-5 py-2 bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 hover:border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-white transition-all duration-250 shadow-md"
+                      className="px-5 py-2 border rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-250 shadow-sm bg-white/[0.03] hover:bg-white/[0.08] border-white/5 text-white/50 hover:text-white"
                     >
                       Load older messages ({sortedMessages.length - messageLimit} remaining)
                     </button>
@@ -3009,23 +3061,27 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                           <span className="font-mono">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
                         </div>
                         
-                        <div className={`p-4 rounded-2xl border text-sm text-white/90 leading-relaxed shadow-lg transition-all ${isAdminReply ? 'bg-gradient-to-br from-[#7C3AED] to-[#5B21B6] border-purple-500/10 rounded-tr-none text-left' : 'bg-white/[0.02] hover:bg-white/[0.04] border-white/5 rounded-tl-none'}`}>
+                        <div className={`p-4 rounded-2xl border text-sm leading-relaxed transition-all ${
+                          isAdminReply 
+                            ? 'bg-gradient-to-br from-[#7C3AED] to-[#5B21B6] border-purple-500/10 text-white rounded-tr-none text-left shadow-md' 
+                            : 'bg-white/[0.02] hover:bg-white/[0.04] border-white/5 text-white/90 rounded-tl-none'
+                        }`}>
                           {msg.text && <p className="whitespace-pre-wrap">{parseEmojisAndEmotes(msg.text)}</p>}
                           
                           {msg.imageUrl && (
-                            <div className="mt-2 rounded-xl overflow-hidden border border-white/5 max-w-sm bg-black/40">
+                            <div className="mt-2 rounded-xl overflow-hidden border border-white/5 bg-black/40 max-w-sm">
                               <img src={msg.imageUrl} className="w-full h-auto max-h-60 object-contain hover:scale-102 transition-transform duration-300" alt="Attachment" />
                             </div>
                           )}
                           
                           {msg.audioUrl && (
-                            <div className="mt-2 p-2 rounded-xl bg-black/30 border border-white/5 max-w-sm">
+                            <div className="mt-2 p-2 rounded-xl border border-white/5 bg-black/30 max-w-sm">
                               <audio src={msg.audioUrl} controls className="w-full h-10 accent-neon-purple" />
                             </div>
                           )}
                           
                           {msg.videoUrl && (
-                            <div className="mt-2 rounded-xl overflow-hidden border border-white/5 max-w-sm bg-black/40">
+                            <div className="mt-2 rounded-xl overflow-hidden border border-white/5 bg-black/40 max-w-sm">
                               <video src={msg.videoUrl} controls className="w-full h-auto max-h-60" />
                             </div>
                           )}
@@ -3039,7 +3095,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                                     setReplyText(cleanText);
                                     toast.success("Loaded into reply input");
                                   }}
-                                  className="flex items-center justify-center p-1 rounded-md bg-white/[0.03] hover:bg-white/[0.08] text-white/50 hover:text-neon-blue border border-white/5 transition-all"
+                                  className="flex items-center justify-center p-1 rounded-md border bg-white/[0.03] hover:bg-white/[0.08] text-white/40 hover:text-neon-blue border-white/5 transition-all"
                                   title="Load message to resend"
                                 >
                                   <RefreshCw className="w-3 h-3" />
@@ -3047,7 +3103,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                               )}
                               <button
                                 onClick={() => handleDeleteMessage(msg)}
-                                className="flex items-center justify-center p-1 rounded-md bg-red-500/5 hover:bg-red-500/15 text-red-400/60 hover:text-red-400 border border-red-500/10 transition-all"
+                                className="flex items-center justify-center p-1 rounded-md bg-red-500/5 hover:bg-red-500/15 text-red-500 border border-red-500/10 transition-all"
                                 title="Delete Message"
                               >
                                 <Trash2 className="w-3 h-3" />
@@ -3061,10 +3117,10 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                 })}
               </div>
 
-              <footer className="p-4 border-t border-white/5 bg-[#0A0C16] shrink-0 space-y-3 shadow-[0_-4px_30px_rgba(0,0,0,0.3)] pb-36 md:pb-4">
+              <footer className="p-4 border-t border-white/5 bg-[#0A0C16] shrink-0 space-y-3 pb-36 md:pb-4 shadow-[0_-4px_30px_rgba(0,0,0,0.3)]">
                 <div className="flex md:flex-wrap items-center gap-1.5 overflow-x-auto md:overflow-x-visible pb-1.5 md:pb-0 scrollbar-none shrink-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   {DEFAULT_QUICK_REPLIES.map(reply => (
-                    <button key={reply} onClick={() => setReplyText(reply)} className="px-3 py-1.5 bg-white/[0.02] hover:bg-white/[0.06] border border-white/5 hover:border-white/10 rounded-full text-[10px] font-semibold text-white/50 hover:text-white/80 transition-all duration-200 shrink-0">
+                    <button key={reply} onClick={() => setReplyText(reply)} className="px-3 py-1.5 border border-white/5 hover:border-white/10 bg-white/[0.02] hover:bg-white/[0.06] rounded-full text-[10px] font-semibold text-white/50 hover:text-white/80 transition-all duration-200 shrink-0">
                       {reply}
                     </button>
                   ))}
@@ -3078,7 +3134,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                       </button>
                     </div>
                   ))}
-                  <button onClick={addCustomReply} className="w-7 h-7 flex items-center justify-center bg-white/[0.02] hover:bg-white/[0.06] border border-dashed border-white/10 hover:border-white/25 rounded-full text-white/40 hover:text-white transition-colors shrink-0" title="Add custom reply">
+                  <button onClick={addCustomReply} className="w-7 h-7 flex items-center justify-center border border-dashed border-white/10 hover:border-white/25 bg-white/[0.02] hover:bg-white/[0.06] rounded-full text-white/40 hover:text-white transition-colors shrink-0" title="Add custom reply">
                     <PlusCircle className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -3087,13 +3143,17 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                 <div className="flex items-center gap-2.5 pt-1">
                   {!isTwitchChat && (
                     <>
-                      <button onClick={() => fileInputRef.current?.click()} className="p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-white/60 hover:text-white border border-white/5 hover:border-white/15 transition-colors shrink-0">
+                      <button onClick={() => fileInputRef.current?.click()} className="p-3 rounded-xl border border-white/5 bg-white/[0.03] hover:bg-white/[0.08] text-white/60 hover:text-white transition-colors shrink-0">
                         <Paperclip className="w-4 h-4" />
                       </button>
                       <button
                         type="button"
                         onClick={isRecording ? handleStopRecording : handleStartRecording}
-                        className={`p-3 rounded-xl border transition-all duration-300 shrink-0 ${isRecording ? 'bg-red-500/10 text-red-400 border-red-500/20 animate-pulse' : 'bg-white/[0.03] hover:bg-white/[0.08] text-white/60 hover:text-white border-white/5 hover:border-white/15'}`}
+                        className={`p-3 rounded-xl border transition-all duration-300 shrink-0 ${
+                          isRecording 
+                            ? 'bg-red-500/10 text-red-500 border-red-500/20 animate-pulse' 
+                            : 'bg-white/[0.03] hover:bg-white/[0.08] text-white/60 hover:text-white border-white/5'
+                        }`}
                         title={isRecording ? "Stop Recording" : "Record Audio Clip"}
                       >
                         {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
@@ -3109,7 +3169,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                       onChange={e => setReplyText(e.target.value)}
                       onKeyPress={e => e.key === 'Enter' && handleSendReply()}
                       placeholder={`Reply to @${selectedUser}...`}
-                      className="w-full bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 rounded-xl px-4 py-3 text-xs focus:outline-none focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/20 transition-all placeholder-white/30"
+                      className="w-full bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 text-white rounded-xl px-4 py-3 text-xs focus:outline-none focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/20 transition-all placeholder:text-white/40"
                     />
                   </div>
                   <button onClick={handleSendReply} disabled={isSending} className="w-10 h-10 bg-gradient-to-r from-neon-purple to-violet-600 rounded-xl flex items-center justify-center text-white hover:brightness-110 active:scale-95 transition-all shadow-[0_0_15px_rgba(176,38,255,0.3)] disabled:opacity-50 shrink-0">
@@ -3119,9 +3179,9 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
               </footer>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-center p-8 text-white/30">
+            <div className="flex-1 flex items-center justify-center text-center p-8 bg-[#080911] text-white/40">
               <div className="space-y-4 max-w-xs">
-                <div className="w-16 h-16 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-center mx-auto text-white/20 animate-pulse">
+                <div className="w-16 h-16 rounded-2xl border border-white/10 bg-white/[0.03] flex items-center justify-center mx-auto animate-pulse text-white/40">
                   <MessageSquare className="w-8 h-8" />
                 </div>
                 <div className="space-y-1">

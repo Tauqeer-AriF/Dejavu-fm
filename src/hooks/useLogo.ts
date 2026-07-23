@@ -13,7 +13,7 @@ export function useLogo() {
     if (typeof window !== 'undefined') {
       const isAdmin = location.pathname.startsWith('/admin');
       if (isAdmin) {
-        return localStorage.getItem('dashboard_theme') === 'light';
+        return document.documentElement.classList.contains('admin-light-mode');
       }
       return localStorage.getItem('theme') === 'light' || document.documentElement.classList.contains('light');
     }
@@ -27,18 +27,31 @@ export function useLogo() {
 
     if (isAdmin) {
       const handleThemeChange = () => {
-        setIsLightMode(localStorage.getItem('dashboard_theme') === 'light');
+        setIsLightMode(document.documentElement.classList.contains('admin-light-mode'));
       };
+      
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.attributeName === 'class') {
+            handleThemeChange();
+          }
+        });
+      });
+      observer.observe(document.documentElement, { attributes: true });
+
       window.addEventListener('dashboard-theme-change', handleThemeChange);
       
       const handleStorageChange = (e: StorageEvent) => {
-        if (e.key === 'dashboard_theme') {
-          setIsLightMode(e.newValue === 'light');
+        if (e.key === 'dashboard_theme' || e.key === 'studio_theme') {
+          handleThemeChange();
         }
       };
       window.addEventListener('storage', handleStorageChange);
 
+      handleThemeChange();
+
       return () => {
+        observer.disconnect();
         window.removeEventListener('dashboard-theme-change', handleThemeChange);
         window.removeEventListener('storage', handleStorageChange);
       };
