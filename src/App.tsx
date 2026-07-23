@@ -20,7 +20,7 @@ import { SecretAdminPrompt } from './components/SecretAdminPrompt';
 import { SitePopup } from './components/SitePopup';
 import { AdvertisementSliders } from './components/AdvertisementSliders';
 import { CinematicVisualizer } from './components/CinematicVisualizer';
-import { PremiumLoader } from './components/PremiumLoader';
+import { AppLoader } from './components/AppLoader';
 // @ts-ignore
 import glitchLogoUrl from './assets/images/dejavufm_glitch_logo_1784796255055.png';
 import { ThemeAccessibilityDropdown } from './components/ThemeAccessibilityDropdown';
@@ -601,7 +601,7 @@ function AnimatedRoutes() {
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/admin/*" element={
-              <Suspense fallback={<PremiumLoader onComplete={() => {}} />}>
+              <Suspense fallback={<AppLoader onComplete={() => {}} />}>
                 <Admin />
               </Suspense>
             } />
@@ -948,7 +948,7 @@ function MainLayout() {
   return (
     <>
       <AnimatePresence>
-        {isAppLoading && <PremiumLoader onComplete={handleLoaderComplete} />}
+        {isAppLoading && <AppLoader onComplete={handleLoaderComplete} />}
       </AnimatePresence>
       
       <div className={`min-h-screen ${location.pathname.startsWith('/admin') || isSplitActive ? '' : 'pb-40 md:pb-32'} flex flex-col relative overflow-x-hidden bg-dark-bg selection:bg-neon-purple selection:text-white transition-opacity duration-1000 ${isAppLoading ? 'opacity-0' : 'opacity-100'}`}>

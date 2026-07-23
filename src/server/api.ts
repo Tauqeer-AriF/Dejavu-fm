@@ -2412,7 +2412,7 @@ apiRouter.put("/admin/settings", authorizeRole(['admin', 'dj']), (req, res) => {
     "app_title", "seo_title", "seo_description", "seo_image", "font_sans", "font_display", "is_on_air", "primary_color", 
     "secondary_color", "feat_chat", "feat_shoutouts", "feat_cinematic", 
     "feat_pwa", "feat_bookings", "feat_live_tools", "feat_stream_quality",
-    "logo_dark", "logo_light", "logo_shape", "favicon", "premium_loader_image", "backup_retention_days",
+    "logo_dark", "logo_light", "logo_shape", "favicon", "backup_retention_days",
     "backup_frequency_hours", "backup_enabled", "popup_delay", "studio_name", "studio_image",
     "social_instagram", "social_twitter", "social_facebook", "social_youtube", "social_soundcloud", "social_mixcloud",
     "default_theme", "under_header_text", "under_header_align"

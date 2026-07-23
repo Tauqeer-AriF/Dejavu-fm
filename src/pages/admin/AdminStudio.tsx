@@ -373,7 +373,7 @@ const getThreadUserAndKey = (
   return { user: msg.user, key: msg.user.toLowerCase() };
 };
 
-import { PremiumLoader } from "../../components/PremiumLoader";
+import { AppLoader } from "../../components/AppLoader";
 import { PremiumRingLoader } from "../../components/PremiumRingLoader";
 
 export function AdminStudio({ onLogout }: { onLogout: () => void }) {
@@ -2682,7 +2682,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     return sortedMessages.slice(sortedMessages.length - messageLimit);
   }, [sortedMessages, messageLimit, hasMoreMessages]);
 
-  if (isInitialLoading) return <PremiumLoader onComplete={() => setIsInitialLoading(false)} />;
+  if (isInitialLoading) return <AppLoader onComplete={() => setIsInitialLoading(false)} />;
 
   return (
     <div className={`w-full h-screen max-h-screen overflow-hidden admin-dashboard-container ${studioTheme === 'light' ? 'admin-light-mode' : ''}`}>

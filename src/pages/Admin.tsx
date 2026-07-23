@@ -29,7 +29,7 @@ import { AdminApiKeys } from "./admin/AdminApiKeys";
 const AdminMetaIntegrations = React.lazy(() => import("./admin/AdminMetaIntegrations").then(m => ({ default: m.AdminMetaIntegrations })));
 import { useLogo } from "../hooks/useLogo";
 import { PremiumRingLoader } from "../components/PremiumRingLoader";
-import { PremiumLoader } from "../components/PremiumLoader";
+import { AppLoader } from "../components/AppLoader";
 
 export default function Admin() {
   const [isLogged, setIsLogged] = useState(false);
@@ -133,7 +133,7 @@ export default function Admin() {
   };
 
   if (sessionChecking || premiumLoading) {
-    return <PremiumLoader onComplete={() => setPremiumLoading(false)} />;
+    return <AppLoader onComplete={() => setPremiumLoading(false)} />;
   }
 
   if (!isLogged) {
@@ -158,7 +158,7 @@ export default function Admin() {
       return <Navigate to="/admin/live-tools" replace />;
     }
     return (
-      <Suspense fallback={<PremiumLoader onComplete={() => {}} />}>
+      <Suspense fallback={<AppLoader onComplete={() => {}} />}>
         <AdminStudio onLogout={handleLogout} />
       </Suspense>
     );
