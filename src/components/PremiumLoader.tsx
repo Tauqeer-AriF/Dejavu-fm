@@ -9,7 +9,7 @@ interface PremiumLoaderProps {
 }
 
 export function PremiumLoader({ onComplete }: PremiumLoaderProps) {
-  const { logoUrl: dynamicLogoUrl, isLightMode, settings } = useLogo();
+  const { isLightMode, settings } = useLogo();
   const onCompleteRef = useRef(onComplete);
 
   useEffect(() => {
@@ -24,7 +24,9 @@ export function PremiumLoader({ onComplete }: PremiumLoaderProps) {
     return () => clearTimeout(timer);
   }, []);
 
-  const logoToUse = settings?.premium_loader_image || dynamicLogoUrl || defaultGlitchLogo;
+  const logoToUse = (settings?.premium_loader_image && settings.premium_loader_image.trim() !== "")
+    ? settings.premium_loader_image
+    : defaultGlitchLogo;
   const isDefaultGlitch = logoToUse === defaultGlitchLogo;
 
   return createPortal(
