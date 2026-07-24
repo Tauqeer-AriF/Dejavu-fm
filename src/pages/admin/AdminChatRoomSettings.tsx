@@ -74,6 +74,15 @@ export function AdminChatRoomSettings() {
   const [pruning, setPruning] = useState(false);
   const { showAlert, showConfirm } = useModal();
 
+  const [currentTimestamp, setCurrentTimestamp] = useState(Date.now());
+  const componentMountedTime = React.useRef(Date.now()).current;
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTimestamp(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const loadSettings = async () => {
     setLoading(true);
     try {
@@ -141,10 +150,38 @@ export function AdminChatRoomSettings() {
 
   const nextRunLabel = useMemo(() => {
     if (!enabled) return "Timer disabled";
-    const base = settings.lastRun ? new Date(settings.lastRun).getTime() : Date.now();
-    if (Number.isNaN(base)) return "After the next saved interval";
+    const base = (settings.lastRun && !Number.isNaN(Date.parse(settings.lastRun)))
+      ? new Date(settings.lastRun).getTime()
+      : componentMountedTime;
     return new Date(base + hours * 60 * 60 * 1000).toLocaleString();
-  }, [enabled, hours, settings.lastRun]);
+  }, [enabled, hours, settings.lastRun, componentMountedTime]);
+
+  const chatPurgeTimeLeft = useMemo(() => {
+    if (!enabled) return "";
+    const base = (settings.lastRun && !Number.isNaN(Date.parse(settings.lastRun)))
+      ? new Date(settings.lastRun).getTime()
+      : componentMountedTime;
+    const nextRun = base + hours * 60 * 60 * 1000;
+    const msRemaining = nextRun - currentTimestamp;
+    
+    if (msRemaining <= 0) return "Executing soon...";
+    
+    const totalSecs = Math.floor(msRemaining / 1000);
+    const d = Math.floor(totalSecs / 86400);
+    const h = Math.floor((totalSecs % 86400) / 3600);
+    const m = Math.floor((totalSecs % 3600) / 60);
+    const s = totalSecs % 60;
+    
+    const pad = (num: number) => String(num).padStart(2, '0');
+    
+    if (d > 0) {
+      return `${d}d ${pad(h)}h ${pad(m)}m ${pad(s)}s`;
+    }
+    if (h > 0) {
+      return `${pad(h)}h ${pad(m)}m ${pad(s)}s`;
+    }
+    return `${pad(m)}m ${pad(s)}s`;
+  }, [enabled, hours, settings.lastRun, currentTimestamp, componentMountedTime]);
 
   const lastPruneLabel = useMemo(() => {
     if (!settings.dataPruneLastRun) return "Not run yet";
@@ -152,6 +189,41 @@ export function AdminChatRoomSettings() {
     if (Number.isNaN(date.getTime())) return "Not run yet";
     return date.toLocaleString();
   }, [settings.dataPruneLastRun]);
+
+  const nextPruneLabel = useMemo(() => {
+    if (!dataPruneEnabled) return "Timer disabled";
+    const base = (settings.dataPruneLastRun && !Number.isNaN(Date.parse(settings.dataPruneLastRun)))
+      ? new Date(settings.dataPruneLastRun).getTime()
+      : componentMountedTime;
+    return new Date(base + 24 * 60 * 60 * 1000).toLocaleString();
+  }, [dataPruneEnabled, settings.dataPruneLastRun, componentMountedTime]);
+
+  const historicalPruneTimeLeft = useMemo(() => {
+    if (!dataPruneEnabled) return "";
+    const base = (settings.dataPruneLastRun && !Number.isNaN(Date.parse(settings.dataPruneLastRun)))
+      ? new Date(settings.dataPruneLastRun).getTime()
+      : componentMountedTime;
+    const nextPrune = base + 24 * 60 * 60 * 1000;
+    const msRemaining = nextPrune - currentTimestamp;
+    
+    if (msRemaining <= 0) return "Executing soon...";
+    
+    const totalSecs = Math.floor(msRemaining / 1000);
+    const d = Math.floor(totalSecs / 86400);
+    const h = Math.floor((totalSecs % 86400) / 3600);
+    const m = Math.floor((totalSecs % 3600) / 60);
+    const s = totalSecs % 60;
+    
+    const pad = (num: number) => String(num).padStart(2, '0');
+    
+    if (d > 0) {
+      return `${d}d ${pad(h)}h ${pad(m)}m ${pad(s)}s`;
+    }
+    if (h > 0) {
+      return `${pad(h)}h ${pad(m)}m ${pad(s)}s`;
+    }
+    return `${pad(m)}m ${pad(s)}s`;
+  }, [dataPruneEnabled, settings.dataPruneLastRun, currentTimestamp, componentMountedTime]);
 
   const saveSettings = async () => {
     if (!Number.isInteger(hours) || hours < 1 || hours > 8760) {
@@ -399,6 +471,11 @@ export function AdminChatRoomSettings() {
             <div className={`border rounded-xl p-3 transition-colors ${isLightMode ? 'bg-black/[0.03] border-black/5' : 'bg-white/5 border-white/5'}`}>
               <p className={`text-[9px] uppercase tracking-widest font-black ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Next Execution</p>
               <p className={`mt-1 text-[11px] font-mono leading-none ${isLightMode ? 'text-black/80' : 'text-white/80'}`}>{nextRunLabel}</p>
+              {chatPurgeTimeLeft && (
+                <p className="mt-1 text-[10px] text-neon-purple font-bold font-mono">
+                  Time left: {chatPurgeTimeLeft}
+                </p>
+              )}
             </div>
           </div>
 
@@ -475,12 +552,32 @@ export function AdminChatRoomSettings() {
                 className={`w-full rounded-xl px-4 py-2.5 text-xs focus:border-neon-blue outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`}
               />
             </div>
+
+            <div className={`mt-2 p-3 rounded-xl text-[10.5px] leading-relaxed transition-colors flex items-start gap-2 border ${
+              isLightMode 
+                ? 'bg-amber-500/5 border-amber-500/15 text-amber-900/80' 
+                : 'bg-amber-500/5 border-amber-500/10 text-amber-200/80'
+            }`}>
+              <span className="text-xs shrink-0 select-none">ℹ️</span>
+              <span>
+                <strong className={isLightMode ? 'text-black' : 'text-white'}>Pruning Schedule vs. Retention:</strong> The automated cleanup task executes once every <strong>24 hours</strong>. When it next runs, it will scan your database and purge only logs and analytics events older than your selected <strong>{dataPruneDays} days</strong> retention period.
+              </span>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 pt-2">
+          <div className="grid grid-cols-2 gap-3 pt-2">
             <div className={`border rounded-xl p-3 transition-colors ${isLightMode ? 'bg-black/[0.03] border-black/5' : 'bg-white/5 border-white/5'}`}>
               <p className={`text-[9px] uppercase tracking-widest font-black ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Last Historical Prune</p>
               <p className={`mt-1 text-[11px] font-mono leading-none ${isLightMode ? 'text-black/80' : 'text-white/80'}`}>{lastPruneLabel}</p>
+            </div>
+            <div className={`border rounded-xl p-3 transition-colors ${isLightMode ? 'bg-black/[0.03] border-black/5' : 'bg-white/5 border-white/5'}`}>
+              <p className={`text-[9px] uppercase tracking-widest font-black ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Next Historical Prune</p>
+              <p className={`mt-1 text-[11px] font-mono leading-none ${isLightMode ? 'text-black/80' : 'text-white/80'}`}>{nextPruneLabel}</p>
+              {historicalPruneTimeLeft && (
+                <p className="mt-1 text-[10px] text-neon-blue font-bold font-mono">
+                  Time left: {historicalPruneTimeLeft}
+                </p>
+              )}
             </div>
           </div>
 
