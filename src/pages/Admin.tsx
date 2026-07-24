@@ -38,8 +38,204 @@ export default function Admin() {
   const [premiumLoading, setPremiumLoading] = useState(true);
   const [tabLoading, setTabLoading] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [adminUsername, setAdminUsername] = useState<string | null>(null);
+  const [totalUnread, setTotalUnread] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const isStudioRoute = location.pathname.startsWith('/admin/studio');
+
+  // Helpers for background message unread calculation
+  const isSenderAdminMsg = (user: string, adminName: string | null) => {
+    if (!user) return false;
+    const lowerUser = user.toLowerCase();
+    const lowerAdmin = adminName ? adminName.toLowerCase() : '';
+    return lowerUser === "dejavufm studio" || lowerUser === lowerAdmin;
+  };
+
+  const getThreadUserAndKey = (
+    msg: { user: string; text?: string; recipient?: string },
+    currentAdmin: string | null
+  ) => {
+    const isAdminUser = (username: string) => {
+      if (!username) return false;
+      const name = username.toLowerCase();
+      return name === "dejavufm studio" || (currentAdmin && name === currentAdmin.toLowerCase());
+    };
+
+    if (msg.recipient) {
+      if (isAdminUser(msg.user)) {
+        return { user: msg.recipient, key: msg.recipient.toLowerCase() };
+      } else if (isAdminUser(msg.recipient)) {
+        return { user: msg.user, key: msg.user.toLowerCase() };
+      } else {
+        return { user: msg.user, key: msg.user.toLowerCase() };
+      }
+    }
+
+    if (isAdminUser(msg.user)) {
+      if (msg.text) {
+        const match = msg.text.match(/^@([a-zA-Z0-9_\-]+)/);
+        if (match) {
+          const targetUser = match[1];
+          return { user: targetUser, key: targetUser.toLowerCase() };
+        }
+        const shoutoutMatch = msg.text.match(/^REPLY to @([a-zA-Z0-9_\-\.@]+)/);
+        if (shoutoutMatch) {
+          const targetUser = shoutoutMatch[1];
+          return { user: targetUser, key: targetUser.toLowerCase() };
+        }
+      }
+      return null;
+    }
+
+    return { user: msg.user, key: msg.user.toLowerCase() };
+  };
+
+  // Listen to background messages when user is not on the Studio page
+  useEffect(() => {
+    if (!isLogged || (userRole !== 'admin' && userRole !== 'dj') || isStudioRoute) {
+      return;
+    }
+
+    const socket = (window as any).socket;
+    if (!socket) return;
+
+    if (adminUsername) {
+      socket.emit('registerUser', adminUsername);
+    }
+
+    const handleIncomingMessage = (message: any, type: 'chat' | 'shoutout') => {
+      if (type === 'chat' && message.isStudioReply) {
+        return;
+      }
+
+      const formattedMessage = {
+        id: message.id ? String(message.id) : `bg-${Date.now()}`,
+        type,
+        user: message.user || message.listener_name || 'Shoutout',
+        avatar: message.avatar_url || message.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(message.user || message.listener_name || 'Shoutout')}`,
+        text: message.text || message.message || '',
+        timestamp: message.timestamp || Date.now(),
+        imageUrl: message.imageUrl,
+        audioUrl: message.audioUrl,
+        videoUrl: message.videoUrl,
+        recipient: message.recipient,
+        platform: message.platform,
+      };
+
+      const threadInfo = getThreadUserAndKey(formattedMessage, adminUsername);
+      if (!threadInfo) return;
+
+      const { user, key: userKey } = threadInfo;
+
+      let savedThreads: any = {};
+      try {
+        const saved = localStorage.getItem('dejavu_studio_threads');
+        savedThreads = saved ? JSON.parse(saved) : {};
+      } catch (err) {
+        savedThreads = {};
+      }
+
+      const existing = savedThreads[userKey];
+      let newMessages = [];
+      let shouldUpdate = false;
+
+      const isSameMessage = (msgA: any, msgB: any) => {
+        if (msgA.id === msgB.id) return true;
+        const isTempA = msgA.id.startsWith('reply-') || msgA.id.startsWith('temp-');
+        const isTempB = msgB.id.startsWith('reply-') || msgB.id.startsWith('temp-');
+        if ((isTempA || isTempB) && msgA.user === msgB.user && msgA.text === msgB.text) {
+          return Math.abs(msgA.timestamp - msgB.timestamp) < 60000;
+        }
+        return false;
+      };
+
+      if (existing) {
+        const isDuplicate = existing.messages.some((m: any) => isSameMessage(m, formattedMessage));
+
+        if (!isDuplicate) {
+          newMessages = [...existing.messages, formattedMessage];
+          shouldUpdate = true;
+        } else {
+          const idx = existing.messages.findIndex((m: any) => isSameMessage(m, formattedMessage));
+          if (idx !== -1) {
+            const est = existing.messages[idx];
+            if ((est.id.startsWith('reply-') || est.id.startsWith('temp-')) && !(formattedMessage.id.startsWith('reply-') || formattedMessage.id.startsWith('temp-'))) {
+              newMessages = [...existing.messages];
+              newMessages[idx] = formattedMessage;
+              shouldUpdate = true;
+            }
+          }
+        }
+      } else {
+        newMessages = [formattedMessage];
+        shouldUpdate = true;
+      }
+
+      if (shouldUpdate) {
+        const isSenderAdmin = isSenderAdminMsg(formattedMessage.user, adminUsername);
+        const finalUnreadCount = isSenderAdmin ? 0 : ((existing?.unreadCount || 0) + 1);
+
+        savedThreads[userKey] = {
+          user,
+          avatar: existing?.avatar || formattedMessage.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user)}`,
+          messages: newMessages,
+          lastMessageTimestamp: formattedMessage.timestamp,
+          unreadCount: finalUnreadCount,
+          platform: formattedMessage.platform || existing?.platform,
+        };
+
+        localStorage.setItem('dejavu_studio_threads', JSON.stringify(savedThreads));
+        window.dispatchEvent(new Event('dejavu_studio_threads_updated'));
+      }
+    };
+
+    const onChatMessage = (msg: any) => handleIncomingMessage(msg, 'chat');
+    const onPrivateMessage = (msg: any) => handleIncomingMessage(msg, 'chat');
+    const onNewShoutout = (shoutout: any) => handleIncomingMessage(shoutout, 'shoutout');
+
+    socket.on('chatMessage', onChatMessage);
+    socket.on('privateMessage', onPrivateMessage);
+    socket.on('new_shoutout', onNewShoutout);
+
+    return () => {
+      socket.off('chatMessage', onChatMessage);
+      socket.off('privateMessage', onPrivateMessage);
+      socket.off('new_shoutout', onNewShoutout);
+    };
+  }, [isLogged, userRole, isStudioRoute, adminUsername]);
+
+  const calculateTotalUnread = () => {
+    try {
+      const saved = localStorage.getItem('dejavu_studio_threads');
+      if (!saved) return 0;
+      const parsed = JSON.parse(saved);
+      let count = 0;
+      Object.values(parsed).forEach((thread: any) => {
+        count += (thread.unreadCount || 0);
+      });
+      return count;
+    } catch {
+      return 0;
+    }
+  };
+
+  useEffect(() => {
+    setTotalUnread(calculateTotalUnread());
+
+    const handleUpdate = () => {
+      setTotalUnread(calculateTotalUnread());
+    };
+
+    window.addEventListener('dejavu_studio_threads_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+
+    return () => {
+      window.removeEventListener('dejavu_studio_threads_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     // Avoid triggering tab loader if not logged in, or if navigating to studio or during initial load
@@ -63,6 +259,7 @@ export default function Admin() {
           const data = await res.json();
           setIsLogged(true);
           setUserRole(data.user?.role || null);
+          setAdminUsername(data.user?.username || data.username || null);
         }
       } catch (err) {
         console.warn("[Admin Auth] Session check failed (likely network error or unauthenticated).");
@@ -142,6 +339,7 @@ export default function Admin() {
             onLogin={(user) => {
               setIsLogged(true);
               setUserRole(user?.role || null);
+              setAdminUsername(user?.username || null);
             }}
           />
         </div>
@@ -184,16 +382,21 @@ export default function Admin() {
               </p>
             </div>
           </motion.div>
-
+ 
           <div className="flex items-center gap-3">
             {(userRole === 'admin' || userRole === 'dj') && (
               <Link
                 to="/admin/studio"
-                className="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-full border border-neon-purple/30 bg-neon-purple/10 text-neon-purple font-bold uppercase text-xs tracking-widest transition hover:bg-neon-purple hover:text-white hover:shadow-lg hover:shadow-neon-purple/20"
+                className="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-full border border-neon-purple/30 bg-neon-purple/10 text-neon-purple font-bold uppercase text-xs tracking-widest transition hover:bg-neon-purple hover:text-white hover:shadow-lg hover:shadow-neon-purple/20 relative"
                 title="Go to Live Studio Tools"
               >
                 <Radio className="w-4 h-4" />
                 Studio
+                {totalUnread > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 px-1.5 text-[10px] font-bold font-mono leading-none text-white ring-2 ring-white dark:ring-[#0A0C16] shadow-[0_0_10px_rgba(168,85,247,0.6)]">
+                    {totalUnread}
+                  </span>
+                )}
               </Link>
             )}
             <Link

@@ -442,6 +442,10 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       return {};
     }
   });
+
+  const totalUnreadCount = useMemo(() => {
+    return Object.values(threads).reduce((acc: number, t: UserThread) => acc + (t.unreadCount || 0), 0);
+  }, [threads]);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const selectedUserRef = useRef<string | null>(null);
   const [messageLimit, setMessageLimit] = useState(50);
@@ -1629,6 +1633,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   useEffect(() => {
     try {
       localStorage.setItem('dejavu_studio_threads', JSON.stringify(threads));
+      window.dispatchEvent(new Event('dejavu_studio_threads_updated'));
     } catch (error) {
       console.warn("Failed to save studio threads to local storage", error);
     }
@@ -2054,6 +2059,20 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       });
       return newThreads;
     });
+
+    setLastReadTimestamps(prev => {
+      const updated = { ...prev };
+      selectedThreads.forEach(key => {
+        if (as === 'read') {
+          updated[key] = Date.now();
+        } else {
+          updated[key] = 0;
+        }
+      });
+      localStorage.setItem('dejavu_studio_last_read', JSON.stringify(updated));
+      return updated;
+    });
+
     setSelectedThreads([]);
     toast.success(`Marked ${selectedThreads.length} conversations as ${as}.`);
   };
@@ -3067,31 +3086,151 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             <div className="flex flex-1 overflow-hidden">
         {/* User List Panel */}
         <aside className={`w-full md:w-80 lg:w-96 border-r border-white/5 bg-[#0A0C16] flex flex-col shrink-0 transition-all ${selectedUser ? 'hidden md:flex' : 'flex'}`}>
-          <div className="p-4 border-b border-white/5 bg-[#080911]/40">
-            <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-              <input
-                type="text"
-                placeholder="Search live users..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="w-full bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 text-white rounded-xl pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/20 transition-all placeholder:text-white/40"
-              />
+          <div className="p-4 border-b border-white/5 bg-[#080911]/40 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                <input
+                  type="text"
+                  placeholder="Search live users..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 text-white rounded-xl pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/20 transition-all placeholder:text-white/40"
+                />
+              </div>
+              <button
+                onClick={() => {
+                  if (selectedThreads.length > 0) {
+                    setSelectedThreads([]);
+                  } else {
+                    const firstUser = sortedThreads[0]?.user.toLowerCase();
+                    if (firstUser) setSelectedThreads([firstUser]);
+                  }
+                }}
+                className={`p-2.5 rounded-xl border transition-all text-xs font-bold shrink-0 flex items-center justify-center cursor-pointer ${
+                  selectedThreads.length > 0
+                    ? 'bg-neon-purple/20 text-neon-purple border-neon-purple/30 shadow-[0_0_10px_rgba(176,38,255,0.15)]'
+                    : 'bg-white/[0.03] hover:bg-white/[0.08] border-white/10 text-white/60 hover:text-white'
+                }`}
+                title={selectedThreads.length > 0 ? "Clear selection" : "Toggle bulk selection"}
+              >
+                <CheckSquare className="w-4 h-4" />
+              </button>
             </div>
+
+            {/* Bulk actions bar (collapsible with Framer Motion) */}
+            <AnimatePresence>
+              {selectedThreads.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                  animate={{ opacity: 1, height: 'auto', marginTop: 8 }}
+                  exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col gap-2.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleSelectAll}
+                          className="flex items-center gap-1.5 text-white/70 hover:text-white font-mono font-medium cursor-pointer"
+                        >
+                          <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all ${
+                            selectedThreads.length === sortedThreads.length && sortedThreads.length > 0
+                              ? 'bg-neon-purple border-neon-purple text-white'
+                              : 'border-white/30 hover:border-white/50'
+                          }`}>
+                            {selectedThreads.length === sortedThreads.length && sortedThreads.length > 0 && (
+                              <Check className="w-2.5 h-2.5 stroke-[3px]" />
+                            )}
+                          </span>
+                          <span>Select All ({sortedThreads.length})</span>
+                        </button>
+                      </div>
+                      <span className="text-neon-purple font-bold font-mono">
+                        {selectedThreads.length} selected
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-1">
+                      <button
+                        onClick={() => handleMarkSelected('read')}
+                        className="py-1.5 px-1 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 hover:border-white/10 text-white/80 hover:text-white transition-all flex flex-col items-center gap-1 cursor-pointer"
+                        title="Mark Selected as Read"
+                      >
+                        <MailOpen className="w-3.5 h-3.5 text-neon-blue" />
+                        <span className="text-[9px] font-bold uppercase tracking-wider font-mono">Read</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleMarkSelected('unread')}
+                        className="py-1.5 px-1 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 hover:border-white/10 text-white/80 hover:text-white transition-all flex flex-col items-center gap-1 cursor-pointer"
+                        title="Mark Selected as Unread"
+                      >
+                        <Mail className="w-3.5 h-3.5 text-violet-400" />
+                        <span className="text-[9px] font-bold uppercase tracking-wider font-mono">Unread</span>
+                      </button>
+
+                      <button
+                        onClick={handlePinSelected}
+                        className="py-1.5 px-1 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 hover:border-white/10 text-white/80 hover:text-white transition-all flex flex-col items-center gap-1 cursor-pointer"
+                        title="Pin Selected Conversations"
+                      >
+                        <Pin className="w-3.5 h-3.5 text-amber-400" />
+                        <span className="text-[9px] font-bold uppercase tracking-wider font-mono">Pin</span>
+                      </button>
+
+                      <button
+                        onClick={handleDeleteSelected}
+                        className="py-1.5 px-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 hover:text-red-300 transition-all flex flex-col items-center gap-1 cursor-pointer"
+                        title="Delete Selected Conversations"
+                      >
+                        <Trash className="w-3.5 h-3.5 text-red-400" />
+                        <span className="text-[9px] font-bold uppercase tracking-wider font-mono">Delete</span>
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
           <div className="flex-1 overflow-y-auto divide-y divide-white/[0.02] pb-36 md:pb-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/5 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/10">
             {sortedThreads.map(thread => {
               const isSelected = selectedUser?.toLowerCase() === thread.user.toLowerCase();
               const isPinned = pinnedThreads.includes(thread.user.toLowerCase());
+              const isThreadChecked = selectedThreads.includes(thread.user.toLowerCase());
               return (
                 <div
                   key={thread.user}
-                  className={`w-full text-left flex items-center gap-3 p-4 transition-all relative group/item ${
+                  className={`w-full text-left flex items-center gap-2 p-4 transition-all relative group/item ${
                     isSelected 
                       ? 'bg-white/[0.04] border-l-2 border-y-0 border-r-0 border-neon-purple shadow-[inset_4px_0_15px_rgba(255,255,255,0.01)]'
                       : 'hover:bg-white/[0.02]'
                   }`}
                 >
+                  {/* Bulk selection checkbox */}
+                  <div className={`transition-all duration-200 flex items-center shrink-0 ${
+                    selectedThreads.length > 0 
+                      ? 'w-5 opacity-100 mr-1' 
+                      : 'w-0 opacity-0 group-hover/item:w-5 group-hover/item:opacity-100 group-hover/item:mr-1 overflow-hidden'
+                  }`}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleThreadSelection(thread.user.toLowerCase());
+                      }}
+                      className={`w-4 h-4 rounded border flex items-center justify-center transition-all cursor-pointer ${
+                        isThreadChecked
+                          ? 'bg-neon-purple border-neon-purple text-white shadow-[0_0_8px_rgba(176,38,255,0.3)]'
+                          : 'border-white/20 hover:border-white/45 bg-black/40 text-transparent'
+                      }`}
+                    >
+                      {isThreadChecked && (
+                        <Check className="w-2.5 h-2.5 stroke-[3px]" />
+                      )}
+                    </button>
+                  </div>
+
                   <div onClick={() => handleSelectUser(thread.user)} className="flex-1 flex items-center gap-3.5 overflow-hidden cursor-pointer">
                     <div className="relative shrink-0">
                       <img src={thread.avatar} alt={thread.user} className="w-10 h-10 rounded-xl bg-white/5 border border-white/5 object-cover" />
@@ -3158,12 +3297,18 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                         onClick={(e) => {
                           e.stopPropagation();
                           const isRead = thread.unreadCount === 0;
+                          const userKey = thread.user.toLowerCase();
                           setThreads(prev => {
                             const newThreads = { ...prev };
-                            if (newThreads[thread.user.toLowerCase()]) {
-                              newThreads[thread.user.toLowerCase()].unreadCount = isRead ? 1 : 0;
+                            if (newThreads[userKey]) {
+                              newThreads[userKey].unreadCount = isRead ? 1 : 0;
                             }
                             return newThreads;
+                          });
+                          setLastReadTimestamps(prev => {
+                            const updated = { ...prev, [userKey]: isRead ? Date.now() : 0 };
+                            localStorage.setItem('dejavu_studio_last_read', JSON.stringify(updated));
+                            return updated;
                           });
                           toast.success(`Conversation marked as ${isRead ? 'unread' : 'read'}.`);
                         }}
@@ -3491,7 +3636,14 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
               className="relative z-10"
             >
-              <MessageSquare className="w-6 h-6" />
+              <div className="relative">
+                <MessageSquare className="w-6 h-6" />
+                {totalUnreadCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 px-1 text-[9px] font-bold font-mono leading-none text-white ring-2 ring-white dark:ring-[#0D0F1D] shadow-[0_0_10px_rgba(168,85,247,0.6)]">
+                    {totalUnreadCount}
+                  </span>
+                )}
+              </div>
             </motion.div>
           </motion.button>
 
