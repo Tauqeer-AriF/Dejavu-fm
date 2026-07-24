@@ -766,6 +766,25 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     };
 
     const onPrivateMessage = (msg: ChatMessage) => {
+      // Security & Visibility Filter:
+      // Never show external platform/integration messages (Twitch, WhatsApp, Instagram, Facebook, TikTok) in the front-view ChatSidebar.
+      const isExternalPlatform = (msg.source && ['twitch', 'whatsapp', 'instagram', 'facebook', 'tiktok'].includes(msg.source.toLowerCase())) ||
+                                 (msg.platform && ['twitch', 'whatsapp', 'instagram', 'facebook', 'tiktok'].includes(msg.platform.toLowerCase()));
+      if (isExternalPlatform) {
+        return;
+      }
+
+      // A client should only receive, store, or be notified of a private/platform message if:
+      // 1. The client is logged in as an Admin (who monitors all channel chats/DMs).
+      // 2. The client is the sender of this message.
+      // 3. The client is the direct recipient of this message.
+      const isSender = loggedInUser && msg.user && msg.user.toLowerCase() === loggedInUser.toLowerCase();
+      const isRecipient = loggedInUser && msg.recipient && msg.recipient.toLowerCase() === loggedInUser.toLowerCase();
+      
+      if (!isAdmin && !isSender && !isRecipient) {
+        return;
+      }
+
       setPrivateMessages(prev => {
         const newArr = [...prev, msg];
         return newArr;
