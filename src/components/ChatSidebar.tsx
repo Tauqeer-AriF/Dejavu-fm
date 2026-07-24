@@ -762,7 +762,13 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     };
 
     const onPrivateHistory = (history: ChatMessage[]) => {
-      setPrivateMessages(history);
+      // Filter out external platform/integration messages (Twitch, WhatsApp, Instagram, Facebook, TikTok) from the front-view
+      const filtered = history.filter(msg => {
+        const isExternal = (msg.source && ['twitch', 'whatsapp', 'instagram', 'facebook', 'tiktok'].includes(msg.source.toLowerCase())) ||
+                           (msg.platform && ['twitch', 'whatsapp', 'instagram', 'facebook', 'tiktok'].includes(msg.platform.toLowerCase()));
+        return !isExternal;
+      });
+      setPrivateMessages(filtered);
     };
 
     const onPrivateMessage = (msg: ChatMessage) => {
@@ -800,9 +806,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
           return prev;
         });
 
-        if (activeDmUserRef.current !== msg.user) {
-          toast.info(`New message from ${msg.user.split('@')[0]}: ${msg.text ? (msg.text.length > 25 ? msg.text.substring(0, 25) + '...' : msg.text) : '🎵 Voice note or audio'}`);
-        }
+        // Notifications should not show any kind of messages from any kind of platform (disabled per request)
 
         if (soundEnabledRef.current && document.visibilityState === 'visible') {
           playNotificationSound();
@@ -921,7 +925,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
       socket.off('connect_error', onConnectError);
       socket.off('chatMessageError', onChatMessageError);
     };
-  }, [isOpen, loggedInUser]);
+  }, [isOpen, loggedInUser, isAdmin]);
 
   const hasRestoredScrollRef = useRef(false);
   const prevMessagesLengthRef = useRef(0);
