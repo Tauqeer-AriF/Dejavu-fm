@@ -105,6 +105,161 @@ export default function Admin() {
       socket.emit('registerUser', adminUsername);
     }
 
+    const handleHistoryData = (privateHistory: any[], shoutoutHistory: any[]) => {
+      let lastReadTimestamps: Record<string, number> = {};
+      try {
+        const savedRead = localStorage.getItem('dejavu_studio_last_read');
+        if (savedRead) lastReadTimestamps = JSON.parse(savedRead);
+      } catch {}
+
+      let currentThreads: Record<string, any> = {};
+      try {
+        const savedThreads = localStorage.getItem('dejavu_studio_threads');
+        if (savedThreads) currentThreads = JSON.parse(savedThreads);
+      } catch {}
+
+      // Process privateHistory
+      privateHistory.forEach((msg: any) => {
+        const threadInfo = getThreadUserAndKey({
+          user: msg.sender || msg.user,
+          text: msg.text,
+          recipient: msg.recipient
+        }, adminUsername);
+        if (!threadInfo) return;
+
+        const { user, key: userKey } = threadInfo;
+        const existing = currentThreads[userKey] || {
+          user,
+          avatar: msg.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user)}`,
+          messages: [],
+          lastMessageTimestamp: 0,
+          unreadCount: 0,
+        };
+
+        const incomingMessage = {
+          id: String(msg.id),
+          type: 'chat',
+          user: msg.sender || msg.user,
+          avatar: msg.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(msg.sender || msg.user)}`,
+          text: msg.text || '',
+          timestamp: msg.timestamp,
+          imageUrl: msg.imageUrl,
+          audioUrl: msg.audioUrl,
+          videoUrl: msg.videoUrl,
+          recipient: msg.recipient,
+          platform: msg.platform,
+        };
+
+        const isDuplicate = existing.messages.some((m: any) => m.id === incomingMessage.id);
+        if (!isDuplicate) {
+          existing.messages.push(incomingMessage);
+        }
+        
+        if (incomingMessage.timestamp > existing.lastMessageTimestamp) {
+          existing.lastMessageTimestamp = incomingMessage.timestamp;
+        }
+
+        currentThreads[userKey] = existing;
+      });
+
+      // Process shoutoutHistory
+      shoutoutHistory.forEach((shoutout: any) => {
+        let ts = shoutout.timestamp;
+        if (typeof ts === 'string') {
+          const parsed = Date.parse(ts);
+          ts = isNaN(parsed) ? Date.now() : parsed;
+        } else if (!ts) {
+          ts = Date.now();
+        }
+
+        const threadInfo = getThreadUserAndKey({
+          user: shoutout.listener_name || shoutout.user || 'Shoutout',
+          text: shoutout.message || '',
+        }, adminUsername);
+        if (!threadInfo) return;
+
+        const { user, key: userKey } = threadInfo;
+        const existing = currentThreads[userKey] || {
+          user,
+          avatar: shoutout.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user)}`,
+          messages: [],
+          lastMessageTimestamp: 0,
+          unreadCount: 0,
+        };
+
+        const incomingMessage = {
+          id: String(shoutout.id),
+          type: 'shoutout',
+          user: shoutout.listener_name || shoutout.user || 'Shoutout',
+          avatar: shoutout.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(shoutout.listener_name || shoutout.user || 'shoutout')}`,
+          text: shoutout.message || '',
+          timestamp: ts,
+          imageUrl: shoutout.imageUrl,
+          audioUrl: shoutout.audioUrl,
+          videoUrl: shoutout.videoUrl,
+        };
+
+        const isDuplicate = existing.messages.some((m: any) => m.id === incomingMessage.id);
+        if (!isDuplicate) {
+          existing.messages.push(incomingMessage);
+        }
+
+        if (incomingMessage.timestamp > existing.lastMessageTimestamp) {
+          existing.lastMessageTimestamp = incomingMessage.timestamp;
+        }
+
+        currentThreads[userKey] = existing;
+      });
+
+      // Recalculate unreadCount
+      Object.keys(currentThreads).forEach((userKey) => {
+        const thread = currentThreads[userKey];
+        thread.messages.sort((a: any, b: any) => a.timestamp - b.timestamp);
+
+        let unreadCount = 0;
+        const hasLastReadRecord = userKey in lastReadTimestamps;
+
+        if (hasLastReadRecord) {
+          const lastRead = lastReadTimestamps[userKey];
+          thread.messages.forEach((m: any) => {
+            const isSenderAdmin = isSenderAdminMsg(m.user, adminUsername);
+            if (!isSenderAdmin && m.timestamp > lastRead) {
+              unreadCount++;
+            }
+          });
+        } else {
+          for (let i = thread.messages.length - 1; i >= 0; i--) {
+            if (isSenderAdminMsg(thread.messages[i].user, adminUsername)) {
+              break;
+            }
+            unreadCount++;
+          }
+        }
+
+        thread.unreadCount = unreadCount;
+      });
+
+      localStorage.setItem('dejavu_studio_threads', JSON.stringify(currentThreads));
+      window.dispatchEvent(new Event('dejavu_studio_threads_updated'));
+    };
+
+    let privateHistoryData: any[] | null = null;
+    let shoutoutHistoryData: any[] | null = null;
+
+    const onPrivateHistory = (history: any[]) => {
+      privateHistoryData = history;
+      if (shoutoutHistoryData) {
+        handleHistoryData(privateHistoryData, shoutoutHistoryData);
+      }
+    };
+
+    const onShoutoutHistory = (history: any[]) => {
+      shoutoutHistoryData = history;
+      if (privateHistoryData) {
+        handleHistoryData(privateHistoryData, shoutoutHistoryData);
+      }
+    };
+
     const handleIncomingMessage = (message: any, type: 'chat' | 'shoutout') => {
       if (type === 'chat' && message.isStudioReply) {
         return;
@@ -175,7 +330,34 @@ export default function Admin() {
 
       if (shouldUpdate) {
         const isSenderAdmin = isSenderAdminMsg(formattedMessage.user, adminUsername);
-        const finalUnreadCount = isSenderAdmin ? 0 : ((existing?.unreadCount || 0) + 1);
+        
+        let finalUnreadCount = 0;
+        if (isSenderAdmin) {
+          finalUnreadCount = 0;
+        } else {
+          let lastReadTimestamps: Record<string, number> = {};
+          try {
+            const savedRead = localStorage.getItem('dejavu_studio_last_read');
+            if (savedRead) lastReadTimestamps = JSON.parse(savedRead);
+          } catch {}
+
+          if (userKey in lastReadTimestamps) {
+            const lastRead = lastReadTimestamps[userKey];
+            finalUnreadCount = formattedMessage.timestamp > lastRead ? (existing?.unreadCount || 0) + 1 : (existing?.unreadCount || 0);
+          } else {
+            // Count user messages at the end of the thread
+            let combinedMsgs = [...newMessages];
+            combinedMsgs.sort((a, b) => a.timestamp - b.timestamp);
+            let consecutiveUserMsgs = 0;
+            for (let i = combinedMsgs.length - 1; i >= 0; i--) {
+              if (isSenderAdminMsg(combinedMsgs[i].user, adminUsername)) {
+                break;
+              }
+              consecutiveUserMsgs++;
+            }
+            finalUnreadCount = consecutiveUserMsgs;
+          }
+        }
 
         savedThreads[userKey] = {
           user,
@@ -198,11 +380,15 @@ export default function Admin() {
     socket.on('chatMessage', onChatMessage);
     socket.on('privateMessage', onPrivateMessage);
     socket.on('new_shoutout', onNewShoutout);
+    socket.on('privateHistory', onPrivateHistory);
+    socket.on('shoutoutHistory', onShoutoutHistory);
 
     return () => {
       socket.off('chatMessage', onChatMessage);
       socket.off('privateMessage', onPrivateMessage);
       socket.off('new_shoutout', onNewShoutout);
+      socket.off('privateHistory', onPrivateHistory);
+      socket.off('shoutoutHistory', onShoutoutHistory);
     };
   }, [isLogged, userRole, isStudioRoute, adminUsername]);
 
