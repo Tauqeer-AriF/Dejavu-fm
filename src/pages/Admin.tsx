@@ -393,7 +393,10 @@ export default function Admin() {
                 <Radio className="w-4 h-4" />
                 Studio
                 {totalUnread > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 px-1.5 text-[10px] font-bold font-mono leading-none text-white ring-2 ring-white dark:ring-[#0A0C16] shadow-[0_0_10px_rgba(168,85,247,0.6)]">
+                  <span 
+                    className="absolute -top-1.5 -right-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-black font-mono leading-none text-white border border-[#0A0C16]/40 shadow-[0_2px_10px_-1px_var(--color-neon-purple)]"
+                    style={{ background: 'linear-gradient(135deg, var(--color-neon-purple), var(--color-neon-blue))' }}
+                  >
                     {totalUnread}
                   </span>
                 )}
