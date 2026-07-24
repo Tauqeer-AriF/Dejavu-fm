@@ -22,4 +22,6 @@ export interface ChatMessage {
   videoUrl?: string;
   videoName?: string;
   recipient?: string;
+  source?: string;
+  platform?: string;
 }
