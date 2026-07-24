@@ -511,6 +511,15 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   const [customValInput, setCustomValInput] = useState('24');
   const [customUnitInput, setCustomUnitInput] = useState<'hours' | 'days'>('hours');
 
+  const componentMountedTime = useRef(Date.now()).current;
+  const [currentTimestamp, setCurrentTimestamp] = useState(Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTimestamp(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     fetchAdmin('/api/admin/chat-room-settings')
       .then(res => res.json())
@@ -1066,6 +1075,41 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     return merged;
   };
 
+  const recalculateAllUnreadCounts = (threadsToUpdate: Record<string, any>) => {
+    const nextThreads = { ...threadsToUpdate };
+    Object.keys(nextThreads).forEach(userKey => {
+      const thread = nextThreads[userKey];
+      const isSelected = selectedUserRef.current?.toLowerCase() === userKey;
+      if (isSelected) {
+        thread.unreadCount = 0;
+        return;
+      }
+
+      let unreadCount = 0;
+      const hasLastReadRecord = userKey in lastReadTimestampsRef.current;
+      if (hasLastReadRecord) {
+        const lastRead = lastReadTimestampsRef.current[userKey];
+        thread.messages.forEach((m: any) => {
+          const isSenderAdmin = isSenderAdminMsg(m.user);
+          if (!isSenderAdmin && m.timestamp > lastRead) {
+            unreadCount++;
+          }
+        });
+      } else {
+        // NO device-specific read record (new device / mobile).
+        // Count consecutive user messages at the very end of the thread.
+        for (let i = thread.messages.length - 1; i >= 0; i--) {
+          if (isSenderAdminMsg(thread.messages[i].user)) {
+            break;
+          }
+          unreadCount++;
+        }
+      }
+      thread.unreadCount = unreadCount;
+    });
+    return nextThreads;
+  };
+
   const addMessageToThread = (message: Message) => {
     const threadInfo = getThreadUserAndKey(message, adminUsername);
     if (!threadInfo) return;
@@ -1105,7 +1149,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         newMessages = [message];
       }
       
-      return {
+      const updatedThreads = {
         ...prev,
         [userKey]: {
           user: user,
@@ -1116,6 +1160,8 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           platform: message.platform || existing?.platform,
         },
       };
+
+      return recalculateAllUnreadCounts(updatedThreads);
     });
   };
 
@@ -1191,7 +1237,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             ...(threadPlatform ? { platform: threadPlatform } : {}),
           };
         });
-        return nextThreads;
+        return recalculateAllUnreadCounts(nextThreads);
       });
     };
 
@@ -1259,7 +1305,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             ...(privateThreadPlatform ? { platform: privateThreadPlatform } : {}),
           };
         });
-        return nextThreads;
+        return recalculateAllUnreadCounts(nextThreads);
       });
     };
 
@@ -1331,7 +1377,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             ...(threadPlatform ? { platform: threadPlatform } : {}),
           };
         });
-        return nextThreads;
+        return recalculateAllUnreadCounts(nextThreads);
       });
     };
 
@@ -1855,6 +1901,33 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     if (Number.isNaN(base)) return `Every ${autoDeleteHours} hours`;
     return new Date(base + autoDeleteHours * 60 * 60 * 1000).toLocaleString();
   }, [autoDeleteEnabled, autoDeleteHours, autoDeleteLastRun]);
+
+  const autoDeleteTimeLeft = useMemo(() => {
+    if (!autoDeleteEnabled) return "";
+    const base = (autoDeleteLastRun && !Number.isNaN(Date.parse(autoDeleteLastRun)))
+      ? new Date(autoDeleteLastRun).getTime()
+      : componentMountedTime;
+    const nextRun = base + autoDeleteHours * 60 * 60 * 1000;
+    const msRemaining = nextRun - currentTimestamp;
+    
+    if (msRemaining <= 0) return "Executing soon...";
+    
+    const totalSecs = Math.floor(msRemaining / 1000);
+    const d = Math.floor(totalSecs / 86400);
+    const h = Math.floor((totalSecs % 86400) / 3600);
+    const m = Math.floor((totalSecs % 3600) / 60);
+    const s = totalSecs % 60;
+    
+    const pad = (num: number) => String(num).padStart(2, '0');
+    
+    if (d > 0) {
+      return `${d}d ${pad(h)}h ${pad(m)}m ${pad(s)}s left`;
+    }
+    if (h > 0) {
+      return `${pad(h)}h ${pad(m)}m ${pad(s)}s left`;
+    }
+    return `${pad(m)}m ${pad(s)}s left`;
+  }, [autoDeleteEnabled, autoDeleteHours, autoDeleteLastRun, currentTimestamp, componentMountedTime]);
 
   const handleClearPublicChat = async () => {
     const confirmed = await showConfirm({
@@ -2684,7 +2757,12 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-3 border-t border-white/5 text-[11px]">
                     <div className="flex items-center gap-2 text-white/60">
                       <Timer className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                      <span>Next scheduled purge: <strong className="text-white font-mono">{nextAutoDeleteRunLabel}</strong></span>
+                      <span>
+                        Next scheduled purge: <strong className="text-white font-mono">{nextAutoDeleteRunLabel}</strong>
+                        {autoDeleteTimeLeft && (
+                          <span className="ml-1.5 text-amber-400 font-bold">({autoDeleteTimeLeft})</span>
+                        )}
+                      </span>
                     </div>
                     {autoDeleteLastRun && (
                       <div className="text-white/40">
