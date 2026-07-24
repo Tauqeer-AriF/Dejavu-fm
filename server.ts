@@ -4,7 +4,7 @@ import cookieParser from "cookie-parser";
 import compression from "compression";
 import path from "path";
 import { fileURLToPath } from "url";
-import { apiRouter } from "./src/server/api.ts";
+import { apiRouter, performMediaAutoDeleteCleanup } from "./src/server/api.ts";
 import { externalApiRouter } from "./src/server/v1_external_api.ts";
 import { webhookRouter } from "./src/server/meta/webhook.routes.ts";
 import { MetaService } from "./src/server/meta/meta.service.ts";
@@ -1014,6 +1014,35 @@ async function startServer() {
 
   setInterval(performChatRetentionCheck, 60 * 1000);
   setTimeout(performChatRetentionCheck, 10000);
+
+  const performMediaRetentionCheck = () => {
+    if (!db.open) return;
+    try {
+      const enabledRow = db.prepare("SELECT value FROM settings WHERE key = 'media_auto_delete_enabled'").get() as {value: string} | undefined;
+      if (enabledRow?.value !== '1') return;
+
+      const hoursRow = db.prepare("SELECT value FROM settings WHERE key = 'media_auto_delete_hours'").get() as {value: string} | undefined;
+      const intervalHours = Math.max(1, parseInt(hoursRow?.value || "168", 10) || 168);
+
+      const lastRunRow = db.prepare("SELECT value FROM settings WHERE key = 'media_auto_delete_last_run'").get() as {value: string} | undefined;
+      const lastRunTime = lastRunRow?.value ? new Date(lastRunRow.value).getTime() : Date.now();
+
+      if (!lastRunRow?.value) {
+        db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+          .run("media_auto_delete_last_run", new Date().toISOString());
+        return;
+      }
+
+      if (isNaN(lastRunTime) || Date.now() - lastRunTime >= intervalHours * 60 * 60 * 1000) {
+        performMediaAutoDeleteCleanup("timer");
+      }
+    } catch (e) {
+      console.error("[Media Retention Task] Error:", e);
+    }
+  };
+
+  setInterval(performMediaRetentionCheck, 60 * 1000);
+  setTimeout(performMediaRetentionCheck, 15000);
 
   // Background task to reset shoutouts when DJ changes
   let lastScheduledDjId: string | null = null;

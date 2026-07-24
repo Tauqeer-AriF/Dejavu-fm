@@ -444,6 +444,7 @@ export function initDb() {
   runMigration('backup_frequency_hours_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('backup_frequency_hours', '24');");
   runMigration('ad_auto_scroll_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('ad_auto_scroll', '1');");
   runMigration('chat_room_retention_settings_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('chat_auto_delete_enabled', '0'), ('chat_auto_delete_hours', '24'), ('chat_auto_delete_last_run', '');");
+  runMigration('media_retention_settings_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('media_auto_delete_enabled', '0'), ('media_auto_delete_hours', '168'), ('media_auto_delete_mode', 'orphaned'), ('media_auto_delete_last_run', '');");
   runMigration('popup_delay_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('popup_delay', '10000');");
   runMigration('popups_delay_column', "ALTER TABLE popups ADD COLUMN delay_ms INTEGER DEFAULT 10000;");
   runMigration('studio_profile_name', "INSERT OR IGNORE INTO settings (key, value) VALUES ('studio_name', 'DejavuFM Studio');");

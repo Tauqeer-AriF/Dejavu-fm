@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Image as ImageIcon, Video, Music, Trash2, Search, Loader2, Upload, Plus, CheckSquare, Square, ChevronLeft, ChevronRight, X, Clipboard, Check, ChevronDown } from 'lucide-react';
+import { Image as ImageIcon, Video, Music, Trash2, Search, Loader2, Upload, Plus, CheckSquare, Square, ChevronLeft, ChevronRight, X, Clipboard, Check, ChevronDown, Clock, RefreshCw, Settings, ShieldAlert, Sparkles, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { fetchAdmin } from './adminApi';
 import { useLogo } from '../../hooks/useLogo';
@@ -15,6 +15,16 @@ type MediaItem = {
   size: number;
   created_at: string;
   usages: MediaUsage[];
+};
+
+type MediaAutoDeleteSettings = {
+  enabled: boolean;
+  hours: number;
+  mode: 'orphaned' | 'all';
+  lastRun: string;
+  totalFiles: number;
+  orphanedFiles: number;
+  totalSizeBytes: number;
 };
 
 const formatBytes = (bytes: number) => {
@@ -43,7 +53,102 @@ export function AdminMedia() {
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [viewingReferences, setViewingReferences] = useState<MediaItem | null>(null);
+  const [customValue, setCustomValue] = useState<string>('24');
+  const [customUnit, setCustomUnit] = useState<'hours' | 'days'>('hours');
+  const [showAutoDeletePanel, setShowAutoDeletePanel] = useState<boolean>(true);
   const itemsPerPage = 20;
+
+  const { data: autoDeleteSettings, isLoading: isAutoDeleteLoading } = useQuery<MediaAutoDeleteSettings>({
+    queryKey: ['mediaAutoDeleteSettings'],
+    queryFn: async () => {
+      const res = await fetchAdmin('/api/admin/media/auto-delete');
+      if (!res.ok) throw new Error('Failed to load auto-delete settings');
+      return res.json();
+    }
+  });
+
+  const updateAutoDeleteMutation = useMutation({
+    mutationFn: async (payload: { enabled?: boolean; hours?: number; mode?: 'orphaned' | 'all' }) => {
+      const res = await fetchAdmin('/api/admin/media/auto-delete', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to update auto-delete settings');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mediaAutoDeleteSettings'] });
+      showAlert({ title: 'Retention Updated', message: 'Media retention settings saved successfully.', style: 'success' });
+    },
+    onError: (err: any) => {
+      showAlert({ title: 'Error', message: err.message || 'Failed to update settings.', style: 'danger' });
+    }
+  });
+
+  const runAutoDeleteNowMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetchAdmin('/api/admin/media/auto-delete/run-now', {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to run media cleanup');
+      }
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['mediaAutoDeleteSettings'] });
+      queryClient.invalidateQueries({ queryKey: ['adminMedia'] });
+      showAlert({
+        title: 'Purge Complete',
+        message: `Cleaned up ${data.deletedCount || 0} expired media asset(s).`,
+        style: 'success'
+      });
+    },
+    onError: (err: any) => {
+      showAlert({ title: 'Error', message: err.message || 'Failed to run media purge.', style: 'danger' });
+    }
+  });
+
+  const formatRetentionHours = (hours: number) => {
+    if (hours % 24 === 0 && hours >= 24) {
+      const days = hours / 24;
+      return `${days} ${days === 1 ? 'Day' : 'Days'} (${hours}h)`;
+    }
+    return `${hours} ${hours === 1 ? 'Hour' : 'Hours'}`;
+  };
+
+  const handleApplyCustomRetention = () => {
+    const val = parseInt(customValue, 10);
+    if (isNaN(val) || val < 1) {
+      showAlert({ title: 'Invalid Duration', message: 'Please enter a valid positive number.', style: 'warning' });
+      return;
+    }
+    const totalHours = customUnit === 'days' ? val * 24 : val;
+    if (totalHours > 8760) {
+      showAlert({ title: 'Duration Limit Exceeded', message: 'Retention period cannot exceed 365 days (8760 hours).', style: 'warning' });
+      return;
+    }
+    updateAutoDeleteMutation.mutate({ hours: totalHours });
+  };
+
+  const handleManualPurge = async () => {
+    const modeText = autoDeleteSettings?.mode === 'all' ? 'ALL media assets' : 'ORPHANED (unused) media assets';
+    const hoursText = formatRetentionHours(autoDeleteSettings?.hours || 168);
+    const confirmed = await showConfirm({
+      title: 'Run Media Purge Now?',
+      message: `Are you sure you want to run media cleanup now? This will permanently delete ${modeText} older than ${hoursText} from disk storage and remove database references. This cannot be undone.`,
+      style: 'danger',
+      confirmText: 'Run Purge Now'
+    });
+    if (confirmed) {
+      runAutoDeleteNowMutation.mutate();
+    }
+  };
 
   const { data: media = [], isLoading, isError } = useQuery<MediaItem[], Error>({
     queryKey: ['adminMedia'],
@@ -226,6 +331,208 @@ export function AdminMedia() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Automatic Media Retention & Purge Panel */}
+      <div className={`rounded-3xl border p-6 space-y-6 transition-all ${isLightMode ? 'bg-white border-slate-200 shadow-xl' : 'bg-dark-bg/60 border-white/10 shadow-2xl'}`}>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-white/10">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 rounded-2xl bg-neon-purple/10 text-neon-purple border border-neon-purple/20 shrink-0">
+              <Clock className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-xl font-bold tracking-tight">Automatic Media Auto-Deletion</h3>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                  autoDeleteSettings?.enabled 
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                    : 'bg-white/10 text-white/50 border border-white/10'
+                }`}>
+                  {autoDeleteSettings?.enabled 
+                    ? `Active · Purging Every ${formatRetentionHours(autoDeleteSettings.hours)}`
+                    : 'Disabled'}
+                </span>
+              </div>
+              <p className="text-xs opacity-70 mt-1">
+                Automate the cleanup of media assets from disk storage (`/uploads/`) and database references on a recurring schedule.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={() => updateAutoDeleteMutation.mutate({ enabled: !autoDeleteSettings?.enabled })}
+              disabled={updateAutoDeleteMutation.isPending}
+              className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                autoDeleteSettings?.enabled ? 'bg-neon-purple' : 'bg-white/20'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                  autoDeleteSettings?.enabled ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+            <span className="text-xs font-bold uppercase tracking-wider opacity-80">
+              {autoDeleteSettings?.enabled ? 'ON' : 'OFF'}
+            </span>
+          </div>
+        </div>
+
+        {autoDeleteSettings?.enabled && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            {/* Mode / Scope Selection */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => updateAutoDeleteMutation.mutate({ mode: 'orphaned' })}
+                className={`flex items-start gap-3 p-4 rounded-2xl border text-left transition-all ${
+                  autoDeleteSettings.mode === 'orphaned'
+                    ? 'border-neon-purple bg-neon-purple/10 text-white ring-1 ring-neon-purple/50'
+                    : isLightMode ? 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100' : 'border-white/10 bg-black/30 text-white/70 hover:bg-white/5'
+                }`}
+              >
+                <div className={`p-2 rounded-xl shrink-0 ${autoDeleteSettings.mode === 'orphaned' ? 'bg-neon-purple/20 text-neon-purple' : 'bg-white/10 text-white/50'}`}>
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm">Orphaned Assets Only</span>
+                    <span className="text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">Recommended & Safe</span>
+                  </div>
+                  <p className="text-xs opacity-70 mt-1">
+                    Only deletes files in `/uploads/` that have 0 references in any database table (e.g. removed posts, deleted avatars). Active banners and media remain safe.
+                  </p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => updateAutoDeleteMutation.mutate({ mode: 'all' })}
+                className={`flex items-start gap-3 p-4 rounded-2xl border text-left transition-all ${
+                  autoDeleteSettings.mode === 'all'
+                    ? 'border-rose-500 bg-rose-500/10 text-white ring-1 ring-rose-500/50'
+                    : isLightMode ? 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100' : 'border-white/10 bg-black/30 text-white/70 hover:bg-white/5'
+                }`}
+              >
+                <div className={`p-2 rounded-xl shrink-0 ${autoDeleteSettings.mode === 'all' ? 'bg-rose-500/20 text-rose-400' : 'bg-white/10 text-white/50'}`}>
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm">All Uploaded Files</span>
+                    <span className="text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300">Full Storage Purge</span>
+                  </div>
+                  <p className="text-xs opacity-70 mt-1">
+                    Purges all media files created or modified older than the retention timer from storage disk and clears database references.
+                  </p>
+                </div>
+              </button>
+            </div>
+
+            {/* Retention Timer Presets & Custom Duration */}
+            <div className="space-y-3">
+              <label className="text-xs font-bold uppercase tracking-wider opacity-60">
+                Retention Interval / Timer Threshold
+              </label>
+
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { label: '1 Hour', hours: 1 },
+                  { label: '6 Hours', hours: 6 },
+                  { label: '24 Hours (1 Day)', hours: 24 },
+                  { label: '3 Days', hours: 72 },
+                  { label: '7 Days', hours: 168 },
+                  { label: '30 Days', hours: 720 },
+                ].map((preset) => {
+                  const isActive = autoDeleteSettings.hours === preset.hours;
+                  return (
+                    <button
+                      key={preset.hours}
+                      type="button"
+                      onClick={() => updateAutoDeleteMutation.mutate({ hours: preset.hours })}
+                      className={`px-4 py-2 rounded-xl border text-xs font-bold transition-all ${
+                        isActive
+                          ? 'bg-neon-purple border-neon-purple text-white shadow-lg shadow-neon-purple/20'
+                          : isLightMode ? 'border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200' : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Custom Duration Input */}
+              <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <input
+                    type="number"
+                    min="1"
+                    max="8760"
+                    value={customValue}
+                    onChange={(e) => setCustomValue(e.target.value)}
+                    placeholder="Duration"
+                    className={`w-28 px-4 py-2.5 rounded-xl border text-sm font-mono focus:border-neon-purple focus:outline-none ${
+                      isLightMode ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-black/40 border-white/10 text-white'
+                    }`}
+                  />
+                  <select
+                    value={customUnit}
+                    onChange={(e) => setCustomUnit(e.target.value as 'hours' | 'days')}
+                    className={`px-3 py-2.5 rounded-xl border text-sm focus:border-neon-purple focus:outline-none ${
+                      isLightMode ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-black/40 border-white/10 text-white'
+                    }`}
+                  >
+                    <option value="hours">Hours</option>
+                    <option value="days">Days</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleApplyCustomRetention}
+                    disabled={updateAutoDeleteMutation.isPending}
+                    className="px-5 py-2.5 rounded-xl bg-neon-purple hover:bg-neon-blue text-white text-xs font-bold uppercase tracking-wider transition disabled:opacity-50 shrink-0"
+                  >
+                    Apply Custom Time
+                  </button>
+                </div>
+
+                <div className="text-xs opacity-50 ml-auto font-mono">
+                  Current Setting: <span className="font-bold text-neon-purple">{formatRetentionHours(autoDeleteSettings.hours)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Run Purge Now & Metadata Footer */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/10 text-xs">
+              <div className="space-y-1 opacity-70">
+                <p>
+                  Last Purge Execution:{' '}
+                  <span className="font-semibold">
+                    {autoDeleteSettings.lastRun ? new Date(autoDeleteSettings.lastRun).toLocaleString() : 'Never'}
+                  </span>
+                </p>
+                <p>
+                  Current Target:{' '}
+                  <span className="font-semibold">
+                    {autoDeleteSettings.mode === 'orphaned' ? `${autoDeleteSettings.orphanedFiles} Orphaned Asset(s)` : `${autoDeleteSettings.totalFiles} Total File(s)`}
+                  </span>
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleManualPurge}
+                disabled={runAutoDeleteNowMutation.isPending}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-xs font-bold uppercase tracking-widest transition disabled:opacity-50"
+              >
+                {runAutoDeleteNowMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                {runAutoDeleteNowMutation.isPending ? 'Purging Media...' : 'Purge Expired Media Now'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 items-center">

@@ -2,12 +2,13 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
-import { LogOut, Send, Paperclip, X, Maximize, Mic, MessageSquare, Search, ArrowLeft, Image as ImageIcon, Music, Video, Volume2, VolumeX, Ban, Trash2, Eraser, ShieldAlert, MailX, PlusCircle, Square, Pin, CheckSquare, MailOpen, Mail, Trash, Eye, EyeOff, Settings, Link2, Globe, RefreshCw, Download, Phone, Facebook, Instagram, Twitch, Activity, CheckCircle, AlertTriangle, Camera, Check, Sun, Moon, Megaphone, Share2, Radio } from "lucide-react";
+import { LogOut, Send, Paperclip, X, Maximize, Mic, MessageSquare, Search, ArrowLeft, Image as ImageIcon, Music, Video, Volume2, VolumeX, Ban, Trash2, Eraser, ShieldAlert, MailX, PlusCircle, Square, Pin, CheckSquare, MailOpen, Mail, Trash, Eye, EyeOff, Settings, Link2, Globe, RefreshCw, Download, Phone, Facebook, Instagram, Twitch, Activity, CheckCircle, AlertTriangle, Camera, Check, Sun, Moon, Megaphone, Share2, Radio, Clock, Timer } from "lucide-react";
 import { toast } from "sonner";
 import { fetchAdmin } from "./adminApi";
 import { useModal } from "../../context/ModalContext";
 import { useLogo } from "../../hooks/useLogo";
 import { playUINotificationSound } from "../../lib/soundHelper";
+import { MediaPickerModal } from "./MediaPickerModal";
 
 interface Message {
   id: string;
@@ -495,8 +496,41 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
   const [studioName, setStudioName] = useState('DejavuFM Studio');
   const [studioImage, setStudioImage] = useState('/icon.svg');
+  const [isProfileMediaPickerOpen, setIsProfileMediaPickerOpen] = useState(false);
   const studioNameRef = useRef(studioName);
   const studioImageRef = useRef(studioImage);
+
+  const [autoDeleteEnabled, setAutoDeleteEnabled] = useState(false);
+  const [autoDeleteHours, setAutoDeleteHours] = useState(24);
+  const [autoDeleteLastRun, setAutoDeleteLastRun] = useState('');
+  const [isSavingAutoDelete, setIsSavingAutoDelete] = useState(false);
+  const [customValInput, setCustomValInput] = useState('24');
+  const [customUnitInput, setCustomUnitInput] = useState<'hours' | 'days'>('hours');
+
+  useEffect(() => {
+    fetchAdmin('/api/admin/chat-room-settings')
+      .then(res => res.json())
+      .then(data => {
+        if (data && typeof data.enabled === 'boolean') {
+          setAutoDeleteEnabled(data.enabled);
+        }
+        if (data && data.hours) {
+          const h = Number(data.hours) || 24;
+          setAutoDeleteHours(h);
+          if (h >= 24 && h % 24 === 0) {
+            setCustomValInput((h / 24).toString());
+            setCustomUnitInput('days');
+          } else {
+            setCustomValInput(h.toString());
+            setCustomUnitInput('hours');
+          }
+        }
+        if (data && data.lastRun) {
+          setAutoDeleteLastRun(data.lastRun);
+        }
+      })
+      .catch(err => console.error("Failed to load chat retention settings:", err));
+  }, []);
 
   useEffect(() => {
     studioNameRef.current = studioName;
@@ -1765,6 +1799,58 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     }
   };
 
+  const handleSaveAutoDelete = async (newEnabled: boolean, newHours: number) => {
+    setIsSavingAutoDelete(true);
+    try {
+      const res = await fetchAdmin("/api/admin/chat-room-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          enabled: newEnabled,
+          hours: newHours
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update auto-delete settings");
+      setAutoDeleteEnabled(newEnabled);
+      setAutoDeleteHours(newHours);
+      if (newHours >= 24 && newHours % 24 === 0) {
+        setCustomValInput((newHours / 24).toString());
+        setCustomUnitInput('days');
+      } else {
+        setCustomValInput(newHours.toString());
+        setCustomUnitInput('hours');
+      }
+      if (data.lastRun) setAutoDeleteLastRun(data.lastRun);
+      toast.success(newEnabled ? `Auto-delete enabled (every ${newHours}h)` : "Auto-delete disabled");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update auto-delete settings");
+    } finally {
+      setIsSavingAutoDelete(false);
+    }
+  };
+
+  const handleApplyCustomTime = () => {
+    const val = parseFloat(customValInput);
+    if (isNaN(val) || val <= 0) {
+      toast.error("Please enter a valid positive duration.");
+      return;
+    }
+    const totalHours = Math.round(customUnitInput === 'days' ? val * 24 : val);
+    if (totalHours < 1 || totalHours > 8760) {
+      toast.error("Auto-delete timer must be between 1 hour and 8760 hours (1 year).");
+      return;
+    }
+    handleSaveAutoDelete(true, totalHours);
+  };
+
+  const nextAutoDeleteRunLabel = useMemo(() => {
+    if (!autoDeleteEnabled) return "Disabled";
+    const base = autoDeleteLastRun ? new Date(autoDeleteLastRun).getTime() : Date.now();
+    if (Number.isNaN(base)) return `Every ${autoDeleteHours} hours`;
+    return new Date(base + autoDeleteHours * 60 * 60 * 1000).toLocaleString();
+  }, [autoDeleteEnabled, autoDeleteHours, autoDeleteLastRun]);
+
   const handleClearPublicChat = async () => {
     const confirmed = await showConfirm({
       title: "Clear All Public Chat",
@@ -2480,52 +2566,128 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
               </div>
             </div>
 
-            <div className="bg-[#0D0F1D] border border-white/5 rounded-2xl p-6 space-y-4 md:col-span-2">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-white/80">Data Administration & Housekeeping</h3>
-              <p className="text-xs text-white/40 leading-relaxed">Secure admin functions to clear or flush transient storage buffers inside the broadcast desk system.</p>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-4 bg-red-500/[0.02] border border-red-500/10 rounded-xl space-y-3">
+            <div className="bg-[#0D0F1D] border border-white/5 rounded-2xl p-6 space-y-5 md:col-span-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/5">
+                <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                    <span className="text-xs font-bold text-white">Flush Live Chat Buffer</span>
+                    <Clock className="w-4 h-4 text-neon-purple" />
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-white/80">Automatic Chat Purge (Retention Timer)</h3>
                   </div>
-                  <p className="text-[11px] text-white/40 leading-relaxed">Remove and delete all public message threads recorded in the station timeline server-side.</p>
-                  <button
-                    onClick={handleClearPublicChat}
-                    className="px-3 py-2 bg-red-500/5 hover:bg-red-500/15 border border-red-500/10 rounded-xl text-[10px] font-bold uppercase tracking-wider text-red-400 transition-all"
-                  >
-                    Clear Public Chat Room
-                  </button>
+                  <p className="text-xs text-white/40 leading-relaxed">
+                    Automatically purge and delete all public chat room messages, private listener DMs, and live shoutouts periodically after a specified duration.
+                  </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => handleSaveAutoDelete(!autoDeleteEnabled, autoDeleteHours)}
+                  disabled={isSavingAutoDelete}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none shrink-0 ${
+                    autoDeleteEnabled ? 'bg-neon-purple shadow-[0_0_12px_rgba(124,58,237,0.5)]' : 'bg-white/10'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      autoDeleteEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
 
-                <div className="p-4 bg-red-500/[0.02] border border-red-500/10 rounded-xl space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                    <span className="text-xs font-bold text-white">Wipe Private Inbox</span>
+              {autoDeleteEnabled && (
+                <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-semibold text-white/60 uppercase tracking-wider block">
+                      Auto-Purge Interval Frequency
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        { label: "1 Hour", hours: 1 },
+                        { label: "6 Hours", hours: 6 },
+                        { label: "12 Hours", hours: 12 },
+                        { label: "24 Hours (1 Day)", hours: 24 },
+                        { label: "3 Days (72h)", hours: 72 },
+                        { label: "7 Days (168h)", hours: 168 },
+                        { label: "30 Days (720h)", hours: 720 },
+                      ].map((preset) => (
+                        <button
+                          key={preset.hours}
+                          type="button"
+                          onClick={() => handleSaveAutoDelete(true, preset.hours)}
+                          disabled={isSavingAutoDelete}
+                          className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border ${
+                            autoDeleteHours === preset.hours
+                              ? 'bg-neon-purple/20 border-neon-purple/50 text-neon-purple font-bold shadow-[0_0_10px_rgba(124,58,237,0.2)]'
+                              : 'bg-white/5 border-white/5 text-white/60 hover:text-white hover:bg-white/10'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <p className="text-[11px] text-white/40 leading-relaxed">Wipe out and delete all registered private listener threads and attachments from local and database stores.</p>
-                  <button
-                    onClick={handleClearPrivateMessages}
-                    className="px-3 py-2 bg-red-500/5 hover:bg-red-500/15 border border-red-500/10 rounded-xl text-[10px] font-bold uppercase tracking-wider text-red-400 transition-all"
-                  >
-                    Clear All Private DMs Cache
-                  </button>
-                </div>
 
-                <div className="p-4 bg-red-500/[0.02] border border-red-500/10 rounded-xl space-y-3 md:col-span-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                    <span className="text-xs font-bold text-white">Full Database Wipe (All Chats & Shoutouts)</span>
+                  {/* Custom Duration Input */}
+                  <div className="pt-2 border-t border-white/5 space-y-2">
+                    <label className="text-[11px] font-semibold text-white/60 uppercase tracking-wider block">
+                      Custom Duration Time
+                    </label>
+                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+                      <div className="flex-1 min-w-[120px] flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 focus-within:border-neon-purple/50 transition-colors">
+                        <input
+                          type="number"
+                          min="1"
+                          max="8760"
+                          value={customValInput}
+                          onChange={(e) => setCustomValInput(e.target.value)}
+                          placeholder="e.g. 5"
+                          className="w-full bg-transparent text-xs text-white font-medium focus:outline-none placeholder:text-white/20"
+                        />
+                        <select
+                          value={customUnitInput}
+                          onChange={(e) => setCustomUnitInput(e.target.value as 'hours' | 'days')}
+                          className="bg-transparent text-xs text-neon-purple font-bold focus:outline-none cursor-pointer pr-1"
+                        >
+                          <option value="hours" className="bg-[#0D0F1D] text-white">Hours</option>
+                          <option value="days" className="bg-[#0D0F1D] text-white">Days</option>
+                        </select>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleApplyCustomTime}
+                        disabled={isSavingAutoDelete}
+                        className="px-4 py-2 bg-neon-purple/20 hover:bg-neon-purple/30 border border-neon-purple/40 rounded-xl text-xs font-bold text-neon-purple hover:text-white transition-all shadow-[0_0_10px_rgba(124,58,237,0.15)] shrink-0"
+                      >
+                        Set Custom Time
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-white/40 leading-relaxed">Permanently purge and delete all public chat room messages, private listener DMs, and live studio shoutouts recorded in the system.</p>
-                  <button
-                    onClick={handleClearAllChatsAndShoutouts}
-                    className="w-full px-3 py-2 bg-red-600/10 hover:bg-red-600/25 border border-red-500/20 rounded-xl text-[10px] font-bold uppercase tracking-wider text-red-400 hover:text-white transition-all shadow-[0_0_15px_rgba(239,68,68,0.1)]"
-                  >
-                    Clear All Chats, DMs & Shoutouts
-                  </button>
+
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-3 border-t border-white/5 text-[11px]">
+                    <div className="flex items-center gap-2 text-white/60">
+                      <Timer className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span>Next scheduled purge: <strong className="text-white font-mono">{nextAutoDeleteRunLabel}</strong></span>
+                    </div>
+                    {autoDeleteLastRun && (
+                      <div className="text-white/40">
+                        Last purge run: <span className="font-mono">{new Date(autoDeleteLastRun).toLocaleString()}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
+              )}
+
+              <div className="p-4 bg-red-500/[0.02] border border-red-500/10 rounded-xl space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-xs font-bold text-white">Manual Full Database Wipe</span>
+                </div>
+                <p className="text-[11px] text-white/40 leading-relaxed">Permanently purge and delete all public chat room messages, private listener DMs, and live studio shoutouts recorded in the system immediately.</p>
+                <button
+                  onClick={handleClearAllChatsAndShoutouts}
+                  className="w-full px-3 py-2 bg-red-600/10 hover:bg-red-600/25 border border-red-500/20 rounded-xl text-[10px] font-bold uppercase tracking-wider text-red-400 hover:text-white transition-all shadow-[0_0_15px_rgba(239,68,68,0.1)]"
+                >
+                  Clear All Chats, DMs & Shoutouts Now
+                </button>
               </div>
             </div>
           </div>
@@ -2628,13 +2790,47 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                   </div>
                 )}
               </div>
-              <div>
+              <div className="space-y-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-neon-purple bg-neon-purple/10 border border-neon-purple/20 px-2.5 py-1 rounded-full">
                   Station Identity
                 </span>
-                <p className="text-[11px] text-white/40 mt-1.5">Click the avatar to upload a custom square logo (PNG, JPG).</p>
+                <p className="text-[11px] text-white/40 mt-1 max-w-xs mx-auto">
+                  Upload a new picture or select an existing logo image from your station Media Library.
+                </p>
+
+                <div className="flex items-center justify-center gap-2.5 pt-2">
+                  <label className="px-3.5 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold text-white/80 hover:text-white cursor-pointer transition-all flex items-center gap-2">
+                    <Paperclip className="w-3.5 h-3.5 text-neon-purple" />
+                    <span>Upload File</span>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={handleImageFileChange} 
+                      className="hidden" 
+                      disabled={isUploadingImage}
+                    />
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsProfileMediaPickerOpen(true)}
+                    className="px-3.5 py-2 bg-neon-purple/20 hover:bg-neon-purple/30 border border-neon-purple/40 rounded-xl text-xs font-semibold text-neon-purple hover:text-white transition-all flex items-center gap-2 shadow-[0_0_12px_rgba(124,58,237,0.15)]"
+                  >
+                    <ImageIcon className="w-3.5 h-3.5" />
+                    <span>Select from Media</span>
+                  </button>
+                </div>
               </div>
             </div>
+
+            <MediaPickerModal 
+              isOpen={isProfileMediaPickerOpen} 
+              onClose={() => setIsProfileMediaPickerOpen(false)} 
+              onSelect={(url) => {
+                setStudioImage(url);
+                toast.success("Image selected from Media Library!");
+              }} 
+            />
 
             <div className="space-y-4 pt-4 border-t border-white/5">
               <div className="space-y-2">

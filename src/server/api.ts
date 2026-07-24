@@ -1524,6 +1524,184 @@ apiRouter.delete('/admin/media', (req: any, res: any) => {
   }
 });
 
+export function performMediaAutoDeleteCleanup(reason = 'timer') {
+  if (!db.open) return { deletedCount: 0, clearedAt: new Date().toISOString() };
+  try {
+    const enabledRow = db.prepare("SELECT value FROM settings WHERE key = 'media_auto_delete_enabled'").get() as { value: string } | undefined;
+    const hoursRow = db.prepare("SELECT value FROM settings WHERE key = 'media_auto_delete_hours'").get() as { value: string } | undefined;
+    const modeRow = db.prepare("SELECT value FROM settings WHERE key = 'media_auto_delete_mode'").get() as { value: string } | undefined;
+
+    const enabled = enabledRow?.value === '1';
+    if (!enabled && reason === 'timer') {
+      return { deletedCount: 0, clearedAt: new Date().toISOString() };
+    }
+
+    const hours = Math.max(1, parseInt(hoursRow?.value || "168", 10) || 168);
+    const mode = modeRow?.value || 'orphaned';
+
+    const uploadsDir = getUploadsDir();
+    if (!fs.existsSync(uploadsDir)) {
+      return { deletedCount: 0, clearedAt: new Date().toISOString() };
+    }
+
+    const now = Date.now();
+    const thresholdMs = hours * 60 * 60 * 1000;
+    let deletedCount = 0;
+
+    const entries = fs.readdirSync(uploadsDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile()) continue;
+      const filename = entry.name;
+      const filePath = path.join(uploadsDir, filename);
+      let stats;
+      try {
+        stats = fs.statSync(filePath);
+      } catch (e) {
+        continue;
+      }
+
+      const ageMs = now - stats.mtimeMs;
+
+      if (mode === 'orphaned') {
+        if (ageMs >= thresholdMs) {
+          const usages = searchMediaUsages(filename);
+          if (usages.length === 0) {
+            try {
+              fs.unlinkSync(filePath);
+              deletedCount++;
+              console.log(`[Media Auto-Delete] Deleted orphaned file: ${filename} (age: ${Math.round(ageMs / 3600000)}h)`);
+            } catch (unlinkErr) {
+              console.error(`[Media Auto-Delete] Failed to delete ${filename}:`, unlinkErr);
+            }
+          }
+        }
+      } else if (mode === 'all') {
+        if (ageMs >= thresholdMs) {
+          try {
+            fs.unlinkSync(filePath);
+            clearMediaReferences(filename);
+            deletedCount++;
+            console.log(`[Media Auto-Delete] Purged media file: ${filename} (age: ${Math.round(ageMs / 3600000)}h)`);
+          } catch (unlinkErr) {
+            console.error(`[Media Auto-Delete] Failed to purge ${filename}:`, unlinkErr);
+          }
+        }
+      }
+    }
+
+    const clearedAt = new Date().toISOString();
+    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+      .run("media_auto_delete_last_run", clearedAt);
+
+    console.log(`[Media Auto-Delete] Cleanup completed (${reason}). Mode: ${mode}, Threshold: ${hours}h, Deleted: ${deletedCount} files.`);
+    return { deletedCount, clearedAt };
+  } catch (err) {
+    console.error("[Media Auto-Delete] Error during cleanup:", err);
+    return { deletedCount: 0, clearedAt: new Date().toISOString() };
+  }
+}
+
+apiRouter.get("/admin/media/auto-delete", authorizeRole('admin'), (req: any, res: any) => {
+  try {
+    const settingsRows = db.prepare(`
+      SELECT key, value FROM settings
+      WHERE key IN ('media_auto_delete_enabled', 'media_auto_delete_hours', 'media_auto_delete_mode', 'media_auto_delete_last_run')
+    `).all() as { key: string; value: string }[];
+    
+    const settings = settingsRows.reduce<Record<string, string>>((acc, row) => {
+      acc[row.key] = row.value;
+      return acc;
+    }, {});
+
+    const uploadsDir = getUploadsDir();
+    let totalFiles = 0;
+    let orphanedFiles = 0;
+    let totalSizeBytes = 0;
+
+    if (fs.existsSync(uploadsDir)) {
+      const entries = fs.readdirSync(uploadsDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isFile()) {
+          totalFiles++;
+          const filename = entry.name;
+          const filePath = path.join(uploadsDir, filename);
+          try {
+            const stats = fs.statSync(filePath);
+            totalSizeBytes += stats.size;
+          } catch (e) {}
+
+          const usages = searchMediaUsages(filename);
+          if (usages.length === 0) {
+            orphanedFiles++;
+          }
+        }
+      }
+    }
+
+    res.json({
+      enabled: settings.media_auto_delete_enabled === '1',
+      hours: parseInt(settings.media_auto_delete_hours || "168", 10) || 168,
+      mode: (settings.media_auto_delete_mode as 'orphaned' | 'all') || 'orphaned',
+      lastRun: settings.media_auto_delete_last_run || "",
+      totalFiles,
+      orphanedFiles,
+      totalSizeBytes
+    });
+  } catch (err) {
+    console.error("[API] Failed to get media auto-delete settings", err);
+    res.status(500).json({ error: "Failed to load settings" });
+  }
+});
+
+apiRouter.put("/admin/media/auto-delete", authorizeRole('admin'), (req: any, res: any) => {
+  try {
+    const updateStmt = db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value");
+
+    if (req.body.enabled !== undefined) {
+      const enabled = req.body.enabled === true || req.body.enabled === '1' || req.body.enabled === 1;
+      const currentEnabledRow = db.prepare("SELECT value FROM settings WHERE key = 'media_auto_delete_enabled'").get() as { value: string } | undefined;
+      const lastRunRow = db.prepare("SELECT value FROM settings WHERE key = 'media_auto_delete_last_run'").get() as { value: string } | undefined;
+
+      updateStmt.run('media_auto_delete_enabled', enabled ? '1' : '0');
+      if (enabled && (currentEnabledRow?.value !== '1' || !lastRunRow?.value)) {
+        updateStmt.run('media_auto_delete_last_run', new Date().toISOString());
+      }
+    }
+
+    if (req.body.hours !== undefined) {
+      const hours = Number(req.body.hours);
+      if (!Number.isInteger(hours) || hours < 1 || hours > 8760) {
+        return res.status(400).json({ error: "Timer must be between 1 and 8760 hours." });
+      }
+      updateStmt.run('media_auto_delete_hours', hours.toString());
+    }
+
+    if (req.body.mode !== undefined) {
+      const mode = req.body.mode === 'all' ? 'all' : 'orphaned';
+      updateStmt.run('media_auto_delete_mode', mode);
+    }
+
+    logAction(req, 'UPDATE', 'settings', 'media_auto_delete', req.body);
+
+    const lastRunRow = db.prepare("SELECT value FROM settings WHERE key = 'media_auto_delete_last_run'").get() as { value: string } | undefined;
+    res.json({ success: true, lastRun: lastRunRow?.value || "" });
+  } catch (err) {
+    console.error("[API] Failed to update media auto-delete settings", err);
+    res.status(500).json({ error: "Failed to update settings" });
+  }
+});
+
+apiRouter.post("/admin/media/auto-delete/run-now", authorizeRole('admin'), (req: any, res: any) => {
+  try {
+    const result = performMediaAutoDeleteCleanup("manual");
+    logAction(req, 'DELETE', 'media_auto_delete', null, { deletedCount: result.deletedCount });
+    res.json({ success: true, ...result });
+  } catch (err) {
+    console.error("[API] Failed to run manual media auto-delete", err);
+    res.status(500).json({ error: "Failed to run media cleanup" });
+  }
+});
+
 apiRouter.get("/admin/analytics/live-locations", async (req: any, res: any) => {
   const io = req.app.get('io');
   if (!io) return res.status(500).json({ error: "Socket.IO not initialized" });
