@@ -3264,7 +3264,10 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                           <Pin className="w-3 h-3 text-amber-400 fill-current" />
                         )}
                         {thread.unreadCount > 0 && (
-                          <div className="px-1.5 py-0.5 bg-gradient-to-r from-violet-600 to-fuchsia-600 shadow-[0_0_10px_rgba(168,85,247,0.4)] text-[9px] font-mono font-bold text-white rounded-full">
+                          <div 
+                            className="px-1.5 py-0.5 text-[9px] font-mono font-black leading-none text-white rounded-full border border-black/30 shadow-[0_2px_8px_-1px_var(--color-neon-purple)]"
+                            style={{ background: 'linear-gradient(135deg, var(--color-neon-purple), var(--color-neon-blue))' }}
+                          >
                             {thread.unreadCount}
                           </div>
                         )}
@@ -3639,7 +3642,10 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
               <div className="relative">
                 <MessageSquare className="w-6 h-6" />
                 {totalUnreadCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 px-1 text-[9px] font-bold font-mono leading-none text-white ring-2 ring-white dark:ring-[#0D0F1D] shadow-[0_0_10px_rgba(168,85,247,0.6)]">
+                  <span 
+                    className="absolute -top-1.5 -right-1.5 flex h-4.5 min-w-[18px] items-center justify-center rounded-full px-1 text-[9px] font-black font-mono leading-none text-white border border-[#0D0F1D]/40 shadow-[0_2px_8px_-1px_var(--color-neon-purple)]"
+                    style={{ background: 'linear-gradient(135deg, var(--color-neon-purple), var(--color-neon-blue))' }}
+                  >
                     {totalUnreadCount}
                   </span>
                 )}
