@@ -75,10 +75,10 @@
 
 .swiper-button-next:hover,
 .swiper-button-prev:hover {
-  background: #b026ff !important;
-  border-color: #b026ff !important;
+  background: var(--color-neon-purple, #b026ff) !important;
+  border-color: var(--color-neon-purple, #b026ff) !important;
   color: #ffffff !important;
-  box-shadow: 0 0 25px rgba(176, 38, 255, 0.6), 0 8px 20px -6px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 25px color-mix(in srgb, var(--color-neon-purple, #b026ff) 60%, transparent), 0 8px 20px -6px rgba(0, 0, 0, 0.4);
   transform: translateY(-50%) scale(1.08) !important;
 }
 
@@ -105,10 +105,10 @@
 }
 
 .swiper-pagination-bullet-active {
-  background: #b026ff !important;
+  background: var(--color-neon-purple, #b026ff) !important;
   width: 24px !important;
   border-radius: 9999px !important;
-  box-shadow: 0 0 12px rgba(176, 38, 255, 0.4);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--color-neon-purple, #b026ff) 40%, transparent);
 }
 
 :root.light .swiper-pagination-bullet-active {

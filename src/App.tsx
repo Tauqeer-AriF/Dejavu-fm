@@ -21,6 +21,7 @@ import { SitePopup } from './components/SitePopup';
 import { AdvertisementSliders } from './components/AdvertisementSliders';
 import { CinematicVisualizer } from './components/CinematicVisualizer';
 import { AppLoader } from './components/AppLoader';
+import { FeaturesSlider } from './components/FeaturesSlider';
 // @ts-ignore
 import glitchLogoUrl from './assets/images/dejavufm_glitch_logo_1784796255055.png';
 import { ThemeAccessibilityDropdown } from './components/ThemeAccessibilityDropdown';
@@ -980,6 +981,7 @@ function MainLayout() {
         <ErrorBoundary key={location.pathname.startsWith('/admin') ? '/admin' : location.pathname}>
           <AnimatedRoutes />
         </ErrorBoundary>
+        {!location.pathname.startsWith('/admin') && !isSplitActive && <FeaturesSlider />}
         {!location.pathname.startsWith('/admin') && !isSplitActive && <AdvertisementSliders position="bottom" />}
       </main>
 

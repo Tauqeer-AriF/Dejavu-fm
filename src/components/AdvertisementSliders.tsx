@@ -93,7 +93,10 @@ export function AdvertisementSliders({ position = "bottom" }: { position?: "top"
           className="relative group"
         >
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30">{title}</h3>
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-neon-purple animate-pulse" />
+              <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 group-hover:text-white transition-colors">{title}</h3>
+            </div>
             <div className="h-px flex-1 bg-white/5 mx-4" />
           </div>
 
@@ -125,7 +128,7 @@ export function AdvertisementSliders({ position = "bottom" }: { position?: "top"
               autoplay={autoScroll ? { delay: 5000, disableOnInteraction: false } : false}
               pagination={{ clickable: true }}
               navigation={true}
-              className="rounded-3xl overflow-hidden shadow-2xl border border-white/5 aspect-[21/9] md:aspect-[3/1] !pb-0"
+              className="rounded-3xl overflow-hidden shadow-2xl border border-white/5 hover:border-neon-purple/30 transition-all duration-300 aspect-[21/9] md:aspect-[3/1] !pb-0"
             >
               {groupAds.map((ad: any) => (
                 <SwiperSlide key={ad.id}>
@@ -142,14 +145,14 @@ export function AdvertisementSliders({ position = "bottom" }: { position?: "top"
 
 function AdItem({ ad, isLarge }: { ad: any, isLarge?: boolean }) {
   const content = (
-    <div className="relative w-full h-full overflow-hidden">
+    <div className="relative w-full h-full overflow-hidden group/ad">
       <img 
         src={ad.image_url} 
         alt="Advertisement" 
         className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" 
       />
       {ad.link_url && (
-        <div className="absolute top-4 right-4 p-2 bg-black/40 backdrop-blur-md rounded-full border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute top-4 right-4 p-2 bg-black/60 backdrop-blur-md rounded-full border border-white/20 opacity-0 group-hover/ad:opacity-100 group-hover/ad:border-neon-purple/50 group-hover/ad:bg-neon-purple/80 transition-all duration-300 shadow-lg">
           <ExternalLink className="w-4 h-4 text-white" />
         </div>
       )}
@@ -162,7 +165,7 @@ function AdItem({ ad, isLarge }: { ad: any, isLarge?: boolean }) {
         href={ad.link_url} 
         target="_blank" 
         rel="noopener noreferrer" 
-        className={`block w-full h-full ${!isLarge ? 'aspect-[16/9] rounded-2xl overflow-hidden border border-white/5' : ''}`}
+        className={`block w-full h-full ${!isLarge ? 'aspect-[16/9] rounded-2xl overflow-hidden border border-white/10 hover:border-neon-purple/40 transition-all duration-300' : ''}`}
       >
         {content}
       </a>
@@ -170,7 +173,7 @@ function AdItem({ ad, isLarge }: { ad: any, isLarge?: boolean }) {
   }
 
   return (
-    <div className={`w-full h-full ${!isLarge ? 'aspect-[16/9] rounded-2xl overflow-hidden border border-white/5' : ''}`}>
+    <div className={`w-full h-full ${!isLarge ? 'aspect-[16/9] rounded-2xl overflow-hidden border border-white/10 hover:border-neon-purple/40 transition-all duration-300' : ''}`}>
       {content}
     </div>
   );

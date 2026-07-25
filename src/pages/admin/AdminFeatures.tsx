@@ -8,12 +8,27 @@ import { motion, AnimatePresence } from "motion/react";
 import { fetchAdmin } from "./adminApi";
 import { ImageUploadField } from "./ImageUploadField";
 
+const AVAILABLE_PAGES = [
+  { path: "/", label: "Home / Listen" },
+  { path: "/watch", label: "Watch Live" },
+  { path: "/schedule", label: "Schedule" },
+  { path: "/djs", label: "DJs Page" },
+  { path: "/podcasts", label: "Podcasts" },
+  { path: "/about", label: "About" },
+  { path: "/contact", label: "Contact" }
+];
+
 export function AdminFeatures() {
   const queryClient = useQueryClient();
   const [features, setFeatures] = useState<any[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const { showAlert, showConfirm } = useModal();
+  const [showCreateForm, setShowCreateForm] = useState(false);
+
+  const [sliderEnabled, setSliderEnabled] = useState(false);
+  const [sliderPages, setSliderPages] = useState<string[]>([]);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -23,12 +38,46 @@ export function AdminFeatures() {
         const data = await res.json();
         setFeatures(Array.isArray(data) ? data : []);
       }
+
+      const settingsRes = await fetch("/api/public/settings");
+      if (settingsRes.ok) {
+        const settings = await settingsRes.json();
+        setSliderEnabled(settings.features_slider_enabled === "1");
+        const pagesStr = settings.features_slider_pages || "";
+        setSliderPages(pagesStr.split(",").map((p: string) => p.trim()).filter(Boolean));
+      }
+    } catch (err) {
+      console.error("Failed to load admin features & settings:", err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => { load(); }, []);
+
+  const handleSaveSettings = async () => {
+    setIsSavingSettings(true);
+    try {
+      const res = await fetchAdmin("/api/admin/settings", {
+        method: "PUT",
+        body: {
+          features_slider_enabled: sliderEnabled ? "1" : "0",
+          features_slider_pages: sliderPages.join(",")
+        }
+      });
+      if (res.ok) {
+        showAlert({ title: "Settings Saved", message: "Features slider configuration updated.", style: "success" });
+        queryClient.invalidateQueries({ queryKey: ["settings"] });
+      } else {
+        showAlert({ title: "Error", message: "Failed to save features slider settings.", style: "danger" });
+      }
+    } catch (err) {
+      console.error("Save settings error:", err);
+      showAlert({ title: "Error", message: "Failed to save features slider settings.", style: "danger" });
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
 
   const refreshFeatures = () => {
     queryClient.invalidateQueries({ queryKey: ["features"] });
@@ -63,13 +112,129 @@ export function AdminFeatures() {
           </h3>
           <p className="text-white/40 text-xs mt-2 uppercase tracking-[0.2em] font-black">Write, publish, and maintain station features</p>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2.5 bg-neon-purple/10 border border-neon-purple/20 rounded-xl w-fit">
-          <FileText className="w-4 h-4 text-neon-purple" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-neon-purple">{features.length} Posts</span>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-neon-purple/10 border border-neon-purple/20 rounded-xl w-fit">
+            <FileText className="w-4 h-4 text-neon-purple" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-neon-purple">{features.length} Posts</span>
+          </div>
+          <button
+            onClick={() => setShowCreateForm(!showCreateForm)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-neon-purple border border-neon-purple rounded-xl text-white text-[10px] font-black uppercase tracking-widest hover:bg-neon-blue hover:border-neon-blue transition-colors cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            {showCreateForm ? "Close Form" : "Add New Feature"}
+          </button>
         </div>
       </div>
 
-      <FeatureForm mode="create" onSaved={refreshFeatures} />
+      {/* Features Slider Settings Card */}
+      <div className="bg-dark-bg/40 border border-white/10 rounded-2xl p-6 space-y-6 relative overflow-hidden backdrop-blur-md">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-neon-purple/10 flex items-center justify-center border border-neon-purple/20">
+              <Settings className="w-5 h-5 text-neon-purple" />
+            </div>
+            <div>
+              <h4 className="text-sm font-black uppercase tracking-widest text-white">Slider Configuration</h4>
+              <p className="text-white/40 text-[10px] uppercase tracking-wider mt-0.5">Showcase features in a premium 3-column carousel on selected pages</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Enable Toggle */}
+          <div className="space-y-4">
+            <label className="block text-xs font-black uppercase tracking-[0.2em] text-white/50">Slider Status</label>
+            <div className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-xl hover:border-neon-purple/30 transition-all">
+              <input
+                id="slider-enabled"
+                type="checkbox"
+                checked={sliderEnabled}
+                onChange={(e) => setSliderEnabled(e.target.checked)}
+                className="w-4 h-4 rounded border-white/10 bg-dark-bg text-neon-purple focus:ring-neon-purple cursor-pointer"
+              />
+              <label htmlFor="slider-enabled" className="text-xs font-black uppercase tracking-wider text-white/80 cursor-pointer select-none">
+                Enable 3-Column Features Slider
+              </label>
+            </div>
+          </div>
+
+          {/* Page Target Checklist */}
+          <div className="space-y-4">
+            <label className="block text-xs font-black uppercase tracking-[0.2em] text-white/50">Display Pages</label>
+            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-2 ${!sliderEnabled ? "opacity-40 pointer-events-none" : ""}`}>
+              {AVAILABLE_PAGES.map((page) => {
+                const isChecked = sliderPages.includes(page.path);
+                return (
+                  <label
+                    key={page.path}
+                    className={`flex items-center gap-2.5 p-3 rounded-xl border text-[10px] font-black uppercase tracking-wider cursor-pointer transition-all ${
+                      isChecked
+                        ? "bg-neon-purple/10 border-neon-purple/30 text-neon-purple"
+                        : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:border-white/20"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      disabled={!sliderEnabled}
+                      onChange={() => {
+                        if (isChecked) {
+                          setSliderPages(sliderPages.filter((p) => p !== page.path));
+                        } else {
+                          setSliderPages([...sliderPages, page.path]);
+                        }
+                      }}
+                      className="w-3.5 h-3.5 rounded border-white/10 bg-dark-bg text-neon-purple focus:ring-neon-purple cursor-pointer"
+                    />
+                    {page.label}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end pt-2">
+          <button
+            onClick={handleSaveSettings}
+            disabled={isSavingSettings}
+            className="flex items-center gap-2 px-6 py-2.5 bg-neon-purple border border-neon-purple rounded-xl text-white text-[10px] font-black uppercase tracking-widest hover:bg-neon-blue hover:border-neon-blue transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-lg hover:shadow-neon-purple/25"
+          >
+            {isSavingSettings ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Settings className="w-3.5 h-3.5" />
+                Save Slider Settings
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {showCreateForm && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden mb-6"
+          >
+            <FeatureForm
+              mode="create"
+              onSaved={() => {
+                refreshFeatures();
+                setShowCreateForm(false);
+              }}
+              onCancel={() => setShowCreateForm(false)}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="space-y-4">
         <h4 className="text-sm font-black uppercase tracking-[0.25em] text-white/40">Existing Posts</h4>
