@@ -348,6 +348,7 @@ export function initDb() {
       image_url TEXT,
       content TEXT NOT NULL,
       is_published INTEGER DEFAULT 1,
+      link_url TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -413,6 +414,7 @@ export function initDb() {
   };
 
   // Migrations for existing databases
+  runMigration('features_link_url_v1', "ALTER TABLE features ADD COLUMN link_url TEXT DEFAULT NULL;");
   runMigration('schedule_image_url_v1', "ALTER TABLE schedule ADD COLUMN image_url TEXT DEFAULT NULL;");
   runMigration('admin_profile_fields', "ALTER TABLE admins ADD COLUMN bio TEXT; ALTER TABLE admins ADD COLUMN photo_url TEXT;");
   runMigration('dj_social_fields', "ALTER TABLE djs ADD COLUMN image_url TEXT; ALTER TABLE djs ADD COLUMN instagram TEXT; ALTER TABLE djs ADD COLUMN soundcloud TEXT; ALTER TABLE djs ADD COLUMN mixcloud TEXT;");

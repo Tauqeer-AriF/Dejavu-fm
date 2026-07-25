@@ -1,8 +1,9 @@
+import React from "react";
 import { BlogPost } from "../types";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { ArrowLeft, CalendarDays, FileText } from "lucide-react";
+import { ArrowLeft, CalendarDays, FileText, ExternalLink } from "lucide-react";
 
 
 const fallbackImage = "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&q=80&w=1400";
@@ -33,6 +34,49 @@ const parseContent = (content: string): ContentPart[] => {
   if (remainingText.trim()) parts.push({ type: "text", value: remainingText });
 
   return parts;
+};
+
+const renderParagraphWithLinks = (text: string) => {
+  const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  const parts = text.split(linkRegex);
+  if (parts.length === 1) {
+    return text;
+  }
+
+  const elements: React.ReactNode[] = [];
+  for (let i = 0; i < parts.length; i += 3) {
+    if (parts[i]) {
+      elements.push(parts[i]);
+    }
+    if (i + 1 < parts.length) {
+      const linkText = parts[i + 1];
+      const linkUrlFull = parts[i + 2];
+      
+      let linkUrl = linkUrlFull;
+      let target = "_blank";
+      if (linkUrlFull.includes("|")) {
+        const urlParts = linkUrlFull.split("|");
+        linkUrl = urlParts[0];
+        target = urlParts[1];
+      }
+
+      elements.push(
+        <a
+          key={`link-${i}`}
+          href={linkUrl}
+          target={target}
+          rel={target === "_blank" ? "noopener noreferrer" : undefined}
+          className="text-neon-blue hover:text-neon-purple underline decoration-neon-blue/60 hover:decoration-neon-purple/80 underline-offset-4 decoration-2 font-bold transition-colors inline-flex items-center gap-1 cursor-pointer"
+        >
+          {linkText}
+          {target === "_blank" && (
+            <ExternalLink className="w-3.5 h-3.5 inline text-neon-blue/70" />
+          )}
+        </a>
+      );
+    }
+  }
+  return elements;
 };
 
 export default function FeatureDetail() {
@@ -101,6 +145,17 @@ export default function FeatureDetail() {
                 <CalendarDays className="w-3.5 h-3.5 text-neon-blue" />
                 {formatDate(post.created_at)}
               </span>
+              {post.link_url && (
+                <a
+                  href={post.link_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-neon-blue/20 border border-neon-blue/30 text-neon-blue hover:bg-neon-blue/30 transition-colors text-[10px] font-black uppercase tracking-widest"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-neon-blue" />
+                  Visit Link
+                </a>
+              )}
             </div>
             <h1 className="text-4xl md:text-7xl lg:text-8xl font-display font-black uppercase tracking-tighter leading-none max-w-5xl">
               {post.title}
@@ -136,7 +191,7 @@ export default function FeatureDetail() {
                 .filter(paragraph => paragraph.trim())
                 .map((paragraph, paragraphIndex) => (
                   <p key={`${index}-${paragraphIndex}`} className="whitespace-pre-wrap">
-                    {paragraph.trim()}
+                    {renderParagraphWithLinks(paragraph.trim())}
                   </p>
                 ));
             })}

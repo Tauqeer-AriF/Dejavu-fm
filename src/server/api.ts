@@ -291,8 +291,9 @@ const cleanFeatureInput = (body: any) => {
   const excerpt = (body.excerpt || "").toString().trim();
   const image_url = (body.image_url || "").toString().trim();
   const is_published = body.is_published === false || body.is_published === 0 || body.is_published === "0" ? 0 : 1;
+  const link_url = body.link_url ? body.link_url.toString().trim() : null;
 
-  return { title, content, excerpt, image_url, is_published };
+  return { title, content, excerpt, image_url, is_published, link_url };
 };
 
 const FeatureSchema = z.object({
@@ -300,7 +301,8 @@ const FeatureSchema = z.object({
   content: z.string().min(1),
   excerpt: z.string().optional(),
   image_url: z.string().url().optional().or(z.literal("")),
-  is_published: z.union([z.boolean(), z.number()]).transform(v => !!v)
+  is_published: z.union([z.boolean(), z.number()]).transform(v => !!v),
+  link_url: z.string().url().optional().or(z.literal("")).nullable()
 });
 
 // ------ PUBLIC ROUTES ------
@@ -505,7 +507,7 @@ apiRouter.get("/public/podcast-stream", (req: Request, res: Response) => {
 
 apiRouter.get("/public/features", (req, res) => {
   const features = db.prepare(`
-    SELECT id, slug, title, excerpt, image_url, content, created_at, updated_at
+    SELECT id, slug, title, excerpt, image_url, content, link_url, created_at, updated_at
     FROM features
     WHERE is_published = 1
     ORDER BY datetime(created_at) DESC
@@ -515,7 +517,7 @@ apiRouter.get("/public/features", (req, res) => {
 
 apiRouter.get("/public/features/:slug", (req, res) => {
   const feature = db.prepare(`
-    SELECT id, slug, title, excerpt, image_url, content, created_at, updated_at
+    SELECT id, slug, title, excerpt, image_url, content, link_url, created_at, updated_at
     FROM features
     WHERE slug = ? AND is_published = 1
   `).get(req.params.slug);
@@ -2309,7 +2311,7 @@ apiRouter.get("/admin/features", (req, res) => {
 });
 
 apiRouter.post("/admin/features", (req, res) => {
-  const { title, content, excerpt, image_url, is_published } = cleanFeatureInput(req.body);
+  const { title, content, excerpt, image_url, is_published, link_url } = cleanFeatureInput(req.body);
 
   if (!title || !content) {
     return res.status(400).json({ error: "Title and post text are required" });
@@ -2319,9 +2321,9 @@ apiRouter.post("/admin/features", (req, res) => {
   const slug = uniqueFeatureSlug(title);
 
   db.prepare(`
-    INSERT INTO features (id, slug, title, excerpt, image_url, content, is_published)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(id, slug, title, excerpt, image_url, content, is_published);
+    INSERT INTO features (id, slug, title, excerpt, image_url, content, is_published, link_url)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, slug, title, excerpt, image_url, content, is_published, link_url);
   logAction(req, 'CREATE', 'feature', id, { title });
 
   res.json({ success: true, id, slug });
@@ -2331,7 +2333,7 @@ apiRouter.put("/admin/features/:id", (req, res) => {
   const existing = db.prepare("SELECT id FROM features WHERE id = ?").get(req.params.id);
   if (!existing) return res.status(404).json({ error: "Feature post not found" });
 
-  const { title, content, excerpt, image_url, is_published } = cleanFeatureInput(req.body);
+  const { title, content, excerpt, image_url, is_published, link_url } = cleanFeatureInput(req.body);
   if (!title || !content) {
     return res.status(400).json({ error: "Title and post text are required" });
   }
@@ -2339,9 +2341,9 @@ apiRouter.put("/admin/features/:id", (req, res) => {
   const slug = uniqueFeatureSlug(title, req.params.id);
   db.prepare(`
     UPDATE features
-    SET slug = ?, title = ?, excerpt = ?, image_url = ?, content = ?, is_published = ?, updated_at = CURRENT_TIMESTAMP
+    SET slug = ?, title = ?, excerpt = ?, image_url = ?, content = ?, is_published = ?, link_url = ?, updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
-  `).run(slug, title, excerpt, image_url, content, is_published, req.params.id);
+  `).run(slug, title, excerpt, image_url, content, is_published, link_url, req.params.id);
   logAction(req, 'UPDATE', 'feature', req.params.id, { title });
 
   res.json({ success: true, slug });

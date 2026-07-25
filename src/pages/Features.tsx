@@ -2,7 +2,7 @@ import { BlogPost } from "../types";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { CalendarDays, FileText, Search, X } from "lucide-react";
+import { CalendarDays, FileText, Search, X, ExternalLink } from "lucide-react";
 import { useMemo, useState } from "react";
 
 
@@ -13,10 +13,14 @@ const formatDate = (value: string) => {
   return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 };
 
-const stripContentImages = (value: string) => value.replace(/!\[[^\]]*\]\([^)]+\)/g, " ");
+const stripContentImagesAndLinks = (value: string) => {
+  return value
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, " ")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+};
 
 const previewText = (post: BlogPost) => {
-  return post.excerpt || stripContentImages(post.content).replace(/\s+/g, " ").slice(0, 180);
+  return post.excerpt || stripContentImagesAndLinks(post.content).replace(/\s+/g, " ").slice(0, 180);
 };
 
 export default function Features() {
@@ -110,7 +114,7 @@ export default function Features() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05, duration: 0.5 }}
               whileHover="hover"
-              className="group glass-panel rounded-2xl overflow-hidden hover:border-neon-purple/30 transition-all relative"
+              className="group glass-panel rounded-2xl overflow-hidden hover:border-neon-purple/30 transition-all relative flex flex-col h-full"
             >
               <motion.div
                 className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 z-30"
@@ -118,7 +122,7 @@ export default function Features() {
                 transition={{ duration: 0.75, ease: "easeInOut" }}
                 initial={{ x: '-150%' }}
               />
-              <Link to={`/features/${post.slug}`} className="block h-full">
+              <Link to={`/features/${post.slug}`} className="block">
                 <div className="aspect-[16/10] overflow-hidden relative">
                   <img
                     src={post.image_url || fallbackImage}
@@ -131,8 +135,10 @@ export default function Features() {
                     <span className="text-[9px] uppercase tracking-widest font-black text-white/70">{formatDate(post.created_at)}</span>
                   </div>
                 </div>
+              </Link>
 
-                <div className="p-6 flex flex-col gap-4">
+              <div className="p-6 flex flex-col gap-4 flex-1">
+                <Link to={`/features/${post.slug}`} className="block space-y-4 flex-1">
                   <div className="flex items-center gap-2 text-neon-purple">
                     <FileText className="w-4 h-4" />
                     <span className="text-[10px] font-black uppercase tracking-[0.25em]">Feature Post</span>
@@ -143,11 +149,25 @@ export default function Features() {
                   <p className="text-sm text-white/55 leading-relaxed line-clamp-3">
                     {previewText(post)}
                   </p>
-                  <span className="pt-2 text-[10px] uppercase tracking-[0.25em] font-black text-white/40 group-hover:text-white transition-colors">
+                </Link>
+                
+                <div className="flex items-center justify-between pt-2 border-t border-white/5 mt-auto z-10 relative">
+                  <Link to={`/features/${post.slug}`} className="text-[10px] uppercase tracking-[0.25em] font-black text-white/40 group-hover:text-white transition-colors">
                     Read article
-                  </span>
+                  </Link>
+                  {post.link_url && (
+                    <a
+                      href={post.link_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-neon-blue/10 border border-neon-blue/20 text-neon-blue rounded-full text-[9px] font-black uppercase tracking-widest hover:bg-neon-blue/20 transition-colors"
+                    >
+                      Visit Link
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
                 </div>
-              </Link>
+              </div>
             </motion.article>
           ))}
         </div>

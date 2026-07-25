@@ -137,7 +137,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
               
               {/* Core container with ultra-premium borders and subtle inner/outer shadows */}
               <div className={`${
-                logoShape === 'rectangle' ? 'w-24 md:w-32 h-11 md:h-14 px-3' : 'w-11 h-11 md:w-14 md:h-14 p-1.5'
+                logoShape === 'rectangle' ? 'w-32 sm:w-36 md:w-40 h-14 sm:h-15 md:h-16 px-3' : 'w-14 h-14 sm:w-16 sm:h-16 md:w-18 md:h-18 p-1.5'
               } relative z-10 flex items-center justify-center overflow-hidden shrink-0 transition-all duration-300 rounded-xl md:rounded-2xl ${
                 isLightMode 
                   ? 'bg-black border border-black/10 shadow-[0_8px_32px_rgba(0,0,0,0.12)] group-hover:shadow-[0_12px_40px_rgba(0,0,0,0.2)]' 

@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useNavigate, Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
-import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles } from "lucide-react";
+import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles, Link2 as LinkIcon } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { useModal } from "../../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
@@ -146,9 +146,15 @@ function FeatureForm({ mode, blog, onSaved, onCancel }: { mode: "create" | "edit
   const [title, setTitle] = useState(blog?.title || "");
   const [excerpt, setExcerpt] = useState(blog?.excerpt || "");
   const [imageUrl, setImageUrl] = useState(blog?.image_url || "");
+  const [linkUrl, setLinkUrl] = useState(blog?.link_url || "");
   const [content, setContent] = useState(blog?.content || "");
   const [paragraphImageUrl, setParagraphImageUrl] = useState("");
   const [paragraphImageCaption, setParagraphImageCaption] = useState("");
+  const [insertLinkText, setInsertLinkText] = useState("");
+  const [insertLinkUrl, setInsertLinkUrl] = useState("");
+  const [insertLinkTarget, setInsertLinkTarget] = useState<"_blank" | "_self">("_blank");
+  const [activeHelper, setActiveHelper] = useState<"image" | "link">("image");
+  const [activeHelperMode, setActiveHelperMode] = useState<"image" | "link">("image");
   const [isPublished, setIsPublished] = useState(blog?.is_published !== 0);
   const [saving, setSaving] = useState(false);
   const contentRef = useRef<HTMLTextAreaElement | null>(null);
@@ -158,8 +164,37 @@ function FeatureForm({ mode, blog, onSaved, onCancel }: { mode: "create" | "edit
     setTitle("");
     setExcerpt("");
     setImageUrl("");
+    setLinkUrl("");
     setContent("");
+    setInsertLinkText("");
+    setInsertLinkUrl("");
+    setInsertLinkTarget("_blank");
     setIsPublished(true);
+  };
+
+  const insertParagraphLink = () => {
+    const url = insertLinkUrl.trim();
+    const text = insertLinkText.trim() || "Link";
+    if (!url) {
+      showAlert({ title: "Link URL Required", message: "Add a URL before inserting it into the post.", style: "danger" });
+      return;
+    }
+
+    const marker = insertLinkTarget === "_self" ? `[${text}](${url}|_self)` : `[${text}](${url})`;
+    const textarea = contentRef.current;
+    const start = textarea?.selectionStart ?? content.length;
+    const end = textarea?.selectionEnd ?? content.length;
+    const nextContent = `${content.slice(0, start)}${marker}${content.slice(end)}`;
+
+    setContent(nextContent);
+    setInsertLinkText("");
+    setInsertLinkUrl("");
+
+    requestAnimationFrame(() => {
+      contentRef.current?.focus();
+      const cursor = start + marker.length;
+      contentRef.current?.setSelectionRange(cursor, cursor);
+    });
   };
 
   const insertParagraphImage = () => {
@@ -204,7 +239,8 @@ function FeatureForm({ mode, blog, onSaved, onCancel }: { mode: "create" | "edit
         excerpt,
         image_url: imageUrl,
         content,
-        is_published: isPublished
+        is_published: isPublished,
+        link_url: linkUrl
       })
     });
     setSaving(false);
@@ -243,6 +279,10 @@ function FeatureForm({ mode, blog, onSaved, onCancel }: { mode: "create" | "edit
             <label className="block text-[10px] uppercase tracking-widest font-black text-white/40 mb-2">Short Summary</label>
             <input value={excerpt} onChange={e => setExcerpt(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-neon-purple text-sm" placeholder="Optional preview text for the features page" />
           </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-widest font-black text-white/40 mb-2">Optional Link / URL</label>
+            <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-neon-purple text-sm" placeholder="Optional external link (e.g., https://example.com)" />
+          </div>
           <ImageUploadField label="Image URL" value={imageUrl} onChange={setImageUrl} placeholder="https://..." />
         </div>
 
@@ -262,17 +302,89 @@ function FeatureForm({ mode, blog, onSaved, onCancel }: { mode: "create" | "edit
         <label className="block text-[10px] uppercase tracking-widest font-black text-white/40 mb-2">Post Text</label>
         <textarea ref={contentRef} required value={content} onChange={e => setContent(e.target.value)} rows={mode === "create" ? 8 : 12} className="w-full bg-panel-bg border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-neon-purple text-sm leading-6" placeholder="Write the full feature post here..." />
         <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3 space-y-3">
-          <div className="flex items-center gap-2 text-white/50">
-            <ImageIcon className="w-4 h-4 text-neon-blue" />
-            <span className="text-[10px] font-black uppercase tracking-widest">Insert image into post text</span>
-          </div>
-          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(180px,280px)_auto] gap-3 items-end">
-            <ImageUploadField value={paragraphImageUrl} onChange={setParagraphImageUrl} placeholder="Image URL" className="!space-y-0" />
-            <input value={paragraphImageCaption} onChange={e => setParagraphImageCaption(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-neon-blue" placeholder="Caption / alt text" />
-            <button type="button" onClick={insertParagraphImage} className="px-4 py-2 rounded-lg bg-neon-blue text-dark-bg text-[10px] font-black uppercase tracking-widest hover:bg-neon-purple hover:text-white transition-colors">
-              Insert
+          <div className="flex items-center gap-4 border-b border-white/5 pb-2">
+            <button
+              type="button"
+              onClick={() => setActiveHelper("image")}
+              className={`flex items-center gap-2 pb-1 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${
+                activeHelper === "image"
+                  ? "border-neon-blue text-white"
+                  : "border-transparent text-white/45 hover:text-white"
+              }`}
+            >
+              <ImageIcon className="w-3.5 h-3.5 text-neon-blue" />
+              Insert Image
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveHelper("link")}
+              className={`flex items-center gap-2 pb-1 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${
+                activeHelper === "link"
+                  ? "border-neon-purple text-white"
+                  : "border-transparent text-white/45 hover:text-white"
+              }`}
+            >
+              <LinkIcon className="w-3.5 h-3.5 text-neon-purple" />
+              Insert Link (Hyperlink)
             </button>
           </div>
+
+          {activeHelper === "image" ? (
+            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(180px,280px)_auto] gap-3 items-end">
+              <ImageUploadField value={paragraphImageUrl} onChange={setParagraphImageUrl} placeholder="Image URL" className="!space-y-0" />
+              <input value={paragraphImageCaption} onChange={e => setParagraphImageCaption(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-neon-blue" placeholder="Caption / alt text" />
+              <button type="button" onClick={insertParagraphImage} className="px-4 py-2.5 rounded-lg bg-neon-blue text-dark-bg text-[10px] font-black uppercase tracking-widest hover:bg-neon-purple hover:text-white transition-colors">
+                Insert
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[9px] uppercase tracking-wider font-bold text-white/40 mb-1">Link Text</label>
+                  <input value={insertLinkText} onChange={e => setInsertLinkText(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-neon-purple" placeholder="e.g., Read More" />
+                </div>
+                <div>
+                  <label className="block text-[9px] uppercase tracking-wider font-bold text-white/40 mb-1">Link URL</label>
+                  <input value={insertLinkUrl} onChange={e => setInsertLinkUrl(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-neon-purple" placeholder="e.g., https://example.com" />
+                </div>
+              </div>
+              
+              <div className="flex flex-wrap items-center justify-between gap-4 pt-1 bg-black/20 p-2 rounded-lg border border-white/5">
+                <div className="flex items-center gap-3">
+                  <span className="text-[9px] uppercase tracking-wider font-black text-white/40">Open Behavior:</span>
+                  <div className="flex bg-black/40 rounded-lg p-0.5 border border-white/5">
+                    <button
+                      type="button"
+                      onClick={() => setInsertLinkTarget("_blank")}
+                      className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-wider rounded-md transition-colors ${
+                        insertLinkTarget === "_blank"
+                          ? "bg-neon-purple text-white shadow-lg shadow-neon-purple/20"
+                          : "text-white/40 hover:text-white"
+                      }`}
+                    >
+                      New Tab
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInsertLinkTarget("_self")}
+                      className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-wider rounded-md transition-colors ${
+                        insertLinkTarget === "_self"
+                          ? "bg-neon-purple text-white shadow-lg shadow-neon-purple/20"
+                          : "text-white/40 hover:text-white"
+                      }`}
+                    >
+                      Current Tab
+                    </button>
+                  </div>
+                </div>
+                
+                <button type="button" onClick={insertParagraphLink} className="px-4 py-2 rounded-lg bg-neon-purple text-white text-[10px] font-black uppercase tracking-widest hover:bg-neon-blue hover:text-dark-bg transition-colors">
+                  Insert Link
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
