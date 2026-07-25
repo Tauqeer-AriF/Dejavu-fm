@@ -73,7 +73,7 @@ export function FeaturesSlider() {
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      className="w-full pt-6 pb-12 px-4 md:px-8 relative z-20 overflow-hidden"
+      className="w-full pt-[90px] pb-12 px-4 md:px-8 relative z-20 overflow-hidden"
     >
       <div className="max-w-[1400px] mx-auto space-y-8">
         {/* Slider Header */}
