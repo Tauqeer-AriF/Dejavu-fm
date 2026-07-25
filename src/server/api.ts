@@ -687,8 +687,8 @@ apiRouter.post("/public/auth/register", (req, res) => {
   const hash = bcrypt.hashSync(password, 10);
   try {
     const info = db.prepare("INSERT INTO users (username, email, password_hash, password_plain, source) VALUES (?, ?, ?, ?, ?)").run(cleanUsername, cleanEmail, hash, password, 'register');
-    const token = jwt.sign({ userId: info.lastInsertRowid, username: cleanUsername }, ACTUAL_SECRET, { expiresIn: "7d" });
-    res.cookie("user_token", token, { httpOnly: true, secure: true, sameSite: "none" });
+    const token = jwt.sign({ userId: info.lastInsertRowid, username: cleanUsername }, ACTUAL_SECRET, { expiresIn: "30d" });
+    res.cookie("user_token", token, { httpOnly: true, secure: true, sameSite: "none", path: '/', maxAge: 30 * 24 * 60 * 60 * 1000 });
     res.json({ success: true, username: cleanUsername, avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${cleanUsername}` });
   } catch (err) {
     res.status(400).json({ error: "Email or username already exists" });
@@ -706,8 +706,8 @@ apiRouter.post("/public/auth/login", authLimiter, (req, res) => {
   // 1. First check if they are in the admins table (for staff/admin accounts)
   const admin = db.prepare("SELECT * FROM admins WHERE LOWER(username) = ? OR LOWER(email) = ?").get(identifier, identifier) as any;
   if (admin && bcrypt.compareSync(password, admin.password_hash)) {
-    const token = jwt.sign({ userId: 'admin_' + admin.username, username: admin.username, isAdmin: true, role: admin.role }, ACTUAL_SECRET, { expiresIn: "7d" });
-    res.cookie("user_token", token, { httpOnly: true, secure: true, sameSite: "none" });
+    const token = jwt.sign({ userId: 'admin_' + admin.username, username: admin.username, isAdmin: true, role: admin.role }, ACTUAL_SECRET, { expiresIn: "30d" });
+    res.cookie("user_token", token, { httpOnly: true, secure: true, sameSite: "none", path: '/', maxAge: 30 * 24 * 60 * 60 * 1000 });
     return res.json({ 
       success: true, 
       username: admin.username, 
@@ -726,8 +726,8 @@ apiRouter.post("/public/auth/login", authLimiter, (req, res) => {
   }
 
   if (user && bcrypt.compareSync(password, user.password_hash)) {
-    const token = jwt.sign({ userId: user.id, username: user.username }, ACTUAL_SECRET, { expiresIn: "7d" });
-    res.cookie("user_token", token, { httpOnly: true, secure: true, sameSite: "none" });
+    const token = jwt.sign({ userId: user.id, username: user.username }, ACTUAL_SECRET, { expiresIn: "30d" });
+    res.cookie("user_token", token, { httpOnly: true, secure: true, sameSite: "none", path: '/', maxAge: 30 * 24 * 60 * 60 * 1000 });
     res.json({ 
       success: true, 
       username: user.username, 
@@ -1221,12 +1221,13 @@ apiRouter.post("/admin/login", authLimiter, (req, res) => {
     
     if (isMatched) {
       console.log(`[Admin Login] SUCCESS | User: ${username} | IP: ${ip}`);
-      const token = jwt.sign({ username: admin.username, role: admin.role }, ACTUAL_SECRET, { expiresIn: "1d" });
+      const token = jwt.sign({ username: admin.username, role: admin.role }, ACTUAL_SECRET, { expiresIn: "30d" });
       res.cookie("admin_token", token, { 
         httpOnly: true, 
         secure: true, 
         sameSite: "none",
-        path: '/' 
+        path: '/',
+        maxAge: 30 * 24 * 60 * 60 * 1000
       });
       return res.json({ success: true, token, user: { username: admin.username, role: admin.role } });
     } else {
