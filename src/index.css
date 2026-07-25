@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Comic+Neue:wght@400;700&display=swap');
+@import url('https://cdn.jsdelivr.net/npm/db.opendyslexic@1.0.1/css/opendyslexic.css');
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;900&family=Inter:wght@300;400;600;900&family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,900;1,400&family=Bebas+Neue&family=Syne:wght@400;800&family=Plus+Jakarta+Sans:wght@300;400;600;800&family=Oswald:wght@300;400;700&family=Poppins:wght@300;400;600;800&display=swap');
 @import "tailwindcss";
 
@@ -1024,10 +1026,11 @@ button:not(.absolute) {
 
 /* 5. Dyslexic-Friendly Font Override */
 :root:not(.in-admin-view).accessibility-dyslexic body *:not(.admin-page-wrapper *):not(.admin-dashboard-container *) {
-  font-family: 'Comic Sans MS', 'Comic Sans', cursive, sans-serif !important;
-  letter-spacing: 0.05em !important;
-  word-spacing: 0.1em !important;
-  line-height: 1.6 !important;
+  font-family: 'OpenDyslexic', 'Lexend', 'Comic Neue', 'Comic Sans MS', 'Comic Sans', sans-serif !important;
+  font-style: normal !important;
+  letter-spacing: 0.06em !important;
+  word-spacing: 0.12em !important;
+  line-height: 1.65 !important;
 }
 
 /* Strict Isolation Protection for Admin Dashboard & Studio Inbox */
