@@ -25,6 +25,31 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error("Uncaught error:", error, errorInfo);
   }
 
+  private handleHardRefresh = async () => {
+    try {
+      if (window.caches) {
+        const cacheNames = await window.caches.keys();
+        await Promise.all(cacheNames.map(name => window.caches.delete(name)));
+      }
+    } catch (err) {
+      console.warn("Could not clear CacheStorage:", err);
+    }
+
+    try {
+      sessionStorage.clear();
+    } catch (err) {
+      console.warn("Could not clear SessionStorage:", err);
+    }
+
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("reload_t", Date.now().toString());
+      window.location.replace(url.toString());
+    } catch (err) {
+      window.location.reload();
+    }
+  };
+
   public render() {
     if (this.state.hasError) {
       return (
@@ -37,7 +62,7 @@ export class ErrorBoundary extends Component<Props, State> {
             An unexpected error occurred. We've been notified. Please try refreshing the page.
           </p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={this.handleHardRefresh}
             className="flex items-center space-x-2 px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/10 rounded-full transition-colors"
           >
             <RefreshCcw className="w-5 h-5" />
