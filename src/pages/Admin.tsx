@@ -35,7 +35,6 @@ import { suppressAccessibilityForAdmin, applyFrontAccessibilityOptions } from ".
 export default function Admin() {
   const [isLogged, setIsLogged] = useState(false);
   const [sessionChecking, setSessionChecking] = useState(true);
-  const [premiumLoading, setPremiumLoading] = useState(true);
   const [tabLoading, setTabLoading] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [adminUsername, setAdminUsername] = useState<string | null>(null);
@@ -425,7 +424,7 @@ export default function Admin() {
 
   useEffect(() => {
     // Avoid triggering tab loader if not logged in, or if navigating to studio or during initial load
-    if (!isLogged || location.pathname.startsWith('/admin/studio') || sessionChecking || premiumLoading) {
+    if (!isLogged || location.pathname.startsWith('/admin/studio') || sessionChecking) {
       return;
     }
 
@@ -512,8 +511,10 @@ export default function Admin() {
     window.dispatchEvent(new Event('dashboard-theme-change'));
   };
 
-  if (sessionChecking || premiumLoading) {
-    return <AppLoader onComplete={() => setPremiumLoading(false)} />;
+  if (sessionChecking) {
+    return (
+      <AppLoader size="lg" fullScreen />
+    );
   }
 
   if (!isLogged) {
@@ -539,7 +540,9 @@ export default function Admin() {
       return <Navigate to="/admin/live-tools" replace />;
     }
     return (
-      <Suspense fallback={<AppLoader onComplete={() => {}} />}>
+      <Suspense fallback={
+        <AppLoader size="lg" fullScreen />
+      }>
         <AdminStudio onLogout={handleLogout} />
       </Suspense>
     );

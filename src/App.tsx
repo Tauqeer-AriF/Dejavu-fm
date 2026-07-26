@@ -622,7 +622,9 @@ function AnimatedRoutes() {
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/admin/*" element={
-              <Suspense fallback={<AppLoader onComplete={() => {}} />}>
+              <Suspense fallback={
+                <AppLoader size="lg" fullScreen />
+              }>
                 <Admin />
               </Suspense>
             } />
@@ -639,25 +641,6 @@ function MainLayout() {
   const { showAlert } = useModal();
   const [appNameState, setAppNameState] = useState("DejavuFM"); // kept for backward compatibility if needed, but not necessary
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [isAppLoading, setIsAppLoading] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return !sessionStorage.getItem('app_loaded_session');
-    }
-    return true;
-  });
-
-  useEffect(() => {
-    // Preload the glitch logo image ASAP to guarantee it's cached when the premium loader is displayed
-    const img = new Image();
-    img.src = glitchLogoUrl;
-  }, []);
-
-  const handleLoaderComplete = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('app_loaded_session', 'true');
-    }
-    setIsAppLoading(false);
-  }, []);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const { logoUrl } = useLogo();
 
@@ -976,11 +959,7 @@ function MainLayout() {
 
   return (
     <>
-      <AnimatePresence>
-        {isAppLoading && <AppLoader onComplete={handleLoaderComplete} />}
-      </AnimatePresence>
-      
-      <div className={`min-h-screen ${location.pathname.startsWith('/admin') || isSplitActive ? '' : 'pb-40 md:pb-32'} flex flex-col relative overflow-x-hidden bg-dark-bg selection:bg-neon-purple selection:text-white transition-opacity duration-1000 ${isAppLoading ? 'opacity-0' : 'opacity-100'}`}>
+      <div className={`min-h-screen ${location.pathname.startsWith('/admin') || isSplitActive ? '' : 'pb-40 md:pb-32'} flex flex-col relative overflow-x-hidden bg-dark-bg selection:bg-neon-purple selection:text-white`}>
       {/* Premium Moving Mesh Background */}
       <div className="fixed inset-0 z-0 pointer-events-none opacity-40">
         <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-neon-purple/20 rounded-full blur-[120px] animate-[pulse_10s_ease-in-out_infinite]"></div>

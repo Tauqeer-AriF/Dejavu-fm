@@ -430,7 +430,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsInitialLoading(false);
-    }, 1200);
+    }, 300);
     return () => clearTimeout(timer);
   }, []);
 
@@ -2986,7 +2986,11 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     return sortedMessages.slice(sortedMessages.length - messageLimit);
   }, [sortedMessages, messageLimit, hasMoreMessages]);
 
-  if (isInitialLoading) return <AppLoader onComplete={() => setIsInitialLoading(false)} />;
+  if (isInitialLoading) {
+    return (
+      <AppLoader size="lg" fullScreen />
+    );
+  }
 
   return (
     <div className={`w-full h-screen max-h-screen overflow-hidden admin-dashboard-container ${studioTheme === 'light' ? 'admin-light-mode' : ''}`}>

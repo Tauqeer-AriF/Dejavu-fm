@@ -151,11 +151,11 @@ export default function FeatureDetail() {
                 <FileText className="w-3.5 h-3.5" />
                 Feature
               </span>
-              <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-widest ${
-                isLightMode ? 'bg-white/95 border-black/10 text-slate-700' : 'bg-black/50 border-white/10 text-white/70'
+              <span className={`feature-date-badge inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-widest shadow-sm ${
+                isLightMode ? 'bg-white border-slate-200 text-slate-900' : 'bg-black/75 border-white/10 text-white'
               }`}>
-                <CalendarDays className="w-3.5 h-3.5 text-neon-blue" />
-                {formatDate(post.created_at)}
+                <CalendarDays className="w-3.5 h-3.5 text-neon-blue shrink-0" />
+                <span className={isLightMode ? 'text-slate-900' : 'text-white/90'}>{formatDate(post.created_at)}</span>
               </span>
               {post.link_url && (
                 <a

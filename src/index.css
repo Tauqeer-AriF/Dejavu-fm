@@ -311,6 +311,34 @@ button:not(.absolute)::after {
   background: rgba(255, 255, 255, 0.8);
 }
 
+/* Feature date badge light mode override */
+.feature-date-badge {
+  background-color: rgba(0, 0, 0, 0.75);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+:root.light .feature-date-badge,
+.light .feature-date-badge,
+.admin-light-mode .feature-date-badge {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+:root.light .feature-date-badge span,
+.light .feature-date-badge span,
+.admin-light-mode .feature-date-badge span {
+  color: #0f172a !important;
+}
+
+:root.light .feature-date-badge svg,
+.light .feature-date-badge svg,
+.admin-light-mode .feature-date-badge svg {
+  color: var(--color-neon-blue, var(--color-neon-purple, #00d2ff)) !important;
+}
+
 button:not(.absolute) {
   position: relative;
   overflow: hidden;

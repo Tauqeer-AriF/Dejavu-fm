@@ -7,6 +7,7 @@ import { useMemo, useRef } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Navigation, Pagination } from "swiper/modules";
 import type { Swiper as SwiperType } from "swiper";
+import { useLogo } from "../hooks/useLogo";
 
 // Import Swiper styles
 import "swiper/css";
@@ -33,6 +34,7 @@ const previewText = (post: BlogPost) => {
 export function FeaturesSlider() {
   const location = useLocation();
   const swiperRef = useRef<SwiperType | null>(null);
+  const { isLightMode } = useLogo();
 
   // Fetch settings
   const { data: settings } = useQuery<any>({
@@ -65,8 +67,6 @@ export function FeaturesSlider() {
   if (!isEnabled || !matchesPage || isLoading || posts.length === 0) {
     return null;
   }
-
-  const isLightMode = document.documentElement.classList.contains("light");
 
   return (
     <motion.div
@@ -146,7 +146,9 @@ export function FeaturesSlider() {
               <SwiperSlide key={post.id} className="!h-auto flex">
                 <motion.article
                   whileHover="hover"
-                  className="group glass-panel rounded-2xl overflow-hidden hover:border-neon-purple/30 transition-all relative flex flex-col h-[400px] w-full bg-dark-bg/40 backdrop-blur-md"
+                  className={`group glass-panel rounded-2xl overflow-hidden hover:border-neon-purple/30 transition-all relative flex flex-col h-[360px] w-full ${
+                    isLightMode ? 'bg-white border-black/10 shadow-lg' : 'bg-dark-bg/40 border-white/10 backdrop-blur-md'
+                  }`}
                 >
                   {/* Sliding shine effect */}
                   <motion.div
@@ -157,42 +159,49 @@ export function FeaturesSlider() {
                   />
 
                   {/* Thumbnail */}
-                  <Link to={`/features/${post.slug}`} className="block relative aspect-[16/10] overflow-hidden shrink-0">
+                  <Link to={`/features/${post.slug}`} className="block relative aspect-[16/9] overflow-hidden shrink-0">
                     <img
                       src={post.image_url || fallbackImage}
                       alt={post.title}
                       referrerPolicy="no-referrer"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-dark-bg/90 via-dark-bg/20 to-transparent" />
-                    <div className="absolute left-4 bottom-4 flex items-center gap-2 px-2.5 py-1 rounded-full bg-black/60 border border-white/10 backdrop-blur-md">
-                      <CalendarDays className="w-3 h-3 text-neon-blue" />
-                      <span className="text-[8px] uppercase tracking-widest font-black text-white/70">
+                    <div className={`absolute inset-0 bg-gradient-to-t ${
+                      isLightMode ? 'from-white/90 via-transparent' : 'from-dark-bg/90 via-dark-bg/20 to-transparent'
+                    }`} />
+                    <div className={`feature-date-badge absolute left-4 bottom-3 flex items-center gap-2 px-2.5 py-1 rounded-full border shadow-md backdrop-blur-md ${
+                      isLightMode ? 'bg-white border-slate-200 text-slate-900' : 'bg-black/75 border-white/10 text-white'
+                    }`}>
+                      <CalendarDays className="w-3 h-3 text-neon-blue shrink-0" />
+                      <span className={`text-[8px] uppercase tracking-widest font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
                         {formatDate(post.created_at)}
                       </span>
                     </div>
                   </Link>
 
                   {/* Content */}
-                  <div className="p-5 flex flex-col gap-3 flex-1 min-h-0">
-                    <Link to={`/features/${post.slug}`} className="block space-y-2 flex-1 min-h-0">
+                  <div className="p-4 flex flex-col justify-between flex-1 min-h-0">
+                    <Link to={`/features/${post.slug}`} className="block space-y-1.5 overflow-hidden">
                       <div className="flex items-center gap-1.5 text-neon-purple">
                         <FileText className="w-3.5 h-3.5" />
                         <span className="text-[8px] font-black uppercase tracking-[0.2em]">Feature Post</span>
                       </div>
-                      <h3 className="text-lg font-display font-black tracking-tight leading-snug group-hover:text-neon-blue transition-colors line-clamp-2 uppercase">
+                      <h3 className={`text-sm sm:text-base font-display font-black tracking-tight leading-snug group-hover:text-neon-blue transition-colors line-clamp-2 uppercase overflow-hidden ${
+                        isLightMode ? 'text-slate-900' : 'text-white'
+                      }`}>
                         {post.title}
                       </h3>
-                      <p className="text-xs text-white/50 leading-relaxed line-clamp-2">
-                        {previewText(post)}
-                      </p>
                     </Link>
 
                     {/* Bottom row actions */}
-                    <div className="flex items-center justify-between pt-3 border-t border-white/5 mt-auto z-10 relative">
+                    <div className={`flex items-center justify-between pt-2.5 border-t mt-auto z-10 relative ${
+                      isLightMode ? 'border-black/10' : 'border-white/5'
+                    }`}>
                       <Link
                         to={`/features/${post.slug}`}
-                        className="text-[8px] uppercase tracking-[0.2em] font-black text-white/40 group-hover:text-white transition-colors"
+                        className={`text-[8px] uppercase tracking-[0.2em] font-black group-hover:text-neon-blue transition-colors ${
+                          isLightMode ? 'text-slate-400' : 'text-white/40'
+                        }`}
                       >
                         Read article
                       </Link>

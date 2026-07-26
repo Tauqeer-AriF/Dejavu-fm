@@ -144,11 +144,11 @@ export default function Features() {
                   <div className={`absolute inset-0 bg-gradient-to-t ${
                     isLightMode ? 'from-white/90 via-transparent' : 'from-black/90 via-transparent'
                   }`} />
-                  <div className={`absolute left-5 bottom-5 flex items-center gap-2 px-3 py-1.5 rounded-full border backdrop-blur-md ${
-                    isLightMode ? 'bg-white/90 border-black/10 text-slate-700' : 'bg-black/60 border-white/10 text-white/70'
+                  <div className={`feature-date-badge absolute left-5 bottom-5 flex items-center gap-2 px-3 py-1.5 rounded-full border shadow-md backdrop-blur-md ${
+                    isLightMode ? 'bg-white border-slate-200 text-slate-900' : 'bg-black/75 border-white/10 text-white'
                   }`}>
-                    <CalendarDays className="w-3.5 h-3.5 text-neon-blue" />
-                    <span className="text-[9px] uppercase tracking-widest font-black">{formatDate(post.created_at)}</span>
+                    <CalendarDays className="w-3.5 h-3.5 text-neon-blue shrink-0" />
+                    <span className={`text-[9px] uppercase tracking-widest font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{formatDate(post.created_at)}</span>
                   </div>
                 </div>
               </Link>
