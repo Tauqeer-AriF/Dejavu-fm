@@ -114,15 +114,17 @@ export default function PodcastsPage() {
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`text-5xl md:text-8xl font-black font-display uppercase tracking-tighter leading-tight relative ${isLightMode ? 'text-black' : 'text-white'}`}
+            className={`text-4xl sm:text-6xl md:text-8xl font-black font-display uppercase tracking-tighter leading-none relative z-10 drop-shadow-2xl ${isLightMode ? 'text-slate-900' : 'text-white'}`}
           >
-            Catchup & <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple via-neon-blue to-neon-purple bg-[length:200%_auto] animate-[gradient_4s_linear_infinite]">Archive</span>
+            Catchup & <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue">Archive</span>
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className={`mt-6 text-lg md:text-xl max-w-2xl font-light border-l-2 border-neon-purple/30 pl-6 ${isLightMode ? 'text-black/50' : 'text-white/50'}`}
+            className={`mt-6 text-base md:text-lg font-light tracking-wide border-l-2 pl-6 transition-colors ${
+              isLightMode ? 'border-neon-purple/50 text-slate-500' : 'border-neon-purple/30 text-white/50'
+            }`}
           >
             Missed a show? Dive into our massive archive of exclusive sessions and underground broadcasts.
           </motion.p>

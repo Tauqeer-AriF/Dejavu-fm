@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { ArrowLeft, CalendarDays, FileText, ExternalLink } from "lucide-react";
+import { useLogo } from "../hooks/useLogo";
 
 
 const fallbackImage = "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&q=80&w=1400";
@@ -81,6 +82,7 @@ const renderParagraphWithLinks = (text: string) => {
 
 export default function FeatureDetail() {
   const { slug } = useParams();
+  const { isLightMode } = useLogo();
 
   const { data: post, isLoading, isError } = useQuery<BlogPost>({
     queryKey: ["feature", slug],
@@ -96,12 +98,12 @@ export default function FeatureDetail() {
   if (isLoading) {
     return (
       <div className="py-12 space-y-8">
-        <div className="h-10 w-36 bg-white/5 rounded-xl animate-pulse" />
-        <div className="aspect-[16/7] bg-white/5 rounded-3xl animate-pulse" />
+        <div className={`h-10 w-36 rounded-xl animate-pulse ${isLightMode ? 'bg-black/5' : 'bg-white/5'}`} />
+        <div className={`aspect-[16/7] rounded-3xl animate-pulse ${isLightMode ? 'bg-black/5' : 'bg-white/5'}`} />
         <div className="max-w-3xl mx-auto space-y-4">
-          <div className="h-12 w-full bg-white/5 rounded-xl animate-pulse" />
-          <div className="h-4 w-full bg-white/5 rounded animate-pulse" />
-          <div className="h-4 w-4/5 bg-white/5 rounded animate-pulse" />
+          <div className={`h-12 w-full rounded-xl animate-pulse ${isLightMode ? 'bg-black/5' : 'bg-white/5'}`} />
+          <div className={`h-4 w-full rounded animate-pulse ${isLightMode ? 'bg-black/5' : 'bg-white/5'}`} />
+          <div className={`h-4 w-4/5 rounded animate-pulse ${isLightMode ? 'bg-black/5' : 'bg-white/5'}`} />
         </div>
       </div>
     );
@@ -110,9 +112,11 @@ export default function FeatureDetail() {
   if (isError || !post) {
     return (
       <div className="py-24 text-center space-y-6">
-        <FileText className="w-14 h-14 text-white/10 mx-auto" />
-        <h1 className="text-3xl font-display font-black uppercase">Post not found</h1>
-        <Link to="/features" className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white text-dark-bg text-[10px] font-black uppercase tracking-widest">
+        <FileText className={`w-14 h-14 mx-auto ${isLightMode ? 'text-slate-300' : 'text-white/10'}`} />
+        <h1 className={`text-3xl font-display font-black uppercase ${isLightMode ? 'text-slate-900' : 'text-white'}`}>Post not found</h1>
+        <Link to="/features" className={`inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest ${
+          isLightMode ? 'bg-slate-900 text-white' : 'bg-white text-dark-bg'
+        }`}>
           <ArrowLeft className="w-4 h-4" />
           Back to Features
         </Link>
@@ -126,22 +130,30 @@ export default function FeatureDetail() {
       animate={{ opacity: 1 }}
       className="py-10 md:py-14 space-y-10"
     >
-      <Link to="/features" className="inline-flex items-center gap-2 text-white/40 hover:text-white transition-colors text-[10px] font-black uppercase tracking-[0.25em]">
+      <Link to="/features" className={`inline-flex items-center gap-2 transition-colors text-[10px] font-black uppercase tracking-[0.25em] ${
+        isLightMode ? 'text-slate-400 hover:text-slate-900' : 'text-white/40 hover:text-white'
+      }`}>
         <ArrowLeft className="w-4 h-4" />
         Back to Features
       </Link>
 
       <header className="space-y-8">
-        <div className="relative overflow-hidden rounded-3xl border border-white/10 min-h-[360px] md:min-h-[520px]">
+        <div className={`relative overflow-hidden rounded-3xl border min-h-[360px] md:min-h-[520px] ${
+          isLightMode ? 'border-black/10' : 'border-white/10'
+        }`}>
           <img src={post.image_url || fallbackImage} alt={post.title} className="absolute inset-0 w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-dark-bg via-dark-bg/35 to-dark-bg/10" />
+          <div className={`absolute inset-0 bg-gradient-to-t ${
+            isLightMode ? 'from-white via-white/35 to-transparent' : 'from-dark-bg via-dark-bg/35 to-transparent'
+          }`} />
           <div className="absolute inset-x-0 bottom-0 p-6 md:p-12 lg:p-16 space-y-6">
             <div className="flex flex-wrap items-center gap-3">
               <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-neon-purple/20 border border-neon-purple/30 text-neon-purple text-[10px] font-black uppercase tracking-widest">
                 <FileText className="w-3.5 h-3.5" />
                 Feature
               </span>
-              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/50 border border-white/10 text-white/70 text-[10px] font-black uppercase tracking-widest">
+              <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-widest ${
+                isLightMode ? 'bg-white/95 border-black/10 text-slate-700' : 'bg-black/50 border-white/10 text-white/70'
+              }`}>
                 <CalendarDays className="w-3.5 h-3.5 text-neon-blue" />
                 {formatDate(post.created_at)}
               </span>
@@ -157,11 +169,15 @@ export default function FeatureDetail() {
                 </a>
               )}
             </div>
-            <h1 className="text-4xl md:text-7xl lg:text-8xl font-display font-black uppercase tracking-tighter leading-none max-w-5xl">
+            <h1 className={`text-4xl md:text-7xl lg:text-8xl font-display font-black uppercase tracking-tighter leading-none max-w-5xl ${
+              isLightMode ? 'text-slate-900' : 'text-white'
+            }`}>
               {post.title}
             </h1>
             {post.excerpt && (
-              <p className="text-base md:text-xl text-white/65 max-w-3xl leading-relaxed border-l-2 border-neon-blue/40 pl-5">
+              <p className={`text-base md:text-xl max-w-3xl leading-relaxed border-l-2 border-neon-blue/40 pl-5 ${
+                isLightMode ? 'text-slate-600' : 'text-white/65'
+              }`}>
                 {post.excerpt}
               </p>
             )}
@@ -170,15 +186,23 @@ export default function FeatureDetail() {
       </header>
 
       <div className="max-w-3xl mx-auto px-2">
-        <div className="glass-panel rounded-2xl p-6 md:p-10">
-          <div className="space-y-8 text-base md:text-lg leading-8 text-white/75 font-light">
+        <div className={`glass-panel rounded-2xl p-6 md:p-10 transition-colors ${
+          isLightMode ? 'bg-white border-black/10' : 'border-white/5 bg-black/40'
+        }`}>
+          <div className={`space-y-8 text-base md:text-lg leading-8 font-light ${
+            isLightMode ? 'text-slate-700' : 'text-white/75'
+          }`}>
             {parseContent(post.content).map((part, index) => {
               if (part.type === "image") {
                 return (
-                  <figure key={`${part.url}-${index}`} className="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+                  <figure key={`${part.url}-${index}`} className={`overflow-hidden rounded-2xl border ${
+                    isLightMode ? 'border-black/10 bg-black/5' : 'border-white/10 bg-white/5'
+                  }`}>
                     <img src={part.url} alt={part.caption} className="w-full max-h-[520px] object-cover" />
                     {part.caption && (
-                      <figcaption className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white/35">
+                      <figcaption className={`px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] ${
+                        isLightMode ? 'text-slate-400' : 'text-white/35'
+                      }`}>
                         {part.caption}
                       </figcaption>
                     )}

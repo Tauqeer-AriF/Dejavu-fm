@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { CalendarDays, FileText, Search, X, ExternalLink } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useLogo } from "../hooks/useLogo";
 
 
 const fallbackImage = "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&q=80&w=1200";
@@ -25,6 +26,7 @@ const previewText = (post: BlogPost) => {
 
 export default function Features() {
   const [query, setQuery] = useState("");
+  const { isLightMode } = useLogo();
 
   const { data: posts = [], isLoading } = useQuery<BlogPost[]>({
     queryKey: ["features"],
@@ -67,9 +69,9 @@ export default function Features() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="space-y-14 py-12"
+      className="space-y-16 py-12"
     >
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 px-4">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 px-4 mb-16">
         <div className="relative max-w-3xl">
           <motion.div
             initial={{ opacity: 0 }}
@@ -78,10 +80,14 @@ export default function Features() {
           >
             Features
           </motion.div>
-          <h1 className="relative text-5xl md:text-8xl font-display font-black uppercase tracking-tighter leading-none">
+          <h1 className={`relative text-4xl sm:text-6xl md:text-8xl font-display font-black uppercase tracking-tighter leading-none z-10 ${
+            isLightMode ? 'text-slate-900' : 'text-white'
+          }`}>
             Station <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue">Features</span>
           </h1>
-          <p className="relative mt-6 text-white/50 text-lg max-w-2xl border-l-2 border-neon-purple/30 pl-6">
+          <p className={`relative mt-6 text-base md:text-lg font-light tracking-wide border-l-2 pl-6 transition-colors ${
+            isLightMode ? 'border-neon-purple/50 text-slate-500' : 'border-neon-purple/30 text-white/50'
+          }`}>
             Stories, updates, artist notes, and culture from the DejavuFM universe.
           </p>
         </div>
@@ -92,14 +98,18 @@ export default function Features() {
             value={query}
             onChange={event => setQuery(event.target.value)}
             placeholder="Search features..."
-            className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-12 text-sm focus:outline-none focus:border-neon-purple/50 focus:bg-white/10 transition-all font-medium"
+            className={`w-full border rounded-2xl py-3.5 pl-12 pr-12 text-sm focus:outline-none focus:border-neon-purple/50 transition-all font-medium ${
+              isLightMode ? 'bg-black/5 border-black/10 focus:bg-white text-slate-900' : 'bg-white/5 border-white/10 focus:bg-white/10 text-white'
+            }`}
           />
           {query && (
             <button
               onClick={() => setQuery("")}
-              className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded-full transition-all"
+              className={`absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full transition-all ${
+                isLightMode ? 'hover:bg-black/10 text-slate-500' : 'hover:bg-white/10 text-white/50'
+              }`}
             >
-              <X className="w-3.5 h-3.5 text-white/50" />
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
@@ -114,7 +124,9 @@ export default function Features() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05, duration: 0.5 }}
               whileHover="hover"
-              className="group glass-panel rounded-2xl overflow-hidden hover:border-neon-purple/30 transition-all relative flex flex-col h-full"
+              className={`group glass-panel rounded-2xl overflow-hidden hover:border-neon-purple/30 transition-all relative flex flex-col h-full ${
+                isLightMode ? 'bg-white border-black/10' : 'border-white/10 bg-[#0A0A0A]/80 backdrop-blur-xl'
+              }`}
             >
               <motion.div
                 className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 z-30"
@@ -129,10 +141,14 @@ export default function Features() {
                     alt={post.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-dark-bg/90 via-dark-bg/20 to-transparent" />
-                  <div className="absolute left-5 bottom-5 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 border border-white/10 backdrop-blur-md">
+                  <div className={`absolute inset-0 bg-gradient-to-t ${
+                    isLightMode ? 'from-white/90 via-transparent' : 'from-black/90 via-transparent'
+                  }`} />
+                  <div className={`absolute left-5 bottom-5 flex items-center gap-2 px-3 py-1.5 rounded-full border backdrop-blur-md ${
+                    isLightMode ? 'bg-white/90 border-black/10 text-slate-700' : 'bg-black/60 border-white/10 text-white/70'
+                  }`}>
                     <CalendarDays className="w-3.5 h-3.5 text-neon-blue" />
-                    <span className="text-[9px] uppercase tracking-widest font-black text-white/70">{formatDate(post.created_at)}</span>
+                    <span className="text-[9px] uppercase tracking-widest font-black">{formatDate(post.created_at)}</span>
                   </div>
                 </div>
               </Link>
@@ -143,16 +159,24 @@ export default function Features() {
                     <FileText className="w-4 h-4" />
                     <span className="text-[10px] font-black uppercase tracking-[0.25em]">Feature Post</span>
                   </div>
-                  <h2 className="text-2xl font-display font-black tracking-tight leading-tight group-hover:text-neon-blue transition-colors">
+                  <h2 className={`text-2xl font-display font-black tracking-tight leading-tight group-hover:text-neon-blue transition-colors ${
+                    isLightMode ? 'text-slate-900' : 'text-white'
+                  }`}>
                     {post.title}
                   </h2>
-                  <p className="text-sm text-white/55 leading-relaxed line-clamp-3">
+                  <p className={`text-sm leading-relaxed line-clamp-3 transition-colors ${
+                    isLightMode ? 'text-slate-500' : 'text-white/55'
+                  }`}>
                     {previewText(post)}
                   </p>
                 </Link>
                 
-                <div className="flex items-center justify-between pt-2 border-t border-white/5 mt-auto z-10 relative">
-                  <Link to={`/features/${post.slug}`} className="text-[10px] uppercase tracking-[0.25em] font-black text-white/40 group-hover:text-white transition-colors">
+                <div className={`flex items-center justify-between pt-4 border-t mt-auto z-10 relative ${
+                  isLightMode ? 'border-black/5' : 'border-white/5'
+                }`}>
+                  <Link to={`/features/${post.slug}`} className={`text-[10px] uppercase tracking-[0.25em] font-black group-hover:text-neon-blue transition-colors ${
+                    isLightMode ? 'text-slate-400' : 'text-white/40'
+                  }`}>
                     Read article
                   </Link>
                   {post.link_url && (
@@ -172,9 +196,11 @@ export default function Features() {
           ))}
         </div>
       ) : (
-        <div className="mx-4 py-20 text-center glass-panel rounded-2xl border-dashed flex flex-col items-center justify-center gap-4">
-          <FileText className="w-12 h-12 text-white/10" />
-          <p className="text-white/40 uppercase font-black tracking-widest text-xs">
+        <div className={`mx-4 py-20 text-center glass-panel rounded-2xl border-dashed flex flex-col items-center justify-center gap-4 ${
+          isLightMode ? 'bg-white border-black/10' : 'border-white/10 bg-black/40'
+        }`}>
+          <FileText className={`w-12 h-12 ${isLightMode ? 'text-slate-300' : 'text-white/10'}`} />
+          <p className={`uppercase font-black tracking-widest text-xs ${isLightMode ? 'text-slate-400' : 'text-white/40'}`}>
             {query ? `No posts found for "${query}"` : "No features published yet"}
           </p>
         </div>

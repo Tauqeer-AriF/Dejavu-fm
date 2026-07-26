@@ -157,12 +157,14 @@ export default function Schedule() {
       className="space-y-10 pb-20 mt-8"
     >
       {/* Header section */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-6">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-6 px-4">
         <div className="text-center lg:text-left">
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-4xl sm:text-5xl md:text-7xl font-black font-display uppercase tracking-[-0.02em] glow-text"
+            className={`text-4xl sm:text-6xl md:text-8xl font-black font-display uppercase tracking-tighter leading-none relative z-10 drop-shadow-2xl ${
+              isLightMode ? 'text-slate-900' : 'text-white'
+            }`}
           >
             Weekly <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue">Schedule</span>
           </motion.h1>
@@ -170,7 +172,9 @@ export default function Schedule() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="text-white/50 mt-4 text-lg max-w-xl font-light mx-auto lg:mx-0"
+            className={`mt-6 text-base md:text-lg font-light tracking-wide border-l-2 pl-6 transition-colors text-left max-w-xl mx-auto lg:mx-0 ${
+              isLightMode ? 'border-neon-purple/50 text-slate-500' : 'border-neon-purple/30 text-white/50'
+            }`}
           >
             Browse scheduled live broadcasts easily. Find your favorite DJs and never miss a beat.
           </motion.p>

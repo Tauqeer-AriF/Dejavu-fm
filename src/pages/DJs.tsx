@@ -27,7 +27,11 @@ function DjCard({ dj, index, resolveDjImage, logoUrl, isLightMode, settings }: {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       whileHover="hover"
-      className="group relative overflow-hidden rounded-[2.5rem] bg-[#0A0A0A]/80 backdrop-blur-xl border border-white/5 hover:border-neon-blue/30 transition-all duration-700 shadow-2xl hover:shadow-neon-blue/10"
+      className={`group relative overflow-hidden rounded-[2.5rem] transition-all duration-700 shadow-2xl ${
+        isLightMode 
+          ? 'bg-white border-black/10 hover:border-neon-blue/30 hover:shadow-neon-blue/5' 
+          : 'bg-[#0A0A0A]/80 border-white/5 hover:border-neon-blue/30 hover:shadow-neon-blue/10 backdrop-blur-xl'
+      }`}
     >
       <motion.div
         className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 z-30"
@@ -50,34 +54,48 @@ function DjCard({ dj, index, resolveDjImage, logoUrl, isLightMode, settings }: {
         
         <Link to={`/djs/${dj.id}`} className="absolute inset-0 z-20"></Link>
         {/* Overlay with details */}
-        <div className="absolute inset-0 bg-gradient-to-t from-dark-bg via-dark-bg/20 to-transparent opacity-90 group-hover:opacity-100 transition-opacity duration-500"></div>
+        <div className={`absolute inset-0 bg-gradient-to-t via-transparent to-transparent opacity-90 group-hover:opacity-100 transition-opacity duration-500 ${
+          isLightMode ? 'from-white' : 'from-dark-bg'
+        }`}></div>
         
         <div className="absolute inset-x-0 bottom-0 p-6 md:p-10 space-y-4 md:space-y-6 translate-y-4 group-hover:translate-y-0 transition-transform duration-500 z-40">
           <div className="space-y-3">
             <Link to={`/djs/${dj.id}`}>
-              <h3 className="text-4xl md:text-5xl font-display font-black uppercase tracking-tighter leading-[0.9] group-hover:text-neon-blue transition-colors duration-500">
+              <h3 className={`text-4xl md:text-5xl font-display font-black uppercase tracking-tighter leading-[0.9] group-hover:text-neon-blue transition-colors duration-500 ${
+                isLightMode ? 'text-slate-900' : 'text-white'
+              }`}>
                 {dj.name}
               </h3>
             </Link>
             <div className="flex space-x-2">
-              <span className="px-3 py-1 rounded-full bg-neon-purple/20 text-neon-purple text-[10px] font-black uppercase tracking-widest border border-neon-purple/20">Resident</span>
-              <span className="px-3 py-1 rounded-full bg-white/5 text-white/30 text-[10px] font-black uppercase tracking-widest border border-white/5">Underground</span>
+              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-colors ${
+                isLightMode ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-neon-purple/20 text-neon-purple border-neon-purple/20'
+              }`}>Resident</span>
+              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-colors ${
+                isLightMode ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-white/5 text-white/30 border-white/5'
+              }`}>Underground</span>
             </div>
           </div>
 
-          <p className="text-white/60 text-sm leading-relaxed line-clamp-3 font-light">
+          <p className={`text-sm leading-relaxed line-clamp-3 font-light ${
+            isLightMode ? 'text-slate-500' : 'text-white/60'
+          }`}>
             {dj.bio || "Crafting sonic journeys through the deepest layers of electronica and bass culture."}
           </p>
 
           <div className="flex items-center space-x-4">
             <div className="flex-1 flex space-x-3">
               {dj.instagram && (
-                <a href={`https://instagram.com/${dj.instagram}`} target="_blank" rel="noopener noreferrer" className="w-10 h-10 flex items-center justify-center bg-white/10 rounded-2xl hover:bg-neon-purple hover:text-white transition-all duration-300">
+                <a href={`https://instagram.com/${dj.instagram}`} target="_blank" rel="noopener noreferrer" className={`w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-neon-purple hover:text-white transition-all duration-300 ${
+                  isLightMode ? 'bg-slate-100 text-slate-500 hover:shadow-lg' : 'bg-white/10 text-white/70'
+                }`}>
                   <Instagram className="w-5 h-5" />
                 </a>
               )}
               {dj.soundcloud && (
-                <a href={`https://soundcloud.com/${dj.soundcloud}`} target="_blank" rel="noopener noreferrer" className="w-10 h-10 flex items-center justify-center bg-white/10 rounded-2xl hover:bg-neon-blue hover:text-white transition-all duration-300">
+                <a href={`https://soundcloud.com/${dj.soundcloud}`} target="_blank" rel="noopener noreferrer" className={`w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-neon-blue hover:text-white transition-all duration-300 ${
+                  isLightMode ? 'bg-slate-100 text-slate-500 hover:shadow-lg' : 'bg-white/10 text-white/70'
+                }`}>
                   <Music className="w-5 h-5" />
                 </a>
               )}
@@ -85,7 +103,9 @@ function DjCard({ dj, index, resolveDjImage, logoUrl, isLightMode, settings }: {
             
             <Link 
               to={`/podcasts?s=${encodeURIComponent(dj.name)}`}
-              className="px-6 py-3 rounded-2xl bg-white text-dark-bg text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-neon-purple hover:text-white transition-all duration-300"
+              className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-neon-purple hover:text-white transition-all duration-300 ${
+                isLightMode ? 'bg-slate-900 text-white' : 'bg-white text-dark-bg'
+              }`}
             >
               Sessions
             </Link>
@@ -173,10 +193,14 @@ export default function DJs() {
         >
           Residents
         </motion.div>
-        <h1 className="text-4xl sm:text-6xl md:text-8xl font-display font-black uppercase tracking-tighter relative z-10 drop-shadow-2xl">
+        <h1 className={`text-4xl sm:text-6xl md:text-8xl font-display font-black uppercase tracking-tighter relative z-10 drop-shadow-2xl ${
+          isLightMode ? 'text-slate-900' : 'text-white'
+        }`}>
           The <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue">Residents</span>
         </h1>
-        <p className="text-white/50 text-sm md:text-xl font-light tracking-wide relative z-10 max-w-2xl mx-auto border-t border-white/5 pt-8">
+        <p className={`text-base md:text-lg font-light tracking-wide relative z-10 max-w-2xl mx-auto border-t pt-8 transition-colors ${
+          isLightMode ? 'border-black/5 text-slate-500' : 'border-white/5 text-white/50'
+        }`}>
           The heartbeat of {appName}. Meet the masters of the underground bringing you the finest global soundscapes 24/7.
         </p>
       </div>
