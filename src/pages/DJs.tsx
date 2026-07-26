@@ -59,7 +59,7 @@ function DjCard({ dj, index, resolveDjImage, logoUrl, isLightMode, settings }: {
         }`}></div>
         
         <div className="absolute inset-x-0 bottom-0 p-6 md:p-10 space-y-4 md:space-y-6 translate-y-4 group-hover:translate-y-0 transition-transform duration-500 z-40">
-          <div className="space-y-3">
+          <div className="space-y-1.5">
             <Link to={`/djs/${dj.id}`}>
               <h3 className={`text-4xl md:text-5xl font-display font-black uppercase tracking-tighter leading-[0.9] group-hover:text-neon-blue transition-colors duration-500 ${
                 isLightMode ? 'text-slate-900' : 'text-white'
@@ -67,7 +67,7 @@ function DjCard({ dj, index, resolveDjImage, logoUrl, isLightMode, settings }: {
                 {dj.name}
               </h3>
             </Link>
-            <div className="flex space-x-2">
+            <div className="flex space-x-2" style={{ marginTop: '5px' }}>
               <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-colors ${
                 isLightMode ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-neon-purple/20 text-neon-purple border-neon-purple/20'
               }`}>Resident</span>
