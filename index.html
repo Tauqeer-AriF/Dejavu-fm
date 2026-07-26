@@ -17,7 +17,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/pwa-192x192.png" />
     <link rel="apple-touch-icon" sizes="167x167" href="/pwa-192x192.png" />
     <meta name="msapplication-TileImage" content="/favicon.jpg" />
-    <meta name="theme-color" content="#B026FF" />
+    <meta name="theme-color" id="theme-color-meta" content="#0a0a0f" />
     <script>
       const savedTheme = localStorage.getItem('theme');
       const defaultThemeFallback = localStorage.getItem('default_theme_fallback');
@@ -28,6 +28,16 @@
         document.documentElement.style.backgroundColor = '#f8f9fa';
       } else {
         document.documentElement.style.backgroundColor = '#0a0a0f';
+      }
+
+      // Synchronize dynamic branding primary color for browser header / theme-color meta tag
+      const savedPrimaryColor = localStorage.getItem('branding_primary_color');
+      if (savedPrimaryColor) {
+        document.documentElement.style.setProperty('--color-neon-purple', savedPrimaryColor);
+        const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+        if (metaThemeColor) {
+          metaThemeColor.setAttribute('content', savedPrimaryColor);
+        }
       }
     </script>
     <style>
