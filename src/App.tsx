@@ -29,6 +29,12 @@ import { ShareModal } from './components/ShareModal';
 import { PremiumRingLoader } from './components/PremiumRingLoader';
 import { suppressAccessibilityForAdmin, applyFrontAccessibilityOptions } from './utils/accessibility';
 
+const TikTokIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 1 1-5.2-1.74 2.89 2.89 0 0 1 2.31-2.83V7.62a6.34 6.34 0 0 0-5.83 6.3 6.34 6.34 0 0 0 9.17 5.61A6.33 6.33 0 0 0 15.82 14V8.42a8.31 8.31 0 0 0 4.77 1.52V6.49a4.85 4.85 0 0 1-1-.2z" />
+  </svg>
+);
+
 // Pages
 import Home from './pages/Home';
 const Schedule = lazy(() => import('./pages/Schedule'));
@@ -1041,7 +1047,12 @@ function MainLayout() {
                   <Music className="w-4 h-4" />
                 </a>
               )}
-              {!settings?.social_instagram && !settings?.social_twitter && !settings?.social_facebook && !settings?.social_youtube && !settings?.social_soundcloud && !settings?.social_mixcloud && (
+              {settings?.social_tiktok && (
+                <a href={settings.social_tiktok} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="TikTok">
+                  <TikTokIcon className="w-4 h-4" />
+                </a>
+              )}
+              {!settings?.social_instagram && !settings?.social_twitter && !settings?.social_facebook && !settings?.social_youtube && !settings?.social_soundcloud && !settings?.social_mixcloud && !settings?.social_tiktok && (
                 <span className="text-[10px] uppercase tracking-[0.2em] opacity-40">Social profiles not configured</span>
               )}
             </div>
