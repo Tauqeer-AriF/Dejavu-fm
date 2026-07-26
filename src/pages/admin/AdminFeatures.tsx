@@ -1,12 +1,13 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useNavigate, Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
-import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles, Link2 as LinkIcon } from "lucide-react";
+import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles, Link2 as LinkIcon, ChevronDown, ChevronUp } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { useModal } from "../../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
 import { fetchAdmin } from "./adminApi";
 import { ImageUploadField } from "./ImageUploadField";
+import { useLogo } from "../../hooks/useLogo";
 
 const AVAILABLE_PAGES = [
   { path: "/", label: "Home / Listen" },
@@ -19,6 +20,7 @@ const AVAILABLE_PAGES = [
 ];
 
 export function AdminFeatures() {
+  const { isLightMode } = useLogo();
   const queryClient = useQueryClient();
   const [features, setFeatures] = useState<any[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -29,6 +31,7 @@ export function AdminFeatures() {
   const [sliderEnabled, setSliderEnabled] = useState(false);
   const [sliderPages, setSliderPages] = useState<string[]>([]);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [isSliderConfigExpanded, setIsSliderConfigExpanded] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -105,15 +108,15 @@ export function AdminFeatures() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-white/10 pb-6">
+      <div className={`flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b pb-6 transition-colors ${isLightMode ? 'border-black/10' : 'border-white/10'}`}>
         <div>
-          <h3 className="text-3xl md:text-4xl font-display font-black uppercase tracking-tighter">
+          <h3 className={`text-3xl md:text-4xl font-display font-black uppercase tracking-tighter ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
             Features <span className="text-neon-purple">Desk</span>
           </h3>
-          <p className="text-white/40 text-xs mt-2 uppercase tracking-[0.2em] font-black">Write, publish, and maintain station features</p>
+          <p className={`text-xs mt-2 uppercase tracking-[0.2em] font-black transition-colors ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>Write, publish, and maintain station features</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 px-4 py-2.5 bg-neon-purple/10 border border-neon-purple/20 rounded-xl w-fit">
+          <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl w-fit border transition-colors ${isLightMode ? 'bg-neon-purple/5 border-neon-purple/20' : 'bg-neon-purple/10 border-neon-purple/20'}`}>
             <FileText className="w-4 h-4 text-neon-purple" />
             <span className="text-[10px] font-black uppercase tracking-widest text-neon-purple">{features.length} Posts</span>
           </div>
@@ -128,92 +131,141 @@ export function AdminFeatures() {
       </div>
 
       {/* Features Slider Settings Card */}
-      <div className="bg-dark-bg/40 border border-white/10 rounded-2xl p-6 space-y-6 relative overflow-hidden backdrop-blur-md">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
+      <div className={`border rounded-2xl p-6 relative overflow-hidden transition-all duration-300 ${
+        isSliderConfigExpanded ? "space-y-6" : "space-y-0"
+      } ${isLightMode ? 'bg-white border-black/10 shadow-sm' : 'bg-dark-bg/40 border-white/10 backdrop-blur-md'}`}>
+        <div 
+          onClick={() => setIsSliderConfigExpanded(!isSliderConfigExpanded)}
+          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors cursor-pointer select-none group ${
+            isSliderConfigExpanded ? "border-b pb-4" : ""
+          } ${isLightMode ? 'border-black/5' : 'border-white/5'}`}
+        >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-neon-purple/10 flex items-center justify-center border border-neon-purple/20">
-              <Settings className="w-5 h-5 text-neon-purple" />
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors ${
+              isSliderConfigExpanded 
+                ? 'bg-neon-purple/10 border-neon-purple/30' 
+                : (isLightMode ? 'bg-neon-purple/5 border-neon-purple/10' : 'bg-neon-purple/10 border-neon-purple/20')
+            }`}>
+              <Settings className={`w-5 h-5 text-neon-purple transition-transform duration-500 ${isSliderConfigExpanded ? 'rotate-90' : ''}`} />
             </div>
             <div>
-              <h4 className="text-sm font-black uppercase tracking-widest text-white">Slider Configuration</h4>
-              <p className="text-white/40 text-[10px] uppercase tracking-wider mt-0.5">Showcase features in a premium 3-column carousel on selected pages</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Enable Toggle */}
-          <div className="space-y-4">
-            <label className="block text-xs font-black uppercase tracking-[0.2em] text-white/50">Slider Status</label>
-            <div className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-xl hover:border-neon-purple/30 transition-all">
-              <input
-                id="slider-enabled"
-                type="checkbox"
-                checked={sliderEnabled}
-                onChange={(e) => setSliderEnabled(e.target.checked)}
-                className="w-4 h-4 rounded border-white/10 bg-dark-bg text-neon-purple focus:ring-neon-purple cursor-pointer"
-              />
-              <label htmlFor="slider-enabled" className="text-xs font-black uppercase tracking-wider text-white/80 cursor-pointer select-none">
-                Enable 3-Column Features Slider
-              </label>
+              <h4 className={`text-sm font-black uppercase tracking-widest transition-colors group-hover:text-neon-purple ${isLightMode ? 'text-slate-900' : 'text-white'}`}>Slider Configuration</h4>
+              <p className={`text-[10px] uppercase tracking-wider mt-0.5 transition-colors ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>Showcase features in a premium 3-column carousel on selected pages</p>
             </div>
           </div>
 
-          {/* Page Target Checklist */}
-          <div className="space-y-4">
-            <label className="block text-xs font-black uppercase tracking-[0.2em] text-white/50">Display Pages</label>
-            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-2 ${!sliderEnabled ? "opacity-40 pointer-events-none" : ""}`}>
-              {AVAILABLE_PAGES.map((page) => {
-                const isChecked = sliderPages.includes(page.path);
-                return (
-                  <label
-                    key={page.path}
-                    className={`flex items-center gap-2.5 p-3 rounded-xl border text-[10px] font-black uppercase tracking-wider cursor-pointer transition-all ${
-                      isChecked
-                        ? "bg-neon-purple/10 border-neon-purple/30 text-neon-purple"
-                        : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:border-white/20"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      disabled={!sliderEnabled}
-                      onChange={() => {
-                        if (isChecked) {
-                          setSliderPages(sliderPages.filter((p) => p !== page.path));
-                        } else {
-                          setSliderPages([...sliderPages, page.path]);
-                        }
-                      }}
-                      className="w-3.5 h-3.5 rounded border-white/10 bg-dark-bg text-neon-purple focus:ring-neon-purple cursor-pointer"
-                    />
-                    {page.label}
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex justify-end pt-2">
           <button
-            onClick={handleSaveSettings}
-            disabled={isSavingSettings}
-            className="flex items-center gap-2 px-6 py-2.5 bg-neon-purple border border-neon-purple rounded-xl text-white text-[10px] font-black uppercase tracking-widest hover:bg-neon-blue hover:border-neon-blue transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-lg hover:shadow-neon-purple/25"
+            type="button"
+            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 border shadow-sm ${
+              isSliderConfigExpanded
+                ? "bg-neon-purple/10 border-neon-purple/30 text-neon-purple"
+                : (isLightMode
+                  ? "bg-black/5 border-black/10 text-slate-700 hover:bg-black/10"
+                  : "bg-white/5 border-white/10 text-white hover:bg-white/10")
+            }`}
           >
-            {isSavingSettings ? (
+            {isSliderConfigExpanded ? (
               <>
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                Saving...
+                Collapse Settings
+                <ChevronUp className="w-3.5 h-3.5" />
               </>
             ) : (
               <>
-                <Settings className="w-3.5 h-3.5" />
-                Save Slider Settings
+                Expand Settings
+                <ChevronDown className="w-3.5 h-3.5" />
               </>
             )}
           </button>
         </div>
+
+        <AnimatePresence initial={false}>
+          {isSliderConfigExpanded && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, marginTop: 0 }}
+              animate={{ opacity: 1, height: "auto", marginTop: 24 }}
+              exit={{ opacity: 0, height: 0, marginTop: 0 }}
+              transition={{ duration: 0.25, ease: "easeInOut" }}
+              className="overflow-hidden space-y-6 pt-2"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Enable Toggle */}
+                <div className="space-y-4">
+                  <label className={`block text-xs font-black uppercase tracking-[0.2em] transition-colors ${isLightMode ? 'text-slate-500' : 'text-white/50'}`}>Slider Status</label>
+                  <div className={`flex items-center gap-3 p-4 border rounded-xl hover:border-neon-purple/30 transition-all ${isLightMode ? 'bg-black/[0.01] border-black/10' : 'bg-white/5 border-white/10'}`}>
+                    <input
+                      id="slider-enabled"
+                      type="checkbox"
+                      checked={sliderEnabled}
+                      onChange={(e) => setSliderEnabled(e.target.checked)}
+                      className={`w-4 h-4 rounded text-neon-purple focus:ring-neon-purple cursor-pointer ${isLightMode ? 'border-black/20 bg-white' : 'border-white/10 bg-dark-bg'}`}
+                    />
+                    <label htmlFor="slider-enabled" className={`text-xs font-black uppercase tracking-wider cursor-pointer select-none transition-colors ${isLightMode ? 'text-slate-800' : 'text-white/80'}`}>
+                      Enable 3-Column Features Slider
+                    </label>
+                  </div>
+                </div>
+
+                {/* Page Target Checklist */}
+                <div className="space-y-4">
+                  <label className={`block text-xs font-black uppercase tracking-[0.2em] transition-colors ${isLightMode ? 'text-slate-500' : 'text-white/50'}`}>Display Pages</label>
+                  <div className={`grid grid-cols-1 sm:grid-cols-2 gap-2 ${!sliderEnabled ? "opacity-40 pointer-events-none" : ""}`}>
+                    {AVAILABLE_PAGES.map((page) => {
+                      const isChecked = sliderPages.includes(page.path);
+                      return (
+                        <label
+                          key={page.path}
+                          className={`flex items-center gap-2.5 p-3 rounded-xl border text-[10px] font-black uppercase tracking-wider cursor-pointer transition-all ${
+                            isChecked
+                              ? "bg-neon-purple/10 border-neon-purple/30 text-neon-purple"
+                              : (isLightMode
+                                ? "bg-white border-black/10 text-slate-600 hover:bg-black/[0.02] hover:border-black/15"
+                                : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:border-white/20")
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            disabled={!sliderEnabled}
+                            onChange={() => {
+                              if (isChecked) {
+                                setSliderPages(sliderPages.filter((p) => p !== page.path));
+                              } else {
+                                setSliderPages([...sliderPages, page.path]);
+                              }
+                            }}
+                            className={`w-3.5 h-3.5 rounded text-neon-purple focus:ring-neon-purple cursor-pointer ${isLightMode ? 'border-black/20 bg-white' : 'border-white/10 bg-dark-bg'}`}
+                          />
+                          {page.label}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={handleSaveSettings}
+                  disabled={isSavingSettings}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-neon-purple border border-neon-purple rounded-xl text-white text-[10px] font-black uppercase tracking-widest hover:bg-neon-blue hover:border-neon-blue transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-lg hover:shadow-neon-purple/25"
+                >
+                  {isSavingSettings ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Settings className="w-3.5 h-3.5" />
+                      Save Slider Settings
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <AnimatePresence>
@@ -237,49 +289,59 @@ export function AdminFeatures() {
       </AnimatePresence>
 
       <div className="space-y-4">
-        <h4 className="text-sm font-black uppercase tracking-[0.25em] text-white/40">Existing Posts</h4>
+        <h4 className={`text-sm font-black uppercase tracking-[0.25em] transition-colors ${isLightMode ? 'text-slate-400' : 'text-white/40'}`}>Existing Posts</h4>
         {loading ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {[1, 2].map(item => (
-              <div key={item} className="bg-dark-bg border border-white/10 rounded-2xl p-5 animate-pulse h-40" />
+              <div key={item} className={`border rounded-2xl p-5 animate-pulse h-40 ${isLightMode ? 'bg-white border-black/10' : 'bg-dark-bg border-white/10'}`} />
             ))}
           </div>
         ) : features.length ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {features.map(blog => (
-              <div key={blog.id} className={`bg-dark-bg border border-white/10 rounded-2xl p-4 space-y-4 ${editingId === blog.id ? "lg:col-span-2" : ""}`}>
+              <div key={blog.id} className={`border rounded-2xl p-4 space-y-4 transition-colors ${editingId === blog.id ? "lg:col-span-2" : ""} ${isLightMode ? 'bg-white border-black/10 shadow-sm' : 'bg-dark-bg border-white/10'}`}>
                 {editingId === blog.id ? (
                   <FeatureForm mode="edit" blog={blog} onSaved={() => { setEditingId(null); refreshFeatures(); }} onCancel={() => setEditingId(null)} />
                 ) : (
                   <>
                     <div className="flex gap-4">
-                      <div className="w-24 h-24 rounded-xl overflow-hidden bg-white/5 border border-white/10 flex-shrink-0">
+                      <div className={`w-24 h-24 rounded-xl overflow-hidden border flex-shrink-0 transition-colors ${isLightMode ? 'bg-black/5 border-black/10' : 'bg-white/5 border-white/10'}`}>
                         {blog.image_url ? (
                           <img src={blog.image_url} alt={blog.title} className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
-                            <ImageIcon className="w-8 h-8 text-white/15" />
+                            <ImageIcon className={`w-8 h-8 ${isLightMode ? 'text-slate-300' : 'text-white/15'}`} />
                           </div>
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2 mb-2">
-                          <span className={`px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest ${blog.is_published ? "bg-green-500/10 text-green-400 border border-green-500/20" : "bg-white/5 text-white/40 border border-white/10"}`}>
+                          <span className={`px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest ${
+                            blog.is_published 
+                              ? "bg-green-500/10 text-green-500 border border-green-500/20" 
+                              : (isLightMode 
+                                ? "bg-black/5 text-slate-500 border border-black/10" 
+                                : "bg-white/5 text-white/40 border border-white/10")
+                          }`}>
                             {blog.is_published ? "Published" : "Draft"}
                           </span>
-                          <span className="text-[9px] uppercase tracking-widest text-white/25">{blog.slug}</span>
+                          <span className={`text-[9px] uppercase tracking-widest ${isLightMode ? 'text-slate-400' : 'text-white/25'}`}>{blog.slug}</span>
                         </div>
-                        <h5 className="font-display font-black text-xl leading-tight line-clamp-2">{blog.title}</h5>
-                        <p className="text-xs text-white/45 mt-2 line-clamp-2">{blog.excerpt || blog.content}</p>
+                        <h5 className={`font-display font-black text-xl leading-tight line-clamp-2 ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{blog.title}</h5>
+                        <p className={`text-xs mt-2 line-clamp-2 ${isLightMode ? 'text-slate-500' : 'text-white/45'}`}>{blog.excerpt || blog.content}</p>
                       </div>
                     </div>
-                    <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-white/5">
-                      <span className="text-[10px] text-white/30 font-mono">
+                    <div className={`flex flex-wrap items-center justify-between gap-3 pt-3 border-t ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
+                      <span className={`text-[10px] font-mono ${isLightMode ? 'text-slate-400' : 'text-white/30'}`}>
                         {blog.created_at ? new Date(blog.created_at).toLocaleString() : "Recently created"}
                       </span>
                       <div className="flex gap-2">
                         {blog.is_published ? (
-                          <Link to={`/features/${blog.slug}`} className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-colors">
+                          <Link to={`/features/${blog.slug}`} className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-colors ${
+                            isLightMode 
+                              ? 'bg-black/5 border-black/10 text-slate-700 hover:bg-black/10' 
+                              : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
+                          }`}>
                             View
                           </Link>
                         ) : null}
@@ -297,9 +359,9 @@ export function AdminFeatures() {
             ))}
           </div>
         ) : (
-          <div className="py-16 text-center bg-dark-bg/50 border border-white/10 rounded-2xl">
-            <FileText className="w-12 h-12 text-white/10 mx-auto mb-4" />
-            <p className="text-white/30 uppercase tracking-widest text-xs font-black">No features yet.</p>
+          <div className={`py-16 text-center border rounded-2xl ${isLightMode ? 'bg-white border-black/10 shadow-sm' : 'bg-dark-bg/50 border-white/10'}`}>
+            <FileText className={`w-12 h-12 mx-auto mb-4 ${isLightMode ? 'text-slate-300' : 'text-white/10'}`} />
+            <p className={`uppercase tracking-widest text-xs font-black ${isLightMode ? 'text-slate-400' : 'text-white/30'}`}>No features yet.</p>
           </div>
         )}
       </div>
@@ -308,6 +370,7 @@ export function AdminFeatures() {
 }
 
 function FeatureForm({ mode, blog, onSaved, onCancel }: { mode: "create" | "edit"; blog?: any; onSaved: () => void; onCancel?: () => void }) {
+  const { isLightMode } = useLogo();
   const [title, setTitle] = useState(blog?.title || "");
   const [excerpt, setExcerpt] = useState(blog?.excerpt || "");
   const [imageUrl, setImageUrl] = useState(blog?.image_url || "");
@@ -421,15 +484,15 @@ function FeatureForm({ mode, blog, onSaved, onCancel }: { mode: "create" | "edit
   };
 
   return (
-    <form onSubmit={handleSave} className={`${mode === "create" ? "bg-dark-bg/50 border border-white/10 rounded-2xl p-5 md:p-6" : ""} space-y-5`}>
+    <form onSubmit={handleSave} className={`${mode === "create" ? (isLightMode ? "bg-white border border-black/10 shadow-sm rounded-2xl p-5 md:p-6" : "bg-dark-bg/50 border border-white/10 rounded-2xl p-5 md:p-6") : ""} space-y-5`}>
       {mode === "create" && (
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-neon-purple/15 border border-neon-purple/20 flex items-center justify-center">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors ${isLightMode ? 'bg-neon-purple/5 border-neon-purple/20' : 'bg-neon-purple/15 border-neon-purple/20'}`}>
             <Plus className="w-5 h-5 text-neon-purple" />
           </div>
           <div>
-            <h4 className="font-black uppercase tracking-tight">New Feature Post</h4>
-            <p className="text-xs text-white/40">Add a heading, image, and text for a public post.</p>
+            <h4 className={`font-black uppercase tracking-tight transition-colors ${isLightMode ? 'text-slate-900' : 'text-white'}`}>New Feature Post</h4>
+            <p className={`text-xs transition-colors ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>Add a heading, image, and text for a public post.</p>
           </div>
         </div>
       )}
@@ -437,44 +500,46 @@ function FeatureForm({ mode, blog, onSaved, onCancel }: { mode: "create" | "edit
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-5">
         <div className="space-y-4">
           <div>
-            <label className="block text-[10px] uppercase tracking-widest font-black text-white/40 mb-2">Heading</label>
-            <input required value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-neon-purple text-sm" placeholder="Post title" />
+            <label className={`block text-[10px] uppercase tracking-widest font-black mb-2 transition-colors ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>Heading</label>
+            <input required value={title} onChange={e => setTitle(e.target.value)} className={`w-full border rounded-xl px-4 py-3 focus:outline-none focus:border-neon-purple text-sm transition-all ${isLightMode ? 'bg-black/[0.02] border-black/10 text-slate-900 focus:bg-white' : 'bg-panel-bg border-white/10 text-white'}`} placeholder="Post title" />
           </div>
           <div>
-            <label className="block text-[10px] uppercase tracking-widest font-black text-white/40 mb-2">Short Summary</label>
-            <input value={excerpt} onChange={e => setExcerpt(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-neon-purple text-sm" placeholder="Optional preview text for the features page" />
+            <label className={`block text-[10px] uppercase tracking-widest font-black mb-2 transition-colors ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>Short Summary</label>
+            <input value={excerpt} onChange={e => setExcerpt(e.target.value)} className={`w-full border rounded-xl px-4 py-3 focus:outline-none focus:border-neon-purple text-sm transition-all ${isLightMode ? 'bg-black/[0.02] border-black/10 text-slate-900 focus:bg-white' : 'bg-panel-bg border-white/10 text-white'}`} placeholder="Optional preview text for the features page" />
           </div>
           <div>
-            <label className="block text-[10px] uppercase tracking-widest font-black text-white/40 mb-2">Optional Link / URL</label>
-            <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-neon-purple text-sm" placeholder="Optional external link (e.g., https://example.com)" />
+            <label className={`block text-[10px] uppercase tracking-widest font-black mb-2 transition-colors ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>Optional Link / URL</label>
+            <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} className={`w-full border rounded-xl px-4 py-3 focus:outline-none focus:border-neon-purple text-sm transition-all ${isLightMode ? 'bg-black/[0.02] border-black/10 text-slate-900 focus:bg-white' : 'bg-panel-bg border-white/10 text-white'}`} placeholder="Optional external link (e.g., https://example.com)" />
           </div>
           <ImageUploadField label="Image URL" value={imageUrl} onChange={setImageUrl} placeholder="https://..." />
         </div>
 
-        <div className="rounded-2xl overflow-hidden bg-white/5 border border-white/10 min-h-[220px] flex items-center justify-center">
+        <div className={`rounded-2xl overflow-hidden min-h-[220px] flex items-center justify-center border transition-colors ${isLightMode ? 'bg-black/[0.02] border-black/10' : 'bg-white/5 border-white/10'}`}>
           {imageUrl ? (
             <img src={imageUrl} alt="" className="w-full h-full object-cover" />
           ) : (
             <div className="text-center space-y-3 p-6">
-              <ImageIcon className="w-10 h-10 text-white/15 mx-auto" />
-              <p className="text-[10px] uppercase tracking-widest text-white/30 font-black">Image Preview</p>
+              <ImageIcon className={`w-10 h-10 mx-auto transition-colors ${isLightMode ? 'text-slate-300' : 'text-white/15'}`} />
+              <p className={`text-[10px] uppercase tracking-widest font-black transition-colors ${isLightMode ? 'text-slate-400' : 'text-white/30'}`}>Image Preview</p>
             </div>
           )}
         </div>
       </div>
 
       <div>
-        <label className="block text-[10px] uppercase tracking-widest font-black text-white/40 mb-2">Post Text</label>
-        <textarea ref={contentRef} required value={content} onChange={e => setContent(e.target.value)} rows={mode === "create" ? 8 : 12} className="w-full bg-panel-bg border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-neon-purple text-sm leading-6" placeholder="Write the full feature post here..." />
-        <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3 space-y-3">
-          <div className="flex items-center gap-4 border-b border-white/5 pb-2">
+        <label className={`block text-[10px] uppercase tracking-widest font-black mb-2 transition-colors ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>Post Text</label>
+        <textarea ref={contentRef} required value={content} onChange={e => setContent(e.target.value)} rows={mode === "create" ? 8 : 12} className={`w-full border rounded-xl px-4 py-3 focus:outline-none focus:border-neon-purple text-sm leading-6 transition-all ${isLightMode ? 'bg-black/[0.02] border-black/10 text-slate-900 focus:bg-white' : 'bg-panel-bg border-white/10 text-white'}`} placeholder="Write the full feature post here..." />
+        <div className={`mt-3 rounded-xl border p-3 space-y-3 transition-colors ${isLightMode ? 'bg-black/[0.01] border-black/10' : 'bg-white/5 border-white/10'}`}>
+          <div className={`flex items-center gap-4 border-b pb-2 transition-colors ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
             <button
               type="button"
               onClick={() => setActiveHelper("image")}
               className={`flex items-center gap-2 pb-1 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${
                 activeHelper === "image"
                   ? "border-neon-blue text-white"
-                  : "border-transparent text-white/45 hover:text-white"
+                  : (isLightMode
+                    ? "border-transparent text-slate-400 hover:text-slate-900"
+                    : "border-transparent text-white/45 hover:text-white")
               }`}
             >
               <ImageIcon className="w-3.5 h-3.5 text-neon-blue" />
@@ -486,7 +551,9 @@ function FeatureForm({ mode, blog, onSaved, onCancel }: { mode: "create" | "edit
               className={`flex items-center gap-2 pb-1 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${
                 activeHelper === "link"
                   ? "border-neon-purple text-white"
-                  : "border-transparent text-white/45 hover:text-white"
+                  : (isLightMode
+                    ? "border-transparent text-slate-400 hover:text-slate-900"
+                    : "border-transparent text-white/45 hover:text-white")
               }`}
             >
               <LinkIcon className="w-3.5 h-3.5 text-neon-purple" />
@@ -497,7 +564,7 @@ function FeatureForm({ mode, blog, onSaved, onCancel }: { mode: "create" | "edit
           {activeHelper === "image" ? (
             <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(180px,280px)_auto] gap-3 items-end">
               <ImageUploadField value={paragraphImageUrl} onChange={setParagraphImageUrl} placeholder="Image URL" className="!space-y-0" />
-              <input value={paragraphImageCaption} onChange={e => setParagraphImageCaption(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-neon-blue" placeholder="Caption / alt text" />
+              <input value={paragraphImageCaption} onChange={e => setParagraphImageCaption(e.target.value)} className={`w-full border rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-neon-blue transition-all ${isLightMode ? 'bg-white border-black/10 text-slate-900' : 'bg-panel-bg border-white/10 text-white'}`} placeholder="Caption / alt text" />
               <button type="button" onClick={insertParagraphImage} className="px-4 py-2.5 rounded-lg bg-neon-blue text-dark-bg text-[10px] font-black uppercase tracking-widest hover:bg-neon-purple hover:text-white transition-colors">
                 Insert
               </button>
@@ -506,26 +573,26 @@ function FeatureForm({ mode, blog, onSaved, onCancel }: { mode: "create" | "edit
             <div className="space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[9px] uppercase tracking-wider font-bold text-white/40 mb-1">Link Text</label>
-                  <input value={insertLinkText} onChange={e => setInsertLinkText(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-neon-purple" placeholder="e.g., Read More" />
+                  <label className={`block text-[9px] uppercase tracking-wider font-bold mb-1 transition-colors ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>Link Text</label>
+                  <input value={insertLinkText} onChange={e => setInsertLinkText(e.target.value)} className={`w-full border rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-neon-purple transition-all ${isLightMode ? 'bg-white border-black/10 text-slate-900' : 'bg-panel-bg border-white/10 text-white'}`} placeholder="e.g., Read More" />
                 </div>
                 <div>
-                  <label className="block text-[9px] uppercase tracking-wider font-bold text-white/40 mb-1">Link URL</label>
-                  <input value={insertLinkUrl} onChange={e => setInsertLinkUrl(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-neon-purple" placeholder="e.g., https://example.com" />
+                  <label className={`block text-[9px] uppercase tracking-wider font-bold mb-1 transition-colors ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>Link URL</label>
+                  <input value={insertLinkUrl} onChange={e => setInsertLinkUrl(e.target.value)} className={`w-full border rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-neon-purple transition-all ${isLightMode ? 'bg-white border-black/10 text-slate-900' : 'bg-panel-bg border-white/10 text-white'}`} placeholder="e.g., https://example.com" />
                 </div>
               </div>
               
-              <div className="flex flex-wrap items-center justify-between gap-4 pt-1 bg-black/20 p-2 rounded-lg border border-white/5">
+              <div className={`flex flex-wrap items-center justify-between gap-4 pt-1 p-2 rounded-lg border transition-colors ${isLightMode ? 'bg-black/[0.03] border-black/10' : 'bg-black/20 border-white/5'}`}>
                 <div className="flex items-center gap-3">
-                  <span className="text-[9px] uppercase tracking-wider font-black text-white/40">Open Behavior:</span>
-                  <div className="flex bg-black/40 rounded-lg p-0.5 border border-white/5">
+                  <span className={`text-[9px] uppercase tracking-wider font-black transition-colors ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>Open Behavior:</span>
+                  <div className={`flex rounded-lg p-0.5 border transition-colors ${isLightMode ? 'bg-black/10 border-black/5' : 'bg-black/40 border-white/5'}`}>
                     <button
                       type="button"
                       onClick={() => setInsertLinkTarget("_blank")}
                       className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-wider rounded-md transition-colors ${
                         insertLinkTarget === "_blank"
                           ? "bg-neon-purple text-white shadow-lg shadow-neon-purple/20"
-                          : "text-white/40 hover:text-white"
+                          : (isLightMode ? "text-slate-600 hover:text-slate-900" : "text-white/40 hover:text-white")
                       }`}
                     >
                       New Tab
@@ -536,7 +603,7 @@ function FeatureForm({ mode, blog, onSaved, onCancel }: { mode: "create" | "edit
                       className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-wider rounded-md transition-colors ${
                         insertLinkTarget === "_self"
                           ? "bg-neon-purple text-white shadow-lg shadow-neon-purple/20"
-                          : "text-white/40 hover:text-white"
+                          : (isLightMode ? "text-slate-600 hover:text-slate-900" : "text-white/40 hover:text-white")
                       }`}
                     >
                       Current Tab
@@ -556,13 +623,13 @@ function FeatureForm({ mode, blog, onSaved, onCancel }: { mode: "create" | "edit
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
         <label className="inline-flex items-center gap-3 cursor-pointer">
           <input type="checkbox" checked={isPublished} onChange={e => setIsPublished(e.target.checked)} className="sr-only peer" />
-          <span className="w-12 h-6 bg-white/10 rounded-full relative after:content-[''] after:absolute after:top-1 after:left-1 after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-all peer-checked:bg-neon-purple peer-checked:after:translate-x-6"></span>
-          <span className="text-xs font-black uppercase tracking-widest text-white/50">{isPublished ? "Published" : "Draft"}</span>
+          <span className={`w-12 h-6 rounded-full relative after:content-[''] after:absolute after:top-1 after:left-1 after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-all peer-checked:bg-neon-purple peer-checked:after:translate-x-6 ${isLightMode ? 'bg-black/10' : 'bg-white/10'}`}></span>
+          <span className={`text-xs font-black uppercase tracking-widest transition-colors ${isLightMode ? 'text-slate-600' : 'text-white/50'}`}>{isPublished ? "Published" : "Draft"}</span>
         </label>
 
         <div className="flex gap-2">
           {onCancel && (
-            <button type="button" onClick={onCancel} className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/50 hover:text-white text-[10px] font-black uppercase tracking-widest transition-colors">
+            <button type="button" onClick={onCancel} className={`px-4 py-2.5 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${isLightMode ? 'bg-black/5 border-black/10 text-slate-600 hover:text-slate-900 hover:bg-black/10' : 'bg-white/5 border-white/10 text-white/50 hover:text-white'}`}>
               Cancel
             </button>
           )}
