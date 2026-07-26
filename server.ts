@@ -75,6 +75,38 @@ async function startServer() {
   const requestedPort = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
   const server = http.createServer(app);
   
+  // Dynamic manifest.json endpoint to use dynamic primary_color from branding settings
+  app.get('/manifest.json', (req, res) => {
+    let primaryColor = "#00f0ff";
+    try {
+      const row = db.prepare("SELECT value FROM settings WHERE key = 'primary_color'").get() as { value: string } | undefined;
+      if (row && row.value) {
+        primaryColor = row.value;
+      }
+    } catch (err) {}
+
+    const manifestPath = path.join(process.cwd(), "public", "manifest.json");
+    if (fs.existsSync(manifestPath)) {
+      try {
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+        manifest.theme_color = primaryColor;
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+        return res.json(manifest);
+      } catch (e) {}
+    }
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+    res.json({
+      name: "DejavuFM",
+      short_name: "Dejavu",
+      theme_color: primaryColor,
+      background_color: "#0a0a0f",
+      display: "standalone"
+    });
+  });
+
   // Explicitly serve public folder for manifest.json and icons with standard cache-control headers
   app.use(express.static(path.join(process.cwd(), "public"), {
     maxAge: '1d',
