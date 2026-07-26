@@ -54,9 +54,13 @@ function DjCard({ dj, index, resolveDjImage, logoUrl, isLightMode, settings }: {
         
         <Link to={`/djs/${dj.id}`} className="absolute inset-0 z-20"></Link>
         {/* Overlay with details */}
-        <div className={`absolute inset-0 bg-gradient-to-t via-transparent to-transparent opacity-90 group-hover:opacity-100 transition-opacity duration-500 ${
-          isLightMode ? 'from-white' : 'from-dark-bg'
-        }`}></div>
+        <div className={`absolute inset-0 bg-gradient-to-t transition-opacity duration-500 ${
+          isLightMode 
+            ? 'from-white via-white/95 to-transparent' 
+            : 'from-[#0A0A0A] via-[#0A0A0A]/90 to-transparent'
+        } ${
+          isLightMode ? 'opacity-95' : 'opacity-90'
+        } group-hover:opacity-100`}></div>
         
         <div className="absolute inset-x-0 bottom-0 p-6 md:p-10 space-y-4 md:space-y-6 translate-y-4 group-hover:translate-y-0 transition-transform duration-500 z-40">
           <div className="space-y-1.5">
@@ -207,19 +211,27 @@ export default function DJs() {
 
       <div className="max-w-md mx-auto px-4">
         <div className="relative w-full group">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20 group-focus-within:text-neon-purple transition-colors" />
+          <Search className={`absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${
+            isLightMode ? 'text-slate-400 group-focus-within:text-neon-purple' : 'text-white/20 group-focus-within:text-neon-purple'
+          }`} />
           <input
             value={query}
             onChange={event => setQuery(event.target.value)}
             placeholder="Find a resident DJ..."
-            className="w-full bg-white/[0.02] border border-white/10 rounded-2xl py-4 pl-14 pr-14 text-sm focus:outline-none focus:border-neon-purple/50 focus:bg-white/5 transition-all font-medium placeholder:text-white/30"
+            className={`w-full rounded-2xl py-4 pl-14 pr-14 text-sm focus:outline-none focus:border-neon-purple/50 transition-all font-medium ${
+              isLightMode 
+                ? 'bg-slate-100/80 border border-slate-200 text-slate-800 placeholder:text-slate-400 focus:bg-white focus:shadow-lg' 
+                : 'bg-white/[0.02] border border-white/10 text-white placeholder:text-white/30 focus:bg-white/5'
+            }`}
           />
           {query && (
             <button
               onClick={() => setQuery("")}
-              className="absolute right-5 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded-full transition-all"
+              className={`absolute right-5 top-1/2 -translate-y-1/2 p-1 rounded-full transition-all ${
+                isLightMode ? 'hover:bg-slate-200 text-slate-400 hover:text-slate-600' : 'hover:bg-white/10 text-white/50 hover:text-white'
+              }`}
             >
-              <X className="w-4 h-4 text-white/50" />
+              <X className="w-4 h-4" />
             </button>
           )}
         </div>
@@ -249,7 +261,11 @@ export default function DJs() {
                   window.scrollTo({ top: 300, behavior: 'smooth' });
                 }}
                 disabled={currentPage === 1}
-                className="w-12 h-12 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/20 hover:bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition-all disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:border-white/5"
+                className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all disabled:opacity-20 ${
+                  isLightMode 
+                    ? 'bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 hover:text-slate-900 disabled:hover:bg-slate-100 disabled:hover:text-slate-600' 
+                    : 'bg-white/[0.02] border border-white/5 text-white/50 hover:border-white/20 hover:bg-white/5 disabled:hover:bg-transparent disabled:hover:border-white/5'
+                }`}
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
@@ -268,7 +284,9 @@ export default function DJs() {
                       className={`w-12 h-12 rounded-2xl text-xs font-black transition-all flex items-center justify-center ${
                         isActive
                           ? "bg-neon-purple text-white border border-neon-purple/30 glow-box shadow-lg shadow-neon-purple/10"
-                          : "bg-white/[0.02] text-white/40 border border-white/5 hover:bg-white/5 hover:text-white"
+                          : isLightMode 
+                            ? "bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200 hover:text-slate-900"
+                            : "bg-white/[0.02] text-white/40 border border-white/5 hover:bg-white/5 hover:text-white"
                       }`}
                     >
                       {pageNum}
@@ -283,7 +301,11 @@ export default function DJs() {
                   window.scrollTo({ top: 300, behavior: 'smooth' });
                 }}
                 disabled={currentPage === totalPages}
-                className="w-12 h-12 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/20 hover:bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition-all disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:border-white/5"
+                className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all disabled:opacity-20 ${
+                  isLightMode 
+                    ? 'bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 hover:text-slate-900 disabled:hover:bg-slate-100 disabled:hover:text-slate-600' 
+                    : 'bg-white/[0.02] border border-white/5 text-white/50 hover:border-white/20 hover:bg-white/5 disabled:hover:bg-transparent disabled:hover:border-white/5'
+                }`}
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
@@ -291,9 +313,11 @@ export default function DJs() {
           )}
         </div>
       ) : (
-        <div className="mx-4 py-20 text-center glass-panel rounded-2xl border-dashed flex flex-col items-center justify-center gap-4">
-          <UserX className="w-12 h-12 text-white/10" />
-          <p className="text-white/40 uppercase font-black tracking-widest text-xs">
+        <div className={`mx-4 py-20 text-center glass-panel rounded-2xl border-dashed flex flex-col items-center justify-center gap-4 ${
+          isLightMode ? 'bg-slate-50 border-slate-200' : 'border-white/10'
+        }`}>
+          <UserX className={`w-12 h-12 ${isLightMode ? 'text-slate-300' : 'text-white/10'}`} />
+          <p className={`uppercase font-black tracking-widest text-xs ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>
             No DJs found for "{query}"
           </p>
         </div>
