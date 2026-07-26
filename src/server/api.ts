@@ -2595,7 +2595,7 @@ apiRouter.put("/admin/settings", authorizeRole(['admin', 'dj']), (req, res) => {
     "feat_pwa", "feat_bookings", "feat_live_tools", "feat_stream_quality",
     "logo_dark", "logo_light", "logo_shape", "favicon", "backup_retention_days",
     "backup_frequency_hours", "backup_enabled", "popup_delay", "studio_name", "studio_image",
-    "social_instagram", "social_twitter", "social_facebook", "social_youtube", "social_soundcloud", "social_mixcloud",
+    "social_instagram", "social_twitter", "social_facebook", "social_youtube", "social_soundcloud", "social_mixcloud", "social_tiktok",
     "default_theme", "under_header_text", "under_header_align",
     "features_slider_enabled", "features_slider_pages"
   ];
