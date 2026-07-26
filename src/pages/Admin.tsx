@@ -91,6 +91,34 @@ export default function Admin() {
     return { user: msg.user, key: msg.user.toLowerCase() };
   };
 
+  const getAdminPageLabel = (pathname: string) => {
+    if (pathname.includes('/admin/studio')) return 'In Studio & Live Chat';
+    if (pathname.includes('/admin/users')) return 'In Staff Users';
+    if (pathname.includes('/admin/djs')) return 'In DJ Roster';
+    if (pathname.includes('/admin/schedule')) return 'In Schedule Management';
+    if (pathname.includes('/admin/ads')) return 'In Campaign Sliders';
+    if (pathname.includes('/admin/shoutouts')) return 'In Shoutouts';
+    if (pathname.includes('/admin/analytics')) return 'In Analytics & Stats';
+    if (pathname.includes('/admin/seo')) return 'In SEO Settings';
+    if (pathname.includes('/admin/system')) return 'In System Settings';
+    if (pathname.includes('/admin/api-keys')) return 'In API Keys';
+    if (pathname.includes('/admin/audit-logs')) return 'In Audit Logs';
+    if (pathname.includes('/admin/bookings')) return 'In Bookings';
+    if (pathname.includes('/admin/features')) return 'In News & Features';
+    if (pathname.includes('/admin/media')) return 'In Media Library';
+    return 'In Dashboard Overview';
+  };
+
+  useEffect(() => {
+    if (!isLogged || !adminUsername) return;
+    const socket = (window as any).socket;
+    if (!socket) return;
+
+    const pageLabel = getAdminPageLabel(location.pathname);
+    socket.emit('updatePresence', { username: adminUsername, location: pageLabel });
+    socket.emit('registerUser', adminUsername, pageLabel);
+  }, [isLogged, adminUsername, location.pathname]);
+
   // Listen to background messages when user is not on the Studio page
   useEffect(() => {
     if (!isLogged || (userRole !== 'admin' && userRole !== 'dj') || isStudioRoute) {

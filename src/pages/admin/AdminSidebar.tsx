@@ -44,7 +44,7 @@ export function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; 
     { name: "Pop-up", path: "/admin/popup", icon: Sparkles },
     { name: "Ads", path: "/admin/ads", icon: ImageIcon },
     { name: "Schedule", path: "/admin/schedule", icon: Calendar },
-    { name: "Admin Users", path: "/admin/users", icon: UserCog },
+    { name: "Staff Users", path: "/admin/users", icon: UserCog },
     { name: "Chat Users", path: "/admin/chat-users", icon: MessageSquare },
     { name: "Data Operations", path: "/admin/chat-room-setting", icon: Settings },
     { name: "Backup", path: "/admin/backup", icon: Database },

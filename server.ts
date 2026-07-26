@@ -4,7 +4,7 @@ import cookieParser from "cookie-parser";
 import compression from "compression";
 import path from "path";
 import { fileURLToPath } from "url";
-import { apiRouter, performMediaAutoDeleteCleanup } from "./src/server/api.ts";
+import { apiRouter, performMediaAutoDeleteCleanup, getActivePresenceList } from "./src/server/api.ts";
 import { externalApiRouter } from "./src/server/v1_external_api.ts";
 import { webhookRouter } from "./src/server/meta/webhook.routes.ts";
 import { MetaService } from "./src/server/meta/meta.service.ts";
@@ -774,7 +774,33 @@ async function startServer() {
 
     socket.on('disconnect', () => {
       // Small delay on disconnect helps avoid flickering when refreshing
-      setTimeout(emitCounts, 1000);
+      setTimeout(() => {
+        emitCounts();
+        io.emit('presence_update', getActivePresenceList(io));
+      }, 1000);
+    });
+
+    socket.on('updatePresence', (data: any) => {
+      if (!data) return;
+      const username = typeof data === 'string' ? data : data.username;
+      if (!username) return;
+
+      (socket as any).username = username;
+      (socket as any).currentPage = (typeof data === 'object' && (data.page || data.location)) ? (data.page || data.location) : 'Dashboard';
+      (socket as any).lastSeen = Date.now();
+      (socket as any).connectedAt = (socket as any).connectedAt || Date.now();
+
+      if (db.open) {
+        try {
+          const nowIso = new Date().toISOString();
+          db.prepare("UPDATE admins SET last_seen = ?, current_page = ? WHERE LOWER(username) = ?")
+            .run(nowIso, (socket as any).currentPage, username.toLowerCase());
+          db.prepare("UPDATE users SET last_seen = ?, current_page = ? WHERE LOWER(username) = ?")
+            .run(nowIso, (socket as any).currentPage, username.toLowerCase());
+        } catch (e) {}
+      }
+
+      io.emit('presence_update', getActivePresenceList(io));
     });
 
     // Send history on connect
@@ -784,8 +810,32 @@ async function startServer() {
       socket.emit('chatHistory', chatHistory);
     });
 
-    socket.on('registerUser', (username) => {
-      (socket as any).username = username;
+    socket.on('registerUser', (username, pageData) => {
+      if (!username) return;
+      const rawUser = typeof username === 'string' ? username : username.username;
+      if (!rawUser) return;
+
+      (socket as any).username = rawUser;
+      (socket as any).connectedAt = (socket as any).connectedAt || Date.now();
+      (socket as any).lastSeen = Date.now();
+      
+      let pageLocation = 'Dashboard';
+      if (typeof pageData === 'string') pageLocation = pageData;
+      else if (pageData && (pageData.page || pageData.location)) pageLocation = pageData.page || pageData.location;
+      else if (typeof username === 'object' && (username.page || username.location)) pageLocation = username.page || username.location;
+      (socket as any).currentPage = pageLocation;
+
+      if (db.open) {
+        try {
+          const nowIso = new Date().toISOString();
+          db.prepare("UPDATE admins SET last_seen = ?, current_page = ? WHERE LOWER(username) = ?")
+            .run(nowIso, pageLocation, rawUser.toLowerCase());
+          db.prepare("UPDATE users SET last_seen = ?, current_page = ? WHERE LOWER(username) = ?")
+            .run(nowIso, pageLocation, rawUser.toLowerCase());
+        } catch (e) {}
+      }
+
+      io.emit('presence_update', getActivePresenceList(io));
       if (!db.open) return;
       try {
         const userCheck = db.prepare("SELECT is_banned FROM users WHERE LOWER(username) = ?").get(username.toLowerCase()) as any;

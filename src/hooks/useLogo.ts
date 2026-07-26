@@ -3,7 +3,15 @@ import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
 
 export function useLogo() {
-  const location = useLocation();
+  let pathname = '';
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const location = useLocation();
+    pathname = location.pathname;
+  } catch {
+    pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+  }
+
   const { data: settings } = useQuery({
     queryKey: ['settings'],
     queryFn: () => fetch("/api/public/settings").then(res => res.json())
@@ -11,7 +19,7 @@ export function useLogo() {
 
   const [isLightMode, setIsLightMode] = useState(() => {
     if (typeof window !== 'undefined') {
-      const isAdmin = location.pathname.startsWith('/admin');
+      const isAdmin = pathname.startsWith('/admin');
       if (isAdmin) {
         return document.documentElement.classList.contains('admin-light-mode');
       }
@@ -23,7 +31,7 @@ export function useLogo() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const isAdmin = location.pathname.startsWith('/admin');
+    const isAdmin = pathname.startsWith('/admin');
 
     if (isAdmin) {
       const handleThemeChange = () => {

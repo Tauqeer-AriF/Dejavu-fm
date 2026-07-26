@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { fetchAdmin } from "./adminApi";
-import { Plus, Trash2, Key, User, Lock, Shield, Check, X, AlertTriangle, Mail, Eye, EyeOff, Edit, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Trash2, Key, User, Lock, Shield, Check, X, AlertTriangle, Mail, Eye, EyeOff, Edit, Search, ChevronLeft, ChevronRight, Activity, Radio, Circle, Globe, Monitor, Headphones, RefreshCw, Zap, Clock } from "lucide-react";
 import { useModal } from "../../context/ModalContext";
 import { useLogo } from "../../hooks/useLogo";
 
@@ -9,6 +9,25 @@ interface AdminUser {
   email?: string;
   role: "admin" | "dj";
   dj_profile_id?: string;
+  photo_url?: string;
+  is_online?: boolean;
+  current_page?: string;
+  last_seen?: string;
+  last_login?: string;
+  socket_count?: number;
+}
+
+interface ActiveSession {
+  username: string;
+  email?: string;
+  role: string;
+  isStaff: boolean;
+  currentPage: string;
+  lastSeen: number;
+  connectedAt: number;
+  avatarUrl?: string;
+  socketCount: number;
+  isOnline: boolean;
 }
 
 interface DJProfile {
@@ -47,6 +66,10 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
   const [editStaffPass, setEditStaffPass] = useState("");
   const [showEditStaffPass, setShowEditStaffPass] = useState(false);
 
+  // Active Presence State
+  const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([]);
+  const [presenceFilter, setPresenceFilter] = useState<"all" | "online" | "studio" | "dashboard">("all");
+
   // Filter state
   const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "dj">("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -64,6 +87,11 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
       if (roleFilter !== "all" && u.role !== roleFilter) {
         return false;
       }
+
+      // Presence filter check
+      if (presenceFilter === "online" && !u.is_online) return false;
+      if (presenceFilter === "studio" && (!u.is_online || !u.current_page?.toLowerCase().includes("studio"))) return false;
+      if (presenceFilter === "dashboard" && (!u.is_online || u.current_page?.toLowerCase().includes("studio"))) return false;
       
       // Search filter check
       if (searchQuery.trim() !== "") {
@@ -80,7 +108,7 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
       
       return true;
     });
-  }, [users, roleFilter, searchQuery, djs]);
+  }, [users, roleFilter, presenceFilter, searchQuery, djs]);
 
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
   const paginatedUsers = React.useMemo(() => {
@@ -242,6 +270,18 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
     }
   };
 
+  const loadActiveSessions = async () => {
+    try {
+      const res = await fetchAdmin("/api/admin/active-sessions");
+      if (res.ok) {
+        const data = await res.json();
+        setActiveSessions(data);
+      }
+    } catch (e) {
+      console.error("Failed to load active sessions:", e);
+    }
+  };
+
   const loadDjs = async () => {
     try {
       const res = await fetch("/api/public/djs");
@@ -257,6 +297,28 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
   useEffect(() => {
     loadUsers();
     loadDjs();
+    loadActiveSessions();
+
+    const socket = (window as any).socket;
+    if (socket) {
+      const handlePresence = (list: ActiveSession[]) => {
+        if (Array.isArray(list)) {
+          setActiveSessions(list);
+          loadUsers();
+        }
+      };
+      socket.on('presence_update', handlePresence);
+      return () => {
+        socket.off('presence_update', handlePresence);
+      };
+    }
+
+    const interval = setInterval(() => {
+      loadActiveSessions();
+      loadUsers();
+    }, 8000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -411,6 +473,23 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
     }
   };
 
+  const formatRelativeTime = (isoString: string | null | undefined) => {
+    if (!isoString) return "Never";
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+
+  const onlineStaffCount = activeSessions.filter(s => s.isStaff).length;
+  const inStudioCount = activeSessions.filter(s => s.isStaff && s.currentPage.toLowerCase().includes("studio")).length;
+  const inDashboardCount = activeSessions.filter(s => s.isStaff && !s.currentPage.toLowerCase().includes("studio")).length;
+
   return (
     <div className="space-y-8" id="admin-users-panel">
       {/* Header */}
@@ -434,6 +513,101 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
           </button>
         )}
       </div>
+
+      {/* Live Presence Dashboard Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Total Online Staff */}
+        <div className={`p-5 rounded-3xl border flex items-center gap-4 transition-all ${
+          isLightMode ? 'bg-white border-black/15 shadow-sm' : 'glass-panel border-white/10'
+        }`}>
+          <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center relative">
+            <Radio className="w-6 h-6 animate-pulse" />
+            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping" />
+            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full" />
+          </div>
+          <div>
+            <div className={`text-[10px] uppercase font-black tracking-widest ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>Staff Online Now</div>
+            <div className="flex items-baseline gap-2">
+              <span className={`text-2xl font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{onlineStaffCount}</span>
+              <span className={`text-[10px] font-bold ${isLightMode ? 'text-emerald-600' : 'text-emerald-400'}`}>Active Sessions</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Currently in Live Studio */}
+        <div className={`p-5 rounded-3xl border flex items-center gap-4 transition-all ${
+          isLightMode ? 'bg-white border-black/15 shadow-sm' : 'glass-panel border-white/10'
+        }`}>
+          <div className="w-12 h-12 rounded-2xl bg-neon-purple/10 text-neon-purple flex items-center justify-center">
+            <Zap className="w-6 h-6" />
+          </div>
+          <div>
+            <div className={`text-[10px] uppercase font-black tracking-widest ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>In Live Studio</div>
+            <div className="flex items-baseline gap-2">
+              <span className={`text-2xl font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{inStudioCount}</span>
+              <span className={`text-[10px] font-bold ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Broadcasting/Chatting</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Currently in Dashboard */}
+        <div className={`p-5 rounded-3xl border flex items-center gap-4 transition-all ${
+          isLightMode ? 'bg-white border-black/15 shadow-sm' : 'glass-panel border-white/10'
+        }`}>
+          <div className="w-12 h-12 rounded-2xl bg-neon-blue/10 text-neon-blue flex items-center justify-center">
+            <Monitor className="w-6 h-6" />
+          </div>
+          <div>
+            <div className={`text-[10px] uppercase font-black tracking-widest ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>In Other Panels</div>
+            <div className="flex items-baseline gap-2">
+              <span className={`text-2xl font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{inDashboardCount}</span>
+              <span className={`text-[10px] font-bold ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Managing Settings</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Online Users Activity Ticker */}
+      {onlineStaffCount > 0 && (
+        <div className={`p-4 rounded-2xl border transition-all ${
+          isLightMode ? 'bg-emerald-50/40 border-emerald-200/50' : 'bg-emerald-500/[0.02] border-emerald-500/10'
+        }`}>
+          <div className="flex items-center gap-2 mb-3 px-1">
+            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+            <span className={`text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-slate-800' : 'text-white/80'}`}>Active Workspace Feeds</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {activeSessions.filter(s => s.isStaff).map(session => (
+              <div 
+                key={session.username}
+                className={`flex items-center gap-2.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all ${
+                  isLightMode 
+                    ? 'bg-white border-black/10 text-slate-800 shadow-xs' 
+                    : 'bg-black/30 border-white/5 text-white/90'
+                }`}
+              >
+                <img 
+                  src={session.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${session.username}`} 
+                  alt={session.username} 
+                  className="w-5 h-5 rounded-lg bg-neon-purple/20"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="flex flex-col">
+                  <span className="font-bold flex items-center gap-1">
+                    @{session.username}
+                    <span className="text-[9px] px-1 bg-neon-blue/15 text-neon-blue rounded font-black uppercase">
+                      {session.role}
+                    </span>
+                  </span>
+                  <span className={`text-[9px] font-medium leading-none mt-0.5 ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
+                    {session.currentPage} {session.socketCount > 1 ? `(${session.socketCount} tabs)` : ''}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Alert Banners */}
       {error && (
@@ -614,6 +788,22 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
                 <option value="all">All Roles</option>
                 <option value="admin">Administrators</option>
                 <option value="dj">DJs / Presenters</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className={`text-[10px] uppercase font-bold tracking-wider ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Status:</span>
+              <select
+                value={presenceFilter}
+                onChange={(e) => setPresenceFilter(e.target.value as any)}
+                className={`text-xs border rounded-xl px-3 py-1.5 outline-none transition-all ${
+                  isLightMode ? 'bg-white border-black/15 text-slate-900' : 'bg-[#121212] border-white/10 text-white'
+                }`}
+              >
+                <option value="all">All Statuses</option>
+                <option value="online">Online Now</option>
+                <option value="studio">In Live Studio</option>
+                <option value="dashboard">In Other Panels</option>
               </select>
             </div>
           </div>
@@ -916,15 +1106,52 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
                       />
 
                       <div className="flex items-center gap-4 flex-1">
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isLightMode ? 'bg-black/5 text-black/60' : 'bg-white/5 text-white/60'}`}>
-                          <User className="w-6 h-6" />
+                        <div className="relative">
+                          {user.photo_url ? (
+                            <img 
+                              src={user.photo_url} 
+                              alt={user.username} 
+                              className="w-12 h-12 rounded-2xl object-cover"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isLightMode ? 'bg-black/5 text-black/60' : 'bg-white/5 text-white/60'}`}>
+                              <User className="w-6 h-6" />
+                            </div>
+                          )}
+                          {user.is_online ? (
+                            <span className={`absolute -bottom-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-full border-2 ${
+                              isLightMode ? 'border-white bg-slate-100' : 'border-[#1e1e1e] bg-[#121212]'
+                            }`}>
+                              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping absolute" />
+                              <span className="h-2 w-2 rounded-full bg-emerald-500 relative" />
+                            </span>
+                          ) : (
+                            <span className={`absolute -bottom-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-full border-2 ${
+                              isLightMode ? 'border-white bg-slate-100' : 'border-[#1e1e1e] bg-[#121212]'
+                            }`}>
+                              <span className="h-2 w-2 rounded-full bg-slate-500 relative" />
+                            </span>
+                          )}
                         </div>
-                        <div>
-                          <h4 className={`text-lg font-bold flex items-center gap-2 ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
+                        <div className="flex-1">
+                          <h4 className={`text-lg font-bold flex flex-wrap items-center gap-2 ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
                             {user.username}
                             {user.username === "admin" && (
                               <span className="text-[10px] uppercase font-black tracking-widest bg-neon-purple/20 text-neon-purple px-2 py-0.5 rounded-full">
                                 Primary
+                              </span>
+                            )}
+                            {user.is_online ? (
+                              <span className="text-[10px] uppercase font-black tracking-widest bg-emerald-500/20 text-emerald-400 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                                Online
+                              </span>
+                            ) : (
+                              <span className={`text-[10px] uppercase font-black tracking-widest px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 ${
+                                isLightMode ? 'bg-slate-100 text-slate-500' : 'bg-white/5 text-white/40'
+                              }`}>
+                                Offline
                               </span>
                             )}
                           </h4>
@@ -944,6 +1171,46 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
                                 <User className="w-3 h-3 text-neon-blue" />
                                 Linked DJ: {djs.find(d => d.id === user.dj_profile_id)?.name || "Unknown DJ"}
                               </span>
+                            )}
+                          </div>
+
+                          {/* Presence Details row */}
+                          <div className="flex flex-wrap items-center gap-4 mt-2.5 pt-2 border-t border-dashed border-white/5">
+                            {user.is_online ? (
+                              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                                <span className="font-bold text-emerald-400 flex items-center gap-1">
+                                  <Monitor className="w-3.5 h-3.5 animate-pulse" /> Active Location:
+                                </span>
+                                <span className={`px-2 py-0.5 rounded-md text-[11px] font-black uppercase ${
+                                  isLightMode ? 'bg-neon-purple/5 text-neon-purple' : 'bg-neon-purple/15 text-neon-purple'
+                                }`}>
+                                  {user.current_page || "Dashboard Overview"}
+                                </span>
+                                {user.socket_count > 1 && (
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                                    isLightMode ? 'bg-slate-100 text-slate-500' : 'bg-white/5 text-white/40'
+                                  }`}>
+                                    {user.socket_count} active tabs
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              user.last_seen && (
+                                <div className={`text-xs flex items-center gap-1.5 ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
+                                  <Clock className="w-3.5 h-3.5" />
+                                  <span>Last seen {formatRelativeTime(user.last_seen)}</span>
+                                  {user.current_page && user.current_page !== 'Offline' && (
+                                    <span className="opacity-80">on {user.current_page}</span>
+                                  )}
+                                </div>
+                              )
+                            )}
+
+                            {user.last_login && (
+                              <div className={`text-xs flex items-center gap-1.5 ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>
+                                <Globe className="w-3.5 h-3.5" />
+                                <span>Last login: {new Date(user.last_login).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}</span>
+                              </div>
                             )}
                           </div>
                         </div>

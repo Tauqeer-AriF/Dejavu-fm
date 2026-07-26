@@ -1061,14 +1061,14 @@ function MainLayout() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ModalProvider>
-        <AudioProvider>
-          <Router>
+      <Router>
+        <ModalProvider>
+          <AudioProvider>
             <Toaster closeButton theme="dark" position="bottom-left" toastOptions={{ style: { background: '#09090b', borderColor: 'var(--color-neon-purple)', color: 'white' } }} />
             <MainLayout />
-          </Router>
-        </AudioProvider>
-      </ModalProvider>
+          </AudioProvider>
+        </ModalProvider>
+      </Router>
     </QueryClientProvider>
   );
 }

@@ -1223,6 +1223,12 @@ apiRouter.post("/admin/login", authLimiter, (req, res) => {
     
     if (isMatched) {
       console.log(`[Admin Login] SUCCESS | User: ${username} | IP: ${ip}`);
+      try {
+        const nowIso = new Date().toISOString();
+        db.prepare("UPDATE admins SET last_login = ?, last_seen = ?, current_page = 'Dashboard' WHERE LOWER(username) = ?")
+          .run(nowIso, nowIso, admin.username.toLowerCase());
+      } catch (e) {}
+
       const token = jwt.sign({ username: admin.username, role: admin.role }, ACTUAL_SECRET, { expiresIn: "30d" });
       res.cookie("admin_token", token, { 
         httpOnly: true, 
@@ -2875,9 +2881,94 @@ apiRouter.post("/admin/push-track", (req, res) => {
   res.json({ success: true, artist, title, duration });
 });
 
+export function getActivePresenceList(io: any) {
+  if (!io || !io.sockets || !io.sockets.sockets) return [];
+  const presenceMap = new Map<string, any>();
+
+  for (const [_, socket] of io.sockets.sockets) {
+    const s = socket as any;
+    if (s.username) {
+      const key = s.username.toLowerCase();
+      const page = s.currentPage || 'Dashboard';
+      const lastSeen = s.lastSeen || Date.now();
+      const connectedAt = s.connectedAt || Date.now();
+
+      let isStaff = false;
+      let role = 'user';
+      let email = '';
+      let avatarUrl = '';
+
+      if (db.open) {
+        try {
+          const adminRow = db.prepare("SELECT role, email, photo_url FROM admins WHERE LOWER(username) = ?").get(key) as any;
+          if (adminRow) {
+            isStaff = true;
+            role = adminRow.role || 'admin';
+            email = adminRow.email || '';
+            avatarUrl = adminRow.photo_url || '';
+          } else {
+            const userRow = db.prepare("SELECT source FROM users WHERE LOWER(username) = ?").get(key) as any;
+            if (userRow) {
+              role = 'chat_user';
+            }
+          }
+        } catch {}
+      }
+
+      if (!avatarUrl) {
+        avatarUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(s.username)}`;
+      }
+
+      const existing = presenceMap.get(key);
+      if (existing) {
+        existing.socketCount += 1;
+        existing.lastSeen = Math.max(existing.lastSeen, lastSeen);
+        if (s.currentPage) existing.currentPage = s.currentPage;
+      } else {
+        presenceMap.set(key, {
+          username: s.username,
+          email,
+          role,
+          isStaff,
+          currentPage: page,
+          lastSeen,
+          connectedAt,
+          avatarUrl,
+          socketCount: 1,
+          isOnline: true
+        });
+      }
+    }
+  }
+
+  return Array.from(presenceMap.values());
+}
+
 apiRouter.get("/admin/users", authMiddleware, authorizeRole('admin'), (req, res) => {
-  const users = db.prepare("SELECT username, email, role, dj_profile_id FROM admins").all();
-  res.json(users);
+  const io = req.app.get('io');
+  const activeList = getActivePresenceList(io);
+  const activeMap = new Map(activeList.map(item => [item.username.toLowerCase(), item]));
+
+  const users = db.prepare("SELECT username, email, role, dj_profile_id, photo_url, last_login, last_seen, current_page FROM admins").all() as any[];
+
+  const enrichedUsers = users.map(u => {
+    const active = activeMap.get((u.username || '').toLowerCase());
+    return {
+      ...u,
+      is_online: !!active,
+      current_page: active ? active.currentPage : (u.current_page || 'Offline'),
+      last_seen: active ? new Date(active.lastSeen).toISOString() : u.last_seen,
+      socket_count: active ? active.socketCount : 0
+    };
+  });
+
+  res.json(enrichedUsers);
+});
+
+apiRouter.get("/admin/active-sessions", authMiddleware, authorizeRole('admin'), (req, res) => {
+  const io = req.app.get('io');
+  const activeList = getActivePresenceList(io);
+  res.json(activeList);
 });
 
 apiRouter.post("/admin/users", authMiddleware, authorizeRole('admin'), (req: Request, res: Response) => {

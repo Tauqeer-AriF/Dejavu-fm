@@ -247,7 +247,10 @@ export function initDb() {
       photo_url TEXT,
       role TEXT DEFAULT 'admin', -- New column for user roles
       email TEXT,
-      dj_profile_id TEXT
+      dj_profile_id TEXT,
+      last_login DATETIME,
+      last_seen DATETIME,
+      current_page TEXT
     );
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -255,7 +258,10 @@ export function initDb() {
       password_hash TEXT NOT NULL,
       source TEXT DEFAULT 'register',
       is_banned INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_login DATETIME,
+      last_seen DATETIME,
+      current_page TEXT
     );
 
     CREATE TABLE IF NOT EXISTS site_stats (
@@ -388,6 +394,11 @@ export function initDb() {
     CREATE INDEX IF NOT EXISTS idx_user_blocks_blocker ON user_blocks(blocker);
     CREATE INDEX IF NOT EXISTS idx_user_blocks_blocked ON user_blocks(blocked);
   `);
+
+  ['last_login', 'last_seen', 'current_page'].forEach(col => {
+    try { db.exec(`ALTER TABLE admins ADD COLUMN ${col} TEXT;`); } catch (e) {}
+    try { db.exec(`ALTER TABLE users ADD COLUMN ${col} TEXT;`); } catch (e) {}
+  });
 
   try {
     const tableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='blogs'").get();
