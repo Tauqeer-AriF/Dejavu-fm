@@ -142,6 +142,7 @@ export function AdminBranding() {
   const [socialYoutube, setSocialYoutube] = useState("");
   const [socialSoundcloud, setSocialSoundcloud] = useState("");
   const [socialMixcloud, setSocialMixcloud] = useState("");
+  const [socialTiktok, setSocialTiktok] = useState("");
   const [underHeaderText, setUnderHeaderText] = useState("");
   const [underHeaderAlign, setUnderHeaderAlign] = useState("center");
   const { showAlert, showConfirm } = useModal();
@@ -220,6 +221,7 @@ export function AdminBranding() {
       setSocialYoutube(serverSettings.social_youtube || "");
       setSocialSoundcloud(serverSettings.social_soundcloud || "");
       setSocialMixcloud(serverSettings.social_mixcloud || "");
+      setSocialTiktok(serverSettings.social_tiktok || "");
       setUnderHeaderText(serverSettings.under_header_text || "");
       setUnderHeaderAlign(serverSettings.under_header_align || "center");
     }
@@ -286,6 +288,7 @@ export function AdminBranding() {
           social_youtube: "",
           social_soundcloud: "",
           social_mixcloud: "",
+          social_tiktok: "",
           under_header_text: "",
           under_header_align: "center"
         })
@@ -312,6 +315,7 @@ export function AdminBranding() {
         setSocialYoutube("");
         setSocialSoundcloud("");
         setSocialMixcloud("");
+        setSocialTiktok("");
         setUnderHeaderText("");
         setUnderHeaderAlign("center");
       }
@@ -347,6 +351,7 @@ export function AdminBranding() {
           social_youtube: socialYoutube,
           social_soundcloud: socialSoundcloud,
           social_mixcloud: socialMixcloud,
+          social_tiktok: socialTiktok,
           under_header_text: underHeaderText,
           under_header_align: underHeaderAlign
         })
@@ -617,6 +622,18 @@ export function AdminBranding() {
                   onChange={e=>setSocialMixcloud(e.target.value)} 
                   className={`w-full rounded-xl px-4 py-3 text-sm focus:border-neon-purple outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
                   placeholder="https://mixcloud.com/..."
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-[10px] uppercase mb-1 font-bold tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>TikTok URL</label>
+                <input 
+                  value={socialTiktok} 
+                  onChange={e=>setSocialTiktok(e.target.value)} 
+                  className={`w-full rounded-xl px-4 py-3 text-sm focus:border-neon-purple outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
+                  placeholder="https://tiktok.com/@..."
                 />
               </div>
             </div>
