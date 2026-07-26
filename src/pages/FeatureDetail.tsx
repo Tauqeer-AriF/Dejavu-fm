@@ -138,49 +138,55 @@ export default function FeatureDetail() {
       </Link>
 
       <header className="space-y-8">
-        <div className={`relative overflow-hidden rounded-3xl border min-h-[360px] md:min-h-[520px] ${
-          isLightMode ? 'border-black/10' : 'border-white/10'
-        }`}>
-          <img src={post.image_url || fallbackImage} alt={post.title} className="absolute inset-0 w-full h-full object-cover" />
-          <div className={`absolute inset-0 bg-gradient-to-t ${
-            isLightMode ? 'from-white via-white/35 to-transparent' : 'from-dark-bg via-dark-bg/35 to-transparent'
-          }`} />
-          <div className="absolute inset-x-0 bottom-0 p-6 md:p-12 lg:p-16 space-y-6">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-neon-purple/20 border border-neon-purple/30 text-neon-purple text-[10px] font-black uppercase tracking-widest">
-                <FileText className="w-3.5 h-3.5" />
-                Feature
-              </span>
-              <span className={`feature-date-badge inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-widest shadow-sm ${
-                isLightMode ? 'bg-white border-slate-200 text-slate-900' : 'bg-black/75 border-white/10 text-white'
-              }`}>
-                <CalendarDays className="w-3.5 h-3.5 text-neon-blue shrink-0" />
-                <span className={isLightMode ? 'text-slate-900' : 'text-white/90'}>{formatDate(post.created_at)}</span>
-              </span>
-              {post.link_url && (
-                <a
-                  href={post.link_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-neon-blue/20 border border-neon-blue/30 text-neon-blue hover:bg-neon-blue/30 transition-colors text-[10px] font-black uppercase tracking-widest"
-                >
-                  <ExternalLink className="w-3.5 h-3.5 text-neon-blue" />
-                  Visit Link
-                </a>
-              )}
-            </div>
-            <h1 className={`text-4xl md:text-7xl lg:text-8xl font-display font-black uppercase tracking-tighter leading-none max-w-5xl ${
-              isLightMode ? 'text-slate-900' : 'text-white'
+        <div className="space-y-6 max-w-4xl">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-neon-purple/15 border border-neon-purple/30 text-neon-purple text-[10px] font-black uppercase tracking-widest">
+              <FileText className="w-3.5 h-3.5" />
+              Feature
+            </span>
+            <span className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-widest shadow-sm ${
+              isLightMode ? 'bg-slate-100 border-slate-200 text-slate-800' : 'bg-white/10 border-white/10 text-white/90'
             }`}>
-              {post.title}
-            </h1>
-            {post.excerpt && (
-              <p className={`text-base md:text-xl max-w-3xl leading-relaxed border-l-2 border-neon-blue/40 pl-5 ${
-                isLightMode ? 'text-slate-600' : 'text-white/65'
-              }`}>
-                {post.excerpt}
-              </p>
+              <CalendarDays className="w-3.5 h-3.5 text-neon-blue shrink-0" />
+              <span>{formatDate(post.created_at)}</span>
+            </span>
+            {post.link_url && (
+              <a
+                href={post.link_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-neon-blue/15 border border-neon-blue/30 text-neon-blue hover:bg-neon-blue/25 transition-colors text-[10px] font-black uppercase tracking-widest"
+              >
+                <ExternalLink className="w-3.5 h-3.5 text-neon-blue" />
+                Visit Link
+              </a>
             )}
+          </div>
+
+          <h1 className={`text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-black uppercase tracking-tight leading-[1.08] ${
+            isLightMode ? 'text-slate-900' : 'text-white'
+          }`}>
+            {post.title}
+          </h1>
+
+          {post.excerpt && (
+            <p className={`text-lg md:text-2xl font-light leading-relaxed border-l-4 border-neon-blue/60 pl-5 ${
+              isLightMode ? 'text-slate-600' : 'text-white/70'
+            }`}>
+              {post.excerpt}
+            </p>
+          )}
+        </div>
+
+        <div className={`relative overflow-hidden rounded-3xl border shadow-2xl transition-all ${
+          isLightMode ? 'border-slate-200 bg-slate-100 shadow-slate-200/50' : 'border-white/10 bg-black/60 shadow-black/80'
+        }`}>
+          <div className="aspect-[16/9] md:aspect-[21/9] max-h-[520px] w-full overflow-hidden relative group">
+            <img 
+              src={post.image_url || fallbackImage} 
+              alt={post.title} 
+              className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-700 ease-out" 
+            />
           </div>
         </div>
       </header>
