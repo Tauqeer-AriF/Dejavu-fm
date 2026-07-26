@@ -93,21 +93,17 @@ export default function Features() {
         </div>
 
         <div className="relative w-full lg:w-96 group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 group-focus-within:text-neon-purple transition-colors" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
           <input
             value={query}
             onChange={event => setQuery(event.target.value)}
             placeholder="Search features..."
-            className={`w-full border rounded-2xl py-3.5 pl-12 pr-12 text-sm focus:outline-none focus:border-neon-purple/50 transition-all font-medium ${
-              isLightMode ? 'bg-black/5 border-black/10 focus:bg-white text-slate-900' : 'bg-white/5 border-white/10 focus:bg-white/10 text-white'
-            }`}
+            className="w-full pl-11 pr-12 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/20 transition-all font-medium"
           />
           {query && (
             <button
               onClick={() => setQuery("")}
-              className={`absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full transition-all ${
-                isLightMode ? 'hover:bg-black/10 text-slate-500' : 'hover:bg-white/10 text-white/50'
-              }`}
+              className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full transition-all hover:bg-white/10 text-white/40 hover:text-white"
             >
               <X className="w-3.5 h-3.5" />
             </button>

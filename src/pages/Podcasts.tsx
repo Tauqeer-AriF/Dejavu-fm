@@ -143,22 +143,20 @@ export default function PodcastsPage() {
           </button>
 
           <div className="relative w-full md:w-96 group">
-            <Search className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 group-focus-within:text-neon-purple transition-colors ${isLightMode ? 'text-black/30' : 'text-white/30'}`} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
             <input 
               type="text"
               placeholder="Search shows or DJs..."
               value={query}
               onChange={handleSearch}
-              className={`w-full border rounded-2xl py-3.5 pl-12 pr-12 text-sm focus:outline-none focus:border-neon-purple/50 transition-all font-medium ${
-                isLightMode ? 'bg-black/5 border-black/10 focus:bg-white' : 'bg-white/5 border-white/10 focus:bg-white/10'
-              }`}
+              className="w-full pl-11 pr-12 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/20 transition-all font-medium"
             />
             {query && (
               <button 
                 onClick={clearSearch}
-                className={`absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full transition-all ${isLightMode ? 'hover:bg-black/5' : 'hover:bg-white/10'}`}
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full transition-all text-white/40 hover:text-white hover:bg-white/10"
               >
-                <X className={`w-3.5 h-3.5 ${isLightMode ? 'text-black/50' : 'text-white/50'}`} />
+                <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
