@@ -99,6 +99,22 @@ export function useLogo() {
 
   useEffect(() => {
     if (settings) {
+      if (settings.primary_color) {
+        document.documentElement.style.setProperty('--color-neon-purple', settings.primary_color);
+        localStorage.setItem('branding_primary_color', settings.primary_color);
+        let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+        if (!metaThemeColor) {
+          metaThemeColor = document.createElement('meta');
+          metaThemeColor.setAttribute('name', 'theme-color');
+          document.head.appendChild(metaThemeColor);
+        }
+        metaThemeColor.setAttribute('content', settings.primary_color);
+      }
+      if (settings.secondary_color) {
+        document.documentElement.style.setProperty('--color-neon-blue', settings.secondary_color);
+        localStorage.setItem('branding_secondary_color', settings.secondary_color);
+      }
+
       if (settings.font_sans) {
         const sansFallback = ', ui-sans-serif, system-ui, sans-serif';
         document.documentElement.style.setProperty('--font-sans', `"${settings.font_sans}"${sansFallback}`);
