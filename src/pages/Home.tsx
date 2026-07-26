@@ -490,7 +490,7 @@ export default function Home() {
                 <span className={`text-[10px] font-black uppercase tracking-[0.4em] ${isLightMode ? 'text-black/30' : 'text-white/30'}`}>Live on {settings?.app_name || "DEJAVUFM"}</span>
               </div>
               <div className="flex items-center space-x-3">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neon-blue">Digital Signal Optimal</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neon-blue">{settings?.app_tagline || "The Underground Worldwide"}</span>
               </div>
             </div>
           ))}
