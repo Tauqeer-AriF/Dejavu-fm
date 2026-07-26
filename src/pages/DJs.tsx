@@ -18,7 +18,7 @@ interface DJ {
 
 import { SkeletonCard } from '../components/Skeleton';
 
-function DjCard({ dj, index, resolveDjImage, logoUrl, isLightMode, settings }: { dj: DJ, index: number, resolveDjImage: (url: string) => string, logoUrl: string, isLightMode: boolean, settings: any }) {
+function DjCard({ dj, index, resolveDjImage, logoUrl, settings }: { dj: DJ, index: number, resolveDjImage: (url: string) => string, logoUrl: string, isLightMode?: boolean, settings: any }) {
   const [isImageLoaded, setIsImageLoaded] = useState(false);
 
   return (
@@ -27,11 +27,7 @@ function DjCard({ dj, index, resolveDjImage, logoUrl, isLightMode, settings }: {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       whileHover="hover"
-      className={`group relative overflow-hidden rounded-[2.5rem] transition-all duration-700 shadow-2xl ${
-        isLightMode 
-          ? 'bg-white border-black/10 hover:border-neon-blue/30 hover:shadow-neon-blue/5' 
-          : 'bg-[#0A0A0A]/80 border-white/5 hover:border-neon-blue/30 hover:shadow-neon-blue/10 backdrop-blur-xl'
-      }`}
+      className="group relative overflow-hidden rounded-[2.5rem] transition-all duration-700 shadow-2xl bg-[#0A0A0A]/80 border-white/5 hover:border-neon-blue/30 hover:shadow-neon-blue/10 backdrop-blur-xl"
     >
       <motion.div
         className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 z-30"
@@ -42,7 +38,7 @@ function DjCard({ dj, index, resolveDjImage, logoUrl, isLightMode, settings }: {
       <div className="absolute inset-0 bg-gradient-to-br from-neon-purple/5 to-neon-blue/5 opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
       
       <div className="aspect-[3/4] relative overflow-hidden">
-        <div className={`w-full h-full transition-transform duration-1000 group-hover:scale-105 relative z-0 ${resolveDjImage(dj.image_url) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''}`}>
+        <div className="w-full h-full transition-transform duration-1000 group-hover:scale-105 relative z-0">
           {!isImageLoaded && <div className="absolute inset-0 bg-white/5 animate-pulse" />}
           <img 
             src={resolveDjImage(dj.image_url)} 
@@ -54,52 +50,34 @@ function DjCard({ dj, index, resolveDjImage, logoUrl, isLightMode, settings }: {
         
         <Link to={`/djs/${dj.id}`} className="absolute inset-0 z-20"></Link>
         {/* Overlay with details */}
-        <div className={`absolute inset-0 bg-gradient-to-t transition-opacity duration-500 ${
-          isLightMode 
-            ? 'from-white via-white/95 to-transparent' 
-            : 'from-[#0A0A0A] via-[#0A0A0A]/90 to-transparent'
-        } ${
-          isLightMode ? 'opacity-95' : 'opacity-90'
-        } group-hover:opacity-100`}></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-dark-bg via-transparent to-transparent opacity-90 group-hover:opacity-100 transition-opacity duration-500"></div>
         
         <div className="absolute inset-x-0 bottom-0 p-6 md:p-10 space-y-4 md:space-y-6 translate-y-4 group-hover:translate-y-0 transition-transform duration-500 z-40">
           <div className="space-y-1.5">
             <Link to={`/djs/${dj.id}`}>
-              <h3 className={`text-4xl md:text-5xl font-display font-black uppercase tracking-tighter leading-[0.9] group-hover:text-neon-blue transition-colors duration-500 ${
-                isLightMode ? 'text-slate-900' : 'text-white'
-              }`}>
+              <h3 className="text-4xl md:text-5xl font-display font-black uppercase tracking-tighter leading-[0.9] text-white group-hover:text-neon-blue transition-colors duration-500">
                 {dj.name}
               </h3>
             </Link>
             <div className="flex space-x-2" style={{ marginTop: '5px' }}>
-              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-colors ${
-                isLightMode ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-neon-purple/20 text-neon-purple border-neon-purple/20'
-              }`}>Resident</span>
-              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-colors ${
-                isLightMode ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-white/5 text-white/30 border-white/5'
-              }`}>Underground</span>
+              <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-colors bg-neon-purple/20 text-neon-purple border-neon-purple/20">Resident</span>
+              <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-colors bg-white/5 text-white/30 border-white/5">Underground</span>
             </div>
           </div>
 
-          <p className={`text-sm leading-relaxed line-clamp-3 font-light ${
-            isLightMode ? 'text-slate-500' : 'text-white/60'
-          }`}>
+          <p className="text-sm leading-relaxed line-clamp-3 font-light text-white/60">
             {dj.bio || "Crafting sonic journeys through the deepest layers of electronica and bass culture."}
           </p>
 
           <div className="flex items-center space-x-4">
             <div className="flex-1 flex space-x-3">
               {dj.instagram && (
-                <a href={`https://instagram.com/${dj.instagram}`} target="_blank" rel="noopener noreferrer" className={`w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-neon-purple hover:text-white transition-all duration-300 ${
-                  isLightMode ? 'bg-slate-100 text-slate-500 hover:shadow-lg' : 'bg-white/10 text-white/70'
-                }`}>
+                <a href={`https://instagram.com/${dj.instagram}`} target="_blank" rel="noopener noreferrer" className="w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-neon-purple hover:text-white transition-all duration-300 bg-white/10 text-white/70">
                   <Instagram className="w-5 h-5" />
                 </a>
               )}
               {dj.soundcloud && (
-                <a href={`https://soundcloud.com/${dj.soundcloud}`} target="_blank" rel="noopener noreferrer" className={`w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-neon-blue hover:text-white transition-all duration-300 ${
-                  isLightMode ? 'bg-slate-100 text-slate-500 hover:shadow-lg' : 'bg-white/10 text-white/70'
-                }`}>
+                <a href={`https://soundcloud.com/${dj.soundcloud}`} target="_blank" rel="noopener noreferrer" className="w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-neon-blue hover:text-white transition-all duration-300 bg-white/10 text-white/70">
                   <Music className="w-5 h-5" />
                 </a>
               )}
@@ -107,9 +85,7 @@ function DjCard({ dj, index, resolveDjImage, logoUrl, isLightMode, settings }: {
             
             <Link 
               to={`/podcasts?s=${encodeURIComponent(dj.name)}`}
-              className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-neon-purple hover:text-white transition-all duration-300 ${
-                isLightMode ? 'bg-slate-900 text-white' : 'bg-white text-dark-bg'
-              }`}
+              className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-neon-purple hover:text-white transition-all duration-300 bg-white text-dark-bg"
             >
               Sessions
             </Link>
@@ -211,27 +187,19 @@ export default function DJs() {
 
       <div className="max-w-md mx-auto px-4">
         <div className="relative w-full group">
-          <Search className={`absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${
-            isLightMode ? 'text-slate-400 group-focus-within:text-neon-purple' : 'text-white/20 group-focus-within:text-neon-purple'
-          }`} />
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20 group-focus-within:text-neon-purple transition-colors" />
           <input
             value={query}
             onChange={event => setQuery(event.target.value)}
             placeholder="Find a resident DJ..."
-            className={`w-full rounded-2xl py-4 pl-14 pr-14 text-sm focus:outline-none focus:border-neon-purple/50 transition-all font-medium ${
-              isLightMode 
-                ? 'bg-slate-100/80 border border-slate-200 text-slate-800 placeholder:text-slate-400 focus:bg-white focus:shadow-lg' 
-                : 'bg-white/[0.02] border border-white/10 text-white placeholder:text-white/30 focus:bg-white/5'
-            }`}
+            className="w-full bg-white/[0.02] border border-white/10 rounded-2xl py-4 pl-14 pr-14 text-sm focus:outline-none focus:border-neon-purple/50 focus:bg-white/5 transition-all font-medium placeholder:text-white/30"
           />
           {query && (
             <button
               onClick={() => setQuery("")}
-              className={`absolute right-5 top-1/2 -translate-y-1/2 p-1 rounded-full transition-all ${
-                isLightMode ? 'hover:bg-slate-200 text-slate-400 hover:text-slate-600' : 'hover:bg-white/10 text-white/50 hover:text-white'
-              }`}
+              className="absolute right-5 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded-full transition-all"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4 text-white/50" />
             </button>
           )}
         </div>
@@ -261,11 +229,7 @@ export default function DJs() {
                   window.scrollTo({ top: 300, behavior: 'smooth' });
                 }}
                 disabled={currentPage === 1}
-                className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all disabled:opacity-20 ${
-                  isLightMode 
-                    ? 'bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 hover:text-slate-900 disabled:hover:bg-slate-100 disabled:hover:text-slate-600' 
-                    : 'bg-white/[0.02] border border-white/5 text-white/50 hover:border-white/20 hover:bg-white/5 disabled:hover:bg-transparent disabled:hover:border-white/5'
-                }`}
+                className="w-12 h-12 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/20 hover:bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition-all disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:border-white/5"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
@@ -284,9 +248,7 @@ export default function DJs() {
                       className={`w-12 h-12 rounded-2xl text-xs font-black transition-all flex items-center justify-center ${
                         isActive
                           ? "bg-neon-purple text-white border border-neon-purple/30 glow-box shadow-lg shadow-neon-purple/10"
-                          : isLightMode 
-                            ? "bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200 hover:text-slate-900"
-                            : "bg-white/[0.02] text-white/40 border border-white/5 hover:bg-white/5 hover:text-white"
+                          : "bg-white/[0.02] text-white/40 border border-white/5 hover:bg-white/5 hover:text-white"
                       }`}
                     >
                       {pageNum}
@@ -301,11 +263,7 @@ export default function DJs() {
                   window.scrollTo({ top: 300, behavior: 'smooth' });
                 }}
                 disabled={currentPage === totalPages}
-                className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all disabled:opacity-20 ${
-                  isLightMode 
-                    ? 'bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 hover:text-slate-900 disabled:hover:bg-slate-100 disabled:hover:text-slate-600' 
-                    : 'bg-white/[0.02] border border-white/5 text-white/50 hover:border-white/20 hover:bg-white/5 disabled:hover:bg-transparent disabled:hover:border-white/5'
-                }`}
+                className="w-12 h-12 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/20 hover:bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition-all disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:border-white/5"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
@@ -313,11 +271,9 @@ export default function DJs() {
           )}
         </div>
       ) : (
-        <div className={`mx-4 py-20 text-center glass-panel rounded-2xl border-dashed flex flex-col items-center justify-center gap-4 ${
-          isLightMode ? 'bg-slate-50 border-slate-200' : 'border-white/10'
-        }`}>
-          <UserX className={`w-12 h-12 ${isLightMode ? 'text-slate-300' : 'text-white/10'}`} />
-          <p className={`uppercase font-black tracking-widest text-xs ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>
+        <div className="mx-4 py-20 text-center glass-panel rounded-2xl border-dashed flex flex-col items-center justify-center gap-4">
+          <UserX className="w-12 h-12 text-white/10" />
+          <p className="text-white/40 uppercase font-black tracking-widest text-xs">
             No DJs found for "{query}"
           </p>
         </div>
