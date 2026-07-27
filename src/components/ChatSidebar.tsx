@@ -83,15 +83,53 @@ const playNotificationSound = () => {
   });
 };
 
+const safeLocalStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      return localStorage.getItem(key);
+    } catch (e) {
+      console.warn(`[localStorage] Failed to getItem for key "${key}":`, e);
+      return null;
+    }
+  },
+  setItem: (key: string, value: string): void => {
+    try {
+      localStorage.setItem(key, value);
+    } catch (e) {
+      console.warn(`[localStorage] Failed to setItem for key "${key}":`, e);
+    }
+  },
+  removeItem: (key: string): void => {
+    try {
+      localStorage.removeItem(key);
+    } catch (e) {
+      console.warn(`[localStorage] Failed to removeItem for key "${key}":`, e);
+    }
+  }
+};
+
+const authenticatedFetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  let token = null;
+  try {
+    token = safeLocalStorage.getItem('chat_user_token');
+  } catch (e) {}
+  
+  const headers = new Headers(init?.headers || {});
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+  return fetch(input, {
+    ...init,
+    headers,
+    credentials: 'include'
+  });
+};
+
 export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = false }: { isOpen?: boolean; onClose?: () => void; embedded?: boolean }) {
   const { isLightMode } = useLogo();
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem('dejavu_chat_sound_enabled');
-      return saved !== null ? JSON.parse(saved) : true;
-    } catch {
-      return true;
-    }
+    const saved = safeLocalStorage.getItem('dejavu_chat_sound_enabled');
+    return saved !== null ? JSON.parse(saved) : true;
   });
 
   const soundEnabledRef = useRef(soundEnabled);
@@ -100,7 +138,6 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
   }, [soundEnabled]);
 
   
-
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -124,7 +161,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
   const [avatarSeed, setAvatarSeed] = useState('');
   const [blockedUsers, setBlockedUsers] = useState<string[]>(() => {
     try {
-      return JSON.parse(localStorage.getItem('dejavu_blocked_users') || '[]');
+      return JSON.parse(safeLocalStorage.getItem('dejavu_blocked_users') || '[]');
     } catch {
       return [];
     }
@@ -145,7 +182,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
 
   const [drafts, setDrafts] = useState<Record<string, string>>(() => {
     try {
-      const saved = localStorage.getItem('dejavu_chat_drafts_map');
+      const saved = safeLocalStorage.getItem('dejavu_chat_drafts_map');
       return saved ? JSON.parse(saved) : {};
     } catch {
       return {};
@@ -154,7 +191,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
 
   const [inputText, setInputText] = useState(() => {
     try {
-      const saved = localStorage.getItem('dejavu_chat_drafts_map');
+      const saved = safeLocalStorage.getItem('dejavu_chat_drafts_map');
       const parsed = saved ? JSON.parse(saved) : {};
       return parsed['public'] || '';
     } catch {
@@ -167,7 +204,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     const currentKey = chatTab === 'public' ? 'public' : `private_${activeDmUser || 'list'}`;
     setDrafts(prev => {
       const updated = { ...prev, [currentKey]: text };
-      localStorage.setItem('dejavu_chat_drafts_map', JSON.stringify(updated));
+      safeLocalStorage.setItem('dejavu_chat_drafts_map', JSON.stringify(updated));
       return updated;
     });
 
@@ -289,7 +326,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
         const currentKey = chatTab === 'public' ? 'public' : `private_${activeDmUser || 'list'}`;
         setDrafts(prev => {
           const updated = { ...prev, [currentKey]: e.detail };
-          localStorage.setItem('dejavu_chat_drafts_map', JSON.stringify(updated));
+          safeLocalStorage.setItem('dejavu_chat_drafts_map', JSON.stringify(updated));
           return updated;
         });
       }
@@ -538,7 +575,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
 
   const fetchAllUsers = async () => {
     try {
-      const res = await fetch('/api/public/chat/users');
+      const res = await authenticatedFetch('/api/public/chat/users');
       if (res.ok) {
         const data = await res.json();
         setAllUsers(data);
@@ -670,7 +707,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
 
   useEffect(() => {
     const checkAuthAndAdmin = () => {
-      fetch('/api/public/auth/check')
+      authenticatedFetch('/api/public/auth/check')
         .then(r => r.json())
         .then(data => {
           if (data.loggedIn) {
@@ -678,6 +715,9 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
             setUserAvatar(data.avatar_url);
             setUserJoinedAt(data.created_at);
             setIsAdmin(!!data.isAdmin);
+            if (data.token) {
+              safeLocalStorage.setItem('chat_user_token', data.token);
+            }
           } else {
             setIsAdmin(false);
             if (data.error && data.isBanned) {
@@ -693,16 +733,16 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
         });
 
       // Check for station admin status
-      const adminToken = localStorage.getItem('admin_token');
+      const adminToken = safeLocalStorage.getItem('admin_token');
       if (adminToken) {
-        fetch('/api/admin/check', {
+        authenticatedFetch('/api/admin/check', {
           headers: { 'Authorization': `Bearer ${adminToken}` }
         }).then(r => { 
           if (r.ok) {
             setIsAdmin(true);
           } else {
             // If the token is invalid, clear it to prevent further attempts
-            localStorage.removeItem('admin_token');
+            safeLocalStorage.removeItem('admin_token');
           }
         })
         .catch(() => {});
@@ -857,7 +897,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
               const exists = prev.some(u => u.toLowerCase() === data.blocked!.toLowerCase());
               if (exists) return prev;
               const updated = [...prev, data.blocked!];
-              localStorage.setItem('dejavu_blocked_users', JSON.stringify(updated));
+              safeLocalStorage.setItem('dejavu_blocked_users', JSON.stringify(updated));
               return updated;
             });
           }
@@ -868,7 +908,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
             const hasUser = prev.some(u => u.toLowerCase() === data.blocked!.toLowerCase());
             if (!hasUser) return prev;
             const updated = prev.filter(u => u.toLowerCase() !== data.blocked!.toLowerCase());
-            localStorage.setItem('dejavu_blocked_users', JSON.stringify(updated));
+            safeLocalStorage.setItem('dejavu_blocked_users', JSON.stringify(updated));
             return updated;
           });
         }
@@ -877,17 +917,17 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
           const unblockedNames = new Set(data.pairs.map((p: any) => (p.blocked || '').toLowerCase()).filter(Boolean));
           setBlockedUsers(prev => {
             const updated = prev.filter(u => !unblockedNames.has(u.toLowerCase()));
-            localStorage.setItem('dejavu_blocked_users', JSON.stringify(updated));
+            safeLocalStorage.setItem('dejavu_blocked_users', JSON.stringify(updated));
             return updated;
           });
         } else {
-          fetch(`/api/chat/blocks?blocker=${encodeURIComponent(loggedInUser || 'Guest')}`)
+          authenticatedFetch(`/api/chat/blocks?blocker=${encodeURIComponent(loggedInUser || 'Guest')}`)
             .then(res => res.json())
             .then(serverBlocks => {
               if (Array.isArray(serverBlocks)) {
                 const serverUsernames = serverBlocks.map((b: any) => b.blocked);
                 setBlockedUsers(serverUsernames);
-                localStorage.setItem('dejavu_blocked_users', JSON.stringify(serverUsernames));
+                safeLocalStorage.setItem('dejavu_blocked_users', JSON.stringify(serverUsernames));
               }
             })
             .catch(() => {});
@@ -937,7 +977,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
 
   useEffect(() => {
     if (chatTab === 'private' && activeDmUser) {
-      fetch(`/api/chat/block_check?user=${encodeURIComponent(loggedInUser || 'Guest')}&target=${encodeURIComponent(activeDmUser)}`)
+      authenticatedFetch(`/api/chat/block_check?user=${encodeURIComponent(loggedInUser || 'Guest')}&target=${encodeURIComponent(activeDmUser)}`)
         .then(res => res.json())
         .then(data => {
           if (data && typeof data.restricted === 'boolean') {
@@ -957,7 +997,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
         ? 'dejavu_chat_scroll_public' 
         : `dejavu_chat_scroll_private_${activeDmUser || 'list'}`;
       
-      const savedScrollTop = localStorage.getItem(storageKey);
+      const savedScrollTop = safeLocalStorage.getItem(storageKey);
       if (savedScrollTop !== null) {
         const parsed = parseFloat(savedScrollTop);
         if (!isNaN(parsed)) {
@@ -1030,7 +1070,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     const storageKey = chatTab === 'public' 
       ? 'dejavu_chat_scroll_public' 
       : `dejavu_chat_scroll_private_${activeDmUser || 'list'}`;
-    localStorage.setItem(storageKey, target.scrollTop.toString());
+    safeLocalStorage.setItem(storageKey, target.scrollTop.toString());
   };
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -1063,7 +1103,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
         body = { resetToken, password: authPassword };
       }
 
-      const res = await fetch(endpoint, {
+      const res = await authenticatedFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
@@ -1098,13 +1138,17 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
         window.dispatchEvent(new CustomEvent('chat_auth_sync', { detail: { username: data.username, avatar: data.avatar_url, joinedAt: data.created_at, isAdmin: data.role === 'admin' } }));
         setLoginFailed(false);
         
+        if (data.token) {
+          safeLocalStorage.setItem('chat_user_token', data.token);
+        }
+
         // Senior Dev: If this is a staff account, sync the token to admin_token storage 
         // to ensure they can enter the admin portal seamlessly.
         if (data.role && data.token) {
-          localStorage.setItem('admin_token', data.token);
+          safeLocalStorage.setItem('admin_token', data.token);
           setIsAdmin(true);
         } else {
-          localStorage.removeItem('admin_token');
+          safeLocalStorage.removeItem('admin_token');
           setIsAdmin(!!data.isAdmin);
         }
         
@@ -1137,9 +1181,10 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/public/auth/logout', { method: 'POST' });
+      await authenticatedFetch('/api/public/auth/logout', { method: 'POST' });
     } catch(err) {}
-    localStorage.removeItem('admin_token');
+    safeLocalStorage.removeItem('admin_token');
+    safeLocalStorage.removeItem('chat_user_token');
     setLoggedInUser(null);
     setUserAvatar(null);
     setIsAdmin(false);
@@ -1150,13 +1195,13 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     setActiveDmUser(null);
     setChatTab('public');
     setBlockedUsers([]);
-    localStorage.removeItem('dejavu_blocked_users');
+    safeLocalStorage.removeItem('dejavu_blocked_users');
     toast.success('Logged out');
   };
 
   const handleSaveAvatarUrl = async (url: string) => {
     try {
-      const res = await fetch('/api/public/user/profile', {
+      const res = await authenticatedFetch('/api/public/user/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ avatar_url: url })
@@ -1187,7 +1232,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     formData.append('avatar', file);
 
     try {
-      const res = await fetch('/api/public/user/upload-avatar', {
+      const res = await authenticatedFetch('/api/public/user/upload-avatar', {
         method: 'POST',
         body: formData
       });
@@ -1227,7 +1272,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     formData.append('file', file);
     
     try {
-      const res = await fetch('/api/public/chat/upload', {
+      const res = await authenticatedFetch('/api/public/chat/upload', {
         method: 'POST',
         body: formData
       });
@@ -1402,7 +1447,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
         formData.append('file', audioFile);
 
         try {
-          const res = await fetch('/api/public/chat/upload', {
+          const res = await authenticatedFetch('/api/public/chat/upload', {
             method: 'POST',
             body: formData
           });
@@ -1494,7 +1539,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     const currentKey = chatTab === 'public' ? 'public' : `private_${activeDmUser || 'list'}`;
     setDrafts(prev => {
       const updated = { ...prev, [currentKey]: '' };
-      localStorage.setItem('dejavu_chat_drafts_map', JSON.stringify(updated));
+      safeLocalStorage.setItem('dejavu_chat_drafts_map', JSON.stringify(updated));
       return updated;
     });
     setPendingAttachment(null);
@@ -1542,11 +1587,11 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     if (!username || username === loggedInUser || username === 'SYSTEM') return;
     const newBlocked = [...new Set([...blockedUsers, username])];
     setBlockedUsers(newBlocked);
-    localStorage.setItem('dejavu_blocked_users', JSON.stringify(newBlocked));
+    safeLocalStorage.setItem('dejavu_blocked_users', JSON.stringify(newBlocked));
     window.dispatchEvent(new CustomEvent('chat_block_sync', { detail: newBlocked }));
 
     try {
-      await fetch('/api/chat/block', {
+      await authenticatedFetch('/api/chat/block', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1572,9 +1617,9 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
 
     if (!confirmed) return;
 
-    const adminToken = localStorage.getItem('admin_token');
+    const adminToken = safeLocalStorage.getItem('admin_token');
     try {
-      const res = await fetch('/api/admin/chat_users/ban', {
+      const res = await authenticatedFetch('/api/admin/chat_users/ban', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -1592,11 +1637,11 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     if (!username) return;
     const newBlocked = blockedUsers.filter(u => u.toLowerCase() !== username.toLowerCase());
     setBlockedUsers(newBlocked);
-    localStorage.setItem('dejavu_blocked_users', JSON.stringify(newBlocked));
+    safeLocalStorage.setItem('dejavu_blocked_users', JSON.stringify(newBlocked));
     window.dispatchEvent(new CustomEvent('chat_block_sync', { detail: newBlocked }));
 
     try {
-      await fetch('/api/chat/unblock', {
+      await authenticatedFetch('/api/chat/unblock', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1614,12 +1659,12 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
   const handleUnblockAll = async () => {
     const toUnblock = [...blockedUsers];
     setBlockedUsers([]);
-    localStorage.removeItem('dejavu_blocked_users');
+    safeLocalStorage.removeItem('dejavu_blocked_users');
     window.dispatchEvent(new CustomEvent('chat_block_sync', { detail: [] }));
 
     for (const bUser of toUnblock) {
       try {
-        await fetch('/api/chat/unblock', {
+        await authenticatedFetch('/api/chat/unblock', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1635,13 +1680,13 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
 
   useEffect(() => {
     const blockerTarget = loggedInUser || 'Guest';
-    fetch(`/api/chat/blocks?blocker=${encodeURIComponent(blockerTarget)}`)
+    authenticatedFetch(`/api/chat/blocks?blocker=${encodeURIComponent(blockerTarget)}`)
       .then(res => res.json())
       .then(serverBlocks => {
         if (Array.isArray(serverBlocks)) {
           const serverUsernames = serverBlocks.map((b: any) => b.blocked);
           setBlockedUsers(serverUsernames);
-          localStorage.setItem('dejavu_blocked_users', JSON.stringify(serverUsernames));
+          safeLocalStorage.setItem('dejavu_blocked_users', JSON.stringify(serverUsernames));
         }
       })
       .catch(() => {});
@@ -1744,7 +1789,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                   onClick={() => {
                     const newValue = !soundEnabled;
                     setSoundEnabled(newValue);
-                    localStorage.setItem('dejavu_chat_sound_enabled', JSON.stringify(newValue));
+                    safeLocalStorage.setItem('dejavu_chat_sound_enabled', JSON.stringify(newValue));
                     if (newValue) {
                       playNotificationSound();
                     }

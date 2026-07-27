@@ -3,6 +3,47 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Send, Heart, Flame, X, User, Sparkles, Mic2, Radio, MessageSquare, Paperclip } from 'lucide-react';
 import { toast } from 'sonner';
 
+const safeLocalStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      return localStorage.getItem(key);
+    } catch (e) {
+      console.warn(`[localStorage] Failed to getItem for key "${key}":`, e);
+      return null;
+    }
+  },
+  setItem: (key: string, value: string): void => {
+    try {
+      localStorage.setItem(key, value);
+    } catch (e) {
+      console.warn(`[localStorage] Failed to setItem for key "${key}":`, e);
+    }
+  },
+  removeItem: (key: string): void => {
+    try {
+      localStorage.removeItem(key);
+    } catch (e) {
+      console.warn(`[localStorage] Failed to removeItem for key "${key}":`, e);
+    }
+  }
+};
+
+const authenticatedFetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  let token = null;
+  try {
+    token = safeLocalStorage.getItem('chat_user_token');
+  } catch (e) {}
+  
+  const headers = new Headers(init?.headers || {});
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+  return fetch(input, {
+    ...init,
+    headers,
+    credentials: 'include'
+  });
+};
 
 export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -10,11 +51,7 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
   const [userEmail, setUserEmail] = useState('');
   const [userName, setUserName] = useState('');
   const [email, setEmail] = useState(() => {
-    try {
-      return localStorage.getItem('dejavu_shoutout_email') || '';
-    } catch {
-      return '';
-    }
+    return safeLocalStorage.getItem('dejavu_shoutout_email') || '';
   });
   const [message, setMessage] = useState('');
   const [type, setType] = useState<'text' | 'reaction'>('text');
@@ -73,7 +110,7 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
   // Check auth status on mount and when modal opens
   const checkAuth = async () => {
     try {
-      const res = await fetch('/api/public/auth/check');
+      const res = await authenticatedFetch('/api/public/auth/check');
       const data = await res.json();
       if (data.loggedIn) {
         setIsLoggedIn(true);
@@ -85,11 +122,7 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
         setIsLoggedIn(false);
         setUserEmail('');
         setUserName('');
-        try {
-          setEmail(localStorage.getItem('dejavu_shoutout_email') || '');
-        } catch {
-          setEmail('');
-        }
+        setEmail(safeLocalStorage.getItem('dejavu_shoutout_email') || '');
       }
     } catch (err) {
       setIsLoggedIn(false);
@@ -107,11 +140,9 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
   }, [isOpen]);
 
   useEffect(() => {
-    try {
-      if (!isLoggedIn && email) {
-        localStorage.setItem('dejavu_shoutout_email', email);
-      }
-    } catch {}
+    if (!isLoggedIn && email) {
+      safeLocalStorage.setItem('dejavu_shoutout_email', email);
+    }
   }, [email, isLoggedIn]);
 
   useEffect(() => {
@@ -252,7 +283,7 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
         const formData = new FormData();
         formData.append('file', attachment);
 
-        const uploadRes = await fetch('/api/public/shoutout/upload', {
+        const uploadRes = await authenticatedFetch('/api/public/shoutout/upload', {
           method: 'POST',
           body: formData,
         });
@@ -262,7 +293,7 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
         mediaType = uploadData.type;
       }
 
-      const res = await fetch('/api/public/shoutout', {
+      const res = await authenticatedFetch('/api/public/shoutout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -296,7 +327,7 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
     let resolvedEmail = email;
     if (!resolvedEmail.trim()) {
       try {
-        const res = await fetch('/api/public/auth/check');
+        const res = await authenticatedFetch('/api/public/auth/check');
         const data = await res.json();
         if (data.loggedIn) {
           const emailVal = data.email || data.username;
@@ -314,7 +345,7 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
       setIsOpen(true);
       return;
     }
-    fetch('/api/public/shoutout', {
+    authenticatedFetch('/api/public/shoutout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: resolvedEmail, message: emoji, type: 'reaction' })

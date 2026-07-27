@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Play, Pause, Calendar, Share2, Copy, Twitter, Facebook, X, Check, RotateCcw, RotateCw, Volume2, VolumeX, Sliders } from "lucide-react";
+import { ArrowLeft, Play, Pause, Calendar, Share2, Copy, Twitter, Facebook, X, Check, RotateCcw, RotateCw, Volume2, VolumeX, Sliders, Download } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { useAudio } from "../context/AudioContext";
@@ -200,6 +200,92 @@ export default function PodcastDetail() {
   const isCurrentPodcastPlaying = activeType === 'podcast' && podcastTrack?.id === id && isPlaying;
   const isCurrentPodcastLoaded = activeType === 'podcast' && podcastTrack?.id === id;
 
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+
+  const triggerBlobDownload = (blob: Blob) => {
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = `${podcast.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.mp3`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(blobUrl);
+    toast.success("Podcast downloaded successfully!");
+  };
+
+  const handleDownload = async () => {
+    if (!audioUrl) {
+      toast.error("Audio URL not found for this episode.");
+      return;
+    }
+    setIsDownloading(true);
+    setDownloadProgress(0);
+    toast.info("Starting download...");
+
+    try {
+      const response = await fetch(audioUrl);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      
+      const contentLength = response.headers.get('content-length');
+      if (!contentLength) {
+        const blob = await response.blob();
+        triggerBlobDownload(blob);
+        return;
+      }
+
+      const total = parseInt(contentLength, 10);
+      let loaded = 0;
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("ReadableStream not supported or null body");
+      }
+
+      const chunks: Uint8Array[] = [];
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) {
+          chunks.push(value);
+          loaded += value.length;
+          setDownloadProgress(Math.round((loaded / total) * 100));
+        }
+      }
+
+      const allChunks = new Uint8Array(loaded);
+      let position = 0;
+      for (const chunk of chunks) {
+        allChunks.set(chunk, position);
+        position += chunk.length;
+      }
+
+      const blob = new Blob([allChunks], { type: 'audio/mpeg' });
+      triggerBlobDownload(blob);
+    } catch (err) {
+      console.warn("Direct stream download failed, falling back to basic download:", err);
+      try {
+        const response = await fetch(audioUrl);
+        const blob = await response.blob();
+        triggerBlobDownload(blob);
+      } catch (fallbackErr) {
+        console.warn("Blob fetch failed, falling back to direct link download:", fallbackErr);
+        const link = document.createElement('a');
+        link.href = audioUrl;
+        link.target = "_blank";
+        link.download = `${podcast.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.mp3`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("Opening audio file for download...");
+      }
+    } finally {
+      setIsDownloading(false);
+      setDownloadProgress(0);
+    }
+  };
+
   const handlePlayPause = () => {
     playPodcast({
       id: id || "",
@@ -336,7 +422,7 @@ export default function PodcastDetail() {
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4 w-full">
                     {/* Playback speed selector */}
                     <div className="flex items-center space-x-2 shrink-0">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-white/30">Speed</span>
+                      <span className="hidden sm:inline-block text-[10px] font-black uppercase tracking-wider text-white/30">Speed</span>
                       <div className="flex items-center space-x-1 bg-white/5 p-1 rounded-xl border border-white/5">
                         {[1.0, 1.25, 1.5, 2.0].map((rate) => (
                           <button
@@ -369,8 +455,8 @@ export default function PodcastDetail() {
                     </div>
                   </div>
 
-                  {/* Row 3: Dedicated Centered Share Button under controls */}
-                  <div className="flex items-center justify-center w-full pt-1">
+                  {/* Row 3: Dedicated Share & Download Buttons under controls */}
+                  <div className="flex flex-wrap items-center justify-center gap-3 w-full pt-1">
                     <button
                       onClick={() => setIsShareModalOpen(true)}
                       className="inline-flex h-9 items-center justify-center space-x-1.5 bg-white/5 hover:bg-white/10 text-white font-semibold py-1.5 px-6 rounded-xl transition-colors border border-white/10 text-xs uppercase tracking-wider cursor-pointer hover:border-white/20 hover:text-neon-blue"
@@ -378,11 +464,27 @@ export default function PodcastDetail() {
                       <Share2 className="w-3.5 h-3.5" />
                       <span className="font-bold">Share Episode</span>
                     </button>
+
+                    <button
+                      onClick={handleDownload}
+                      disabled={isDownloading}
+                      className="inline-flex h-9 items-center justify-center space-x-1.5 bg-white/5 hover:bg-white/10 text-white font-semibold py-1.5 px-6 rounded-xl transition-colors border border-white/10 text-xs uppercase tracking-wider cursor-pointer hover:border-white/20 hover:text-neon-purple disabled:opacity-50"
+                      title="Download episode as MP3"
+                    >
+                      {isDownloading ? (
+                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <Download className="w-3.5 h-3.5" />
+                      )}
+                      <span className="font-bold">
+                        {isDownloading ? `Downloading ${downloadProgress}%` : "Download MP3"}
+                      </span>
+                    </button>
                   </div>
                 </div>
               </div>
             ) : podcast.link ? (
-               <div className="flex items-center gap-4">
+               <div className="flex flex-wrap items-center gap-4">
                   <a 
                     href={podcast.link} 
                     target="_blank" 
@@ -398,6 +500,22 @@ export default function PodcastDetail() {
                     <Share2 className="w-4 h-4" />
                     <span className="text-sm font-bold uppercase tracking-wider">Share</span>
                   </button>
+                  {audioUrl && (
+                    <button
+                      onClick={handleDownload}
+                      disabled={isDownloading}
+                      className="inline-flex h-12 items-center justify-center space-x-2 bg-white/5 hover:bg-white/10 text-white font-semibold py-2 px-6 rounded-full transition-colors border border-white/10 shrink-0 disabled:opacity-50 cursor-pointer"
+                    >
+                      {isDownloading ? (
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <Download className="w-4 h-4" />
+                      )}
+                      <span className="text-sm font-bold uppercase tracking-wider">
+                        {isDownloading ? `Downloading ${downloadProgress}%` : "Download MP3"}
+                      </span>
+                    </button>
+                  )}
                </div>
             ) : null}
           </div>

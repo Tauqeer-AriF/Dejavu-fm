@@ -1,5 +1,10 @@
 export async function fetchAdmin(url: string, init?: Omit<RequestInit, 'body'> & { body?: any }): Promise<Response> {
-  const token = localStorage.getItem("admin_token");
+  let token = null;
+  try {
+    token = localStorage.getItem("admin_token");
+  } catch (e) {
+    console.warn("[adminApi] localStorage is blocked/unavailable:", e);
+  }
   const headers = new Headers(init?.headers as HeadersInit);
 
   if (token) {
@@ -18,6 +23,7 @@ export async function fetchAdmin(url: string, init?: Omit<RequestInit, 'body'> &
   const response = await fetch(url, {
     ...init,
     headers,
+    credentials: 'include',
     ...(body !== undefined ? { body } : {}),
   });
 

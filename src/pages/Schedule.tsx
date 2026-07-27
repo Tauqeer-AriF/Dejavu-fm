@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "motion/react";
-import { Bell, BellOff, Globe, Calendar as CalendarIcon, Search, Layers } from "lucide-react";
+import { Bell, BellOff, Calendar as CalendarIcon, Search, Layers } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
-import { convertToLocalTime, getUserTimezone } from "../lib/timeUtils";
+import { convertToLocalTime } from "../lib/timeUtils";
 import { useLogo } from "../hooks/useLogo";
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -29,7 +29,6 @@ export default function Schedule() {
     return new Date().getDay();
   });
   const [searchQuery, setSearchQuery] = useState("");
-  const userTz = useMemo(() => getUserTimezone(), []);
   
   const { data: scheduleData, isLoading } = useQuery({
     queryKey: ['schedule'],
@@ -200,20 +199,6 @@ export default function Schedule() {
               </button>
             )}
           </div>
-
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="bg-white/5 border border-white/10 rounded-2xl p-3.5 flex items-center space-x-3 shrink-0 w-full sm:w-auto"
-          >
-            <div className="p-2 bg-neon-blue/20 rounded-lg">
-              <Globe className="w-4 h-4 text-neon-blue" />
-            </div>
-            <div>
-              <p className="text-[9px] uppercase tracking-widest text-white/40 font-bold">Local Timezone</p>
-              <p className="text-xs font-mono text-white/90">{userTz}</p>
-            </div>
-          </motion.div>
         </div>
       </div>
 
@@ -549,7 +534,7 @@ export default function Schedule() {
                         <p className="text-sm text-white/45 max-w-md mx-auto">
                           {searchQuery 
                             ? `We couldn't find any matches for "${searchQuery}" on this day.` 
-                            : `There are currently no shows scheduled on ${DAYS[activeTab]} in your local timezone.`}
+                            : `There are currently no shows scheduled on ${DAYS[activeTab]}.`}
                         </p>
                         <div className="flex justify-center gap-3 pt-2">
                           {searchQuery && (
