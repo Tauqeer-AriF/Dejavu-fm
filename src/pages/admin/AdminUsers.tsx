@@ -251,9 +251,11 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
     }
   };
 
-  const loadUsers = async () => {
+  const loadUsers = async (silent: boolean = false) => {
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       setError("");
       const res = await fetchAdmin("/api/admin/users");
       if (res.ok) {
@@ -266,7 +268,9 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
       console.error(err);
       setError("An unexpected error occurred while loading staff accounts");
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   };
 
@@ -304,7 +308,7 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
       const handlePresence = (list: ActiveSession[]) => {
         if (Array.isArray(list)) {
           setActiveSessions(list);
-          loadUsers();
+          loadUsers(true);
         }
       };
       socket.on('presence_update', handlePresence);
@@ -315,7 +319,7 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
 
     const interval = setInterval(() => {
       loadActiveSessions();
-      loadUsers();
+      loadUsers(true);
     }, 8000);
 
     return () => clearInterval(interval);
