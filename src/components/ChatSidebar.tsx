@@ -670,7 +670,13 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
 
   useEffect(() => {
     const checkAuthAndAdmin = () => {
-      fetch('/api/public/auth/check')
+      const chatUserToken = localStorage.getItem('chat_user_token');
+      const headers: HeadersInit = {};
+      if (chatUserToken) {
+        headers['Authorization'] = `Bearer ${chatUserToken}`;
+      }
+
+      fetch('/api/public/auth/check', { headers })
         .then(r => r.json())
         .then(data => {
           if (data.loggedIn) {
@@ -678,6 +684,9 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
             setUserAvatar(data.avatar_url);
             setUserJoinedAt(data.created_at);
             setIsAdmin(!!data.isAdmin);
+            if (data.token) {
+              localStorage.setItem('chat_user_token', data.token);
+            }
           } else {
             setIsAdmin(false);
             if (data.error && data.isBanned) {
@@ -1098,6 +1107,10 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
         window.dispatchEvent(new CustomEvent('chat_auth_sync', { detail: { username: data.username, avatar: data.avatar_url, joinedAt: data.created_at, isAdmin: data.role === 'admin' } }));
         setLoginFailed(false);
         
+        if (data.token) {
+          localStorage.setItem('chat_user_token', data.token);
+        }
+
         // Senior Dev: If this is a staff account, sync the token to admin_token storage 
         // to ensure they can enter the admin portal seamlessly.
         if (data.role && data.token) {
@@ -1140,6 +1153,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
       await fetch('/api/public/auth/logout', { method: 'POST' });
     } catch(err) {}
     localStorage.removeItem('admin_token');
+    localStorage.removeItem('chat_user_token');
     setLoggedInUser(null);
     setUserAvatar(null);
     setIsAdmin(false);
