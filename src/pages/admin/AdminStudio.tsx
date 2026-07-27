@@ -1668,6 +1668,43 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             setPinnedThreads(data.studio_pinned_threads);
             localStorage.setItem('studio_pinned_threads', JSON.stringify(data.studio_pinned_threads));
           }
+          if (data.dejavu_studio_threads) {
+            setThreads(prev => {
+              const dbThreads = normalizeThreads(data.dejavu_studio_threads);
+              const merged = { ...dbThreads };
+              
+              Object.keys(prev).forEach(key => {
+                if (!merged[key]) {
+                  merged[key] = prev[key];
+                } else {
+                  const existingMsgs = prev[key].messages || [];
+                  const dbMsgs = merged[key].messages || [];
+                  const allMsgs = [...dbMsgs];
+                  existingMsgs.forEach(m => {
+                    if (!allMsgs.some(est => isSameMessage(est, m))) {
+                      allMsgs.push(m);
+                    }
+                  });
+                  allMsgs.sort((a, b) => a.timestamp - b.timestamp);
+                  merged[key] = {
+                    ...merged[key],
+                    messages: allMsgs,
+                    unreadCount: Math.max(merged[key].unreadCount || 0, prev[key].unreadCount || 0)
+                  };
+                }
+              });
+              
+              localStorage.setItem('dejavu_studio_threads', JSON.stringify(merged));
+              return merged;
+            });
+          }
+          if (data.dejavu_studio_last_read) {
+            setLastReadTimestamps(prev => {
+              const updated = { ...data.dejavu_studio_last_read, ...prev };
+              localStorage.setItem('dejavu_studio_last_read', JSON.stringify(updated));
+              return updated;
+            });
+          }
         }
       } catch (err) {
         console.error("Failed to load studio settings from API", err);
@@ -1683,7 +1720,27 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     } catch (error) {
       console.warn("Failed to save studio threads to local storage", error);
     }
+
+    const handler = setTimeout(() => {
+      syncSettingsToApi({ dejavu_studio_threads: threads });
+    }, 2000);
+
+    return () => clearTimeout(handler);
   }, [threads]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('dejavu_studio_last_read', JSON.stringify(lastReadTimestamps));
+    } catch (error) {
+      console.warn("Failed to save last read timestamps to local storage", error);
+    }
+
+    const handler = setTimeout(() => {
+      syncSettingsToApi({ dejavu_studio_last_read: lastReadTimestamps });
+    }, 2000);
+
+    return () => clearTimeout(handler);
+  }, [lastReadTimestamps]);
 
   useEffect(() => {
     try {
