@@ -349,6 +349,7 @@ apiRouter.get("/public/schedule", (req, res) => {
       let instagram = null;
       let soundcloud = null;
       let mixcloud = null;
+      let facebook = null;
 
       if (matchingDjs.length > 0) {
         const names = matchingDjs.map(d => d.name);
@@ -362,6 +363,7 @@ apiRouter.get("/public/schedule", (req, res) => {
         instagram = matchingDjs[0].instagram;
         soundcloud = matchingDjs[0].soundcloud;
         mixcloud = matchingDjs[0].mixcloud;
+        facebook = matchingDjs[0].facebook;
       }
 
       return {
@@ -372,6 +374,7 @@ apiRouter.get("/public/schedule", (req, res) => {
         instagram,
         soundcloud,
         mixcloud,
+        facebook,
         dj_ids: s.dj_id ? s.dj_id.toString().split(',').map((id: string) => id.trim()).filter(Boolean) : []
       };
     });
@@ -2296,10 +2299,10 @@ apiRouter.get("/admin/djs", (req, res) => {
 });
 
 apiRouter.post("/admin/djs", (req, res) => {
-  const { name, bio, image_url, instagram, soundcloud, mixcloud } = req.body;
+  const { name, bio, image_url, instagram, soundcloud, mixcloud, facebook } = req.body;
   const id = crypto.randomUUID();
-  db.prepare("INSERT INTO djs (id, name, bio, image_url, instagram, soundcloud, mixcloud) VALUES (?, ?, ?, ?, ?, ?, ?)")
-    .run(id, name, bio, image_url, instagram, soundcloud, mixcloud);
+  db.prepare("INSERT INTO djs (id, name, bio, image_url, instagram, soundcloud, mixcloud, facebook) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+    .run(id, name, bio, image_url, instagram, soundcloud, mixcloud, facebook);
   
   // Auto-link staff account if username matches the DJ name
   try {
@@ -2314,9 +2317,9 @@ apiRouter.post("/admin/djs", (req, res) => {
 });
 
 apiRouter.put("/admin/djs/:id", (req, res) => {
-  const { name, bio, image_url, instagram, soundcloud, mixcloud } = req.body;
-  db.prepare("UPDATE djs SET name = ?, bio = ?, image_url = ?, instagram = ?, soundcloud = ?, mixcloud = ? WHERE id = ?")
-    .run(name, bio, image_url, instagram, soundcloud, mixcloud, req.params.id);
+  const { name, bio, image_url, instagram, soundcloud, mixcloud, facebook } = req.body;
+  db.prepare("UPDATE djs SET name = ?, bio = ?, image_url = ?, instagram = ?, soundcloud = ?, mixcloud = ?, facebook = ? WHERE id = ?")
+    .run(name, bio, image_url, instagram, soundcloud, mixcloud, facebook, req.params.id);
   logAction(req, 'UPDATE', 'dj', req.params.id, { name });
   res.json({ success: true });
 });

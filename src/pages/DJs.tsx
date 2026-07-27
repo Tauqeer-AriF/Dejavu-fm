@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { Instagram, Music, Search, X, UserX, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Instagram, Facebook, Search, X, UserX, ChevronLeft, ChevronRight, Globe } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useLogo } from '../hooks/useLogo';
 import { PremiumRingLoader } from '../components/PremiumRingLoader';
@@ -12,7 +12,7 @@ interface DJ {
   bio: string;
   image_url: string;
   instagram: string;
-  soundcloud: string;
+  facebook?: string;
   mixcloud: string;
 }
 
@@ -76,9 +76,14 @@ function DjCard({ dj, index, resolveDjImage, logoUrl, settings }: { dj: DJ, inde
                   <Instagram className="w-5 h-5" />
                 </a>
               )}
-              {dj.soundcloud && (
-                <a href={`https://soundcloud.com/${dj.soundcloud}`} target="_blank" rel="noopener noreferrer" className="w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-neon-blue hover:text-white transition-all duration-300 bg-white/10 text-white/70">
-                  <Music className="w-5 h-5" />
+              {dj.facebook && (
+                <a href={dj.facebook.startsWith('http') ? dj.facebook : `https://facebook.com/${dj.facebook}`} target="_blank" rel="noopener noreferrer" className="w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-neon-blue hover:text-white transition-all duration-300 bg-white/10 text-white/70">
+                  <Facebook className="w-5 h-5" />
+                </a>
+              )}
+              {dj.mixcloud && (
+                <a href={dj.mixcloud.startsWith('http') ? dj.mixcloud : `https://mixcloud.com/${dj.mixcloud}`} target="_blank" rel="noopener noreferrer" className="w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-sky-500 hover:text-white transition-all duration-300 bg-white/10 text-white/70" title={`Mixcloud: ${dj.mixcloud}`}>
+                  <Globe className="w-5 h-5" />
                 </a>
               )}
             </div>

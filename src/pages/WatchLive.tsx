@@ -2,7 +2,7 @@ import { ChatMessage } from "../types";
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { io, Socket } from 'socket.io-client';
-import { Send, User, LogOut, Loader2, Instagram, Music2, Globe, Radio, Sparkles, Clock, MessageSquare, Users, Eye, EyeOff, Maximize2, X, RefreshCw, Disc } from 'lucide-react';
+import { Send, User, LogOut, Loader2, Instagram, Facebook, Globe, Radio, Sparkles, Clock, MessageSquare, Users, Eye, EyeOff, Maximize2, X, RefreshCw, Disc } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { useAudio } from '../context/AudioContext';
@@ -410,16 +410,16 @@ export default function WatchLive() {
                <h3 className={`${isLightMode ? 'text-black/80' : 'text-white/90'} font-bold text-xs truncate`}>{onAirInfo?.showName || "Global Underground Stream"}</h3>
              </div>
              
-             {(onAirInfo?.instagram || onAirInfo?.soundcloud || onAirInfo?.mixcloud) && (
+             {(onAirInfo?.instagram || onAirInfo?.facebook || onAirInfo?.mixcloud) && (
                <div className="flex gap-4 shrink-0">
                  {onAirInfo.instagram && (
                    <a href={`https://instagram.com/${onAirInfo.instagram}`} target="_blank" rel="noopener noreferrer" className={`p-2.5 rounded-xl ${isLightMode ? 'bg-black/5 hover:bg-neon-purple/15 border-black/10 text-black/50 hover:text-black' : 'bg-white/5 hover:bg-neon-purple/20 border-white/5 text-white/50 hover:text-white'} border transition-all`}>
                      <Instagram className="w-5 h-5" />
                    </a>
                  )}
-                 {onAirInfo.soundcloud && (
-                   <a href={`https://soundcloud.com/${onAirInfo.soundcloud}`} target="_blank" rel="noopener noreferrer" className={`p-2.5 rounded-xl ${isLightMode ? 'bg-black/5 hover:bg-neon-blue/15 border-black/10 text-black/50 hover:text-black' : 'bg-white/5 hover:bg-neon-blue/20 border-white/5 text-white/50 hover:text-white'} border transition-all`}>
-                     <Music2 className="w-5 h-5" />
+                 {onAirInfo.facebook && (
+                   <a href={onAirInfo.facebook.startsWith('http') ? onAirInfo.facebook : `https://facebook.com/${onAirInfo.facebook}`} target="_blank" rel="noopener noreferrer" className={`p-2.5 rounded-xl ${isLightMode ? 'bg-black/5 hover:bg-neon-blue/15 border-black/10 text-black/50 hover:text-black' : 'bg-white/5 hover:bg-neon-blue/20 border-white/5 text-white/50 hover:text-white'} border transition-all`}>
+                     <Facebook className="w-5 h-5" />
                    </a>
                  )}
                  {onAirInfo.mixcloud && (
@@ -511,14 +511,14 @@ export default function WatchLive() {
                       <Instagram className="w-3.5 h-3.5" />
                     </a>
                   )}
-                  {onAirInfo?.soundcloud && (
+                  {onAirInfo?.facebook && (
                     <a 
-                      href={`https://soundcloud.com/${onAirInfo.soundcloud}`} 
+                      href={onAirInfo.facebook.startsWith('http') ? onAirInfo.facebook : `https://facebook.com/${onAirInfo.facebook}`} 
                       target="_blank" 
                       rel="noopener noreferrer" 
                       className={`p-1.5 rounded-lg border transition-all ${isLightMode ? 'bg-zinc-100 hover:bg-neon-blue/15 text-zinc-500 hover:text-zinc-900 border-zinc-200' : 'bg-white/5 hover:bg-neon-blue/20 text-white/50 hover:text-white border-zinc-800 hover:border-neon-blue/30'}`}
                     >
-                      <Music2 className="w-3.5 h-3.5" />
+                      <Facebook className="w-3.5 h-3.5" />
                     </a>
                   )}
                   {onAirInfo?.mixcloud && (

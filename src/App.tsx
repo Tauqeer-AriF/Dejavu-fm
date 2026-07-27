@@ -822,6 +822,7 @@ function MainLayout() {
           instagram: onAir.instagram,
           soundcloud: onAir.soundcloud,
           mixcloud: onAir.mixcloud,
+          facebook: onAir.facebook,
           startTime: start.timeStr,
           endTime: end.timeStr
         });

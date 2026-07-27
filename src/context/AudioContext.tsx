@@ -38,6 +38,7 @@ interface AudioStore {
     instagram?: string;
     soundcloud?: string;
     mixcloud?: string;
+    facebook?: string;
     startTime?: string;
     endTime?: string;
   } | null;
@@ -70,6 +71,7 @@ interface AudioStore {
     instagram?: string;
     soundcloud?: string;
     mixcloud?: string;
+    facebook?: string;
     startTime?: string;
     endTime?: string;
   } | null) => void;

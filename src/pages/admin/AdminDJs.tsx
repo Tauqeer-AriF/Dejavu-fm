@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
-import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles, AlertTriangle, Instagram, Music } from "lucide-react";
+import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles, AlertTriangle, Instagram, Facebook } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { useModal } from "../../context/ModalContext";
 import { useLogo } from "../../hooks/useLogo";
@@ -216,19 +216,19 @@ export function AdminDJs() {
                           </span>
                         )}
 
-                        {dj.soundcloud ? (
+                        {dj.facebook ? (
                           <a 
-                            href={`https://soundcloud.com/${dj.soundcloud}`} 
+                            href={dj.facebook.startsWith('http') ? dj.facebook : `https://facebook.com/${dj.facebook}`} 
                             target="_blank" 
                             rel="noreferrer" 
-                            title={`Soundcloud: ${dj.soundcloud}`}
-                            className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-[#FF5500]/20 transition-all border border-white/5"
+                            title={`Facebook: ${dj.facebook}`}
+                            className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-[#1877F2]/20 transition-all border border-white/5"
                           >
-                            <Music className="w-3.5 h-3.5" />
+                            <Facebook className="w-3.5 h-3.5" />
                           </a>
                         ) : (
-                          <span className="w-7 h-7 rounded-lg bg-white/[0.02] flex items-center justify-center text-white/10 border border-transparent" title="No Soundcloud linked">
-                            <Music className="w-3.5 h-3.5 opacity-30" />
+                          <span className="w-7 h-7 rounded-lg bg-white/[0.02] flex items-center justify-center text-white/10 border border-transparent" title="No Facebook linked">
+                            <Facebook className="w-3.5 h-3.5 opacity-30" />
                           </span>
                         )}
 
@@ -382,7 +382,7 @@ function EditDJForm({dj, onSave, onCancel}: {dj: any, onSave: ()=>void, onCancel
   const [bio, setBio] = useState(dj.bio || "");
   const [image, setImage] = useState(dj.image_url || "");
   const [instagram, setInstagram] = useState(dj.instagram || "");
-  const [soundcloud, setSoundcloud] = useState(dj.soundcloud || "");
+  const [facebook, setFacebook] = useState(dj.facebook || "");
   const [mixcloud, setMixcloud] = useState(dj.mixcloud || "");
   const { showAlert } = useModal();
   
@@ -390,7 +390,7 @@ function EditDJForm({dj, onSave, onCancel}: {dj: any, onSave: ()=>void, onCancel
     e.preventDefault();
     const res = await fetchAdmin(`/api/admin/djs/${dj.id}`, {
       method: "PUT", headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({ name, bio, image_url: image, instagram, soundcloud, mixcloud })
+      body: JSON.stringify({ name, bio, image_url: image, instagram, facebook, mixcloud })
     });
     if (res.ok) {
       showAlert({ title: "Success", message: `${name} updated successfully!`, style: "success" });
@@ -421,8 +421,8 @@ function EditDJForm({dj, onSave, onCancel}: {dj: any, onSave: ()=>void, onCancel
           <input value={instagram} onChange={e=>setInstagram(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5 focus:outline-none focus:border-neon-purple text-[10px]" />
         </div>
         <div>
-          <label className="block text-xs uppercase mb-1 text-white/50 text-[10px]">Soundcloud</label>
-          <input value={soundcloud} onChange={e=>setSoundcloud(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5 focus:outline-none focus:border-neon-purple text-[10px]" />
+          <label className="block text-xs uppercase mb-1 text-white/50 text-[10px]">Facebook</label>
+          <input value={facebook} onChange={e=>setFacebook(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5 focus:outline-none focus:border-neon-purple text-[10px]" placeholder="username or link" />
         </div>
         <div>
           <label className="block text-xs uppercase mb-1 text-white/50 text-[10px]">Mixcloud</label>
@@ -443,7 +443,7 @@ function AddDJForm({onAdd}: {onAdd:()=>void}) {
   const [bio, setBio] = useState("");
   const [image, setImage] = useState("");
   const [instagram, setInstagram] = useState("");
-  const [soundcloud, setSoundcloud] = useState("");
+  const [facebook, setFacebook] = useState("");
   const [mixcloud, setMixcloud] = useState("");
   const { showAlert } = useModal();
   
@@ -451,12 +451,12 @@ function AddDJForm({onAdd}: {onAdd:()=>void}) {
     e.preventDefault();
     const res = await fetchAdmin("/api/admin/djs", {
       method: "POST", headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({ name, bio, image_url: image, instagram, soundcloud, mixcloud })
+      body: JSON.stringify({ name, bio, image_url: image, instagram, facebook, mixcloud })
     });
     if (res.ok) {
       showAlert({ title: "Success", message: `${name} added to the roster!`, style: "success" });
       queryClient.invalidateQueries({ queryKey: ['djs'] });
-      setName(""); setBio(""); setImage(""); setInstagram(""); setSoundcloud(""); setMixcloud("");
+      setName(""); setBio(""); setImage(""); setInstagram(""); setFacebook(""); setMixcloud("");
       onAdd();
     } else {
       showAlert({ title: "Error", message: "Failed to add DJ", style: "danger" });
@@ -510,12 +510,12 @@ function AddDJForm({onAdd}: {onAdd:()=>void}) {
               />
             </div>
             <div>
-              <label className="block text-[10px] uppercase font-black tracking-widest text-white/30 mb-1">Soundcloud</label>
+              <label className="block text-[10px] uppercase font-black tracking-widest text-white/30 mb-1">Facebook</label>
               <input 
-                value={soundcloud} 
-                onChange={e=>setSoundcloud(e.target.value)} 
+                value={facebook} 
+                onChange={e=>setFacebook(e.target.value)} 
                 className="w-full bg-[#0d0d0f] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-neon-purple" 
-                placeholder="username"
+                placeholder="username or link"
               />
             </div>
             <div>

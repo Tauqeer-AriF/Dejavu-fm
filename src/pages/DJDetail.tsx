@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Instagram, Music, Radio, Calendar, Send, X, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Instagram, Facebook, Radio, Calendar, Send, X, CheckCircle, Globe } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useLogo } from '../hooks/useLogo';
 
@@ -135,9 +135,14 @@ export default function DJDetail() {
                   <Instagram className="w-5 h-5" />
                 </a>
               )}
-              {dj.soundcloud && (
-                <a href={`https://soundcloud.com/${dj.soundcloud}`} target="_blank" rel="noopener noreferrer" className="p-3 bg-white/5 hover:bg-neon-blue/20 border border-white/10 rounded-xl transition-all text-white/40 hover:text-neon-blue">
-                  <Music className="w-5 h-5" />
+              {dj.facebook && (
+                <a href={dj.facebook.startsWith('http') ? dj.facebook : `https://facebook.com/${dj.facebook}`} target="_blank" rel="noopener noreferrer" className="p-3 bg-white/5 hover:bg-neon-blue/20 border border-white/10 rounded-xl transition-all text-white/40 hover:text-neon-blue">
+                  <Facebook className="w-5 h-5" />
+                </a>
+              )}
+              {dj.mixcloud && (
+                <a href={dj.mixcloud.startsWith('http') ? dj.mixcloud : `https://mixcloud.com/${dj.mixcloud}`} target="_blank" rel="noopener noreferrer" className="p-3 bg-white/5 hover:bg-sky-500/20 border border-white/10 rounded-xl transition-all text-white/40 hover:text-sky-400" title={`Mixcloud: ${dj.mixcloud}`}>
+                  <Globe className="w-5 h-5" />
                 </a>
               )}
             </div>
