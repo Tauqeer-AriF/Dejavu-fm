@@ -691,7 +691,7 @@ apiRouter.post("/public/auth/register", (req, res) => {
     const info = db.prepare("INSERT INTO users (username, email, password_hash, password_plain, source) VALUES (?, ?, ?, ?, ?)").run(cleanUsername, cleanEmail, hash, password, 'register');
     const token = jwt.sign({ userId: info.lastInsertRowid, username: cleanUsername }, ACTUAL_SECRET, { expiresIn: "30d" });
     res.cookie("user_token", token, { httpOnly: true, secure: true, sameSite: "none", path: '/', maxAge: 30 * 24 * 60 * 60 * 1000 });
-    res.json({ success: true, username: cleanUsername, avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${cleanUsername}` });
+    res.json({ success: true, username: cleanUsername, avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${cleanUsername}`, token });
   } catch (err) {
     res.status(400).json({ error: "Email or username already exists" });
   }
@@ -733,7 +733,8 @@ apiRouter.post("/public/auth/login", authLimiter, (req, res) => {
     res.json({ 
       success: true, 
       username: user.username, 
-      avatar_url: user.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.username}`
+      avatar_url: user.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.username}`,
+      token: token
     });
   } else {
     res.status(401).json({ error: "Invalid credentials" });
@@ -808,7 +809,16 @@ apiRouter.post("/public/auth/logout", (req, res) => {
 });
 
 apiRouter.get("/public/auth/check", (req, res) => {
-  const token = req.cookies.user_token;
+  let token = req.cookies.user_token;
+  let fromHeader = false;
+  if (!token) {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+      fromHeader = true;
+    }
+  }
+  
   if (!token) return res.json({ loggedIn: false });
   try {
     const decoded = jwt.verify(token, ACTUAL_SECRET) as any;
@@ -817,6 +827,9 @@ apiRouter.get("/public/auth/check", (req, res) => {
     if (decoded.isAdmin || (typeof decoded.userId === 'string' && decoded.userId.startsWith('admin_'))) {
       const admin = db.prepare("SELECT * FROM admins WHERE LOWER(username) = ?").get(decoded.username.toLowerCase()) as any;
       if (admin) {
+        if (fromHeader) {
+          res.cookie("user_token", token, { httpOnly: true, secure: true, sameSite: "none", path: '/', maxAge: 30 * 24 * 60 * 60 * 1000 });
+        }
         return res.json({ 
           loggedIn: true, 
           username: admin.username, 
@@ -824,7 +837,8 @@ apiRouter.get("/public/auth/check", (req, res) => {
           avatar_url: admin.photo_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${admin.username}`,
           created_at: admin.created_at || new Date().toISOString(),
           isAdmin: true,
-          role: admin.role
+          role: admin.role,
+          token: token
         });
       }
     }
@@ -835,15 +849,22 @@ apiRouter.get("/public/auth/check", (req, res) => {
         res.clearCookie("user_token", { sameSite: "none", secure: true });
         return res.json({ loggedIn: false, isBanned: true, error: "You are banned. Please contact the admin." });
       }
+      if (fromHeader) {
+        res.cookie("user_token", token, { httpOnly: true, secure: true, sameSite: "none", path: '/', maxAge: 30 * 24 * 60 * 60 * 1000 });
+      }
       res.json({ 
         loggedIn: true, 
         username: user.username, 
         email: user.email,
         avatar_url: user.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.username}`,
-        created_at: user.created_at
+        created_at: user.created_at,
+        token: token
       });
     } else {
-      res.json({ loggedIn: true, username: decoded.username, avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${decoded.username}` });
+      if (fromHeader) {
+        res.cookie("user_token", token, { httpOnly: true, secure: true, sameSite: "none", path: '/', maxAge: 30 * 24 * 60 * 60 * 1000 });
+      }
+      res.json({ loggedIn: true, username: decoded.username, avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${decoded.username}`, token: token });
     }
   } catch(e) {
     res.json({ loggedIn: false });
