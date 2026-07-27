@@ -181,7 +181,7 @@ export default function DJs() {
         <p className={`text-base md:text-lg font-light tracking-wide relative z-10 max-w-2xl mx-auto border-t pt-8 transition-colors ${
           isLightMode ? 'border-black/5 text-slate-500' : 'border-white/5 text-white/50'
         }`}>
-          The heartbeat of {appName}. Meet the masters of the underground bringing you the finest global soundscapes 24/7.
+          Meet the masters of the underground bringing you the finest global soundscapes 24/7.
         </p>
       </div>
 

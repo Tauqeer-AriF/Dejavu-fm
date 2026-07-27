@@ -109,14 +109,14 @@ export default function PodcastsPage() {
             animate={{ opacity: 0.05 }}
             className="absolute -top-12 left-0 text-[10rem] font-black uppercase tracking-tighter text-stroke hidden md:block select-none pointer-events-none"
           >
-            Archive
+            Podcasts
           </motion.div>
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className={`text-4xl sm:text-6xl md:text-8xl font-black font-display uppercase tracking-tighter leading-none relative z-10 drop-shadow-2xl ${isLightMode ? 'text-slate-900' : 'text-white'}`}
           >
-            Catchup & <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue">Archive</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue">Podcasts</span>
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0 }}
@@ -126,7 +126,7 @@ export default function PodcastsPage() {
               isLightMode ? 'border-neon-purple/50 text-slate-500' : 'border-neon-purple/30 text-white/50'
             }`}
           >
-            Missed a show? Dive into our massive archive of exclusive sessions and underground broadcasts.
+            Never miss a show. Listen back or download our podcasts.
           </motion.p>
         </div>
 

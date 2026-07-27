@@ -223,7 +223,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
             </NavLink>
           )}
           <NavLink to="/schedule" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>Schedule</NavLink>
-          <NavLink to="/djs" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>DJs</NavLink>
+          <NavLink to="/djs" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>DJs and hosts</NavLink>
           <NavLink to="/podcasts" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive || location.pathname.startsWith('/podcasts/') ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>Podcasts</NavLink>
           
           <div 
@@ -370,7 +370,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                   { path: '/', label: 'Listen', exact: true },
                   ...(featLiveTools ? [{ path: '/watch', label: 'Watch', icon: <Radio className="w-5 h-5" />, color: 'text-neon-purple' }] : []),
                   { path: '/schedule', label: 'Schedule' },
-                  { path: '/djs', label: 'DJs' },
+                  { path: '/djs', label: 'DJs and hosts' },
                   { path: '/podcasts', label: 'Podcasts', matchPrefix: true },
                   { 
                     label: 'Features', 
