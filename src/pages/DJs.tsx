@@ -53,13 +53,13 @@ function DjCard({ dj, index, resolveDjImage, logoUrl, settings }: { dj: DJ, inde
         <div className="absolute inset-0 bg-gradient-to-t from-dark-bg via-transparent to-transparent opacity-90 group-hover:opacity-100 transition-opacity duration-500"></div>
         
         <div className="absolute inset-x-0 bottom-0 p-6 md:p-10 space-y-4 md:space-y-6 translate-y-4 group-hover:translate-y-0 transition-transform duration-500 z-40">
-          <div className="space-y-1.5">
+          <div className="space-y-1.5" style={{ marginBottom: '15px' }}>
             <Link to={`/djs/${dj.id}`}>
               <h3 className="text-4xl md:text-5xl font-display font-black uppercase tracking-tighter leading-[0.9] text-white group-hover:text-neon-blue transition-colors duration-500">
                 {dj.name}
               </h3>
             </Link>
-            <div className="flex space-x-2" style={{ marginTop: '5px' }}>
+            <div className="flex space-x-2" style={{ marginTop: '15px' }}>
               <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-colors bg-neon-purple/20 text-neon-purple border-neon-purple/20">Resident</span>
               <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-colors bg-white/5 text-white/30 border-white/5">Underground</span>
             </div>
