@@ -108,6 +108,8 @@ apiRouter.get("/admin/studio-settings", authMiddleware, authorizeRole(['admin', 
       'studio_platform_configs',
       'dejavu_studio_custom_replies',
       'studio_pinned_threads',
+      'dejavu_studio_threads',
+      'dejavu_studio_last_read',
       'meta_webhook_processing_enabled',
       'meta_webhook_processing_platforms',
       'meta_verify_token'
