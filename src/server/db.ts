@@ -492,6 +492,16 @@ export function initDb() {
   `);
   runMigration('admin_dj_profile_link_v2', "ALTER TABLE admins ADD COLUMN dj_profile_id TEXT DEFAULT NULL;");
   runMigration('default_theme_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('default_theme', 'dark');");
+  runMigration('device_sessions_table', `
+    CREATE TABLE IF NOT EXISTS device_sessions (
+      ip TEXT NOT NULL,
+      user_agent TEXT NOT NULL,
+      username TEXT NOT NULL,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (ip, user_agent)
+    );
+    CREATE INDEX IF NOT EXISTS idx_device_sessions_ip_ua ON device_sessions(ip, user_agent);
+  `);
   runMigration('user_blocks_table_v1', `
     CREATE TABLE IF NOT EXISTS user_blocks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

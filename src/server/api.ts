@@ -652,6 +652,46 @@ apiRouter.post("/public/shoutout", shoutoutLimiter, (req, res) => {
   res.json({ success: true });
 });
 
+// Helper to save device session
+function saveDeviceSession(req: any, username: string) {
+  try {
+    const xff = req.headers['x-forwarded-for'];
+    let ip = (Array.isArray(xff) ? xff[0] : xff)?.split(',')[0] || req.socket.remoteAddress || '';
+    ip = ip.trim();
+    if (ip.startsWith("::ffff:")) {
+      ip = ip.substring(7);
+    }
+    const userAgent = req.headers['user-agent'] || '';
+    if (ip && userAgent) {
+      db.prepare(`
+        INSERT INTO device_sessions (ip, user_agent, username, updated_at) 
+        VALUES (?, ?, ?, datetime('now'))
+        ON CONFLICT(ip, user_agent) DO UPDATE SET username = excluded.username, updated_at = excluded.updated_at
+      `).run(ip, userAgent, username);
+    }
+  } catch (err) {
+    console.error("[Device Session] Failed to save device session:", err);
+  }
+}
+
+// Helper to delete device session
+function deleteDeviceSession(req: any) {
+  try {
+    const xff = req.headers['x-forwarded-for'];
+    let ip = (Array.isArray(xff) ? xff[0] : xff)?.split(',')[0] || req.socket.remoteAddress || '';
+    ip = ip.trim();
+    if (ip.startsWith("::ffff:")) {
+      ip = ip.substring(7);
+    }
+    const userAgent = req.headers['user-agent'] || '';
+    if (ip && userAgent) {
+      db.prepare("DELETE FROM device_sessions WHERE ip = ? AND user_agent = ?").run(ip, userAgent);
+    }
+  } catch (err) {
+    console.error("[Device Session] Failed to delete device session:", err);
+  }
+}
+
 // ------ PUBLIC AUTH ROUTES ------
 
 apiRouter.post("/public/auth/register", (req, res) => {
@@ -691,6 +731,10 @@ apiRouter.post("/public/auth/register", (req, res) => {
     const info = db.prepare("INSERT INTO users (username, email, password_hash, password_plain, source) VALUES (?, ?, ?, ?, ?)").run(cleanUsername, cleanEmail, hash, password, 'register');
     const token = jwt.sign({ userId: info.lastInsertRowid, username: cleanUsername }, ACTUAL_SECRET, { expiresIn: "30d" });
     res.cookie("user_token", token, { httpOnly: true, secure: true, sameSite: "none", path: '/', maxAge: 30 * 24 * 60 * 60 * 1000 });
+    
+    // Save device session mapping for Safari/iOS compatibility
+    saveDeviceSession(req, cleanUsername);
+
     res.json({ success: true, username: cleanUsername, avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${cleanUsername}`, token });
   } catch (err) {
     res.status(400).json({ error: "Email or username already exists" });
@@ -710,6 +754,10 @@ apiRouter.post("/public/auth/login", authLimiter, (req, res) => {
   if (admin && bcrypt.compareSync(password, admin.password_hash)) {
     const token = jwt.sign({ userId: 'admin_' + admin.username, username: admin.username, isAdmin: true, role: admin.role }, ACTUAL_SECRET, { expiresIn: "30d" });
     res.cookie("user_token", token, { httpOnly: true, secure: true, sameSite: "none", path: '/', maxAge: 30 * 24 * 60 * 60 * 1000 });
+    
+    // Save device session mapping for Safari/iOS compatibility
+    saveDeviceSession(req, admin.username);
+
     return res.json({ 
       success: true, 
       username: admin.username, 
@@ -730,6 +778,10 @@ apiRouter.post("/public/auth/login", authLimiter, (req, res) => {
   if (user && bcrypt.compareSync(password, user.password_hash)) {
     const token = jwt.sign({ userId: user.id, username: user.username }, ACTUAL_SECRET, { expiresIn: "30d" });
     res.cookie("user_token", token, { httpOnly: true, secure: true, sameSite: "none", path: '/', maxAge: 30 * 24 * 60 * 60 * 1000 });
+    
+    // Save device session mapping for Safari/iOS compatibility
+    saveDeviceSession(req, user.username);
+
     res.json({ 
       success: true, 
       username: user.username, 
@@ -804,6 +856,8 @@ apiRouter.post("/public/auth/reset-password", authLimiter, (req, res) => {
 });
 
 apiRouter.post("/public/auth/logout", (req, res) => {
+  // Clear device session mapping so user is logged out for real
+  deleteDeviceSession(req);
   res.clearCookie("user_token", { sameSite: "none", secure: true });
   res.json({ success: true });
 });
@@ -816,6 +870,38 @@ apiRouter.get("/public/auth/check", (req, res) => {
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.substring(7);
       fromHeader = true;
+    }
+  }
+  
+  if (!token) {
+    // Check if we can automatically log in via a saved device session (for iOS/Safari compatibility)
+    try {
+      const xff = req.headers['x-forwarded-for'];
+      let ip = (Array.isArray(xff) ? xff[0] : xff)?.split(',')[0] || req.socket.remoteAddress || '';
+      ip = ip.trim();
+      if (ip.startsWith("::ffff:")) {
+        ip = ip.substring(7);
+      }
+      const userAgent = req.headers['user-agent'] || '';
+      if (ip && userAgent) {
+        const session = db.prepare("SELECT username FROM device_sessions WHERE ip = ? AND user_agent = ?").get(ip, userAgent) as any;
+        if (session && session.username) {
+          // Find user or admin
+          const admin = db.prepare("SELECT * FROM admins WHERE LOWER(username) = ?").get(session.username.toLowerCase()) as any;
+          if (admin) {
+            token = jwt.sign({ userId: 'admin_' + admin.username, username: admin.username, isAdmin: true, role: admin.role }, ACTUAL_SECRET, { expiresIn: "30d" });
+            res.cookie("user_token", token, { httpOnly: true, secure: true, sameSite: "none", path: '/', maxAge: 30 * 24 * 60 * 60 * 1000 });
+          } else {
+            const user = db.prepare("SELECT * FROM users WHERE LOWER(username) = ?").get(session.username.toLowerCase()) as any;
+            if (user && !user.is_banned) {
+              token = jwt.sign({ userId: user.id, username: user.username }, ACTUAL_SECRET, { expiresIn: "30d" });
+              res.cookie("user_token", token, { httpOnly: true, secure: true, sameSite: "none", path: '/', maxAge: 30 * 24 * 60 * 60 * 1000 });
+            }
+          }
+        }
+      }
+    } catch (sessionErr) {
+      console.error("[Device Session] Failed auto-login lookup:", sessionErr);
     }
   }
   

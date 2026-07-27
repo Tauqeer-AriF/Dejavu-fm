@@ -717,6 +717,9 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
             setIsAdmin(!!data.isAdmin);
             if (data.token) {
               safeLocalStorage.setItem('chat_user_token', data.token);
+              if (data.isAdmin || data.role === 'admin') {
+                safeLocalStorage.setItem('admin_token', data.token);
+              }
             }
           } else {
             setIsAdmin(false);
