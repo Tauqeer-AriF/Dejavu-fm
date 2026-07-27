@@ -8,171 +8,202 @@ import { motion, AnimatePresence } from "motion/react";
 import { io } from "socket.io-client";
 import { convertToLocalTime } from "../lib/timeUtils";
 
-function HeroVisualizer({ isPlaying, isLightMode }: { isPlaying: boolean; isLightMode: boolean }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { getAnalyser } = useAudio();
-  const animationRef = useRef<number>();
+function DjDiskPlayButton({
+  isPlaying,
+  isBuffering,
+  isLightMode,
+  onClick
+}: {
+  isPlaying: boolean;
+  isBuffering: boolean;
+  isLightMode: boolean;
+  onClick: () => void;
+}) {
+  const { settings } = useLogo();
 
-  useEffect(() => {
-    const handleResize = () => {
-      if (containerRef.current && canvasRef.current) {
-        const dpr = window.devicePixelRatio || 1;
-        const width = containerRef.current.clientWidth;
-        const height = containerRef.current.clientHeight;
-        
-        canvasRef.current.width = width * dpr;
-        canvasRef.current.height = height * dpr;
-        canvasRef.current.style.width = `${width}px`;
-        canvasRef.current.style.height = `${height}px`;
-        
-        const ctx = canvasRef.current.getContext('2d');
-        if (ctx) ctx.scale(dpr, dpr);
-      }
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const render = () => {
-      animationRef.current = requestAnimationFrame(render);
-      const analyser = getAnalyser();
-      const style = getComputedStyle(document.documentElement);
-      const primaryColor = style.getPropertyValue('--color-neon-purple').trim() || '#b026ff';
-      const secondaryColor = style.getPropertyValue('--color-neon-blue').trim() || '#00d2ff';
-
-      const dpr = window.devicePixelRatio || 1;
-      const width = canvas.width / dpr;
-      const height = canvas.height / dpr;
-      if (width === 0 || height === 0) return;
-      
-      ctx.clearRect(0, 0, width, height);
-      if (!isPlaying) return;
-
-      let dataArray: Uint8Array;
-      if (analyser) {
-        dataArray = new Uint8Array(analyser.frequencyBinCount);
-        analyser.getByteFrequencyData(dataArray);
-      } else {
-        // Fallback procedural/simulated frequency data for iOS/Safari without Analyser context
-        const simulatedSize = 32;
-        dataArray = new Uint8Array(simulatedSize);
-        const timeMs = Date.now();
-        for (let i = 0; i < simulatedSize; i++) {
-          // Generate wave-like pulsating frequencies
-          const baseWave = Math.sin(timeMs * 0.003 + i * 0.3) * 0.4 + 0.5;
-          const highFrequencyBuzz = Math.sin(timeMs * 0.015 + i * 0.8) * 0.15;
-          const bassHit = Math.sin(timeMs * 0.005) > 0.6 ? 0.35 : 0;
-          const finalPercent = Math.max(0.1, Math.min(1.0, baseWave + highFrequencyBuzz + bassHit));
-          dataArray[i] = finalPercent * 180;
-        }
-      }
-
-      const centerX = width / 2;
-      const centerY = height / 2;
-
-      // Calculate responsive image bounds so the visualizer sits perfectly outside the image
-      const viewportWidth = window.innerWidth;
-      let imgWidth = 280;
-      if (viewportWidth < 640) {
-        imgWidth = Math.min(viewportWidth - 32, 280);
-      } else if (viewportWidth < 768) {
-        imgWidth = 340;
-      } else if (viewportWidth < 1024) {
-        imgWidth = 400;
-      } else {
-        imgWidth = 480;
-      }
-      const imgRadius = imgWidth / 2;
-      
-      // Scale baseSize to sit beautifully just outside the image container
-      const isMobile = viewportWidth < 640;
-      const baseSize = isMobile ? imgRadius * 1.08 : imgRadius * 1.04;
-      
-      ctx.beginPath();
-      ctx.lineWidth = isMobile ? 2.5 : 1.5;
-      ctx.strokeStyle = primaryColor + '66'; // 40% opacity
-      
-      // Outer subtle ring
-      const outerRingScale = isMobile ? 1.18 : 1.35;
-      ctx.arc(centerX, centerY, baseSize * outerRingScale, 0, Math.PI * 2);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.lineWidth = isMobile ? 4 : 3; // Thicker lines on mobile for better visibility
-      ctx.strokeStyle = primaryColor + 'cc'; // Higher opacity for extra brightness!
-      
-      const waveExpansion = isMobile ? 0.22 : 0.45;
-      const cpExpansion = isMobile ? 0.08 : 0.15;
-
-      for (let i = 0; i < dataArray.length; i += 4) {
-        const value = dataArray[i];
-        const percent = value / 255;
-        const radius = baseSize + (percent * (baseSize * waveExpansion));
-        const angle = (i * 2 * Math.PI) / dataArray.length;
-        const x = centerX + Math.cos(angle) * radius;
-        const y = centerY + Math.sin(angle) * radius;
-        
-        const cpRadius = baseSize + (percent * (baseSize * cpExpansion));
-        const cpx = centerX + Math.cos(angle) * cpRadius;
-        const cpy = centerY + Math.sin(angle) * cpRadius;
-
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.quadraticCurveTo(cpx, cpy, x, y);
-      }
-      ctx.closePath();
-      ctx.stroke();
-
-      // Spinning orbiting dots
-      const time = Date.now() * 0.001;
-      const orbitBaseScale = isMobile ? 1.12 : 1.2;
-      const orbitSpacing = isMobile ? 0.04 : 0.08;
-      
-      for (let i = 0; i < 3; i++) {
-        const orbitAngle = time * (0.5 + i * 0.2);
-        const orbitRadius = baseSize * orbitBaseScale + i * (baseSize * orbitSpacing);
-        const dotX = centerX + Math.cos(orbitAngle) * orbitRadius;
-        const dotY = centerY + Math.sin(orbitAngle) * orbitRadius;
-        
-        ctx.beginPath();
-        ctx.fillStyle = i === 0 ? primaryColor : secondaryColor;
-        ctx.arc(dotX, dotY, isMobile ? 4.5 : 3, 0, Math.PI * 2); // Larger, brighter dots on mobile
-        ctx.fill();
-        ctx.shadowBlur = isMobile ? 20 : 15;
-        ctx.shadowColor = i === 0 ? primaryColor : secondaryColor;
-      }
-      ctx.shadowBlur = 0;
-
-      // Inner pulsating glow (drawing from the image edge outward)
-      const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-      const glowScale = 1 + (avg / 255) * 0.5;
-      
-      const gradient = ctx.createRadialGradient(centerX, centerY, imgRadius, centerX, centerY, baseSize * (isMobile ? 1.22 : 1.35) * glowScale);
-      gradient.addColorStop(0, primaryColor + '33'); // Stronger 20% opacity glow at the image edge
-      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, width, height);
-    };
-
-    render();
-    return () => cancelAnimationFrame(animationRef.current!);
-  }, [getAnalyser, isPlaying]);
+  const stationName = useMemo(() => {
+    return settings?.station_name || settings?.site_title || settings?.app_name || "DEJAVU FM";
+  }, [settings]);
 
   return (
-    <div 
-      ref={containerRef} 
-      className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none w-[460px] h-[460px] sm:w-[580px] sm:h-[580px] md:w-[680px] md:h-[680px] lg:w-[820px] lg:h-[820px]"
+    <button 
+      onClick={onClick}
+      title={isPlaying ? "Pause Live Radio" : "Play Live Radio"}
+      className="absolute top-[40%] sm:top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 group/djbtn active:scale-95 transition-all duration-300 focus:outline-none"
     >
-      <canvas ref={canvasRef} className="w-full h-full opacity-80 sm:opacity-60" />
-    </div>
+      {/* 1. Atmospheric Ambient Aura driven dynamically by brand colors */}
+      <div 
+        className={`absolute -inset-6 sm:-inset-10 rounded-full transition-all duration-700 blur-2xl pointer-events-none ${
+          isPlaying ? 'opacity-100 animate-pulse' : 'opacity-0 group-hover/djbtn:opacity-40'
+        }`}
+        style={{
+          background: `radial-gradient(circle, var(--color-neon-purple, #b026ff) 0%, var(--color-neon-blue, #00d2ff) 55%, transparent 80%)`
+        }}
+      />
+
+      {/* Live Audio Rippling Expansion Rings in Brand Colors */}
+      {isPlaying && (
+        <>
+          <div 
+            className="absolute -inset-3 sm:-inset-5 rounded-full border animate-[ping_2.5s_cubic-bezier(0,0,0.2,1)_infinite] pointer-events-none" 
+            style={{ borderColor: 'var(--color-neon-blue, #00d2ff)', opacity: 0.5 }}
+          />
+          <div 
+            className="absolute -inset-6 sm:-inset-9 rounded-full border animate-[ping_3.5s_cubic-bezier(0,0,0.2,1)_1s_infinite] pointer-events-none" 
+            style={{ borderColor: 'var(--color-neon-purple, #b026ff)', opacity: 0.35 }}
+          />
+        </>
+      )}
+
+      {/* 2. Outer Luxury Chamfered Brushed Metal Chassis */}
+      <div className="relative p-[3px] sm:p-[5px] rounded-full bg-gradient-to-b from-zinc-200 via-zinc-600 to-zinc-950 shadow-[0_25px_60px_rgba(0,0,0,0.95)] transition-transform duration-500 group-hover/djbtn:scale-105">
+        
+        {/* Speed Markings Strobe Rim with Brand Accent */}
+        <div 
+          className="relative p-[3px] sm:p-[4px] rounded-full bg-[#0d0d10] border shadow-inner transition-colors duration-500"
+          style={{ borderColor: 'color-mix(in srgb, var(--color-neon-purple, #b026ff) 30%, rgba(255,255,255,0.1))' }}
+        >
+          <div className={`absolute inset-0 rounded-full border border-dashed border-zinc-400/30 opacity-60 pointer-events-none ${
+            isPlaying ? 'animate-[spin_12s_linear_infinite]' : ''
+          }`} />
+
+          {/* 3. Main Vinyl Turntable Base */}
+          <div className="relative w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-full flex items-center justify-center overflow-hidden transition-all duration-500 bg-[#060608] shadow-[inset_0_4px_20px_rgba(0,0,0,0.95)]">
+            
+            {/* Spinning Vinyl Record Body */}
+            <div className={`absolute inset-0 rounded-full flex items-center justify-center ${
+              isPlaying ? 'animate-[spin_2.4s_linear_infinite]' : 'transition-transform duration-1000 ease-out'
+            }`}>
+              
+              {/* Outer Lead-In Rim */}
+              <div className="absolute inset-1 sm:inset-1.5 rounded-full border border-zinc-600/40 opacity-80" />
+
+              {/* Photorealistic High-Gloss Micro-Grooves */}
+              <div 
+                className="absolute inset-0 rounded-full opacity-95"
+                style={{
+                  background: `
+                    radial-gradient(circle at center, 
+                      transparent 0%, 
+                      transparent 22%, 
+                      rgba(255,255,255,0.08) 22.5%, 
+                      rgba(0,0,0,0.95) 23%, 
+                      transparent 25%, 
+                      rgba(255,255,255,0.1) 28%, 
+                      rgba(0,0,0,0.98) 32%, 
+                      transparent 36%, 
+                      rgba(255,255,255,0.12) 40%, 
+                      rgba(0,0,0,0.92) 45%, 
+                      transparent 50%, 
+                      rgba(255,255,255,0.09) 56%, 
+                      rgba(0,0,0,0.97) 62%, 
+                      transparent 68%, 
+                      rgba(255,255,255,0.11) 75%, 
+                      rgba(0,0,0,0.98) 84%, 
+                      transparent 90%,
+                      rgba(255,255,255,0.18) 95%,
+                      #030304 100%
+                    )
+                  `
+                }}
+              />
+
+              {/* Conic Specular Reflection */}
+              <div className="absolute inset-0 rounded-full bg-[conic-gradient(from_15deg,transparent_0deg,rgba(255,255,255,0.25)_30deg,transparent_65deg,transparent_180deg,rgba(255,255,255,0.25)_210deg,transparent_245deg)] pointer-events-none mix-blend-screen" />
+
+              {/* Runout Groove Ring styled with brand secondary tint */}
+              <div 
+                className="absolute w-[42%] h-[42%] rounded-full border opacity-90" 
+                style={{ borderColor: 'color-mix(in srgb, var(--color-neon-blue, #00d2ff) 35%, transparent)' }}
+              />
+
+              {/* Center Record Label (Luxury Brand Gradient Badge) */}
+              <div 
+                className="relative w-11 h-11 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full p-[1.5px] shadow-2xl flex items-center justify-center"
+                style={{
+                  background: `linear-gradient(135deg, var(--color-neon-purple, #b026ff), var(--color-neon-blue, #00d2ff))`
+                }}
+              >
+                <div className="w-full h-full rounded-full bg-gradient-to-b from-[#141418] via-[#09090b] to-[#121216] flex flex-col items-center justify-center border border-white/20 relative px-1">
+                  <span 
+                    className="text-[5px] sm:text-[6px] font-black uppercase tracking-widest leading-none"
+                    style={{ color: 'var(--color-neon-blue, #00d2ff)' }}
+                  >
+                    33⅓ RPM
+                  </span>
+                  
+                  <div 
+                    className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full border border-white/80 shadow-md my-0.5"
+                    style={{
+                      background: `linear-gradient(135deg, var(--color-neon-purple, #b026ff), var(--color-neon-blue, #00d2ff))`
+                    }}
+                  />
+
+                  <span 
+                    className="text-[4px] sm:text-[5px] font-extrabold tracking-wider leading-none truncate max-w-full text-center"
+                    style={{ color: 'var(--color-neon-purple, #b026ff)' }}
+                  >
+                    {stationName.slice(0, 12)}
+                  </span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* 4. Animated Tonearm & Stylus Cartridge */}
+            <div className={`absolute top-1 right-2 sm:top-2 sm:right-3.5 origin-top-right transition-all duration-700 pointer-events-none z-10 filter drop-shadow-md ${
+              isPlaying ? 'rotate-[18deg] opacity-100 scale-100' : '-rotate-[15deg] opacity-60 scale-95'
+            }`}>
+              {/* Tonearm Wand */}
+              <div className="w-1 sm:w-1.5 h-8 sm:h-11 bg-gradient-to-b from-zinc-200 via-zinc-400 to-zinc-700 rounded-full border border-white/30 shadow-lg relative">
+                {/* Cartridge & Stylus Light */}
+                <div 
+                  className="absolute bottom-0 -left-1 w-3 sm:w-3.5 h-2.5 sm:h-3 bg-gradient-to-r from-zinc-700 to-zinc-900 rounded-sm border shadow-sm flex items-center justify-center"
+                  style={{ borderColor: 'color-mix(in srgb, var(--color-neon-blue, #00d2ff) 60%, rgba(255,255,255,0.4))' }}
+                >
+                  <div 
+                    className={`w-1 h-1 rounded-full ${isPlaying ? 'animate-ping' : ''}`}
+                    style={{ backgroundColor: 'var(--color-neon-blue, #00d2ff)' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 5. Center Glassmorphic Control Button */}
+            <div 
+              className="relative z-20 flex items-center justify-center w-11 h-11 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-black/75 backdrop-blur-md border border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.85)] group-hover/djbtn:scale-110 group-hover/djbtn:bg-black/90 transition-all duration-300"
+              style={{
+                borderColor: isPlaying ? 'var(--color-neon-blue, #00d2ff)' : 'var(--color-neon-purple, #b026ff)'
+              }}
+            >
+              {isBuffering && isPlaying ? (
+                <div 
+                  className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-white/20 animate-spin" 
+                  style={{ borderTopColor: 'var(--color-neon-blue, #00d2ff)' }}
+                />
+              ) : isPlaying ? (
+                <Pause 
+                  className="w-5 h-5 sm:w-6 sm:h-6 fill-current group-hover/djbtn:text-white transition-colors duration-300"
+                  style={{ 
+                    color: 'var(--color-neon-blue, #00d2ff)',
+                    filter: 'drop-shadow(0 0 10px var(--color-neon-blue, #00d2ff))'
+                  }}
+                />
+              ) : (
+                <Play 
+                  className="w-5 h-5 sm:w-6 sm:h-6 ml-0.5 fill-current group-hover/djbtn:text-white transition-colors duration-300"
+                  style={{ 
+                    color: 'var(--color-neon-purple, #b026ff)',
+                    filter: 'drop-shadow(0 0 10px var(--color-neon-purple, #b026ff))'
+                  }}
+                />
+              )}
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </button>
   );
 }
 
@@ -349,8 +380,6 @@ export default function Home() {
           transition={{ duration: 1.2, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           className="relative -mt-10 sm:-mt-14 lg:mt-0 group w-full lg:w-[45%] flex justify-center pt-2 pb-8 sm:py-12 md:py-6 lg:py-12"
         >
-          <HeroVisualizer isPlaying={isPlaying && activeType === 'radio'} isLightMode={isLightMode} />
-          
           <div className={`relative w-full aspect-square max-w-[280px] sm:max-w-[340px] md:max-w-[400px] lg:max-w-[480px] rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/5 group-hover:border-white/20 transition-all duration-700 ${
             (resolveDjImage(onAirInfo?.djPhoto) === logoUrl) && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''
           }`}>
@@ -400,22 +429,12 @@ export default function Home() {
             <span className="text-[10px] font-black uppercase tracking-widest">Send Shoutout</span>
           </motion.button>
  
-          <button 
-            onClick={handleMainPlayerClick}
-            className={`absolute top-[40%] sm:top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-500 bg-clip-padding group/btn ${
-              isLightMode 
-                ? 'bg-dark-bg text-white shadow-[0_20px_60px_rgba(0,0,0,0.3)] border-4 border-black/5' 
-                : 'bg-white text-dark-bg shadow-2xl hover:shadow-[0_20px_80px_rgba(255,255,255,0.6)] border-4 border-white/20'
-            }`}
-          >
-            {isBuffering && isPlaying && activeType === 'radio' ? (
-              <div className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full border-4 border-t-neon-blue animate-spin ${isLightMode ? 'border-white/20' : 'border-dark-bg/20'}`} />
-            ) : isPlaying && activeType === 'radio' ? (
-              <Pause className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 fill-current group-hover/btn:text-neon-blue transition-colors duration-300 ${isLightMode ? 'text-white' : 'text-neon-purple'}`} />
-            ) : (
-              <Play className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 ml-1 fill-current group-hover/btn:text-neon-blue transition-colors duration-300 ${isLightMode ? 'text-white' : 'text-neon-purple'}`} />
-            )}
-          </button>
+          <DjDiskPlayButton 
+            isPlaying={isPlaying && activeType === 'radio'} 
+            isBuffering={isBuffering} 
+            isLightMode={isLightMode} 
+            onClick={handleMainPlayerClick} 
+          />
         </motion.div>
 
 
