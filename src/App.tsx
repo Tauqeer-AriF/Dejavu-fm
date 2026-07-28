@@ -341,13 +341,6 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
             </motion.button>
            )}
 
-          <button 
-            onClick={handleAdminClick} 
-            className="hidden xl:block text-white/20 hover:text-white transition-colors shrink-0"
-          >
-            <AdminIcon className="w-6 h-6" />
-          </button>
-          
           <ThemeAccessibilityDropdown />
           
           <button 
