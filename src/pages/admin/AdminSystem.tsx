@@ -675,6 +675,7 @@ export function AdminSettings() {
   const [rss, setRss] = useState("");
   const [studioVideoUrl, setStudioVideoUrl] = useState("");
   const [isOnAir, setIsOnAir] = useState(false);
+  const [adminCustomPath, setAdminCustomPath] = useState("/admin");
   const { showAlert } = useModal();
 
   useEffect(() => {
@@ -686,11 +687,25 @@ export function AdminSettings() {
       setRss(d.rss_feed_url || "");
       setStudioVideoUrl(d.studio_video_url || "");
       setIsOnAir(d.is_on_air === '1');
+      if (d.admin_custom_path) {
+        setAdminCustomPath(d.admin_custom_path);
+      }
     });
   }, []);
 
   const saveNode = async () => {
     try {
+      let formattedPath = adminCustomPath.trim();
+      if (!formattedPath) {
+        formattedPath = "/admin";
+      }
+      if (!formattedPath.startsWith('/')) {
+        formattedPath = '/' + formattedPath;
+      }
+      if (formattedPath.length > 1 && formattedPath.endsWith('/')) {
+        formattedPath = formattedPath.slice(0, -1);
+      }
+
       const res = await fetchAdmin("/api/admin/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -701,11 +716,13 @@ export function AdminSettings() {
           stream_url_high: streamHigh,
           rss_feed_url: rss, 
           studio_video_url: studioVideoUrl,
-          is_on_air: isOnAir
+          is_on_air: isOnAir,
+          admin_custom_path: formattedPath
         })
       });
       if (res.ok) {
-        showAlert({ title: "Success", message: "General settings saved!", style: "success" });
+        setAdminCustomPath(formattedPath);
+        showAlert({ title: "Success", message: `General settings saved! Dashboard path updated to: ${formattedPath}`, style: "success" });
         queryClient.invalidateQueries({ queryKey: ["settings"] });
       }
     } catch(e) {
@@ -808,6 +825,30 @@ export function AdminSettings() {
               >
                 Force Sync
               </button>
+            </div>
+          </div>
+
+          <div className={`pt-6 border-t space-y-3 transition-colors ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
+            <h4 className={`text-lg font-bold ${isLightMode ? 'text-black' : 'text-white'}`}>Dashboard Access URL / Path</h4>
+            <p className={`text-[11px] leading-relaxed ${isLightMode ? 'text-black/60' : 'text-white/50'}`}>
+              Customize the URL path used to access the Creator Dashboard in the future. Default is <code className="px-1.5 py-0.5 rounded bg-neon-purple/10 text-neon-purple font-mono font-bold">/admin</code>. You can change this to any custom path (e.g., <code className="px-1.5 py-0.5 rounded bg-neon-purple/10 text-neon-purple font-mono font-bold">/control-panel</code> or <code className="px-1.5 py-0.5 rounded bg-neon-purple/10 text-neon-purple font-mono font-bold">/station-admin</code>).
+            </p>
+            <div>
+              <label className={`block text-[10px] uppercase mb-1 font-bold tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Dashboard Path</label>
+              <div className="flex items-center space-x-2">
+                <span className={`px-4 py-3 text-sm font-mono rounded-xl border select-none ${isLightMode ? 'bg-black/5 border-black/10 text-black/50' : 'bg-white/5 border-white/10 text-white/40'}`}>
+                  {typeof window !== 'undefined' ? window.location.origin : ''}
+                </span>
+                <input 
+                  value={adminCustomPath} 
+                  onChange={e => setAdminCustomPath(e.target.value)} 
+                  className={`flex-1 rounded-xl px-4 py-3 text-sm font-mono focus:border-neon-purple outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
+                  placeholder="/admin"
+                />
+              </div>
+              <p className={`text-[10px] mt-1.5 font-mono ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>
+                Full Dashboard URL: <span className="text-neon-purple font-bold">{typeof window !== 'undefined' ? window.location.origin : ''}{adminCustomPath.startsWith('/') ? adminCustomPath : '/' + adminCustomPath}</span>
+              </p>
             </div>
           </div>
 

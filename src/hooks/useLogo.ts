@@ -17,9 +17,12 @@ export function useLogo() {
     queryFn: () => fetch("/api/public/settings").then(res => res.json())
   });
 
+  const customAdminPath = (settings?.admin_custom_path || '/admin').trim().replace(/\/+$/, '') || '/admin';
+  const checkAdmin = (p: string) => p.startsWith(customAdminPath);
+
   const [isLightMode, setIsLightMode] = useState(() => {
     if (typeof window !== 'undefined') {
-      const isAdmin = pathname.startsWith('/admin');
+      const isAdmin = checkAdmin(pathname);
       if (isAdmin) {
         return document.documentElement.classList.contains('admin-light-mode');
       }
@@ -31,7 +34,7 @@ export function useLogo() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const isAdmin = pathname.startsWith('/admin');
+    const isAdmin = checkAdmin(pathname);
 
     if (isAdmin) {
       const handleThemeChange = () => {
@@ -141,7 +144,7 @@ export function useLogo() {
           localStorage.setItem('default_theme_fallback', settings.default_theme);
         }
 
-        const isAdmin = location.pathname.startsWith('/admin');
+        const isAdmin = checkAdmin(location.pathname);
         if (!isAdmin) {
           const savedTheme = localStorage.getItem('theme');
           if (savedTheme === null) {

@@ -83,7 +83,7 @@ export default function Features() {
           <h1 className={`relative text-4xl sm:text-6xl md:text-8xl font-display font-black uppercase tracking-tighter leading-none z-10 ${
             isLightMode ? 'text-slate-900' : 'text-white'
           }`}>
-            Station <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue">Features</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue">Features</span>
           </h1>
           <p className={`relative mt-6 text-base md:text-lg font-light tracking-wide border-l-2 pl-6 transition-colors ${
             isLightMode ? 'border-neon-purple/50 text-slate-500' : 'border-neon-purple/30 text-white/50'

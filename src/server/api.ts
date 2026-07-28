@@ -2760,7 +2760,7 @@ apiRouter.put("/admin/settings", authorizeRole(['admin', 'dj']), (req, res) => {
     "backup_frequency_hours", "backup_enabled", "popup_delay", "studio_name", "studio_image",
     "social_instagram", "social_twitter", "social_facebook", "social_youtube", "social_soundcloud", "social_mixcloud", "social_tiktok",
     "default_theme", "under_header_text", "under_header_align",
-    "features_slider_enabled", "features_slider_pages"
+    "features_slider_enabled", "features_slider_pages", "admin_custom_path"
   ];
   
   for (const key of allowedKeys) {

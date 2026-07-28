@@ -39,7 +39,13 @@ export function SecretAdminPrompt({ isOpen, onClose, isLightMode }: SecretAdminP
         toast.success("Identity confirmed.");
         sessionStorage.setItem('admin_secret_passed', 'true');
         onClose();
-        navigate("/admin");
+        fetch("/api/public/settings")
+          .then(r => r.json())
+          .then(settings => {
+            const path = settings?.admin_custom_path || "/admin";
+            navigate(path);
+          })
+          .catch(() => navigate("/admin"));
       } else {
         toast.error("Incorrect name. Access denied.");
         setAnswer("");

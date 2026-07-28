@@ -113,7 +113,7 @@ export function AdminFeatures() {
           <h3 className={`text-3xl md:text-4xl font-display font-black uppercase tracking-tighter ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
             Features <span className="text-neon-purple">Desk</span>
           </h3>
-          <p className={`text-xs mt-2 uppercase tracking-[0.2em] font-black transition-colors ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>Write, publish, and maintain station features</p>
+          <p className={`text-xs mt-2 uppercase tracking-[0.2em] font-black transition-colors ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>Write, publish, and maintain features</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl w-fit border transition-colors ${isLightMode ? 'bg-neon-purple/5 border-neon-purple/20' : 'bg-neon-purple/10 border-neon-purple/20'}`}>

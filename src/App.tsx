@@ -49,6 +49,7 @@ const WatchLive = lazy(() => import('./pages/WatchLive'));
 const Features = lazy(() => import('./pages/Features'));
 const FeatureDetail = lazy(() => import('./pages/FeatureDetail'));
 const Arch421 = lazy(() => import('./pages/Arch421'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 const queryClient = new QueryClient();
 
@@ -61,17 +62,19 @@ if (typeof window !== 'undefined') {
 function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void; featChat: boolean; isStaff?: boolean }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const isAdmin = location.pathname.startsWith('/admin');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isFeaturesOpen, setIsFeaturesOpen] = useState(false);
   const [isMobileFeaturesOpen, setIsMobileFeaturesOpen] = useState(false);
   const [showSecretPrompt, setShowSecretPrompt] = useState(false);
   const { logoUrl, logoShape, isLightMode, settings } = useLogo();
 
+  const adminPath = (settings?.admin_custom_path || '/admin').trim().replace(/\/+$/, '') || '/admin';
+  const isAdmin = location.pathname.startsWith('/admin') || (adminPath !== '/admin' && location.pathname.startsWith(adminPath));
+
   const handleAdminClick = () => {
     // Senior Dev: If the user is already confirmed as staff or has passed the secret, go straight to admin
     if (isStaff || sessionStorage.getItem('admin_secret_passed') === 'true') {
-      navigate('/admin');
+      navigate(adminPath);
     } else {
       setShowSecretPrompt(true);
     }
@@ -624,12 +627,14 @@ function MobileBottomBar({ featLiveTools }: { featLiveTools: boolean }) {
   );
 }
 
-function AnimatedRoutes() {
+function AnimatedRoutes({ adminPath = '/admin' }: { adminPath?: string }) {
   const location = useLocation();
+  const isAdmin = location.pathname.startsWith('/admin') || (adminPath !== '/admin' && location.pathname.startsWith(adminPath));
+
   return (
     <AnimatePresence mode="wait">
       <motion.div 
-        key={location.pathname.startsWith('/admin') ? '/admin' : location.pathname}
+        key={isAdmin ? 'admin' : location.pathname}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
@@ -653,13 +658,14 @@ function AnimatedRoutes() {
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/arch421" element={<Arch421 />} />
-            <Route path="/admin/*" element={
+            <Route path={`${adminPath}/*`} element={
               <Suspense fallback={
                 <AppLoader size="lg" fullScreen />
               }>
                 <Admin />
               </Suspense>
             } />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
       </motion.div>
@@ -963,19 +969,22 @@ function MainLayout() {
     }
   }, [settings, setStreamUrl, setQualityUrls]);
 
+  const adminPath = (settings?.admin_custom_path || '/admin').trim().replace(/\/+$/, '') || '/admin';
+  const isAdmin = location.pathname.startsWith('/admin') || (adminPath !== '/admin' && location.pathname.startsWith(adminPath));
+
   const [isSplitActive, setIsSplitActive] = useState(false);
 
   useEffect(() => {
-    if (location.pathname.startsWith('/admin')) {
+    if (isAdmin) {
       suppressAccessibilityForAdmin();
     } else {
       applyFrontAccessibilityOptions();
     }
-  }, [location.pathname]);
+  }, [location.pathname, isAdmin]);
 
   // Dynamic Client-Side SEO Engine: Automatically update tab titles & meta on route navigation
   useEffect(() => {
-    if (location.pathname.startsWith('/admin')) {
+    if (isAdmin) {
       document.title = "Admin Engine | DejavuFM";
       return;
     }
@@ -1050,7 +1059,7 @@ function MainLayout() {
 
   return (
     <>
-      <div className={`min-h-screen ${location.pathname.startsWith('/admin') || isSplitActive ? '' : 'pb-40 md:pb-32'} flex flex-col relative overflow-x-hidden bg-dark-bg selection:bg-neon-purple selection:text-white`}>
+      <div className={`min-h-screen ${isAdmin || isSplitActive ? '' : 'pb-40 md:pb-32'} flex flex-col relative overflow-x-hidden bg-dark-bg selection:bg-neon-purple selection:text-white`}>
       {/* Premium Moving Mesh Background */}
       <div className="fixed inset-0 z-0 pointer-events-none opacity-40">
         <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-neon-purple/20 rounded-full blur-[120px] animate-[pulse_10s_ease-in-out_infinite]"></div>
@@ -1063,18 +1072,18 @@ function MainLayout() {
       <SitePopup />
       <NotificationManager />
       {featChat && !isSplitActive && <ChatSidebar isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />}
-      {featShoutouts && !location.pathname.startsWith('/admin') && !isSplitActive && <ShoutoutWidget isChatOpen={isChatOpen} />}
+      {featShoutouts && !isAdmin && !isSplitActive && <ShoutoutWidget isChatOpen={isChatOpen} />}
       
-      <main className={location.pathname.startsWith('/admin/studio') || isSplitActive ? "flex-1 w-full relative" : "flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 relative"}>
-        {!location.pathname.startsWith('/admin') && !isSplitActive && <AdvertisementSliders position="top" />}
-        <ErrorBoundary key={location.pathname.startsWith('/admin') ? '/admin' : location.pathname}>
-          <AnimatedRoutes />
+      <main className={location.pathname.includes('/studio') || isSplitActive ? "flex-1 w-full relative" : "flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 relative"}>
+        {!isAdmin && !isSplitActive && <AdvertisementSliders position="top" />}
+        <ErrorBoundary key={isAdmin ? 'admin' : location.pathname}>
+          <AnimatedRoutes adminPath={adminPath} />
         </ErrorBoundary>
-        {!location.pathname.startsWith('/admin') && !isSplitActive && <FeaturesSlider />}
-        {!location.pathname.startsWith('/admin') && !isSplitActive && <AdvertisementSliders position="bottom" />}
+        {!isAdmin && !isSplitActive && <FeaturesSlider />}
+        {!isAdmin && !isSplitActive && <AdvertisementSliders position="bottom" />}
       </main>
 
-      {!location.pathname.startsWith('/admin') && !isSplitActive && (
+      {!isAdmin && !isSplitActive && (
         <footer className="w-full max-w-7xl mx-auto p-4 md:p-8 pt-24 border-t border-white/5 relative flex flex-col md:flex-row items-center justify-between gap-10 text-white/40 text-sm mb-40 md:mb-32">
           <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-4 w-full md:w-auto">
             <button 
