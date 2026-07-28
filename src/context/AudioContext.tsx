@@ -725,7 +725,7 @@ if (typeof window !== 'undefined' && audio) {
   
   audio.addEventListener('playing', () => {
     console.log("[Audio] Playback started/resumed successfully.");
-    useAudioStore.setState({ isBuffering: false });
+    useAudioStore.setState({ isPlaying: true, isBuffering: false });
     isRecovering = false;
     retryCount = 0; // Reset retry counter on successful play!
     if (recoveryTimeout) {
@@ -816,10 +816,8 @@ if (typeof window !== 'undefined' && audio) {
       }
     }
   });
-}
 
-// Global Buffering Safety Watchdog to prevent endless loading spinner
-if (typeof window !== 'undefined') {
+  // Global Buffering Safety Watchdog to prevent endless loading spinner
   let bufferingSafetyTimer: ReturnType<typeof setTimeout> | null = null;
 
   useAudioStore.subscribe((state) => {
@@ -832,9 +830,10 @@ if (typeof window !== 'undefined') {
             console.warn("[Audio Watchdog] Buffering safety timeout (10s) reached. Force stopping buffer state.");
             useAudioStore.setState({ isBuffering: false });
             if (audio && (audio.paused || audio.readyState < 2)) {
-              useAudioStore.setState({ isPlaying: false });
-              if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
-              toast.error("Stream connection timed out. Tap play to retry.");
+              // Instead of stopping playback entirely, notify that we timed out but are retrying in background.
+              // We do not set isPlaying to false, so the player remains active (not static) and will auto-animate when loaded.
+              toast.info("Connection timeout. Retrying in background...");
+              attemptRecovery();
             }
           }
         }, 10000);
