@@ -169,7 +169,9 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
 
   const [privateMessages, setPrivateMessages] = useState<ChatMessage[]>([]);
   const [activeDmUser, setActiveDmUser] = useState<string | null>(null);
-  const [chatTab, setChatTab] = useState<'public' | 'private'>('public');
+  const [chatTab, setChatTab] = useState<'public' | 'private' | 'online'>('public');
+  const [onlineUsers, setOnlineUsers] = useState<any[]>([]);
+  const [onlineSearchQuery, setOnlineSearchQuery] = useState('');
   const [showAdminClearToggle, setShowAdminClearToggle] = useState(false);
   const [isConnected, setIsConnected] = useState<boolean>(true);
   const [targetBlockStatus, setTargetBlockStatus] = useState<{ isBlocked: boolean; isBlockedBy: boolean; restricted: boolean } | null>(null);
@@ -938,6 +940,15 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
       }
     };
 
+    const onPresenceUpdate = (list: any[]) => {
+      const sorted = [...list].sort((a, b) => {
+        if (a.isStaff && !b.isStaff) return -1;
+        if (!a.isStaff && b.isStaff) return 1;
+        return a.username.localeCompare(b.username);
+      });
+      setOnlineUsers(sorted);
+    };
+
     socket.on('chatHistory', onChatHistory);
     socket.on('chatMessage', onChatMessage);
     socket.on('privateHistory', onPrivateHistory);
@@ -946,6 +957,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     socket.on('messagesCleared', onMessagesCleared);
     socket.on('user_banned', onUserBanned);
     socket.on('user_blocked_update', onUserBlockedUpdate);
+    socket.on('presence_update', onPresenceUpdate);
 
     if (loggedInUser) {
       socket.emit('registerUser', loggedInUser);
@@ -963,6 +975,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
       socket.off('messagesCleared', onMessagesCleared);
       socket.off('user_banned', onUserBanned);
       socket.off('user_blocked_update', onUserBlockedUpdate);
+      socket.off('presence_update', onPresenceUpdate);
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('connect_error', onConnectError);
@@ -1855,36 +1868,46 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
               </div>
             </div>
 
-            {/* Tab Selector when logged in */}
-            {loggedInUser && (
-              <div className={`${embedded ? 'px-3 py-1.5' : 'px-6 py-2'} border-b flex gap-2 shrink-0 ${isLightMode ? 'border-black/10 bg-black/5' : 'border-white/10 bg-white/5'}`}>
-                <button
-                  onClick={() => setChatTab('public')}
-                  className={`flex-1 ${embedded ? 'py-1 text-[10px]' : 'py-1.5 text-[11px]'} font-black uppercase tracking-wider rounded-lg border transition-all cursor-pointer ${
-                    chatTab === 'public'
-                      ? 'bg-neon-purple text-white border-neon-purple shadow-[0_0_10px_rgba(176,38,255,0.3)]'
-                      : (isLightMode ? 'text-black/60 hover:text-black border-black/10 bg-black/5' : 'text-white/60 hover:text-white border-white/10 bg-white/5')
-                  }`}
-                >
-                  📡 Station Chat
-                </button>
-                <button
-                  onClick={() => setChatTab('private')}
-                  className={`flex-1 ${embedded ? 'py-1 text-[10px]' : 'py-1.5 text-[11px]'} font-black uppercase tracking-wider rounded-lg border transition-all relative cursor-pointer ${
-                    chatTab === 'private'
-                      ? 'bg-neon-purple text-white border-neon-purple shadow-[0_0_10px_rgba(176,38,255,0.3)]'
-                      : (isLightMode ? 'text-black/60 hover:text-black border-black/10 bg-black/5' : 'text-white/60 hover:text-white border-white/10 bg-white/5')
-                  }`}
-                >
-                  💬 Direct Messages
-                  {unreadDms.size > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full animate-bounce border border-white">
-                      {unreadDms.size}
-                    </span>
-                  )}
-                </button>
-              </div>
-            )}
+             {/* Tab Selector when logged in */}
+             {loggedInUser && (
+               <div className={`${embedded ? 'px-3 py-1.5' : 'px-6 py-2'} border-b flex gap-2 shrink-0 ${isLightMode ? 'border-black/10 bg-black/5' : 'border-white/10 bg-white/5'}`}>
+                 <button
+                   onClick={() => setChatTab('public')}
+                   className={`flex-1 ${embedded ? 'py-1 text-[10px]' : 'py-1.5 text-[11px]'} font-black uppercase tracking-wider rounded-lg border transition-all cursor-pointer ${
+                     chatTab === 'public'
+                       ? 'bg-neon-purple text-white border-neon-purple shadow-[0_0_10px_rgba(176,38,255,0.3)]'
+                       : (isLightMode ? 'text-black/60 hover:text-black border-black/10 bg-black/5' : 'text-white/60 hover:text-white border-white/10 bg-white/5')
+                   }`}
+                 >
+                   📡 Chat
+                 </button>
+                 <button
+                   onClick={() => setChatTab('private')}
+                   className={`flex-1 ${embedded ? 'py-1 text-[10px]' : 'py-1.5 text-[11px]'} font-black uppercase tracking-wider rounded-lg border transition-all relative cursor-pointer ${
+                     chatTab === 'private'
+                       ? 'bg-neon-purple text-white border-neon-purple shadow-[0_0_10px_rgba(176,38,255,0.3)]'
+                       : (isLightMode ? 'text-black/60 hover:text-black border-black/10 bg-black/5' : 'text-white/60 hover:text-white border-white/10 bg-white/5')
+                   }`}
+                 >
+                   💬 DMs
+                   {unreadDms.size > 0 && (
+                     <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full animate-bounce border border-white">
+                       {unreadDms.size}
+                     </span>
+                   )}
+                 </button>
+                 <button
+                   onClick={() => setChatTab('online')}
+                   className={`flex-1 ${embedded ? 'py-1 text-[10px]' : 'py-1.5 text-[11px]'} font-black uppercase tracking-wider rounded-lg border transition-all cursor-pointer ${
+                     chatTab === 'online'
+                       ? 'bg-neon-purple text-white border-neon-purple shadow-[0_0_10px_rgba(176,38,255,0.3)]'
+                       : (isLightMode ? 'text-black/60 hover:text-black border-black/10 bg-black/5' : 'text-white/60 hover:text-white border-white/10 bg-white/5')
+                   }`}
+                 >
+                   🟢 Online ({onlineUsers.length})
+                 </button>
+               </div>
+             )}
 
             <div 
               className={`flex-1 min-h-0 overflow-y-auto touch-pan-y overscroll-contain ${embedded ? 'p-3 space-y-3' : 'p-6 space-y-6'} no-scrollbar`} 
@@ -2146,7 +2169,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                     </motion.div>
                   );
                 }))
-              ) : (
+              ) : chatTab === 'private' ? (
                 // Private Direct Messages view
                 activeDmUser ? (
                   // Chat conversation view
@@ -2419,6 +2442,115 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                     </div>
                   </div>
                 )
+              ) : (
+                // Online Users Real-time View
+                <div className="space-y-4">
+                  {/* Search filter for active users */}
+                  <div className="relative">
+                    <Search className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${isLightMode ? 'text-black/40' : 'text-white/40'}`} />
+                    <input
+                      type="text"
+                      value={onlineSearchQuery}
+                      onChange={(e) => setOnlineSearchQuery(e.target.value)}
+                      placeholder="Search online members..."
+                      className={`w-full pl-10 pr-4 py-3 text-xs border rounded-2xl focus:outline-none focus:border-neon-purple/50 transition-all ${
+                        isLightMode
+                          ? 'bg-[#ffffff] border-black/10 text-black placeholder-black/40'
+                          : 'bg-black/50 border-white/10 text-white placeholder-white/20'
+                      }`}
+                    />
+                    {onlineSearchQuery && (
+                      <button
+                        onClick={() => setOnlineSearchQuery('')}
+                        className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold uppercase ${
+                          isLightMode ? 'text-black/40 hover:text-black' : 'text-white/40 hover:text-white'
+                        }`}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Active list container */}
+                  <div className="space-y-2">
+                    {onlineUsers.filter(u => u.username.toLowerCase().includes(onlineSearchQuery.toLowerCase())).length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-20 opacity-30 text-center space-y-4">
+                        <Users className="w-12 h-12 text-neon-purple animate-pulse" />
+                        <p className={`text-xs font-bold uppercase tracking-widest ${isLightMode ? 'text-black' : 'text-white'}`}>
+                          No active members found
+                        </p>
+                      </div>
+                    ) : (
+                      onlineUsers
+                        .filter(u => u.username.toLowerCase().includes(onlineSearchQuery.toLowerCase()))
+                        .map((user) => {
+                          const isSelf = user.username.toLowerCase() === loggedInUser?.toLowerCase();
+                          return (
+                            <div
+                              key={user.username}
+                              className={`group w-full flex items-center justify-between p-3.5 rounded-2xl border transition-all text-left ${
+                                isLightMode
+                                  ? 'bg-[#ffffff] border-black/5 shadow-[0_2px_8px_rgba(0,0,0,0.02)]'
+                                  : 'bg-[#0f0c13]/60 border-[#2a1b3d]/30 shadow-[0_4px_20px_rgba(0,0,0,0.15)]'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                                <div className="relative shrink-0">
+                                  <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/10">
+                                    <img
+                                      src={user.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.username}`}
+                                      alt={user.username}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+                                  {/* Pulsing indicator pin */}
+                                  <span className="absolute -bottom-1 -right-1 flex h-3 w-3">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500 border-2 border-[#0c0a0f]"></span>
+                                  </span>
+                                </div>
+
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className={`text-xs font-black uppercase tracking-widest truncate ${isLightMode ? 'text-black' : 'text-white'}`}>
+                                      {user.username.includes('@') ? user.username.split('@')[0] : user.username}
+                                    </span>
+                                    {isSelf && (
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[7px] font-mono font-black uppercase tracking-wider bg-white/10 text-white/60">
+                                        You
+                                      </span>
+                                    )}
+                                    {user.isStaff && (
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[7px] font-mono font-black uppercase tracking-wider bg-neon-purple/10 border border-neon-purple/20 text-neon-purple shadow-[0_0_8px_rgba(176,38,255,0.1)]">
+                                        Staff
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {!isSelf && (
+                                <button
+                                  onClick={() => {
+                                    setChatTab('private');
+                                    setActiveDmUser(user.username);
+                                  }}
+                                  className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
+                                    isLightMode
+                                      ? 'bg-black/5 hover:bg-neon-purple hover:text-white hover:border-neon-purple border-black/10 text-black/60 shadow-sm'
+                                      : 'bg-white/5 hover:bg-neon-purple hover:text-white hover:border-neon-purple border-white/10 text-white/60 shadow-[0_2px_10px_rgba(0,0,0,0.1)]'
+                                  }`}
+                                  title={`Message ${user.username}`}
+                                >
+                                  <MessageSquare className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })
+                    )}
+                  </div>
+                </div>
               )}
             </div>
 
@@ -2655,7 +2787,8 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                     </div>
                   )}
 
-                  <div className="relative" ref={emojiPickerRef}>
+                  {chatTab !== 'online' && (
+                    <div className="relative" ref={emojiPickerRef}>
                     {isRecording ? (
                       <div className={`relative flex items-center justify-between border rounded-2xl ${embedded ? 'px-3 py-2 text-xs' : 'px-4 py-4 text-sm'} transition-all ${isLightMode ? 'bg-[#ffffff]/80 border-black/10 text-black' : 'bg-black/50 border-white/10 text-white'}`}>
                         {/* Recording status with a pulsing red icon */}
@@ -2871,8 +3004,9 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                       )}
                     </AnimatePresence>
                   </div>
+                  )}
                   
-                  {!embedded && (
+                  {!embedded && chatTab !== 'online' && (
                     <div className="flex gap-2 justify-center">
                       <button 
                         onClick={() => handleInputChange('🔥 BIG CHUNE!')}
@@ -2892,6 +3026,14 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                       >
                         Request
                       </button>
+                    </div>
+                  )}
+
+                  {chatTab === 'online' && (
+                    <div className={`p-3 text-center border border-dashed rounded-2xl ${isLightMode ? 'border-black/10 bg-black/5 text-black/50' : 'border-white/10 bg-white/5 text-white/40'}`}>
+                      <p className="text-[10px] font-bold uppercase tracking-wider">
+                        📡 Click on any member above to direct message them
+                      </p>
                     </div>
                   )}
                 </div>
