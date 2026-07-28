@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Image as ImageIcon, Video, Music, Trash2, Search, Loader2, Upload, Plus, CheckSquare, Square, ChevronLeft, ChevronRight, X, Clipboard, Check, ChevronDown, Clock, RefreshCw, Settings, ShieldAlert, Sparkles, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -904,13 +905,13 @@ function MediaItemCard({ item, isSelected, onToggleSelection, onDelete, isDeleti
 }
 
 function ReferencesModal({ item, onClose, isLightMode }: { item: MediaItem, onClose: () => void, isLightMode: boolean }) {
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/85 backdrop-blur-sm"
         onClick={onClose}
       />
       <motion.div
@@ -981,6 +982,7 @@ function ReferencesModal({ item, onClose, isLightMode }: { item: MediaItem, onCl
           </div>
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 }
