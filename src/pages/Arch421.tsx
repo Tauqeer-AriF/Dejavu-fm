@@ -4,14 +4,9 @@ import { useLogo } from '../hooks/useLogo';
 import { toast } from 'sonner';
 import unmutedArchivesImage from '../assets/images/unmuted_archives_1785234146059.jpg';
 import { 
-  History, 
-  Disc, 
-  Users, 
   Mail, 
   ArrowLeft, 
-  Volume2, 
   Clock,
-  Flame,
   Sparkles
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -56,31 +51,31 @@ export default function Arch421() {
     }
   };
 
-  const archivalItems = [
+  const infoItems = [
     {
       title: "31 Years of Dejavu FM History.",
-      icon: History,
-      color: "text-neon-purple"
+      textColor: "text-neon-purple",
+      bgColor: "bg-neon-purple/10 border-neon-purple/20"
     },
     {
       title: "The Telepathy Legacy (Step In Time).",
-      icon: Flame,
-      color: "text-orange-500"
+      textColor: "text-neon-blue",
+      bgColor: "bg-neon-blue/10 border-neon-blue/20"
     },
     {
       title: "Intimate Sound & Film Space + Record Shop (Upstairs).",
-      icon: Disc,
-      color: "text-neon-blue"
+      textColor: "text-neon-purple",
+      bgColor: "bg-neon-purple/10 border-neon-purple/20"
     },
     {
       title: "Sound System & DIY Production Archives.",
-      icon: Volume2,
-      color: "text-yellow-400"
+      textColor: "text-neon-blue",
+      bgColor: "bg-neon-blue/10 border-neon-blue/20"
     },
     {
       title: "The CES Mission: Managed as a Community & Culture Hub.",
-      icon: Users,
-      color: "text-green-400"
+      textColor: "text-neon-purple",
+      bgColor: "bg-neon-purple/10 border-neon-purple/20"
     }
   ];
 
@@ -268,16 +263,15 @@ export default function Arch421() {
 
       </div>
 
-      {/* Full Width: Archival Information Section */}
+      {/* Full Width: Information Section */}
       <div className="space-y-4 pt-4 relative z-10">
         <h2 className={`text-lg font-display font-black uppercase tracking-wider ${
           isLightMode ? 'text-slate-800' : 'text-white'
         }`}>
-          Archival Information
+          Information
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {archivalItems.map((item, index) => {
-            const IconComponent = item.icon;
+          {infoItems.map((item, index) => {
             return (
               <div 
                 key={index} 
@@ -287,8 +281,8 @@ export default function Arch421() {
                     : 'bg-black/20 border-white/5 hover:border-white/10'
                 }`}
               >
-                <div className={`w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 ${item.color}`}>
-                  <IconComponent className="w-5 h-5" />
+                <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 font-display font-black text-sm tracking-tight ${item.bgColor} ${item.textColor}`}>
+                  {String(index + 1).padStart(2, '0')}
                 </div>
                 <div className="space-y-1 pt-0.5">
                   <p className={`text-sm font-semibold tracking-tight leading-snug ${
