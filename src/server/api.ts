@@ -2519,9 +2519,29 @@ apiRouter.get("/admin/arch421/registrations", (req, res) => {
   res.json(registrations);
 });
 
+apiRouter.post("/admin/arch421/registrations", (req, res) => {
+  const { name, email, status } = req.body;
+  if (!name || !email) {
+    return res.status(400).json({ error: "Missing name or email" });
+  }
+  const info = db.prepare("INSERT INTO arch421_registrations (name, email, status) VALUES (?, ?, ?)")
+    .run(name, email, status || 'pending');
+  res.json({ success: true, id: info.lastInsertRowid });
+});
+
 apiRouter.put("/admin/arch421/registrations/:id/status", (req, res) => {
   const { status } = req.body;
   db.prepare("UPDATE arch421_registrations SET status = ? WHERE id = ?").run(status, req.params.id);
+  res.json({ success: true });
+});
+
+apiRouter.put("/admin/arch421/registrations/:id", (req, res) => {
+  const { name, email, status } = req.body;
+  if (!name || !email) {
+    return res.status(400).json({ error: "Missing name or email" });
+  }
+  db.prepare("UPDATE arch421_registrations SET name = ?, email = ?, status = ? WHERE id = ?")
+    .run(name, email, status, req.params.id);
   res.json({ success: true });
 });
 
