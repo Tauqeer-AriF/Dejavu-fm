@@ -697,6 +697,7 @@ Sitemap: ${origin}/sitemap.xml`);
 
     emitCounts();
     socket.emit('chatCountsUpdated', getChatRoomCounts());
+    socket.emit('presence_update', getActivePresenceList(io));
 
     socket.on('deleteMessage', (payload: { id: string; user: string; isPrivate: boolean }) => {
       if (!db.open) return;
