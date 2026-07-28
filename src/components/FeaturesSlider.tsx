@@ -84,7 +84,7 @@ export function FeaturesSlider() {
               <span className="text-[10px] font-black uppercase tracking-[0.25em]">Trending Now</span>
             </div>
             <h2 className={`text-3xl md:text-5xl font-display font-black uppercase tracking-tighter ${isLightMode ? "text-black" : "text-white"}`}>
-              Station <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue">Features</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue">Features</span>
             </h2>
           </div>
 
