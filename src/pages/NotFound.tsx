@@ -83,11 +83,13 @@ export default function NotFound() {
 
           {/* Quick Station Shortcuts */}
           <div className={`w-full max-w-2xl p-6 sm:p-8 rounded-3xl border backdrop-blur-xl transition-all ${
-            isLightMode ? 'bg-white/80 border-slate-200/90 shadow-xl' : 'bg-[#0D0F1D]/90 border-white/10 shadow-2xl shadow-neon-purple/5'
+            isLightMode 
+              ? 'bg-[#ffffff] border-slate-200 shadow-xl shadow-slate-200/50' 
+              : 'bg-[#0D0F1D]/90 border-white/10 shadow-2xl shadow-neon-purple/5'
           }`}>
             <div className="flex items-center justify-center gap-2 mb-6">
-              <Compass className="w-4 h-4 text-neon-blue" />
-              <h2 className={`text-xs font-bold uppercase tracking-widest ${isLightMode ? 'text-slate-700' : 'text-white/70'}`}>
+              <Compass className="w-4.5 h-4.5 text-neon-blue" />
+              <h2 className={`text-xs font-bold uppercase tracking-widest ${isLightMode ? 'text-slate-800' : 'text-white/80'}`}>
                 Popular Station Channels
               </h2>
             </div>
@@ -97,14 +99,14 @@ export default function NotFound() {
                 to="/schedule"
                 className={`p-3.5 rounded-2xl border transition-all flex items-center gap-3 ${
                   isLightMode 
-                    ? 'bg-slate-50 hover:bg-slate-100 hover:border-neon-purple/40 border-slate-200 text-slate-800' 
+                    ? 'bg-slate-50/80 hover:bg-slate-100 hover:border-neon-purple/50 border-slate-200/80 text-slate-900 shadow-sm' 
                     : 'bg-white/[0.03] hover:bg-white/[0.08] hover:border-neon-purple/40 border-white/5 text-white/90'
                 }`}
               >
                 <Calendar className="w-4 h-4 text-neon-purple shrink-0" />
                 <div>
-                  <div className="text-xs font-bold">Schedule</div>
-                  <div className={`text-[10px] ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>Shows & Roster</div>
+                  <div className={`text-xs font-bold ${isLightMode ? 'text-slate-900' : 'text-white'}`}>Schedule</div>
+                  <div className={`text-[10px] ${isLightMode ? 'text-slate-500 font-medium' : 'text-white/40'}`}>Shows & Roster</div>
                 </div>
               </Link>
 
@@ -112,14 +114,14 @@ export default function NotFound() {
                 to="/djs"
                 className={`p-3.5 rounded-2xl border transition-all flex items-center gap-3 ${
                   isLightMode 
-                    ? 'bg-slate-50 hover:bg-slate-100 hover:border-neon-blue/40 border-slate-200 text-slate-800' 
+                    ? 'bg-slate-50/80 hover:bg-slate-100 hover:border-neon-blue/50 border-slate-200/80 text-slate-900 shadow-sm' 
                     : 'bg-white/[0.03] hover:bg-white/[0.08] hover:border-neon-blue/40 border-white/5 text-white/90'
                 }`}
               >
                 <Users className="w-4 h-4 text-neon-blue shrink-0" />
                 <div>
-                  <div className="text-xs font-bold">DJs & Hosts</div>
-                  <div className={`text-[10px] ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>Resident Artists</div>
+                  <div className={`text-xs font-bold ${isLightMode ? 'text-slate-900' : 'text-white'}`}>DJs & Hosts</div>
+                  <div className={`text-[10px] ${isLightMode ? 'text-slate-500 font-medium' : 'text-white/40'}`}>Resident Artists</div>
                 </div>
               </Link>
 
@@ -127,14 +129,14 @@ export default function NotFound() {
                 to="/podcasts"
                 className={`p-3.5 rounded-2xl border transition-all flex items-center gap-3 col-span-2 sm:col-span-1 ${
                   isLightMode 
-                    ? 'bg-slate-50 hover:bg-slate-100 hover:border-neon-purple/40 border-slate-200 text-slate-800' 
+                    ? 'bg-slate-50/80 hover:bg-slate-100 hover:border-neon-purple/50 border-slate-200/80 text-slate-900 shadow-sm' 
                     : 'bg-white/[0.03] hover:bg-white/[0.08] hover:border-neon-purple/40 border-white/5 text-white/90'
                 }`}
               >
                 <Headphones className="w-4 h-4 text-neon-purple shrink-0" />
                 <div>
-                  <div className="text-xs font-bold">Podcasts</div>
-                  <div className={`text-[10px] ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>Catch Up Recordings</div>
+                  <div className={`text-xs font-bold ${isLightMode ? 'text-slate-900' : 'text-white'}`}>Podcasts</div>
+                  <div className={`text-[10px] ${isLightMode ? 'text-slate-500 font-medium' : 'text-white/40'}`}>Catch Up Recordings</div>
                 </div>
               </Link>
             </div>
