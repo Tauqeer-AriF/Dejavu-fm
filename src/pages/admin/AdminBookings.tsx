@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useNavigate, Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
-import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles } from "lucide-react";
+import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles, Layers, Check, Ban, Download } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { useModal } from "../../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
@@ -11,15 +11,56 @@ import { useLogo } from "../../hooks/useLogo";
 
 export function AdminBookings() {
   const { isLightMode } = useLogo();
+  const [activeSubTab, setActiveSubTab] = useState<'bookings' | 'arch421'>('bookings');
+  
   const [bookings, setBookings] = useState<any[]>([]);
+  const [registrations, setRegistrations] = useState<any[]>([]);
+  
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const { showAlert, showConfirm } = useModal();
 
-  const load = () => {
-    fetchAdmin("/api/admin/bookings").then(r => r.json()).then(setBookings);
+  const loadBookings = () => {
+    fetchAdmin("/api/admin/bookings").then(r => r.json()).then(setBookings).catch(err => console.error(err));
   };
 
-  useEffect(() => { load(); }, []);
+  const loadRegistrations = () => {
+    fetchAdmin("/api/admin/arch421/registrations").then(r => r.json()).then(setRegistrations).catch(err => console.error(err));
+  };
+
+  const loadAll = () => {
+    loadBookings();
+    loadRegistrations();
+  };
+
+  useEffect(() => {
+    loadAll();
+  }, []);
+
+  const exportRegistrationsToCSV = () => {
+    if (registrations.length === 0) {
+      showAlert({ title: "No Data", message: "There are no registrations to export.", style: "warning" });
+      return;
+    }
+    
+    const headers = ["ID", "Name", "Email", "Registered At"];
+    const rows = registrations.map(r => [
+      r.id,
+      `"${r.name.replace(/"/g, '""')}"`,
+      `"${r.email.replace(/"/g, '""')}"`,
+      `"${new Date(r.created_at).toLocaleString()}"`
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `arch421_registrations_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showAlert({ title: "Success", message: "Registrations successfully exported to CSV.", style: "success" });
+  };
 
   const updateStatus = async (id: string, status: string) => {
     await fetchAdmin(`/api/admin/bookings/${id}/status`, {
@@ -27,7 +68,7 @@ export function AdminBookings() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status })
     });
-    load();
+    loadBookings();
     showAlert({ title: "Updated", message: `Booking status changed to ${status}`, style: "success" });
   };
 
@@ -44,11 +85,44 @@ export function AdminBookings() {
         const res = await fetchAdmin(`/api/admin/bookings/${id}`, { method: 'DELETE' });
         if (res.ok) {
           showAlert({ title: "Deleted", message: "Booking has been removed.", style: "success" });
-          load();
+          loadBookings();
         }
       } catch (err) {
         console.error("Failed to delete booking", err);
         showAlert({ title: "Error", message: "Failed to delete booking", style: "danger" });
+      }
+    }
+  };
+
+  // Arch421 specific actions
+  const updateRegStatus = async (id: number, status: string) => {
+    await fetchAdmin(`/api/admin/arch421/registrations/${id}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    loadRegistrations();
+    showAlert({ title: "Updated", message: `VIP registration status changed to ${status}`, style: "success" });
+  };
+
+  const handleDeleteRegistration = async (id: number, name: string) => {
+    const confirmed = await showConfirm({
+      title: "Delete Registration",
+      message: `Are you sure you want to delete the VIP registration for '${name}'? This action cannot be undone.`,
+      style: "danger",
+      confirmText: "Delete Permanently"
+    });
+
+    if (confirmed) {
+      try {
+        const res = await fetchAdmin(`/api/admin/arch421/registrations/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          showAlert({ title: "Deleted", message: "VIP registration has been removed.", style: "success" });
+          loadRegistrations();
+        }
+      } catch (err) {
+        console.error("Failed to delete registration", err);
+        showAlert({ title: "Error", message: "Failed to delete registration", style: "danger" });
       }
     }
   };
@@ -68,150 +142,264 @@ export function AdminBookings() {
         </div>
       </div>
 
-      {/* Desktop Table View */}
-      <div className={`hidden md:block overflow-hidden rounded-[2rem] border ${isLightMode ? 'border-black/10 bg-white shadow-sm' : 'border-white/5 bg-white/5'}`}>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className={`border-b ${isLightMode ? 'border-black/10 bg-black/[0.02]' : 'border-white/10 bg-white/5'}`}>
-                <th className={`p-6 text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Artist</th>
-                <th className={`p-6 text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Client</th>
-                <th className={`p-6 text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Event Date</th>
-                <th className={`p-6 text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Status</th>
-                <th className={`p-6 text-[10px] font-black uppercase tracking-widest text-right ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Actions</th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y ${isLightMode ? 'divide-black/10' : 'divide-white/5'}`}>
-              {bookings.map(b => (
-                <tr key={b.id} className={`transition-colors group ${isLightMode ? 'hover:bg-black/[0.01] text-slate-800' : 'hover:bg-white/5 text-white'}`}>
-                  <td className="p-6">
-                    <span className="font-black text-neon-purple uppercase text-xs tracking-wider">{b.dj_name || 'Deleted DJ'}</span>
-                  </td>
-                  <td className="p-6">
-                    <div className="flex flex-col">
-                      <span className={`text-sm font-bold tracking-tight ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{b.client_name}</span>
-                      <span className={`text-[10px] font-mono italic ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>{b.client_email}</span>
-                    </div>
-                  </td>
-                  <td className="p-6">
-                    <span className={`text-xs font-mono ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>{b.event_date || 'TBD'}</span>
-                  </td>
-                  <td className="p-6">
-                    <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border ${
-                      b.status === 'confirmed' ? (isLightMode ? 'bg-green-50 text-green-600 border-green-200' : 'bg-green-500/10 text-green-400 border-green-500/20') :
-                      b.status === 'rejected' ? (isLightMode ? 'bg-red-50 text-red-600 border-red-200' : 'bg-red-500/10 text-red-400 border-red-500/20') :
-                      (isLightMode ? 'bg-cyan-50 text-cyan-600 border-cyan-200 animate-pulse' : 'bg-neon-blue/10 text-neon-blue border-neon-blue/20 animate-pulse')
-                    }`}>
-                      {b.status}
-                    </span>
-                  </td>
-                  <td className="p-6">
-                    <div className="flex items-center justify-end space-x-2">
-                      <button 
-                        onClick={() => setSelectedBooking(b)} 
-                        className={`p-2.5 border rounded-xl transition-all transform hover:scale-105 ${isLightMode ? 'bg-black/5 hover:bg-black/10 border-black/10 text-black/60 hover:text-black' : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/60 hover:text-white'}`}
-                        title="View Details"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => updateStatus(b.id, 'confirmed')} 
-                        className={`p-2.5 border rounded-xl transition-all transform hover:scale-105 ${isLightMode ? 'bg-green-500/5 hover:bg-green-500/10 border-green-500/10 text-green-600/70 hover:text-green-600' : 'bg-green-500/5 hover:bg-green-500/10 border-green-500/10 text-green-400/60 hover:text-green-400'}`}
-                        title="Confirm Booking"
-                      >
-                        <MessageSquare className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => updateStatus(b.id, 'rejected')} 
-                        className={`p-2.5 border rounded-xl transition-all transform hover:scale-105 ${isLightMode ? 'bg-yellow-500/5 hover:bg-yellow-500/10 border-yellow-500/10 text-yellow-600/70 hover:text-yellow-600' : 'bg-yellow-500/5 hover:bg-yellow-500/10 border-yellow-500/10 text-yellow-500/60 hover:text-yellow-500'}`}
-                        title="Reject Booking"
-                      >
-                        <LogOut className="w-4 h-4 rotate-90" />
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(b.id, b.client_name)} 
-                        className={`p-2.5 border rounded-xl transition-all transform hover:scale-105 ${isLightMode ? 'bg-red-500/5 hover:bg-red-500/10 border-red-500/10 text-red-600/70 hover:text-red-600' : 'bg-red-500/5 hover:bg-red-500/10 border-red-500/10 text-red-500/60 hover:text-red-500'}`}
-                        title="Delete Booking"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Mobile Card View */}
-      <div className="md:hidden grid grid-cols-1 gap-4">
-        {bookings.map(b => (
-          <motion.div 
-            key={b.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`p-5 rounded-[2rem] border space-y-4 ${isLightMode ? 'bg-white border-black/10 shadow-sm text-slate-800' : 'glass-panel border-white/5 text-white'}`}
+      {/* Sub-tab selection */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/5 pb-2 gap-4">
+        <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0">
+          <button
+            onClick={() => setActiveSubTab('bookings')}
+            className={`px-6 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap flex items-center gap-2 ${
+              activeSubTab === 'bookings'
+                ? (isLightMode ? 'bg-black text-white' : 'bg-white text-dark-bg')
+                : (isLightMode ? 'text-slate-500 hover:text-black hover:bg-black/5' : 'text-white/50 hover:text-white hover:bg-white/5')
+            }`}
           >
-            <div className="flex justify-between items-start">
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-neon-purple block mb-1">Artist</span>
-                <p className={`font-black text-lg tracking-tighter italic ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{b.dj_name || 'Deleted DJ'}</p>
-              </div>
-              <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
-                b.status === 'confirmed' ? (isLightMode ? 'bg-green-50 text-green-600 border-green-200' : 'bg-green-500/10 text-green-400 border-green-500/20') :
-                b.status === 'rejected' ? (isLightMode ? 'bg-red-50 text-red-600 border-red-200' : 'bg-red-500/10 text-red-400 border-red-500/20') :
-                (isLightMode ? 'bg-cyan-50 text-cyan-600 border-cyan-200 animate-pulse' : 'bg-neon-blue/10 text-neon-blue border-neon-blue/20 animate-pulse')
-              }`}>
-                {b.status}
-              </span>
-            </div>
+            <Calendar className="w-4 h-4" />
+            <span>DJ Bookings ({bookings.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveSubTab('arch421')}
+            className={`px-6 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap flex items-center gap-2 ${
+              activeSubTab === 'arch421'
+                ? (isLightMode ? 'bg-black text-white' : 'bg-white text-dark-bg')
+                : (isLightMode ? 'text-slate-500 hover:text-black hover:bg-black/5' : 'text-white/50 hover:text-white hover:bg-white/5')
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>Arch421 VIP Registrations ({registrations.length})</span>
+          </button>
+        </div>
 
-            <div className={`grid grid-cols-2 gap-4 pt-2 border-t ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
-              <div>
-                <span className={`text-[10px] font-black uppercase tracking-widest block mb-1 ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>Client</span>
-                <p className={`text-xs font-bold truncate ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{b.client_name}</p>
-              </div>
-              <div>
-                <span className={`text-[10px] font-black uppercase tracking-widest block mb-1 ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>Date</span>
-                <p className={`text-xs font-mono ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>{b.event_date || 'TBD'}</p>
-              </div>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <button 
-                onClick={() => setSelectedBooking(b)}
-                className={`flex-1 py-3 border rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center space-x-2 ${isLightMode ? 'bg-black/5 hover:bg-black/10 border-black/10 text-slate-700' : 'bg-white/5 border-white/10 text-white'}`}
-              >
-                <Eye className="w-3 h-3" />
-                <span>Details</span>
-              </button>
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => updateStatus(b.id, 'confirmed')}
-                  className={`p-3 border rounded-xl outline-none ${isLightMode ? 'bg-green-50 border-green-200 text-green-600' : 'bg-green-500/10 border-green-500/20 text-green-400'}`}
-                >
-                  <MessageSquare className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={() => handleDelete(b.id, b.client_name)}
-                  className={`p-3 border rounded-xl outline-none ${isLightMode ? 'bg-red-50 border-red-200 text-red-600' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        ))}
+        {activeSubTab === 'arch421' && registrations.length > 0 && (
+          <button
+            onClick={exportRegistrationsToCSV}
+            className={`px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.15em] rounded-xl transition-all flex items-center justify-center gap-2 border self-center sm:self-auto ${
+              isLightMode 
+                ? 'bg-black text-white hover:bg-slate-800 border-black/10' 
+                : 'bg-white text-dark-bg hover:bg-slate-100 border-white/10'
+            }`}
+          >
+            <Download className="w-4.5 h-4.5 text-neon-blue" />
+            <span>Export CSV</span>
+          </button>
+        )}
       </div>
 
-      {bookings.length === 0 && (
-        <div className={`py-20 text-center rounded-[3rem] border border-dashed ${isLightMode ? 'bg-white border-black/15 shadow-sm text-slate-800' : 'glass-panel border-white/5'}`}>
-          <Ghost className={`w-12 h-12 mx-auto mb-4 ${isLightMode ? 'text-black/20' : 'text-white/5'}`} />
-          <p className={`uppercase font-black tracking-widest text-xs ${isLightMode ? 'text-black/50' : 'text-white/20'}`}>Awaiting new opportunities...</p>
-        </div>
-      )}
+      {activeSubTab === 'bookings' ? (
+        <>
+          {/* Desktop Table View */}
+          <div className={`hidden md:block overflow-hidden rounded-[2rem] border ${isLightMode ? 'border-black/10 bg-white shadow-sm' : 'border-white/5 bg-white/5'}`}>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className={`border-b ${isLightMode ? 'border-black/10 bg-black/[0.02]' : 'border-white/10 bg-white/5'}`}>
+                    <th className={`p-6 text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Artist</th>
+                    <th className={`p-6 text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Client</th>
+                    <th className={`p-6 text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Event Date</th>
+                    <th className={`p-6 text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Status</th>
+                    <th className={`p-6 text-[10px] font-black uppercase tracking-widest text-right ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody className={`divide-y ${isLightMode ? 'divide-black/10' : 'divide-white/5'}`}>
+                  {bookings.map(b => (
+                    <tr key={b.id} className={`transition-colors group ${isLightMode ? 'hover:bg-black/[0.01] text-slate-800' : 'hover:bg-white/5 text-white'}`}>
+                      <td className="p-6">
+                        <span className="font-black text-neon-purple uppercase text-xs tracking-wider">{b.dj_name || 'Deleted DJ'}</span>
+                      </td>
+                      <td className="p-6">
+                        <div className="flex flex-col">
+                          <span className={`text-sm font-bold tracking-tight ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{b.client_name}</span>
+                          <span className={`text-[10px] font-mono italic ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>{b.client_email}</span>
+                        </div>
+                      </td>
+                      <td className="p-6">
+                        <span className={`text-xs font-mono ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>{b.event_date || 'TBD'}</span>
+                      </td>
+                      <td className="p-6">
+                        <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border ${
+                          b.status === 'confirmed' ? (isLightMode ? 'bg-green-50 text-green-600 border-green-200' : 'bg-green-500/10 text-green-400 border-green-500/20') :
+                          b.status === 'rejected' ? (isLightMode ? 'bg-red-50 text-red-600 border-red-200' : 'bg-red-500/10 text-red-400 border-red-500/20') :
+                          (isLightMode ? 'bg-cyan-50 text-cyan-600 border-cyan-200 animate-pulse' : 'bg-neon-blue/10 text-neon-blue border-neon-blue/20 animate-pulse')
+                        }`}>
+                          {b.status}
+                        </span>
+                      </td>
+                      <td className="p-6">
+                        <div className="flex items-center justify-end space-x-2">
+                          <button 
+                            onClick={() => setSelectedBooking(b)} 
+                            className={`p-2.5 border rounded-xl transition-all transform hover:scale-105 ${isLightMode ? 'bg-black/5 hover:bg-black/10 border-black/10 text-black/60 hover:text-black' : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/60 hover:text-white'}`}
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => updateStatus(b.id, 'confirmed')} 
+                            className={`p-2.5 border rounded-xl transition-all transform hover:scale-105 ${isLightMode ? 'bg-green-500/5 hover:bg-green-500/10 border-green-500/10 text-green-600/70 hover:text-green-600' : 'bg-green-500/5 hover:bg-green-500/10 border-green-500/10 text-green-400/60 hover:text-green-400'}`}
+                            title="Confirm Booking"
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => updateStatus(b.id, 'rejected')} 
+                            className={`p-2.5 border rounded-xl transition-all transform hover:scale-105 ${isLightMode ? 'bg-yellow-500/5 hover:bg-yellow-500/10 border-yellow-500/10 text-yellow-600/70 hover:text-yellow-600' : 'bg-yellow-500/5 hover:bg-yellow-500/10 border-yellow-500/10 text-yellow-500/60 hover:text-yellow-500'}`}
+                            title="Reject Booking"
+                          >
+                            <LogOut className="w-4 h-4 rotate-90" />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(b.id, b.client_name)} 
+                            className={`p-2.5 border rounded-xl transition-all transform hover:scale-105 ${isLightMode ? 'bg-red-500/5 hover:bg-red-500/10 border-red-500/10 text-red-600/70 hover:text-red-600' : 'bg-red-500/5 hover:bg-red-500/10 border-red-500/10 text-red-500/60 hover:text-red-500'}`}
+                            title="Delete Booking"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
 
+          {/* Mobile Card View */}
+          <div className="md:hidden grid grid-cols-1 gap-4">
+            {bookings.map(b => (
+              <motion.div 
+                key={b.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`p-5 rounded-[2rem] border space-y-4 ${isLightMode ? 'bg-white border-black/10 shadow-sm text-slate-800' : 'glass-panel border-white/5 text-white'}`}
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-neon-purple block mb-1">Artist</span>
+                    <p className={`font-black text-lg tracking-tighter italic ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{b.dj_name || 'Deleted DJ'}</p>
+                  </div>
+                  <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
+                    b.status === 'confirmed' ? (isLightMode ? 'bg-green-50 text-green-600 border-green-200' : 'bg-green-500/10 text-green-400 border-green-500/20') :
+                    b.status === 'rejected' ? (isLightMode ? 'bg-red-50 text-red-600 border-red-200' : 'bg-red-500/10 text-red-400 border-red-500/20') :
+                    (isLightMode ? 'bg-cyan-50 text-cyan-600 border-cyan-200 animate-pulse' : 'bg-neon-blue/10 text-neon-blue border-neon-blue/20 animate-pulse')
+                  }`}>
+                    {b.status}
+                  </span>
+                </div>
+
+                <div className={`grid grid-cols-2 gap-4 pt-2 border-t ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
+                  <div>
+                    <span className={`text-[10px] font-black uppercase tracking-widest block mb-1 ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>Client</span>
+                    <p className={`text-xs font-bold truncate ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{b.client_name}</p>
+                  </div>
+                  <div>
+                    <span className={`text-[10px] font-black uppercase tracking-widest block mb-1 ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>Date</span>
+                    <p className={`text-xs font-mono ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>{b.event_date || 'TBD'}</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button 
+                    onClick={() => setSelectedBooking(b)}
+                    className={`flex-1 py-3 border rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center space-x-2 ${isLightMode ? 'bg-black/5 hover:bg-black/10 border-black/10 text-slate-700' : 'bg-white/5 border-white/10 text-white'}`}
+                  >
+                    <Eye className="w-3 h-3" />
+                    <span>Details</span>
+                  </button>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => updateStatus(b.id, 'confirmed')}
+                      className={`p-3 border rounded-xl outline-none ${isLightMode ? 'bg-green-50 border-green-200 text-green-600' : 'bg-green-500/10 border-green-500/20 text-green-400'}`}
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(b.id, b.client_name)}
+                      className={`p-3 border rounded-xl outline-none ${isLightMode ? 'bg-red-50 border-red-200 text-red-600' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {bookings.length === 0 && (
+            <div className={`py-20 text-center rounded-[3rem] border border-dashed ${isLightMode ? 'bg-white border-black/15 shadow-sm text-slate-800' : 'glass-panel border-white/5'}`}>
+              <Ghost className={`w-12 h-12 mx-auto mb-4 ${isLightMode ? 'text-black/20' : 'text-white/5'}`} />
+              <p className={`uppercase font-black tracking-widest text-xs ${isLightMode ? 'text-black/50' : 'text-white/20'}`}>Awaiting new opportunities...</p>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          {/* Desktop Table View for Arch421 registrations */}
+          <div className={`hidden md:block overflow-hidden rounded-[2rem] border ${isLightMode ? 'border-black/10 bg-white shadow-sm' : 'border-white/5 bg-white/5'}`}>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className={`border-b ${isLightMode ? 'border-black/10 bg-black/[0.02]' : 'border-white/10 bg-white/5'}`}>
+                    <th className={`p-6 text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Name</th>
+                    <th className={`p-6 text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Email Address</th>
+                    <th className={`p-6 text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Registered At</th>
+                  </tr>
+                </thead>
+                <tbody className={`divide-y ${isLightMode ? 'divide-black/10' : 'divide-white/5'}`}>
+                  {registrations.map(r => (
+                    <tr key={r.id} className={`transition-colors group ${isLightMode ? 'hover:bg-black/[0.01] text-slate-800' : 'hover:bg-white/5 text-white'}`}>
+                      <td className="p-6">
+                        <span className={`text-sm font-black tracking-tight ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{r.name}</span>
+                      </td>
+                      <td className="p-6">
+                        <span className={`text-xs font-mono ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>{r.email}</span>
+                      </td>
+                      <td className="p-6">
+                        <span className={`text-xs font-mono ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>
+                          {new Date(r.created_at).toLocaleString()}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Mobile Card View for Arch421 registrations */}
+          <div className="md:hidden grid grid-cols-1 gap-4">
+            {registrations.map(r => (
+              <motion.div 
+                key={r.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`p-5 rounded-[2rem] border space-y-4 ${isLightMode ? 'bg-white border-black/10 shadow-sm text-slate-800' : 'glass-panel border-white/5 text-white'}`}
+              >
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-neon-purple block mb-1">VIP Guest</span>
+                  <p className={`font-black text-lg tracking-tighter ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{r.name}</p>
+                </div>
+
+                <div className={`grid grid-cols-2 gap-4 pt-2 border-t ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
+                  <div>
+                    <span className={`text-[10px] font-black uppercase tracking-widest block mb-1 ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>Email</span>
+                    <p className="text-xs font-mono truncate">{r.email}</p>
+                  </div>
+                  <div>
+                    <span className={`text-[10px] font-black uppercase tracking-widest block mb-1 ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>Registered On</span>
+                    <p className="text-xs font-mono">{new Date(r.created_at).toLocaleDateString()}</p>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {registrations.length === 0 && (
+            <div className={`py-20 text-center rounded-[3rem] border border-dashed ${isLightMode ? 'bg-white border-black/15 shadow-sm text-slate-800' : 'glass-panel border-white/5'}`}>
+              <Ghost className={`w-12 h-12 mx-auto mb-4 ${isLightMode ? 'text-black/20' : 'text-white/5'}`} />
+              <p className={`uppercase font-black tracking-widest text-xs ${isLightMode ? 'text-black/50' : 'text-white/20'}`}>No VIP submissions received yet...</p>
+            </div>
+          )}
+        </>
+      )}
 
       {/* Booking Details Modal */}
       <AnimatePresence>

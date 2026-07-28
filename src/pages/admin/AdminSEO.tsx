@@ -122,7 +122,9 @@ export function AdminSEO() {
               <p className={`text-[10px] uppercase tracking-[0.2em] font-bold mb-6 ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Google Preview</p>
               <div className="space-y-1.5">
                 <p className="text-neon-purple text-base font-semibold hover:underline cursor-pointer truncate">{seoTitle || 'DejavuFM | The Sound of London'}</p>
-                <p className={`text-xs ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>https://dejavufm.com</p>
+                <p className={`text-xs ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>
+                  {typeof window !== 'undefined' ? window.location.origin : 'https://dejavufm.com'}
+                </p>
                 <p className={`text-sm leading-relaxed mt-2 ${isLightMode ? 'text-black/70' : 'text-white/70'}`}>{seoDescription || 'DejavuFM is the underground radio station combining London beats with global energy.'}</p>
               </div>
             </div>

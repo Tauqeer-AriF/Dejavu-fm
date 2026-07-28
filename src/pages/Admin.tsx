@@ -25,7 +25,6 @@ import { AdminAds } from "./admin/AdminAds";
 import { AdminSEO } from "./admin/AdminSEO";
 import { AdminMedia } from "./admin/AdminMedia";
 const AdminStudio = React.lazy(() => import("./admin/AdminStudio").then(m => ({ default: m.AdminStudio })));
-import { AdminApiKeys } from "./admin/AdminApiKeys";
 const AdminMetaIntegrations = React.lazy(() => import("./admin/AdminMetaIntegrations").then(m => ({ default: m.AdminMetaIntegrations })));
 import { useLogo } from "../hooks/useLogo";
 import { PremiumRingLoader } from "../components/PremiumRingLoader";
@@ -101,7 +100,6 @@ export default function Admin() {
     if (pathname.includes('/admin/analytics')) return 'In Analytics & Stats';
     if (pathname.includes('/admin/seo')) return 'In SEO Settings';
     if (pathname.includes('/admin/system')) return 'In System Settings';
-    if (pathname.includes('/admin/api-keys')) return 'In API Keys';
     if (pathname.includes('/admin/audit-logs')) return 'In Audit Logs';
     if (pathname.includes('/admin/bookings')) return 'In Bookings';
     if (pathname.includes('/admin/features')) return 'In News & Features';
@@ -691,7 +689,6 @@ export default function Admin() {
                       <Route path="/chat-room-setting" element={userRole === 'admin' ? <AdminChatRoomSettings /> : <Navigate to="/admin" replace />} />
                       <Route path="/audit-logs" element={userRole === 'admin' ? <AdminAuditLogs /> : <Navigate to="/admin" replace />} />
                       <Route path="/backup" element={userRole === 'admin' ? <AdminBackup /> : <Navigate to="/admin" replace />} />
-                      <Route path="/api-keys" element={userRole === 'admin' ? <AdminApiKeys /> : <Navigate to="/admin" replace />} />
                       <Route path="/meta-integrations" element={userRole === 'admin' ? <AdminMetaIntegrations /> : <Navigate to="/admin" replace />} />
 
                       <Route path="*" element={<Navigate to="/admin" replace />} />

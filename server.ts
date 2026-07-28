@@ -5,12 +5,10 @@ import compression from "compression";
 import path from "path";
 import { fileURLToPath } from "url";
 import { apiRouter, performMediaAutoDeleteCleanup, getActivePresenceList } from "./src/server/api.ts";
-import { externalApiRouter } from "./src/server/v1_external_api.ts";
 import { webhookRouter } from "./src/server/meta/webhook.routes.ts";
 import { MetaService } from "./src/server/meta/meta.service.ts";
 import { TwitchService } from "./src/server/twitch.service.ts";
 import { initDb, db, backupDatabase, getUploadsDir, pruneHistoricalData } from "./src/server/db.ts";
-import { apiKeyCache } from "./src/server/api_key_cache.ts";
 import http from "http";
 import { Server as SocketIOServer } from "socket.io";
 import crypto from "crypto";
@@ -105,6 +103,108 @@ async function startServer() {
       background_color: "#0a0a0f",
       display: "standalone"
     });
+  });
+
+  // Dynamic SEO robots.txt to guide search spiders and link the sitemap
+  app.get("/robots.txt", (req, res) => {
+    const origin = `${req.protocol}://${req.get('host')}`;
+    res.type("text/plain");
+    res.send(`User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api
+
+Sitemap: ${origin}/sitemap.xml`);
+  });
+
+  // Dynamic SEO sitemap.xml to enable discovery of all static and dynamic site content
+  app.get("/sitemap.xml", async (req, res) => {
+    const origin = `${req.protocol}://${req.get('host')}`;
+    
+    // 1. Core static page URLs
+    const staticPaths = [
+      "",
+      "/watch",
+      "/schedule",
+      "/djs",
+      "/podcasts",
+      "/features",
+      "/about",
+      "/contact",
+      "/arch421"
+    ];
+
+    // 2. Query Resident DJs
+    let djPaths: string[] = [];
+    try {
+      if (db.open) {
+        const djs = db.prepare("SELECT id FROM djs").all() as { id: string }[];
+        djPaths = djs.map(dj => `/djs/${dj.id}`);
+      }
+    } catch (err) {
+      console.error("[Sitemap Engine] Failed to query djs table:", err);
+    }
+
+    // 3. Query Editorial Features (published articles)
+    let featurePaths: string[] = [];
+    try {
+      if (db.open) {
+        const features = db.prepare("SELECT slug FROM features WHERE is_published = 1").all() as { slug: string }[];
+        featurePaths = features.map(f => `/features/${f.slug}`);
+      }
+    } catch (err) {
+      console.error("[Sitemap Engine] Failed to query features table:", err);
+    }
+
+    // 4. Query Catchup Podcasts from dynamic cache feed
+    let podcastPaths: string[] = [];
+    try {
+      const feed = await getPodcastFeed();
+      if (feed && feed.items) {
+        feed.items.forEach((i: any) => {
+          try {
+            const idStr = i.guid || i.link || "";
+            const id = btoa(idStr).replace(/=/g, '');
+            podcastPaths.push(`/podcasts/${id}`);
+          } catch (e) {}
+        });
+      }
+    } catch (err) {
+      console.error("[Sitemap Engine] Failed to parse podcast catchup feed:", err);
+    }
+
+    const allPaths = [...staticPaths, ...djPaths, ...featurePaths, ...podcastPaths];
+
+    // Construct highly valid, beautiful XML Sitemap conforming to schemas
+    const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  ${allPaths.map(path => {
+    let priority = "0.7";
+    let freq = "weekly";
+    
+    if (path === "") {
+      priority = "1.0";
+      freq = "daily";
+    } else if (path === "/arch421") {
+      priority = "0.9";
+      freq = "daily";
+    } else if (path === "/watch" || path === "/schedule") {
+      priority = "0.8";
+      freq = "daily";
+    }
+
+    return `
+  <url>
+    <loc>${origin}${path}</loc>
+    <changefreq>${freq}</changefreq>
+    <priority>${priority}</priority>
+  </url>`;
+  }).join('')}
+</urlset>`;
+
+    res.header("Content-Type", "application/xml");
+    res.header("Cache-Control", "public, max-age=3600"); // 1 hour browser / CDN cache
+    res.send(sitemapXml);
   });
 
   // Explicitly serve public folder for manifest.json and icons with standard cache-control headers
@@ -266,6 +366,46 @@ async function startServer() {
           image = dj.image_url || image;
         }
       }
+    }
+    // Feature detail dynamic tags
+    else if (reqPath.startsWith("/features/")) {
+      const slug = reqPath.split("/").pop();
+      if (db.open) {
+        try {
+          const feature = db.prepare("SELECT * FROM features WHERE slug = ?").get(slug) as any;
+          if (feature) {
+            title = `${feature.title} | DejavuFM Features`;
+            description = (feature.excerpt || feature.content || description).substring(0, 160).replace(/<[^>]*>/g, '') + "...";
+            image = feature.image_url || image;
+          }
+        } catch (e) {}
+      }
+    }
+    // Main Section Page overrides
+    else if (reqPath === "/arch421") {
+      title = "ARCH 421: THE UNMUTED ARCHIVES. OPENING SOON. | DejavuFM";
+      description = "Unlock the exclusive archives of ARCH 421. Opening soon on DejavuFM. Be ready for the unmuted sound experience.";
+    } else if (reqPath === "/watch") {
+      title = "Watch Live Studio Feed | DejavuFM";
+      description = "Watch our resident DJs live from the DejavuFM broadcasting studio. Tune into underground sound, live chats, and visual feeds.";
+    } else if (reqPath === "/schedule") {
+      title = "Radio Broadcast Schedule & Timetable | DejavuFM";
+      description = "Check out the full weekly broadcast timetable on DejavuFM. Find slot times for your favorite Resident DJs and never miss a live show.";
+    } else if (reqPath === "/djs") {
+      title = "Resident DJs, Hosts & Creators | DejavuFM";
+      description = "Meet the incredible resident DJs and hosts of DejavuFM. Discover bios, scheduled times, and dynamic audio archives from London's finest.";
+    } else if (reqPath === "/podcasts") {
+      title = "Podcasts & Audio Catch-Up Library | DejavuFM";
+      description = "Missed a live set? Catch up with our comprehensive podcast archive containing past shows, guest mixes, and exclusive interviews on demand.";
+    } else if (reqPath === "/features") {
+      title = "Features, News & Highlights | DejavuFM";
+      description = "Stay informed with the latest DejavuFM features, underground radio news, event highlights, and special announcement postings.";
+    } else if (reqPath === "/about") {
+      title = "About Us & Station History | DejavuFM";
+      description = "The heartbeat of London's underground since 2005. Read about our journey, culture, and our dedication to showcasing underground music.";
+    } else if (reqPath === "/contact") {
+      title = "Contact Us & Request Studio Line | DejavuFM";
+      description = "Get in touch with the team at DejavuFM. Drop a line for inquiries, partnerships, resident bookings, or general suggestions.";
     }
 
     image = makeAbsoluteUrl(image);
@@ -527,56 +667,7 @@ async function startServer() {
     }
   };
 
-  // API Key authentication middleware for Socket.IO
-  io.use(async (socket, next) => {
-    const apiKey = socket.handshake.auth.apiKey;
-    if (!apiKey) {
-      // This is a regular user connection, not an API connection
-      return next();
-    }
 
-    if (typeof apiKey !== 'string' || !apiKey.startsWith('djfm_')) { // Corrected from djfm_ to djfm_
-      return next(new Error('Invalid API Key format'));
-    }
-
-    // Senior dev optimization: check cache first to bypass DB query and slow bcrypt compare
-    const cachedMeta = apiKeyCache.get(apiKey);
-    if (cachedMeta) {
-      (socket as any).isApiClient = true;
-      console.log(`[Socket.IO] API Client authenticated successfully (cached) with key prefix: ${cachedMeta.prefix}`);
-      socket.join('api_clients');
-      try {
-        db.prepare("UPDATE api_keys SET last_used_at = CURRENT_TIMESTAMP WHERE key_prefix = ?").run(cachedMeta.prefix);
-      } catch (e) {
-        console.warn('[Socket.IO] Failed to update key last_used_at (non-blocking):', e);
-      }
-      return next();
-    }
-
-    try {
-      const keyPrefix = apiKey.substring(0, 8);
-      const keyRecord = db.prepare("SELECT key_hash, description FROM api_keys WHERE key_prefix = ?").get(keyPrefix) as { key_hash: string, description: string } | undefined;
-
-      if (keyRecord) {
-        const match = await bcrypt.compare(apiKey, keyRecord.key_hash);
-        if (match) {
-          // Cache the verified key metadata
-          apiKeyCache.set(apiKey, { prefix: keyPrefix, description: keyRecord.description || "New API Key" });
-
-          (socket as any).isApiClient = true;
-          console.log(`[Socket.IO] API Client authenticated successfully with key prefix: ${keyPrefix}`);
-          socket.join('api_clients'); // Add the client to a dedicated room
-          db.prepare("UPDATE api_keys SET last_used_at = CURRENT_TIMESTAMP WHERE key_prefix = ?").run(keyPrefix);
-          return next();
-        }
-      }
-    } catch (err) {
-      console.error('[Socket.IO] API Key auth error:', err);
-      return next(new Error('Server error during authentication'));
-    }
-
-    return next(new Error('Authentication error: Invalid API Key'));
-  });
 
   const getUniqueConnectionCount = () => {
     const ips = new Set<string>();
@@ -1170,7 +1261,6 @@ async function startServer() {
   app.use(cookieParser());
 
   // API Routes
-  app.use("/api/v1", externalApiRouter);
   app.use("/api", apiRouter);
   app.use("/webhook", webhookRouter);
 
@@ -1193,7 +1283,20 @@ async function startServer() {
   });
 
   // Dynamic preview routes for social sharing (mostly for production or crawlers)
-  const dynamicPreviewRoutes = ["/", "/podcasts/:id", "/djs/:id", "/blog/:slug"];
+  const dynamicPreviewRoutes = [
+    "/", 
+    "/podcasts/:id", 
+    "/djs/:id", 
+    "/features/:slug",
+    "/arch421",
+    "/watch",
+    "/schedule",
+    "/djs",
+    "/podcasts",
+    "/features",
+    "/about",
+    "/contact"
+  ];
   
   const isBot = (ua: string) => {
     if (!ua) return false;

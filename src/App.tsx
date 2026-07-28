@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { NavLink } from 'react-router-dom';
-import { Radio, Calendar, Podcast, Shield as AdminIcon, Headphones, Menu, X, Video, MessageSquare, Sun, Moon, FileText, ChevronDown, ExternalLink, Info, Instagram, Twitter, Facebook, Youtube, Cloud, Music, Share2 } from 'lucide-react';
+import { Radio, Calendar, Podcast, Shield as AdminIcon, Headphones, Menu, X, Video, MessageSquare, Sun, Moon, FileText, ChevronDown, ExternalLink, Info, Instagram, Twitter, Facebook, Youtube, Cloud, Music, Share2, Layers } from 'lucide-react';
 import { PlayerBar } from './components/PlayerBar';
 import { ChatSidebar } from './components/ChatSidebar';
 import { ShoutoutWidget } from './components/ShoutoutWidget';
@@ -48,6 +48,7 @@ const Admin = lazy(() => import('./pages/Admin'));
 const WatchLive = lazy(() => import('./pages/WatchLive'));
 const Features = lazy(() => import('./pages/Features'));
 const FeatureDetail = lazy(() => import('./pages/FeatureDetail'));
+const Arch421 = lazy(() => import('./pages/Arch421'));
 
 const queryClient = new QueryClient();
 
@@ -144,6 +145,26 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
 
   return (
     <>
+      {/* Top Announcement Bar */}
+      <div className="w-full bg-[#f75c1e] text-[#ffffff] py-2.5 px-4 shadow-md relative z-[1001] border-b border-black/10">
+        <div className="max-w-[100rem] mx-auto flex items-center justify-between gap-3 text-left">
+          <div className="flex items-center gap-2.5 font-display font-black tracking-tight text-xs sm:text-sm md:text-base uppercase text-[#ffffff] min-w-0">
+            <span className="bg-black/20 border border-white/20 px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-mono tracking-widest text-[#ffffff] shrink-0 hidden xs:inline-block">ANNOUNCEMENT</span>
+            <span className="truncate text-[#ffffff]">ARCH 421: THE UNMUTED ARCHIVES. OPENING SOON.</span>
+          </div>
+          <Link 
+            to="/arch421"
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 sm:px-5 sm:py-2 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all shadow-md hover:scale-[1.03] active:scale-[0.98] shrink-0 ${
+              isLightMode 
+                ? 'bg-[#ffffff] text-[#0f172a] hover:bg-slate-100 border border-white/40 font-black' 
+                : 'bg-[#000000] hover:bg-neutral-900 text-[#ffffff] border border-white/10 font-black'
+            }`}
+          >
+            Learn More
+          </Link>
+        </div>
+      </div>
+
       <nav className="flex items-center justify-between p-4 md:p-8 max-w-[100rem] mx-auto w-full relative z-[1000] gap-4">
         <Link 
           to="/" 
@@ -216,6 +237,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
         </Link>
         
         <div className="hidden xl:flex items-center bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2rem] px-2 py-2 shadow-2xl">
+          <NavLink to="/arch421" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-[#f75c1e] text-white shadow-[0_0_20px_rgba(247,92,30,0.4)]' : 'text-[#f75c1e] bg-transparent hover:bg-[#f75c1e]/10'}`}>Arch421</NavLink>
           <NavLink to="/" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>Listen</NavLink>
           {featLiveTools && (
             <NavLink to="/watch" className={({isActive}) => `px-4 xl:px-8 py-3 flex items-center gap-2 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-neon-purple text-white shadow-[0_0_25px_rgba(176,38,255,0.4)]' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>
@@ -362,11 +384,12 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
             animate={{ opacity: 1, backdropFilter: 'blur(24px)' }}
             exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed inset-0 z-[950] bg-dark-bg/90 xl:hidden pt-24 pb-8 overflow-y-auto"
+            className="fixed inset-0 z-[950] bg-dark-bg/95 xl:hidden pt-36 sm:pt-40 pb-12 overflow-y-auto"
           >
             <div className="flex flex-col min-h-full px-8 pb-32 max-w-md mx-auto">
-              <div className="flex flex-col space-y-2 mt-auto mb-auto">
+              <div className="flex flex-col space-y-2.5 mt-2 mb-auto">
                 {[
+                  { path: '/arch421', label: 'Arch421', icon: <Layers className="w-5 h-5" />, color: 'text-[#f75c1e]' },
                   { path: '/', label: 'Listen', exact: true },
                   ...(featLiveTools ? [{ path: '/watch', label: 'Watch', icon: <Radio className="w-5 h-5" />, color: 'text-neon-purple' }] : []),
                   { path: '/schedule', label: 'Schedule' },
@@ -467,12 +490,27 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                         onClick={() => setIsMobileMenuOpen(false)} 
                         className={({isActive}) => {
                           const isMatch = item.exact ? isActive : (isActive || (item.matchPrefix && location.pathname.startsWith(item.path)));
+                          if (item.path === '/arch421') {
+                            return `group flex items-center justify-between px-5 py-3.5 my-1 rounded-2xl bg-[#f75c1e] text-white font-bold transition-all w-full shadow-lg hover:brightness-110`;
+                          }
                           return `group flex items-center justify-between py-3 border-b border-white/5 transition-all w-full
-                            ${isMatch ? 'text-white' : 'text-white/50 hover:text-white'}`
+                            ${isMatch ? 'text-white' : 'text-white/50 hover:text-white'}`;
                         }}
                       >
                         {({isActive}) => {
                           const isMatch = item.exact ? isActive : (isActive || (item.matchPrefix && location.pathname.startsWith(item.path)));
+                          if (item.path === '/arch421') {
+                            return (
+                              <>
+                                <span className="text-2xl font-display font-black tracking-tight text-white uppercase">
+                                  {item.label}
+                                </span>
+                                <div className="text-white">
+                                  {item.icon}
+                                </div>
+                              </>
+                            );
+                          }
                           return (
                             <>
                               <span className={`text-2xl font-display font-medium tracking-tight ${isMatch && item.color ? item.color : ''}`}>
@@ -484,7 +522,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                                 </div>
                               ) : null}
                             </>
-                          )
+                          );
                         }}
                       </NavLink>
                     )}
@@ -621,6 +659,7 @@ function AnimatedRoutes() {
             <Route path="/features/:slug" element={<FeatureDetail />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/arch421" element={<Arch421 />} />
             <Route path="/admin/*" element={
               <Suspense fallback={
                 <AppLoader size="lg" fullScreen />
@@ -940,6 +979,64 @@ function MainLayout() {
       applyFrontAccessibilityOptions();
     }
   }, [location.pathname]);
+
+  // Dynamic Client-Side SEO Engine: Automatically update tab titles & meta on route navigation
+  useEffect(() => {
+    if (location.pathname.startsWith('/admin')) {
+      document.title = "Admin Engine | DejavuFM";
+      return;
+    }
+
+    const appTitle = settings?.seo_title || settings?.app_title || settings?.app_name || "DejavuFM";
+    const baseDesc = settings?.seo_description || "DejavuFM is the underground radio station combining London beats with global energy.";
+    
+    const updateMetaTag = (attrName: string, attrValue: string, content: string) => {
+      const selector = attrName === 'property' ? `meta[property="${attrValue}"]` : `meta[name="${attrValue}"]`;
+      let element = document.head.querySelector(selector) as HTMLMetaElement | null;
+      if (!element) {
+        element = document.createElement('meta');
+        element.setAttribute(attrName, attrValue);
+        document.head.appendChild(element);
+      }
+      element.content = content;
+    };
+
+    let title = appTitle;
+    let desc = baseDesc;
+
+    if (location.pathname === "/arch421") {
+      title = `ARCH 421: THE UNMUTED ARCHIVES. OPENING SOON. | ${appTitle}`;
+      desc = "Unlock the exclusive archives of ARCH 421. Opening soon on DejavuFM. Be ready for the unmuted sound experience.";
+    } else if (location.pathname === "/watch") {
+      title = `Watch Live Studio Feed | ${appTitle}`;
+      desc = "Watch our resident DJs live from the DejavuFM broadcasting studio. Tune into underground sound, live chats, and visual feeds.";
+    } else if (location.pathname === "/schedule") {
+      title = `Radio Broadcast Schedule & Timetable | ${appTitle}`;
+      desc = "Check out the full weekly broadcast timetable on DejavuFM. Find slot times for your favorite Resident DJs and never miss a live show.";
+    } else if (location.pathname === "/djs") {
+      title = `Resident DJs, Hosts & Creators | ${appTitle}`;
+      desc = "Meet the incredible resident DJs and hosts of DejavuFM. Discover bios, scheduled times, and dynamic audio archives from London's finest.";
+    } else if (location.pathname === "/podcasts") {
+      title = `Podcasts & Audio Catch-Up Library | ${appTitle}`;
+      desc = "Missed a live set? Catch up with our comprehensive podcast archive containing past shows, guest mixes, and exclusive interviews on demand.";
+    } else if (location.pathname === "/features") {
+      title = `Features, News & Highlights | ${appTitle}`;
+      desc = "Stay informed with the latest DejavuFM features, underground radio news, event highlights, and special announcement postings.";
+    } else if (location.pathname === "/about") {
+      title = `About Us & Station History | ${appTitle}`;
+      desc = "The heartbeat of London's underground since 2005. Read about our journey, culture, and our dedication to showcasing underground music.";
+    } else if (location.pathname === "/contact") {
+      title = `Contact Us & Request Studio Line | ${appTitle}`;
+      desc = "Get in touch with the team at DejavuFM. Drop a line for inquiries, partnerships, resident bookings, or general suggestions.";
+    }
+
+    document.title = title;
+    updateMetaTag('name', 'description', desc);
+    updateMetaTag('property', 'og:title', title);
+    updateMetaTag('property', 'og:description', desc);
+    updateMetaTag('name', 'twitter:title', title);
+    updateMetaTag('name', 'twitter:description', desc);
+  }, [location.pathname, settings]);
 
   useEffect(() => {
     const handleSplitChange = (e: CustomEvent<{ active: boolean }>) => {
