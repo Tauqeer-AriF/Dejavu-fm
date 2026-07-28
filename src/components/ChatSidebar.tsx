@@ -2,7 +2,7 @@ import { ChatMessage } from "../types";
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { io, Socket } from 'socket.io-client';
-import { Send, User, LogOut, Loader2, X, MessageSquare, Users, Ban, ShieldAlert, WifiOff, Smile, Search, Paperclip, Music, Mic, Square, Trash2, ArrowLeft, Eye, EyeOff, Volume2, VolumeX, Video, Disc } from 'lucide-react';
+import { Send, User, LogOut, Loader2, X, MessageSquare, Users, ShieldAlert, WifiOff, Smile, Search, Paperclip, Music, Mic, Square, Trash2, ArrowLeft, Eye, EyeOff, Volume2, VolumeX, Video, Disc } from 'lucide-react';
 import { toast } from 'sonner';
 import { useModal } from '../context/ModalContext';
 import { useLogo } from '../hooks/useLogo';
@@ -1964,16 +1964,6 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                     title="Block User"
                                   >
                                     Block
-                                  </button>
-                                )}
-                                {isAdmin && msg.user !== loggedInUser && (
-                                  <button 
-                                    onClick={() => handleBanUser(msg.user)}
-                                    className="text-[8px] bg-red-600 text-white hover:bg-red-500 px-1.5 py-0.5 rounded font-black uppercase tracking-tighter flex items-center gap-1 cursor-pointer transition-all"
-                                    title="Global Ban"
-                                  >
-                                    <ShieldAlert className="w-2 h-2" />
-                                    Ban
                                   </button>
                                 )}
                               </div>
