@@ -85,7 +85,7 @@ export default function NotFound() {
           <div className={`w-full max-w-2xl p-6 sm:p-8 rounded-3xl border backdrop-blur-xl transition-all ${
             isLightMode 
               ? 'bg-[#ffffff] border-slate-200 shadow-xl shadow-slate-200/50' 
-              : 'bg-[#0D0F1D]/90 border-white/10 shadow-2xl shadow-neon-purple/5'
+              : 'bg-[#0a0a0f]/80 border-white/10 shadow-2xl shadow-neon-purple/5'
           }`}>
             <div className="flex items-center justify-center gap-2 mb-6">
               <Compass className="w-4.5 h-4.5 text-neon-blue" />
