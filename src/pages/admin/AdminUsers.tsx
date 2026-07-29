@@ -506,17 +506,18 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
     return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
-  // Precise real-time stats across all active sessions (both staff and listeners)
-  const onlineStaff = activeSessions.filter(s => s.isStaff);
-  const onlineStaffCount = onlineStaff.length;
+  // Filter active sessions to ONLY include staff users (role admin or dj, i.e. isStaff is true)
+  const staffSessions = activeSessions.filter(s => s.isStaff);
+  const onlineStaff = staffSessions;
+  const onlineStaffCount = staffSessions.length;
 
-  // Real-time precise counts across all sessions
-  const totalTabsCount = activeSessions.reduce((acc, s) => acc + (s.tabs?.length || s.socketCount || 1), 0);
+  // Real-time precise counts across all active staff sessions
+  const totalTabsCount = staffSessions.reduce((acc, s) => acc + (s.tabs?.length || s.socketCount || 1), 0);
   
   const allBrowserIds = new Set<string>();
   const allDevices = new Set<string>();
   
-  activeSessions.forEach(s => {
+  staffSessions.forEach(s => {
     if (s.browsers && s.browsers.length > 0) {
       s.browsers.forEach(b => allBrowserIds.add(b));
     } else if (s.tabs && s.tabs.length > 0) {
@@ -534,11 +535,11 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
     }
   });
 
-  const totalBrowsersCount = allBrowserIds.size || activeSessions.length;
+  const totalBrowsersCount = allBrowserIds.size || staffSessions.length;
   const totalDevicesCount = allDevices.size || 1;
-  const totalSessionsCount = activeSessions.length;
+  const totalSessionsCount = staffSessions.length;
 
-  const inStudioCount = onlineStaff.filter(s => 
+  const inStudioCount = staffSessions.filter(s => 
     s.currentPage.toLowerCase().includes("studio") || 
     s.activePages?.some(p => p.toLowerCase().includes("studio"))
   ).length;
@@ -1535,21 +1536,21 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
               </button>
             </div>
 
-            {activeSessions.length === 0 ? (
+            {staffSessions.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center space-y-4">
                 <div className="w-16 h-16 rounded-full bg-slate-500/5 flex items-center justify-center text-slate-400">
                   <Activity className="w-8 h-8 animate-pulse" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-sm">No Active Remote Connections</h4>
+                  <h4 className="font-bold text-sm">No Active Staff Remote Connections</h4>
                   <p className="text-xs text-slate-500 dark:text-white/40 max-w-md mt-1">
-                    No users are currently connected via real-time WebSocket sessions to the application.
+                    No staff members (Admins or DJs) are currently connected via real-time session sockets to the workspace.
                   </p>
                 </div>
               </div>
             ) : (
               <div className="space-y-4">
-                {activeSessions.map((session) => {
+                {staffSessions.map((session) => {
                   const isExpanded = expandedUsers.includes(session.username);
                   const isUserInStudio = session.currentPage.toLowerCase().includes("studio") || session.activePages?.some(p => p.toLowerCase().includes("studio"));
                   const isUserStaff = session.isStaff;
