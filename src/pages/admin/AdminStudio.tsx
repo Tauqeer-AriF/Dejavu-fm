@@ -434,6 +434,13 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   const [showIosInstructions, setShowIosInstructions] = useState(false);
 
   useEffect(() => {
+    // Dynamically set PWA manifest specifically for Studio Inbox standalone app
+    const manifestElem = document.getElementById('manifest-link') || document.querySelector('link[rel="manifest"]');
+    const originalManifest = manifestElem ? manifestElem.getAttribute('href') : '/manifest.json';
+    if (manifestElem) {
+      manifestElem.setAttribute('href', '/manifest-studio.json');
+    }
+
     const isStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || 
       (window.navigator as any).standalone || 
       document.referrer.includes('android-app://');
@@ -447,14 +454,16 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-    // Detect if iOS to show instructions instead of native prompt
-    const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
-    if (isIos && !isStandaloneMode) {
+    // If not already in standalone mode, enable install button/modal
+    if (!isStandaloneMode) {
       setIsInstallable(true);
     }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      if (manifestElem && originalManifest) {
+        manifestElem.setAttribute('href', originalManifest);
+      }
     };
   }, []);
 
@@ -4073,7 +4082,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         )}
       </AnimatePresence>
 
-      {/* iOS PWA Installation Modal */}
+      {/* PWA Installation Modal */}
       <AnimatePresence>
         {showIosInstructions && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
@@ -4081,7 +4090,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className={`w-full max-w-md p-6 rounded-2xl border transition-colors shadow-2xl ${
+              className={`w-full max-w-lg p-6 rounded-2xl border transition-colors shadow-2xl ${
                 studioTheme === 'light'
                   ? 'bg-white border-slate-200 text-slate-900 shadow-xl'
                   : 'bg-[#0f1123] border-white/10 text-white shadow-[0_10px_40px_rgba(0,0,0,0.5)]'
@@ -4090,7 +4099,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
               <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/5">
                 <h3 className="text-base font-black uppercase tracking-wider flex items-center gap-2">
                   <Mic className="w-5 h-5 text-neon-purple animate-pulse" />
-                  Install Studio Inbox
+                  Install Studio Inbox App
                 </h3>
                 <button 
                   onClick={() => setShowIosInstructions(false)}
@@ -4104,37 +4113,58 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                 </button>
               </div>
 
-              <p className={`text-sm mb-4 leading-relaxed ${studioTheme === 'light' ? 'text-slate-600' : 'text-white/70'}`}>
-                Add the **DejavuFM Studio Inbox** to your iPhone or iPad home screen for a full-screen, dedicated live communications window.
+              <p className={`text-xs sm:text-sm mb-4 leading-relaxed ${studioTheme === 'light' ? 'text-slate-600' : 'text-white/70'}`}>
+                Add <strong className="text-neon-purple">Studio Inbox</strong> to your home screen or desktop for a standalone, full-screen live presenter control desk.
               </p>
 
-              <div className={`space-y-4 rounded-xl p-4 border text-xs ${
-                studioTheme === 'light' ? 'bg-slate-50 border-slate-100 text-slate-700' : 'bg-white/[0.02] border-white/5 text-white/80'
-              }`}>
-                <div className="flex items-start gap-3">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-neon-purple/20 text-neon-purple font-bold">1</span>
-                  <p className="pt-0.5">
-                    Tap the <strong className="text-neon-purple">Share</strong> button at the bottom (or top) of your Safari browser.
-                  </p>
+              <div className="space-y-4">
+                {/* iOS Instructions */}
+                <div className={`p-4 rounded-xl border ${
+                  studioTheme === 'light' ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-white/[0.02] border-white/10 text-white/90'
+                }`}>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-neon-purple mb-2 flex items-center gap-1.5">
+                    📱 iPhone & iPad (Safari)
+                  </h4>
+                  <ol className="space-y-2 text-xs">
+                    <li className="flex items-start gap-2">
+                      <span className="font-bold text-neon-purple shrink-0">1.</span>
+                      <span>Tap the <strong className="text-neon-purple">Share</strong> icon (square with arrow up) in Safari.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="font-bold text-neon-purple shrink-0">2.</span>
+                      <span>Scroll down and tap <strong className="text-neon-purple">Add to Home Screen</strong>.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="font-bold text-neon-purple shrink-0">3.</span>
+                      <span>Tap <strong className="text-neon-purple">Add</strong> at top right to complete installation.</span>
+                    </li>
+                  </ol>
                 </div>
-                <div className="flex items-start gap-3">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-neon-purple/20 text-neon-purple font-bold">2</span>
-                  <p className="pt-0.5">
-                    Scroll down and select <strong className="text-neon-purple">Add to Home Screen</strong>.
-                  </p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-neon-purple/20 text-neon-purple font-bold">3</span>
-                  <p className="pt-0.5">
-                    Confirm the name <strong className="text-neon-purple">Studio Inbox</strong> and tap <strong className="text-neon-purple">Add</strong>.
-                  </p>
+
+                {/* Android & Desktop Chrome/Edge Instructions */}
+                <div className={`p-4 rounded-xl border ${
+                  studioTheme === 'light' ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-white/[0.02] border-white/10 text-white/90'
+                }`}>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-neon-blue mb-2 flex items-center gap-1.5">
+                    💻 Android / Chrome / Edge
+                  </h4>
+                  <ol className="space-y-2 text-xs">
+                    <li className="flex items-start gap-2">
+                      <span className="font-bold text-neon-blue shrink-0">1.</span>
+                      <span>Click the <strong className="text-neon-blue">Install Icon</strong> in your address bar (or browser menu <strong className="text-neon-blue">⋮</strong>).</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="font-bold text-neon-blue shrink-0">2.</span>
+                      <span>Select <strong className="text-neon-blue">Install Studio Inbox</strong> or <strong className="text-neon-blue">Add to Home Screen</strong>.</span>
+                    </li>
+                  </ol>
                 </div>
               </div>
 
               <div className="mt-6 flex justify-end">
                 <button 
                   onClick={() => setShowIosInstructions(false)}
-                  className="px-4 py-2 bg-neon-purple text-white font-bold rounded-xl text-xs uppercase tracking-wider hover:bg-opacity-95 transition-all"
+                  className="px-5 py-2.5 bg-gradient-to-r from-neon-purple to-neon-blue text-white font-bold rounded-xl text-xs uppercase tracking-wider hover:opacity-95 transition-all shadow-md"
                 >
                   Got It
                 </button>
