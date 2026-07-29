@@ -3039,6 +3039,28 @@ apiRouter.post("/admin/push-track", (req, res) => {
   res.json({ success: true, artist, title, duration });
 });
 
+function parseUserAgent(ua: string) {
+  if (!ua) return { os: 'Unknown OS', browser: 'Unknown Browser' };
+  
+  let os = 'Unknown OS';
+  if (/windows/i.test(ua)) os = 'Windows';
+  else if (/macintosh|mac os x/i.test(ua)) {
+    if (/iphone|ipad|ipod/i.test(ua)) os = 'iOS';
+    else os = 'macOS';
+  }
+  else if (/android/i.test(ua)) os = 'Android';
+  else if (/linux/i.test(ua)) os = 'Linux';
+  
+  let browser = 'Unknown Browser';
+  if (/chrome|crios/i.test(ua) && !/edge|edg/i.test(ua) && !/opr|opera/i.test(ua)) browser = 'Chrome';
+  else if (/safari/i.test(ua) && !/chrome|crios/i.test(ua)) browser = 'Safari';
+  else if (/firefox|fxios/i.test(ua)) browser = 'Firefox';
+  else if (/edge|edg/i.test(ua)) browser = 'Edge';
+  else if (/opr|opera/i.test(ua)) browser = 'Opera';
+  
+  return { os, browser };
+}
+
 export function getActivePresenceList(io: any) {
   if (!io || !io.sockets || !io.sockets.sockets) return [];
   const presenceMap = new Map<string, any>();
@@ -3050,6 +3072,20 @@ export function getActivePresenceList(io: any) {
       const page = s.currentPage || 'Dashboard';
       const lastSeen = s.lastSeen || Date.now();
       const connectedAt = s.connectedAt || Date.now();
+      const tabId = s.tabId || 'tab_' + socket.id;
+      const browserId = s.browserId || 'browser_' + socket.id;
+      const userAgent = s.userAgent || '';
+      
+      // Handle IP resolution securely
+      let ipAddress = '127.0.0.1';
+      const forwarded = socket.handshake.headers['x-forwarded-for'];
+      if (typeof forwarded === 'string') {
+        ipAddress = forwarded.split(',')[0].trim();
+      } else if (Array.isArray(forwarded) && forwarded.length > 0) {
+        ipAddress = forwarded[0].trim();
+      } else {
+        ipAddress = socket.handshake.address || socket.conn.remoteAddress || '127.0.0.1';
+      }
 
       let isStaff = false;
       let role = 'user';
@@ -3077,11 +3113,46 @@ export function getActivePresenceList(io: any) {
         avatarUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(s.username)}`;
       }
 
+      const uaInfo = parseUserAgent(userAgent);
+
+      const tabInfo = {
+        socketId: socket.id,
+        tabId,
+        browserId,
+        currentPage: page,
+        connectedAt,
+        lastSeen,
+        os: uaInfo.os,
+        browser: uaInfo.browser,
+        ipAddress
+      };
+
       const existing = presenceMap.get(key);
       if (existing) {
         existing.socketCount += 1;
         existing.lastSeen = Math.max(existing.lastSeen, lastSeen);
-        if (s.currentPage) existing.currentPage = s.currentPage;
+        
+        // Add tab details
+        existing.tabs.push(tabInfo);
+        
+        // Unique browserIds
+        if (!existing.browsers.includes(browserId)) {
+          existing.browsers.push(browserId);
+        }
+        
+        // Unique devices/OSes
+        if (!existing.devices.includes(uaInfo.os)) {
+          existing.devices.push(uaInfo.os);
+        }
+
+        // Accurately show all active page names as a unique list
+        if (!existing.activePages.includes(page)) {
+          existing.activePages.push(page);
+        }
+        // Set main page to the most recently active page
+        if (lastSeen >= existing.lastSeen) {
+          existing.currentPage = page;
+        }
       } else {
         presenceMap.set(key, {
           username: s.username,
@@ -3093,7 +3164,11 @@ export function getActivePresenceList(io: any) {
           connectedAt,
           avatarUrl,
           socketCount: 1,
-          isOnline: true
+          isOnline: true,
+          tabs: [tabInfo],
+          browsers: [browserId],
+          devices: [uaInfo.os],
+          activePages: [page]
         });
       }
     }
@@ -3127,6 +3202,26 @@ apiRouter.get("/admin/active-sessions", authMiddleware, authorizeRole('admin'), 
   const io = req.app.get('io');
   const activeList = getActivePresenceList(io);
   res.json(activeList);
+});
+
+apiRouter.post("/admin/kill-session", authMiddleware, authorizeRole('admin'), (req, res) => {
+  const { socketId } = req.body;
+  if (!socketId) return res.status(400).json({ error: "Socket ID is required" });
+
+  const io = req.app.get('io');
+  if (io && io.sockets && io.sockets.sockets) {
+    const socket = io.sockets.sockets.get(socketId);
+    if (socket) {
+      socket.disconnect(true);
+      
+      // Instantly broadcast the presence update to all remaining connections
+      const activeList = getActivePresenceList(io);
+      io.emit('presence_update', activeList);
+      
+      return res.json({ success: true, message: `Terminated session ${socketId}` });
+    }
+  }
+  res.status(404).json({ error: "Session connection not found or already closed" });
 });
 
 apiRouter.post("/admin/users", authMiddleware, authorizeRole('admin'), (req: Request, res: Response) => {
