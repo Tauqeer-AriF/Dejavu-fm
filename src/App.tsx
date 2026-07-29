@@ -1193,6 +1193,8 @@ function MainLayout() {
     if (isAdmin) {
       if (location.pathname.includes('/admin/studio')) {
         document.title = "Studio Inbox | DejavuFM";
+      } else if (location.pathname.includes('/admin/advanced')) {
+        document.title = "Advanced Features | DejavuFM";
       } else {
         document.title = "Dasboard | DejavuFM";
       }
