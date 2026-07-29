@@ -109,7 +109,15 @@ function AdminLogin({ onLogin }: { onLogin: (user?: any) => void }) {
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [err, setErr] = useState("");
+  const [err, setErr] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('reason') === 'terminated') {
+        return "This browser session was forcefully closed by an administrator. For security reasons, you have been logged out.";
+      }
+    }
+    return "";
+  });
   const [success, setSuccess] = useState(false);
 
   const handleLogin = async (e: any) => {
