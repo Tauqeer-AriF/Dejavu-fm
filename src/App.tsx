@@ -1191,7 +1191,11 @@ function MainLayout() {
   // Dynamic Client-Side SEO Engine: Automatically update tab titles & meta on route navigation
   useEffect(() => {
     if (isAdmin) {
-      document.title = "Admin Engine | DejavuFM";
+      if (location.pathname.includes('/admin/studio')) {
+        document.title = "Studio Inbox | DejavuFM";
+      } else {
+        document.title = "Dasboard | DejavuFM";
+      }
       return;
     }
 
