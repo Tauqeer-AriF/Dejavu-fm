@@ -712,11 +712,16 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
       authenticatedFetch('/api/public/auth/check')
         .then(r => r.json())
         .then(data => {
+          let currentUsername: string | null = null;
+          let currentIsAdmin = false;
+
           if (data.loggedIn) {
             setLoggedInUser(data.username);
             setUserAvatar(data.avatar_url);
             setUserJoinedAt(data.created_at);
-            setIsAdmin(!!data.isAdmin);
+            currentIsAdmin = !!data.isAdmin;
+            setIsAdmin(currentIsAdmin);
+            currentUsername = data.username;
             if (data.token) {
               safeLocalStorage.setItem('chat_user_token', data.token);
               if (data.isAdmin || data.role === 'admin') {
@@ -724,34 +729,48 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
               }
             }
           } else {
+            setLoggedInUser(null);
             setIsAdmin(false);
             if (data.error && data.isBanned) {
-              setLoggedInUser(null);
               toast.error(data.error);
             }
           }
           setIsCheckingAuth(false);
+
+          // Check for station admin status sequentially to avoid race conditions
+          const adminToken = safeLocalStorage.getItem('admin_token');
+          if (adminToken) {
+            return authenticatedFetch('/api/admin/check', {
+              headers: { 'Authorization': `Bearer ${adminToken}` }
+            })
+            .then(adminRes => {
+              if (adminRes.ok) {
+                return adminRes.json();
+              } else {
+                safeLocalStorage.removeItem('admin_token');
+                throw new Error('Invalid admin token');
+              }
+            })
+            .then(adminData => {
+              if (adminData && adminData.user) {
+                // Only treat as admin if current public user is guest OR matches the admin user
+                if (!currentUsername || currentUsername.toLowerCase() === adminData.user.username.toLowerCase()) {
+                  setIsAdmin(true);
+                } else {
+                  // Mismatch: logged in as a different, non-admin user (e.g. TAUQEER)
+                  setIsAdmin(false);
+                }
+              }
+            })
+            .catch(() => {
+              setIsAdmin(currentIsAdmin);
+            });
+          }
         })
         .catch(() => {
           setIsAdmin(false);
           setIsCheckingAuth(false);
         });
-
-      // Check for station admin status
-      const adminToken = safeLocalStorage.getItem('admin_token');
-      if (adminToken) {
-        authenticatedFetch('/api/admin/check', {
-          headers: { 'Authorization': `Bearer ${adminToken}` }
-        }).then(r => { 
-          if (r.ok) {
-            setIsAdmin(true);
-          } else {
-            // If the token is invalid, clear it to prevent further attempts
-            safeLocalStorage.removeItem('admin_token');
-          }
-        })
-        .catch(() => {});
-      }
     };
 
     checkAuthAndAdmin();
@@ -2111,7 +2130,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                               >
                                 <Send className="w-3 h-3" />
                               </button>
-                              {isAdmin && (
+                              {(isAdmin || (loggedInUser && msg.user.toLowerCase() === loggedInUser.toLowerCase())) && (
                                 <button 
                                   onClick={() => handleDeleteMessage(msg.id, false)}
                                   className={`p-1.5 rounded-lg transition-all cursor-pointer backdrop-blur-md ${isLightMode ? 'bg-black/5 text-black/40 hover:text-red-500 hover:bg-black/10' : 'bg-black/60 text-white/70 hover:text-white hover:bg-red-500'}`}
@@ -2265,7 +2284,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                 >
                                   <Send className="w-3 h-3" />
                                 </button>
-                                {isAdmin && (
+                                {(isAdmin || (loggedInUser && msg.user.toLowerCase() === loggedInUser.toLowerCase())) && (
                                   <button 
                                     onClick={() => handleDeleteMessage(msg.id, true)}
                                     className={`p-1.5 rounded-lg transition-all cursor-pointer backdrop-blur-md ${isLightMode ? 'bg-black/5 text-black/40 hover:text-red-500 hover:bg-black/10' : 'bg-black/60 text-white/70 hover:text-white hover:bg-red-500'}`}
