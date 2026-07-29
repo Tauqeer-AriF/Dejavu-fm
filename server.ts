@@ -689,6 +689,12 @@ Sitemap: ${origin}/sitemap.xml`);
   app.set('getUniqueConnectionCount', getUniqueConnectionCount);
 
   io.on('connection', (socket) => {
+    const auth = socket.handshake.auth || {};
+    const query = socket.handshake.query || {};
+    (socket as any).tabId = auth.tabId || query.tabId || 'tab_' + socket.id;
+    (socket as any).browserId = auth.browserId || query.browserId || 'browser_' + socket.id;
+    (socket as any).userAgent = auth.userAgent || query.userAgent || socket.handshake.headers['user-agent'] || '';
+
     const emitCounts = () => {
       const count = getUniqueConnectionCount();
       io.emit('onlineCount', count);
@@ -882,6 +888,12 @@ Sitemap: ${origin}/sitemap.xml`);
       (socket as any).lastSeen = Date.now();
       (socket as any).connectedAt = (socket as any).connectedAt || Date.now();
 
+      if (typeof data === 'object') {
+        if (data.tabId) (socket as any).tabId = data.tabId;
+        if (data.browserId) (socket as any).browserId = data.browserId;
+        if (data.userAgent) (socket as any).userAgent = data.userAgent;
+      }
+
       if (db.open) {
         try {
           const nowIso = new Date().toISOString();
@@ -916,6 +928,12 @@ Sitemap: ${origin}/sitemap.xml`);
       else if (pageData && (pageData.page || pageData.location)) pageLocation = pageData.page || pageData.location;
       else if (typeof username === 'object' && (username.page || username.location)) pageLocation = username.page || username.location;
       (socket as any).currentPage = pageLocation;
+
+      if (typeof username === 'object') {
+        if (username.tabId) (socket as any).tabId = username.tabId;
+        if (username.browserId) (socket as any).browserId = username.browserId;
+        if (username.userAgent) (socket as any).userAgent = username.userAgent;
+      }
 
       if (db.open) {
         try {
