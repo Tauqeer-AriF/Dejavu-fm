@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { fetchAdmin } from "./adminApi";
-import { Plus, Trash2, Key, User, Lock, Shield, Check, X, AlertTriangle, Mail, Eye, EyeOff, Edit, Search, ChevronLeft, ChevronRight, Activity, Radio, Circle, Globe, Monitor, Headphones, RefreshCw, Zap, Clock } from "lucide-react";
+import { Plus, Trash2, Key, User, Lock, Shield, Check, X, AlertTriangle, Mail, Eye, EyeOff, Edit, Search, ChevronLeft, ChevronRight, Activity, Radio, Circle, Globe, Monitor, Headphones, RefreshCw, Zap, Clock, Layers, Smartphone, LogOut } from "lucide-react";
 import { useModal } from "../../context/ModalContext";
 import { useLogo } from "../../hooks/useLogo";
 
@@ -28,6 +28,20 @@ interface ActiveSession {
   avatarUrl?: string;
   socketCount: number;
   isOnline: boolean;
+  tabs?: {
+    socketId: string;
+    tabId: string;
+    browserId: string;
+    currentPage: string;
+    connectedAt: number;
+    lastSeen: number;
+    os: string;
+    browser: string;
+    ipAddress: string;
+  }[];
+  browsers?: string[];
+  devices?: string[];
+  activePages?: string[];
 }
 
 interface DJProfile {
@@ -69,6 +83,8 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
   // Active Presence State
   const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([]);
   const [presenceFilter, setPresenceFilter] = useState<"all" | "online" | "studio" | "dashboard">("all");
+  const [activeSubTab, setActiveSubTab] = useState<"accounts" | "diagnostics">("accounts");
+  const [expandedUsers, setExpandedUsers] = useState<string[]>([]);
 
   // Filter state
   const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "dj">("all");
@@ -490,9 +506,84 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
     return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
-  const onlineStaffCount = activeSessions.filter(s => s.isStaff).length;
-  const inStudioCount = activeSessions.filter(s => s.isStaff && s.currentPage.toLowerCase().includes("studio")).length;
-  const inDashboardCount = activeSessions.filter(s => s.isStaff && !s.currentPage.toLowerCase().includes("studio")).length;
+  // Precise real-time stats across all active sessions (both staff and listeners)
+  const onlineStaff = activeSessions.filter(s => s.isStaff);
+  const onlineStaffCount = onlineStaff.length;
+
+  // Real-time precise counts across all sessions
+  const totalTabsCount = activeSessions.reduce((acc, s) => acc + (s.tabs?.length || s.socketCount || 1), 0);
+  
+  const allBrowserIds = new Set<string>();
+  const allDevices = new Set<string>();
+  
+  activeSessions.forEach(s => {
+    if (s.browsers && s.browsers.length > 0) {
+      s.browsers.forEach(b => allBrowserIds.add(b));
+    } else if (s.tabs && s.tabs.length > 0) {
+      s.tabs.forEach(t => allBrowserIds.add(t.browserId));
+    } else {
+      allBrowserIds.add('browser_' + s.username);
+    }
+    
+    if (s.devices && s.devices.length > 0) {
+      s.devices.forEach(d => d && d !== 'Unknown OS' && allDevices.add(d));
+    } else if (s.tabs && s.tabs.length > 0) {
+      s.tabs.forEach(t => t.os && t.os !== 'Unknown OS' && allDevices.add(t.os));
+    } else {
+      allDevices.add('Desktop');
+    }
+  });
+
+  const totalBrowsersCount = allBrowserIds.size || activeSessions.length;
+  const totalDevicesCount = allDevices.size || 1;
+  const totalSessionsCount = activeSessions.length;
+
+  const inStudioCount = onlineStaff.filter(s => 
+    s.currentPage.toLowerCase().includes("studio") || 
+    s.activePages?.some(p => p.toLowerCase().includes("studio"))
+  ).length;
+
+  const inDashboardCount = onlineStaffCount - inStudioCount;
+
+  const handleKillSession = async (socketId: string, username: string) => {
+    const confirmed = await showConfirm({
+      title: "Terminate Remote Connection?",
+      message: `Are you sure you want to forcefully disconnect this specific browser tab session for @${username}? The client tab will be disconnected instantly.`,
+      style: "danger",
+      confirmText: "Kill Session",
+      cancelText: "Cancel"
+    });
+
+    if (!confirmed) return;
+
+    setError("");
+    setSuccess("");
+
+    try {
+      const res = await fetchAdmin("/api/admin/kill-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ socketId })
+      });
+
+      if (res.ok) {
+        setSuccess(`Successfully terminated connection session ${socketId} for @${username}`);
+        loadActiveSessions();
+      } else {
+        const err = await res.json();
+        setError(err.error || "Failed to terminate connection session");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("An error occurred while terminating session");
+    }
+  };
+
+  const toggleUserExpanded = (username: string) => {
+    setExpandedUsers(prev => 
+      prev.includes(username) ? prev.filter(u => u !== username) : [...prev, username]
+    );
+  };
 
   return (
     <div className="space-y-8" id="admin-users-panel">
@@ -507,7 +598,7 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
           </p>
         </div>
 
-        {!isCreating && (
+        {activeSubTab === "accounts" && !isCreating && (
           <button
             onClick={() => setIsCreating(true)}
             className="inline-flex items-center gap-2 px-6 py-3 bg-neon-purple text-white rounded-2xl font-bold uppercase tracking-widest text-xs hover:bg-neon-blue transition-all shadow-lg shadow-neon-purple/20 self-start md:self-auto"
@@ -518,61 +609,87 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
         )}
       </div>
 
-      {/* Live Presence Dashboard Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Total Online Staff */}
-        <div className={`p-5 rounded-3xl border flex items-center gap-4 transition-all ${
-          isLightMode ? 'bg-white border-black/15 shadow-sm' : 'glass-panel border-white/10'
-        }`}>
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center relative">
-            <Radio className="w-6 h-6 animate-pulse" />
-            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping" />
-            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full" />
-          </div>
-          <div>
-            <div className={`text-[10px] uppercase font-black tracking-widest ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>Staff Online Now</div>
-            <div className="flex items-baseline gap-2">
-              <span className={`text-2xl font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{onlineStaffCount}</span>
-              <span className={`text-[10px] font-bold ${isLightMode ? 'text-emerald-600' : 'text-emerald-400'}`}>Active Sessions</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Currently in Live Studio */}
-        <div className={`p-5 rounded-3xl border flex items-center gap-4 transition-all ${
-          isLightMode ? 'bg-white border-black/15 shadow-sm' : 'glass-panel border-white/10'
-        }`}>
-          <div className="w-12 h-12 rounded-2xl bg-neon-purple/10 text-neon-purple flex items-center justify-center">
-            <Zap className="w-6 h-6" />
-          </div>
-          <div>
-            <div className={`text-[10px] uppercase font-black tracking-widest ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>In Live Studio</div>
-            <div className="flex items-baseline gap-2">
-              <span className={`text-2xl font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{inStudioCount}</span>
-              <span className={`text-[10px] font-bold ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Broadcasting/Chatting</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Currently in Dashboard */}
-        <div className={`p-5 rounded-3xl border flex items-center gap-4 transition-all ${
-          isLightMode ? 'bg-white border-black/15 shadow-sm' : 'glass-panel border-white/10'
-        }`}>
-          <div className="w-12 h-12 rounded-2xl bg-neon-blue/10 text-neon-blue flex items-center justify-center">
-            <Monitor className="w-6 h-6" />
-          </div>
-          <div>
-            <div className={`text-[10px] uppercase font-black tracking-widest ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>In Other Panels</div>
-            <div className="flex items-baseline gap-2">
-              <span className={`text-2xl font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{inDashboardCount}</span>
-              <span className={`text-[10px] font-bold ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Managing Settings</span>
-            </div>
-          </div>
-        </div>
+      {/* Sub Tab Navigation */}
+      <div className="flex border-b border-black/10 dark:border-white/10 pb-px">
+        <button
+          onClick={() => setActiveSubTab("accounts")}
+          className={`px-6 py-3 font-bold uppercase tracking-widest text-xs border-b-2 transition-all ${
+            activeSubTab === "accounts"
+              ? "border-neon-purple text-neon-purple font-black"
+              : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white"
+          }`}
+        >
+          Staff Accounts List
+        </button>
+        <button
+          onClick={() => setActiveSubTab("diagnostics")}
+          className={`px-6 py-3 font-bold uppercase tracking-widest text-xs border-b-2 transition-all flex items-center gap-2 ${
+            activeSubTab === "diagnostics"
+              ? "border-neon-purple text-neon-purple font-black"
+              : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white"
+          }`}
+        >
+          <Activity className="w-3.5 h-3.5 animate-pulse" /> Active Sessions Diagnostics
+        </button>
       </div>
 
+      {/* Live Presence Dashboard Overview */}
+      {activeSubTab === "accounts" && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Total Online Staff */}
+          <div className={`p-5 rounded-3xl border flex items-center gap-4 transition-all ${
+            isLightMode ? 'bg-white border-black/15 shadow-sm' : 'glass-panel border-white/10'
+          }`}>
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center relative">
+              <Radio className="w-6 h-6 animate-pulse" />
+              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping" />
+              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full" />
+            </div>
+            <div>
+              <div className={`text-[10px] uppercase font-black tracking-widest ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>Staff Online Now</div>
+              <div className="flex items-baseline gap-2">
+                <span className={`text-2xl font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{onlineStaffCount}</span>
+                <span className={`text-[10px] font-bold ${isLightMode ? 'text-emerald-600' : 'text-emerald-400'}`}>Active Sessions</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Currently in Live Studio */}
+          <div className={`p-5 rounded-3xl border flex items-center gap-4 transition-all ${
+            isLightMode ? 'bg-white border-black/15 shadow-sm' : 'glass-panel border-white/10'
+          }`}>
+            <div className="w-12 h-12 rounded-2xl bg-neon-purple/10 text-neon-purple flex items-center justify-center">
+              <Zap className="w-6 h-6" />
+            </div>
+            <div>
+              <div className={`text-[10px] uppercase font-black tracking-widest ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>In Live Studio</div>
+              <div className="flex items-baseline gap-2">
+                <span className={`text-2xl font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{inStudioCount}</span>
+                <span className={`text-[10px] font-bold ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Broadcasting/Chatting</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Currently in Dashboard */}
+          <div className={`p-5 rounded-3xl border flex items-center gap-4 transition-all ${
+            isLightMode ? 'bg-white border-black/15 shadow-sm' : 'glass-panel border-white/10'
+          }`}>
+            <div className="w-12 h-12 rounded-2xl bg-neon-blue/10 text-neon-blue flex items-center justify-center">
+              <Monitor className="w-6 h-6" />
+            </div>
+            <div>
+              <div className={`text-[10px] uppercase font-black tracking-widest ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>In Other Panels</div>
+              <div className="flex items-baseline gap-2">
+                <span className={`text-2xl font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{inDashboardCount}</span>
+                <span className={`text-[10px] font-bold ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Managing Settings</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Online Users Activity Ticker */}
-      {onlineStaffCount > 0 && (
+      {activeSubTab === "accounts" && onlineStaffCount > 0 && (
         <div className={`p-4 rounded-2xl border transition-all ${
           isLightMode ? 'bg-emerald-50/40 border-emerald-200/50' : 'bg-emerald-500/[0.02] border-emerald-500/10'
         }`}>
@@ -581,7 +698,7 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
             <span className={`text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-slate-800' : 'text-white/80'}`}>Active Workspace Feeds</span>
           </div>
           <div className="flex flex-wrap gap-2">
-            {activeSessions.filter(s => s.isStaff).map(session => (
+            {onlineStaff.map(session => (
               <div 
                 key={session.username}
                 className={`flex items-center gap-2.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all ${
@@ -627,7 +744,9 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
         </div>
       )}
 
-      {/* Creation Form */}
+      {activeSubTab === "accounts" ? (
+        <>
+          {/* Creation Form */}
       {isCreating && (
         <div className={`p-6 md:p-8 rounded-3xl border space-y-6 ${isLightMode ? 'bg-white border-black/10 shadow-sm' : 'glass-panel border-white/10'}`}>
           <div className="flex justify-between items-center">
@@ -1321,6 +1440,266 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
           >
             <ChevronRight className="w-4 h-4" />
           </button>
+        </div>
+      )}
+        </>
+      ) : (
+        <div className="space-y-6" id="session-diagnostics-panel">
+          {/* Diagnostics Analytics Grid */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Total Active Tabs */}
+            <div className={`p-5 rounded-3xl border flex items-center gap-4 transition-all ${
+              isLightMode ? 'bg-white border-black/15 shadow-sm' : 'glass-panel border-white/10'
+            }`}>
+              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center relative">
+                <Layers className="w-6 h-6 animate-pulse" />
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-indigo-500 rounded-full animate-ping" />
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-indigo-500 rounded-full" />
+              </div>
+              <div>
+                <div className={`text-[10px] uppercase font-black tracking-widest ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>Active Tabs</div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className={`text-2xl font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{totalTabsCount}</span>
+                  <span className={`text-[9px] font-bold ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Tabs Open</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Browsers Connected */}
+            <div className={`p-5 rounded-3xl border flex items-center gap-4 transition-all ${
+              isLightMode ? 'bg-white border-black/15 shadow-sm' : 'glass-panel border-white/10'
+            }`}>
+              <div className="w-12 h-12 rounded-2xl bg-sky-500/10 text-sky-400 flex items-center justify-center">
+                <Globe className="w-6 h-6" />
+              </div>
+              <div>
+                <div className={`text-[10px] uppercase font-black tracking-widest ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>Open Browsers</div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className={`text-2xl font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{totalBrowsersCount}</span>
+                  <span className={`text-[9px] font-bold ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Clients</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Online Devices */}
+            <div className={`p-5 rounded-3xl border flex items-center gap-4 transition-all ${
+              isLightMode ? 'bg-white border-black/15 shadow-sm' : 'glass-panel border-white/10'
+            }`}>
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                <Smartphone className="w-6 h-6" />
+              </div>
+              <div>
+                <div className={`text-[10px] uppercase font-black tracking-widest ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>Devices Online</div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className={`text-2xl font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{totalDevicesCount}</span>
+                  <span className={`text-[9px] font-bold ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Platforms</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Active Sessions/Accounts */}
+            <div className={`p-5 rounded-3xl border flex items-center gap-4 transition-all ${
+              isLightMode ? 'bg-white border-black/15 shadow-sm' : 'glass-panel border-white/10'
+            }`}>
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                <Radio className="w-6 h-6" />
+              </div>
+              <div>
+                <div className={`text-[10px] uppercase font-black tracking-widest ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>Online Users</div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className={`text-2xl font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{totalSessionsCount}</span>
+                  <span className={`text-[9px] font-bold ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Accounts</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sessions Diagnostic Details Container */}
+          <div className={`p-6 md:p-8 rounded-3xl border space-y-6 ${
+            isLightMode ? 'bg-white border-black/10 shadow-sm' : 'glass-panel border-white/10'
+          }`}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className={`text-lg font-bold uppercase tracking-wider ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
+                  Real-Time Session Telemetry
+                </h3>
+                <p className={`text-xs mt-0.5 ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
+                  Trace browser tabs, devices, active locations, and disconnect connections in real-time.
+                </p>
+              </div>
+              <button
+                onClick={loadActiveSessions}
+                className={`inline-flex items-center gap-1.5 px-4 py-2 bg-neon-purple/10 text-neon-purple hover:bg-neon-purple/20 rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all`}
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Force Refresh
+              </button>
+            </div>
+
+            {activeSessions.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-slate-500/5 flex items-center justify-center text-slate-400">
+                  <Activity className="w-8 h-8 animate-pulse" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm">No Active Remote Connections</h4>
+                  <p className="text-xs text-slate-500 dark:text-white/40 max-w-md mt-1">
+                    No users are currently connected via real-time WebSocket sessions to the application.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {activeSessions.map((session) => {
+                  const isExpanded = expandedUsers.includes(session.username);
+                  const isUserInStudio = session.currentPage.toLowerCase().includes("studio") || session.activePages?.some(p => p.toLowerCase().includes("studio"));
+                  const isUserStaff = session.isStaff;
+
+                  return (
+                    <div 
+                      key={session.username}
+                      className={`border rounded-2xl transition-all overflow-hidden ${
+                        isLightMode 
+                          ? 'bg-slate-50/50 border-black/10 hover:border-black/20' 
+                          : 'bg-white/[0.02] border-white/5 hover:border-white/10'
+                      }`}
+                    >
+                      {/* Connection Header Row */}
+                      <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <img 
+                            src={session.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${session.username}`} 
+                            alt={session.username} 
+                            className="w-10 h-10 rounded-xl bg-neon-purple/10 border border-neon-purple/20"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className={`font-bold ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
+                                @{session.username}
+                              </span>
+                              {isUserStaff && (
+                                <span className="text-[9px] px-1.5 py-0.5 bg-neon-purple/15 text-neon-purple border border-neon-purple/20 rounded font-black uppercase">
+                                  {session.role}
+                                </span>
+                              )}
+                              {!isUserStaff && (
+                                <span className="text-[9px] px-1.5 py-0.5 bg-neon-blue/15 text-neon-blue border border-neon-blue/20 rounded font-black uppercase">
+                                  Listener
+                                </span>
+                              )}
+                              {isUserInStudio && (
+                                <span className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 bg-red-500/15 text-red-500 border border-red-500/20 rounded font-black uppercase animate-pulse">
+                                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+                                  Broadcasting
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] mt-0.5">
+                              <span className={isLightMode ? 'text-black/50' : 'text-white/40'}>
+                                Active on: <span className="font-semibold text-neon-blue">{session.currentPage}</span>
+                              </span>
+                              <span className={`w-1 h-1 rounded-full ${isLightMode ? 'bg-black/15' : 'bg-white/10'}`} />
+                              <span className={isLightMode ? 'text-black/50' : 'text-white/40'}>
+                                {session.tabs?.length || session.socketCount || 1} Open {session.socketCount === 1 ? 'Tab' : 'Tabs'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Connection Header Action */}
+                        <div className="flex items-center gap-3 self-end md:self-auto">
+                          <div className="text-right hidden sm:block">
+                            <div className={`text-[9px] uppercase font-black tracking-widest ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>Session Created</div>
+                            <div className={`text-xs font-semibold ${isLightMode ? 'text-slate-800' : 'text-white/80'}`}>
+                              {new Date(session.connectedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            </div>
+                          </div>
+                          
+                          <button
+                            onClick={() => toggleUserExpanded(session.username)}
+                            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                              isExpanded 
+                                ? (isLightMode ? 'bg-black/10 text-slate-800' : 'bg-white/10 text-white')
+                                : 'bg-neon-purple text-white shadow-sm hover:bg-neon-blue'
+                            }`}
+                          >
+                            {isExpanded ? 'Hide Tabs' : 'Inspect Tabs'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Collapsible Tabs breakdown */}
+                      {isExpanded && (
+                        <div className={`border-t p-4 space-y-3 ${
+                          isLightMode ? 'bg-slate-100/40 border-black/5' : 'bg-black/20 border-white/5'
+                        }`}>
+                          <div className={`text-[10px] uppercase font-black tracking-widest ${isLightMode ? 'text-black/40' : 'text-white/30'} px-1 mb-2`}>
+                            Active Tabs / Remote Connection Sockets
+                          </div>
+                          
+                          <div className="grid grid-cols-1 gap-3">
+                            {(session.tabs || []).map((tab, idx) => {
+                              const tabDurationFormatted = formatRelativeTime(new Date(tab.connectedAt).toISOString());
+                              
+                              return (
+                                <div 
+                                  key={tab.socketId || idx}
+                                  className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all ${
+                                    isLightMode 
+                                      ? 'bg-white border-black/10 shadow-xs' 
+                                      : 'bg-black/40 border-white/5 hover:border-white/10'
+                                  }`}
+                                >
+                                  <div className="flex items-start gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-neon-blue/10 text-neon-blue flex items-center justify-center mt-0.5 flex-shrink-0">
+                                      <Layers className="w-4 h-4" />
+                                    </div>
+                                    <div className="space-y-0.5">
+                                      <div className="flex items-center gap-2">
+                                        <span className={`text-sm font-bold ${isLightMode ? 'text-slate-800' : 'text-white'}`}>
+                                          {tab.currentPage}
+                                        </span>
+                                        <span className={`text-[9px] px-1.5 py-0.2 bg-black/5 dark:bg-white/5 rounded text-slate-500 dark:text-white/40 font-semibold`}>
+                                          {tab.browser} on {tab.os}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-x-3 text-[11px] text-slate-400 dark:text-white/40 flex-wrap">
+                                        <span className="inline-flex items-center gap-1 font-semibold text-slate-500 dark:text-white/50">
+                                          <Globe className="w-3 h-3" /> {tab.ipAddress}
+                                        </span>
+                                        <span className={`w-1 h-1 rounded-full bg-slate-500/20`} />
+                                        <span className="inline-flex items-center gap-1">
+                                          <Clock className="w-3 h-3" /> Connected {tabDurationFormatted}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <button
+                                    onClick={() => handleKillSession(tab.socketId, session.username)}
+                                    className="inline-flex items-center justify-center gap-1 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all self-end sm:self-auto"
+                                    title="Force Close Connection Socket"
+                                  >
+                                    <LogOut className="w-3.5 h-3.5" /> Close Tab
+                                  </button>
+                                </div>
+                              );
+                            })}
+                            
+                            {(!session.tabs || session.tabs.length === 0) && (
+                              <div className={`p-3 rounded-xl text-xs text-center ${isLightMode ? 'bg-white border text-black/50' : 'bg-black/30 border-white/5 text-white/40'}`}>
+                                No tab telemetry available for this legacy session. Open a new tab to see full diagnostics.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
