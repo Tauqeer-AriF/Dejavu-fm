@@ -79,7 +79,7 @@ if (typeof window !== 'undefined') {
     localStorage.setItem('dejavu_browser_id', browserId);
   }
 
-  (window as any).socket = io({
+  const socketInstance = io({
     transports: ['websocket'],
     auth: {
       tabId,
@@ -91,6 +91,32 @@ if (typeof window !== 'undefined') {
       browserId
     }
   });
+
+  socketInstance.on('force_logout', async (data: any) => {
+    console.warn("[Socket] Force logout event triggered by Administrator:", data);
+
+    // 1. Clear local/session storage credentials instantly
+    localStorage.removeItem("admin_token");
+    localStorage.removeItem("chat_user_token");
+    sessionStorage.removeItem("admin_secret_passed");
+    localStorage.removeItem("dejavu_blocked_users");
+
+    // 2. Perform backend logouts to discard HttpOnly session cookies
+    try {
+      await fetch("/api/admin/logout", { method: "POST" });
+    } catch (e) {}
+    try {
+      await fetch("/api/public/auth/logout", { method: "POST" });
+    } catch (e) {}
+
+    // 3. Dispatch global sync event to notify any open component state
+    window.dispatchEvent(new CustomEvent('chat_auth_sync', { detail: null }));
+
+    // 4. Redirect to the admin portal with a custom warning parameter
+    window.location.href = "/admin?reason=terminated";
+  });
+
+  (window as any).socket = socketInstance;
 }
 
 
