@@ -823,14 +823,23 @@ Sitemap: ${origin}/sitemap.xml`);
           console.error("[Media Cleanup] Failed to cleanup user thread public files:", err);
         }
 
+        // Clean up private messages files for this user
+        try {
+          const privateMsgs = db.prepare("SELECT imageUrl, audioUrl, videoUrl FROM private_messages WHERE (LOWER(sender) = ? OR LOWER(recipient) = ?) AND (imageUrl IS NOT NULL OR audioUrl IS NOT NULL OR videoUrl IS NOT NULL)").all(payload.targetUser.toLowerCase(), payload.targetUser.toLowerCase()) as any[];
+          deleteMessageFiles(privateMsgs);
+        } catch (err) {
+          console.error("[Media Cleanup] Failed to cleanup user thread private files:", err);
+        }
+
         const publicInfo = db.prepare("DELETE FROM public_messages WHERE LOWER(sender) = ?").run(payload.targetUser.toLowerCase());
         const shoutoutInfo = db.prepare("DELETE FROM shoutouts WHERE LOWER(listener_name) = ?").run(payload.targetUser.toLowerCase());
+        const privateInfo = db.prepare("DELETE FROM private_messages WHERE LOWER(sender) = ? OR LOWER(recipient) = ?").run(payload.targetUser.toLowerCase(), payload.targetUser.toLowerCase());
 
         chatHistory = chatHistory.filter(m => m.user.toLowerCase() !== payload.targetUser.toLowerCase());
 
         io.emit('userThreadCleared', { username: payload.targetUser });
         emitChatRoomCounts();
-        console.log(`[Clear Thread] Cleared thread for ${payload.targetUser} by ${payload.adminUser}. Public: ${publicInfo.changes}, Shoutouts: ${shoutoutInfo.changes}`);
+        console.log(`[Clear Thread] Cleared thread for ${payload.targetUser} by ${payload.adminUser}. Public: ${publicInfo.changes}, Private: ${privateInfo.changes}, Shoutouts: ${shoutoutInfo.changes}`);
       } catch (err) {
         console.error("Failed to clear user thread:", err);
       }
