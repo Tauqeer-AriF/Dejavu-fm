@@ -1196,7 +1196,7 @@ function MainLayout() {
       } else if (location.pathname.includes('/admin/advanced')) {
         document.title = "Advanced Features | DejavuFM";
       } else {
-        document.title = "Dasboard | DejavuFM";
+        document.title = "Dashboard | DejavuFM";
       }
       return;
     }
