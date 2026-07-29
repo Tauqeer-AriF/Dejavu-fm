@@ -57,7 +57,7 @@ export function AdminMenu() {
         // 1. Branding
         setAppName(data.app_name || 'DejavuFM');
         setAppTitle(data.app_title || 'DejavuFM - Underground Gold');
-        setAppTagline(data.app_tagline || 'Underground Gold Since 2005');
+        setAppTagline(data.app_tagline || 'The UKs Most Influential Independent Radio Station');
 
         // 4. Menu configuration parsing
         let parsedLabels: Record<string, string> = {};
