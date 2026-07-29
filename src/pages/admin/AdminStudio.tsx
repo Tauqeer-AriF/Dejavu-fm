@@ -424,19 +424,15 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     setIsRefreshing(true);
     try {
       await queryClient.invalidateQueries();
-      const token = localStorage.getItem("admin_token");
-      const res = await fetch("/api/admin/studio-settings", {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.dejavu_studio_threads) {
-          setThreads(prev => {
-            const dbThreads = normalizeThreads(data.dejavu_studio_threads);
-            return { ...prev, ...dbThreads };
-          });
-        }
-      }
+      
+      // Reset the history received refs so they can process incoming history again
+      chatHistoryReceivedRef.current = false;
+      privateHistoryReceivedRef.current = false;
+      shoutoutHistoryReceivedRef.current = false;
+      
+      // Clear current threads so they are rebuilt fully and cleanly from database history
+      setThreads({});
+
       if (socketRef.current && socketRef.current.connected) {
         socketRef.current.emit('requestHistory');
       }
@@ -465,14 +461,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     return () => clearTimeout(timer);
   }, []);
 
-  const [threads, setThreads] = useState<Record<string, UserThread>>(() => {
-    try {
-      const saved = localStorage.getItem('dejavu_studio_threads');
-      return saved ? normalizeThreads(JSON.parse(saved)) : {};
-    } catch {
-      return {};
-    }
-  });
+  const [threads, setThreads] = useState<Record<string, UserThread>>({});
 
   const totalUnreadCount = useMemo(() => {
     return Object.values(threads).reduce((acc: number, t: UserThread) => acc + (t.unreadCount || 0), 0);
@@ -1697,36 +1686,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             setPinnedThreads(data.studio_pinned_threads);
             localStorage.setItem('studio_pinned_threads', JSON.stringify(data.studio_pinned_threads));
           }
-          if (data.dejavu_studio_threads) {
-            setThreads(prev => {
-              const dbThreads = normalizeThreads(data.dejavu_studio_threads);
-              const merged = { ...dbThreads };
-              
-              Object.keys(prev).forEach(key => {
-                if (!merged[key]) {
-                  merged[key] = prev[key];
-                } else {
-                  const existingMsgs = prev[key].messages || [];
-                  const dbMsgs = merged[key].messages || [];
-                  const allMsgs = [...dbMsgs];
-                  existingMsgs.forEach(m => {
-                    if (!allMsgs.some(est => isSameMessage(est, m))) {
-                      allMsgs.push(m);
-                    }
-                  });
-                  allMsgs.sort((a, b) => a.timestamp - b.timestamp);
-                  merged[key] = {
-                    ...merged[key],
-                    messages: allMsgs,
-                    unreadCount: Math.max(merged[key].unreadCount || 0, prev[key].unreadCount || 0)
-                  };
-                }
-              });
-              
-              localStorage.setItem('dejavu_studio_threads', JSON.stringify(merged));
-              return merged;
-            });
-          }
+
           if (data.dejavu_studio_last_read) {
             setLastReadTimestamps(prev => {
               const updated = { ...data.dejavu_studio_last_read, ...prev };
@@ -1749,12 +1709,6 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     } catch (error) {
       console.warn("Failed to save studio threads to local storage", error);
     }
-
-    const handler = setTimeout(() => {
-      syncSettingsToApi({ dejavu_studio_threads: threads });
-    }, 2000);
-
-    return () => clearTimeout(handler);
   }, [threads]);
 
   useEffect(() => {
