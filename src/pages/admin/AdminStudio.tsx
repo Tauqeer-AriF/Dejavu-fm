@@ -427,6 +427,51 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isTabTransitioning, setIsTabTransitioning] = useState(false);
 
+  // States and effects for individual Studio Inbox PWA installation
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [showIosInstructions, setShowIosInstructions] = useState(false);
+
+  useEffect(() => {
+    const isStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || 
+      (window.navigator as any).standalone || 
+      document.referrer.includes('android-app://');
+    setIsStandalone(isStandaloneMode);
+
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // Detect if iOS to show instructions instead of native prompt
+    const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+    if (isIos && !isStandaloneMode) {
+      setIsInstallable(true);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setIsInstallable(false);
+        setDeferredPrompt(null);
+        toast.success("Studio Inbox PWA installation accepted!");
+      }
+    } else {
+      setShowIosInstructions(true);
+    }
+  };
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsInitialLoading(false);
@@ -3085,6 +3130,20 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             <ArrowLeft className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Dashboard</span>
           </Link>
+          {isInstallable && (
+            <button 
+              onClick={handleInstallApp} 
+              className={`inline-flex items-center gap-1.5 px-2.5 py-2 sm:px-3 sm:py-2 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all border shrink-0 ${
+                studioTheme === 'light'
+                  ? 'bg-neon-purple/10 text-neon-purple border-neon-purple/20 hover:bg-neon-purple/20 shadow-sm'
+                  : 'bg-gradient-to-r from-neon-purple/20 to-neon-blue/20 text-white border-neon-purple/30 hover:border-neon-purple/50 shadow-[0_0_15px_rgba(182,36,255,0.15)]'
+              }`} 
+              title="Install Studio Inbox as a PWA App"
+            >
+              <Download className="w-3.5 h-3.5 text-neon-purple" />
+              <span className="hidden md:inline">Install App</span>
+            </button>
+          )}
           <button onClick={toggleStudioTheme} className={`p-2 sm:p-2.5 rounded-xl transition-all border ${
             studioTheme === 'light'
               ? 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200'
@@ -4009,6 +4068,77 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                   </div>
                 </div>
               )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* iOS PWA Installation Modal */}
+      <AnimatePresence>
+        {showIosInstructions && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className={`w-full max-w-md p-6 rounded-2xl border transition-colors shadow-2xl ${
+                studioTheme === 'light'
+                  ? 'bg-white border-slate-200 text-slate-900 shadow-xl'
+                  : 'bg-[#0f1123] border-white/10 text-white shadow-[0_10px_40px_rgba(0,0,0,0.5)]'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/5">
+                <h3 className="text-base font-black uppercase tracking-wider flex items-center gap-2">
+                  <Mic className="w-5 h-5 text-neon-purple animate-pulse" />
+                  Install Studio Inbox
+                </h3>
+                <button 
+                  onClick={() => setShowIosInstructions(false)}
+                  className={`p-1.5 rounded-lg transition-colors ${
+                    studioTheme === 'light' 
+                      ? 'text-slate-500 hover:text-slate-800 hover:bg-slate-100' 
+                      : 'text-white/60 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <p className={`text-sm mb-4 leading-relaxed ${studioTheme === 'light' ? 'text-slate-600' : 'text-white/70'}`}>
+                Add the **DejavuFM Studio Inbox** to your iPhone or iPad home screen for a full-screen, dedicated live communications window.
+              </p>
+
+              <div className={`space-y-4 rounded-xl p-4 border text-xs ${
+                studioTheme === 'light' ? 'bg-slate-50 border-slate-100 text-slate-700' : 'bg-white/[0.02] border-white/5 text-white/80'
+              }`}>
+                <div className="flex items-start gap-3">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-neon-purple/20 text-neon-purple font-bold">1</span>
+                  <p className="pt-0.5">
+                    Tap the <strong className="text-neon-purple">Share</strong> button at the bottom (or top) of your Safari browser.
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-neon-purple/20 text-neon-purple font-bold">2</span>
+                  <p className="pt-0.5">
+                    Scroll down and select <strong className="text-neon-purple">Add to Home Screen</strong>.
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-neon-purple/20 text-neon-purple font-bold">3</span>
+                  <p className="pt-0.5">
+                    Confirm the name <strong className="text-neon-purple">Studio Inbox</strong> and tap <strong className="text-neon-purple">Add</strong>.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <button 
+                  onClick={() => setShowIosInstructions(false)}
+                  className="px-4 py-2 bg-neon-purple text-white font-bold rounded-xl text-xs uppercase tracking-wider hover:bg-opacity-95 transition-all"
+                >
+                  Got It
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
