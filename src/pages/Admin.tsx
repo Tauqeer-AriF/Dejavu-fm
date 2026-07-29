@@ -158,11 +158,8 @@ export default function Admin() {
         if (savedRead) lastReadTimestamps = JSON.parse(savedRead);
       } catch {}
 
+      // Start with a clean set of threads from the database history to avoid restoring deleted chats
       let currentThreads: Record<string, any> = {};
-      try {
-        const savedThreads = localStorage.getItem('dejavu_studio_threads');
-        if (savedThreads) currentThreads = JSON.parse(savedThreads);
-      } catch {}
 
       // Process privateHistory
       privateHistory.forEach((msg: any) => {
@@ -423,11 +420,115 @@ export default function Admin() {
     const onPrivateMessage = (msg: any) => handleIncomingMessage(msg, 'chat');
     const onNewShoutout = (shoutout: any) => handleIncomingMessage(shoutout, 'shoutout');
 
+    const onUserThreadCleared = ({ username }: { username: string }) => {
+      try {
+        const saved = localStorage.getItem('dejavu_studio_threads');
+        if (!saved) return;
+        const currentThreads = JSON.parse(saved);
+        const userKey = username.toLowerCase();
+        if (currentThreads[userKey]) {
+          delete currentThreads[userKey];
+          localStorage.setItem('dejavu_studio_threads', JSON.stringify(currentThreads));
+          window.dispatchEvent(new Event('dejavu_studio_threads_updated'));
+        }
+      } catch {}
+    };
+
+    const onMessageDeleted = ({ id }: { id: string }) => {
+      try {
+        const saved = localStorage.getItem('dejavu_studio_threads');
+        if (!saved) return;
+        const currentThreads = JSON.parse(saved);
+        let updated = false;
+        Object.keys(currentThreads).forEach(userKey => {
+          const thread = currentThreads[userKey];
+          const exists = thread.messages.some((m: any) => String(m.id) === String(id));
+          if (exists) {
+            thread.messages = thread.messages.filter((m: any) => String(m.id) !== String(id));
+            updated = true;
+          }
+        });
+        if (updated) {
+          localStorage.setItem('dejavu_studio_threads', JSON.stringify(currentThreads));
+          window.dispatchEvent(new Event('dejavu_studio_threads_updated'));
+        }
+      } catch {}
+    };
+
+    const onShoutoutDeleted = ({ id }: { id: number }) => {
+      onMessageDeleted({ id: String(id) });
+    };
+
+    const onMessagesCleared = (payload: any) => {
+      try {
+        const saved = localStorage.getItem('dejavu_studio_threads');
+        if (!saved) return;
+        const currentThreads = JSON.parse(saved);
+        let updated = false;
+        Object.keys(currentThreads).forEach(userKey => {
+          const thread = currentThreads[userKey];
+          let filtered = thread.messages;
+          if (payload.isPrivate) {
+            if (payload.recipient) {
+              const rLower = payload.recipient.toLowerCase();
+              const sLower = payload.sender?.toLowerCase();
+              filtered = thread.messages.filter((msg: any) => {
+                const isPM = !!msg.recipient;
+                if (!isPM) return true;
+                const mUser = msg.user.toLowerCase();
+                const mRecip = msg.recipient?.toLowerCase();
+                const match = (mUser === sLower && mRecip === rLower) || (mUser === rLower && mRecip === sLower);
+                return !match;
+              });
+            } else {
+              filtered = thread.messages.filter((msg: any) => !msg.recipient);
+            }
+          } else {
+            filtered = thread.messages.filter((msg: any) => !!msg.recipient || msg.type === 'shoutout');
+          }
+          if (filtered.length !== thread.messages.length) {
+            thread.messages = filtered;
+            updated = true;
+          }
+        });
+        if (updated) {
+          localStorage.setItem('dejavu_studio_threads', JSON.stringify(currentThreads));
+          window.dispatchEvent(new Event('dejavu_studio_threads_updated'));
+        }
+      } catch {}
+    };
+
+    const onShoutoutsCleared = () => {
+      try {
+        const saved = localStorage.getItem('dejavu_studio_threads');
+        if (!saved) return;
+        const currentThreads = JSON.parse(saved);
+        let updated = false;
+        Object.keys(currentThreads).forEach(userKey => {
+          const thread = currentThreads[userKey];
+          const filtered = thread.messages.filter((m: any) => m.type !== 'shoutout');
+          if (filtered.length !== thread.messages.length) {
+            thread.messages = filtered;
+            updated = true;
+          }
+        });
+        if (updated) {
+          localStorage.setItem('dejavu_studio_threads', JSON.stringify(currentThreads));
+          window.dispatchEvent(new Event('dejavu_studio_threads_updated'));
+        }
+      } catch {}
+    };
+
     socket.on('chatMessage', onChatMessage);
     socket.on('privateMessage', onPrivateMessage);
     socket.on('new_shoutout', onNewShoutout);
     socket.on('privateHistory', onPrivateHistory);
     socket.on('shoutoutHistory', onShoutoutHistory);
+    socket.on('userThreadCleared', onUserThreadCleared);
+    socket.on('messageDeleted', onMessageDeleted);
+    socket.on('shoutoutDeleted', onShoutoutDeleted);
+    socket.on('messagesCleared', onMessagesCleared);
+    socket.on('shoutouts_cleared', onShoutoutsCleared);
 
     return () => {
       socket.off('chatMessage', onChatMessage);
@@ -435,6 +536,11 @@ export default function Admin() {
       socket.off('new_shoutout', onNewShoutout);
       socket.off('privateHistory', onPrivateHistory);
       socket.off('shoutoutHistory', onShoutoutHistory);
+      socket.off('userThreadCleared', onUserThreadCleared);
+      socket.off('messageDeleted', onMessageDeleted);
+      socket.off('shoutoutDeleted', onShoutoutDeleted);
+      socket.off('messagesCleared', onMessagesCleared);
+      socket.off('shoutouts_cleared', onShoutoutsCleared);
     };
   }, [isLogged, userRole, isStudioRoute, adminUsername]);
 
