@@ -378,8 +378,10 @@ import { AppLoader } from "../../components/AppLoader";
 import { PremiumRingLoader } from "../../components/PremiumRingLoader";
 
 export function AdminStudio({ onLogout }: { onLogout: () => void }) {
+  const queryClient = useQueryClient();
   const { isLightMode } = useLogo();
   const { showConfirm } = useModal();
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [studioTheme, setStudioTheme] = useState<'dark' | 'light'>(() => {
     try {
       const saved = localStorage.getItem('studio_theme');
@@ -416,6 +418,35 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     localStorage.setItem('studio_theme', nextTheme);
     window.dispatchEvent(new Event('dashboard-theme-change'));
     toast.success(`Switched to ${nextTheme === 'light' ? 'Light' : 'Dark'} mode`);
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await queryClient.invalidateQueries();
+      const token = localStorage.getItem("admin_token");
+      const res = await fetch("/api/admin/studio-settings", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.dejavu_studio_threads) {
+          setThreads(prev => {
+            const dbThreads = normalizeThreads(data.dejavu_studio_threads);
+            return { ...prev, ...dbThreads };
+          });
+        }
+      }
+      if (socketRef.current && socketRef.current.connected) {
+        socketRef.current.emit('requestHistory');
+      }
+      toast.success("Studio Inbox refreshed");
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to refresh");
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 600);
+    }
   };
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
     try {
@@ -621,8 +652,6 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       })
       .catch(err => console.error("Failed to fetch studio settings", err));
   }, []);
-
-  const queryClient = useQueryClient();
 
   const { data: authData } = useQuery({
     queryKey: ['admin-auth-check'],
@@ -3139,20 +3168,18 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             <ArrowLeft className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Dashboard</span>
           </Link>
-          {isInstallable && (
-            <button 
-              onClick={handleInstallApp} 
-              className={`inline-flex items-center gap-1.5 px-2.5 py-2 sm:px-3 sm:py-2 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all border shrink-0 ${
-                studioTheme === 'light'
-                  ? 'bg-neon-purple/10 text-neon-purple border-neon-purple/20 hover:bg-neon-purple/20 shadow-sm'
-                  : 'bg-gradient-to-r from-neon-purple/20 to-neon-blue/20 text-white border-neon-purple/30 hover:border-neon-purple/50 shadow-[0_0_15px_rgba(182,36,255,0.15)]'
-              }`} 
-              title="Install Studio Inbox as a PWA App"
-            >
-              <Download className="w-3.5 h-3.5 text-neon-purple" />
-              <span className="hidden md:inline">Install App</span>
-            </button>
-          )}
+          <button 
+            onClick={handleRefresh} 
+            disabled={isRefreshing}
+            className={`p-2 sm:p-2.5 rounded-xl transition-all border ${
+              studioTheme === 'light'
+                ? 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200'
+                : 'bg-white/[0.05] hover:bg-white/10 text-white/70 hover:text-white border-white/10'
+            }`} 
+            title="Refresh Studio Inbox"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-neon-purple' : ''}`} />
+          </button>
           <button onClick={toggleStudioTheme} className={`p-2 sm:p-2.5 rounded-xl transition-all border ${
             studioTheme === 'light'
               ? 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200'
