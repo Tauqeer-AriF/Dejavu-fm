@@ -67,7 +67,30 @@ const queryClient = new QueryClient({
 
 // Initialize global socket
 if (typeof window !== 'undefined') {
-  (window as any).socket = io({ transports: ['websocket'] });
+  let tabId = sessionStorage.getItem('dejavu_tab_id');
+  if (!tabId) {
+    tabId = 'tab_' + Math.random().toString(36).substring(2, 11);
+    sessionStorage.setItem('dejavu_tab_id', tabId);
+  }
+
+  let browserId = localStorage.getItem('dejavu_browser_id');
+  if (!browserId) {
+    browserId = 'browser_' + Math.random().toString(36).substring(2, 11);
+    localStorage.setItem('dejavu_browser_id', browserId);
+  }
+
+  (window as any).socket = io({
+    transports: ['websocket'],
+    auth: {
+      tabId,
+      browserId,
+      userAgent: navigator.userAgent
+    },
+    query: {
+      tabId,
+      browserId
+    }
+  });
 }
 
 
