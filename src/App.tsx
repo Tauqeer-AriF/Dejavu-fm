@@ -166,7 +166,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
   };
 
   const appName = settings?.app_name !== undefined ? settings.app_name : "DejavuFM";
-  const appTagline = settings?.app_tagline !== undefined ? settings.app_tagline : "Underground Gold Since 2005";
+  const appTagline = settings?.app_tagline !== undefined ? settings.app_tagline : "The UKs Most Influential Independent Radio Station";
   
   // Detect if we are using a single logo for both modes
   const isSingleLogo = !!settings?.logo_url && !settings?.logo_light && !settings?.logo_dark;
@@ -1006,7 +1006,7 @@ function MainLayout() {
   }, []);
 
   const appName = settings?.app_name || "DejavuFM";
-  const appTagline = settings?.app_tagline !== undefined ? settings.app_tagline : "Underground Gold Since 2005";
+  const appTagline = settings?.app_tagline !== undefined ? settings.app_tagline : "The UKs Most Influential Independent Radio Station";
 
   const handleShare = () => {
     setIsShareOpen(true);
