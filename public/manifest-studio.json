@@ -6,7 +6,7 @@
   "background_color": "#050508",
   "display": "standalone",
   "orientation": "any",
-  "scope": "/admin/studio",
+  "scope": "/",
   "start_url": "/admin/studio",
   "icons": [
     {
