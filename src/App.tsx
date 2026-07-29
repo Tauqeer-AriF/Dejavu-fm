@@ -173,6 +173,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
 
   const appName = settings?.app_name !== undefined ? settings.app_name : "DejavuFM";
   const appTagline = settings?.app_tagline !== undefined ? settings.app_tagline : "The UKs Most Influential Independent Radio Station";
+  const isLongTagline = appTagline.length > 25;
   
   // Detect if we are using a single logo for both modes
   const isSingleLogo = !!settings?.logo_url && !settings?.logo_light && !settings?.logo_dark;
@@ -592,9 +593,22 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                 )}
               </div>
               {appTagline && appTagline.trim() !== "" && (
-                <div className="flex items-center gap-1.5 mt-1 hidden md:flex">
-                  <span className="w-1.5 h-[1px] bg-neon-purple/50 group-hover:w-3.5 transition-all duration-300" />
-                  <span className="text-[8px] md:text-[9px] uppercase tracking-[0.35em] font-black text-white/30 group-hover:text-white/50 transition-colors duration-300">{appTagline}</span>
+                <div className="flex items-center gap-1.5 mt-1 hidden md:flex max-w-[180px] sm:max-w-[220px] md:max-w-[260px] lg:max-w-[300px] xl:max-w-[340px]">
+                  <span className="w-1.5 h-[1px] bg-neon-purple/50 group-hover:w-3.5 transition-all duration-300 shrink-0" />
+                  <span 
+                    className={`uppercase font-black transition-colors duration-300 truncate block ${
+                      isLongTagline 
+                        ? "text-[7.5px] md:text-[8px] tracking-[0.15em] sm:tracking-[0.18em]" 
+                        : "text-[8px] md:text-[9px] tracking-[0.3em] md:tracking-[0.35em]"
+                    } ${
+                      isLightMode 
+                        ? "text-slate-900/40 group-hover:text-slate-950/60" 
+                        : "text-white/30 group-hover:text-white/50"
+                    }`}
+                    title={appTagline}
+                  >
+                    {appTagline}
+                  </span>
                 </div>
               )}
             </div>
@@ -941,7 +955,7 @@ function MainLayout() {
   const [appNameState, setAppNameState] = useState("DejavuFM"); // kept for backward compatibility if needed, but not necessary
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
-  const { logoUrl } = useLogo();
+  const { logoUrl, isLightMode } = useLogo();
 
   const { data: scheduleData } = useQuery({
     queryKey: ['schedule'],
@@ -1359,61 +1373,77 @@ function MainLayout() {
       </main>
 
       {!isAdmin && !isSplitActive && (
-        <footer className="w-full max-w-7xl mx-auto p-4 md:p-8 pt-24 border-t border-white/5 relative flex flex-col md:flex-row items-center justify-between gap-10 text-white/40 text-sm mb-40 md:mb-32">
-          <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-4 w-full md:w-auto">
-            <button 
-              onClick={handleShare} 
-              className="flex items-center justify-center gap-2.5 px-6 py-3 md:p-0 md:w-10 md:h-10 rounded-full bg-neon-purple/[0.04] md:bg-white/5 border border-neon-purple/20 md:border-white/10 text-white/70 md:text-white/50 hover:text-white hover:border-neon-purple/50 hover:bg-neon-purple/10 transition-all shadow-md hover:shadow-xl cursor-pointer order-first md:order-last w-full max-w-[240px] md:max-w-none md:w-10 mb-[10px] md:mb-0" 
-              title="Share Website"
-            >
-              <Share2 className="w-4 h-4 text-neon-purple animate-pulse" />
-              <span className="md:hidden text-[10px] font-black uppercase tracking-[0.2em] text-neon-purple">Share Station</span>
-            </button>
+        <footer className="w-full max-w-7xl mx-auto p-4 md:p-8 pt-24 border-t border-white/5 relative flex flex-col gap-10 text-white/40 text-sm mb-40 md:mb-32">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-10 w-full">
+            <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-4 w-full md:w-auto">
+              <button 
+                onClick={handleShare} 
+                className="flex items-center justify-center gap-2.5 px-6 py-3 md:p-0 md:w-10 md:h-10 rounded-full bg-neon-purple/[0.04] md:bg-white/5 border border-neon-purple/20 md:border-white/10 text-white/70 md:text-white/50 hover:text-white hover:border-neon-purple/50 hover:bg-neon-purple/10 transition-all shadow-md hover:shadow-xl cursor-pointer order-first md:order-last w-full max-w-[240px] md:max-w-none md:w-10 mb-[10px] md:mb-0" 
+                title="Share Website"
+              >
+                <Share2 className="w-4 h-4 text-neon-purple animate-pulse" />
+                <span className="md:hidden text-[10px] font-black uppercase tracking-[0.2em] text-neon-purple">Share Station</span>
+              </button>
 
-            <div className="flex flex-wrap justify-center items-center gap-4">
-              {settings?.social_instagram && (
-                <a href={settings.social_instagram} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="Instagram">
-                  <Instagram className="w-4 h-4" />
-                </a>
-              )}
-              {settings?.social_twitter && (
-                <a href={settings.social_twitter} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="Twitter / X">
-                  <Twitter className="w-4 h-4" />
-                </a>
-              )}
-              {settings?.social_facebook && (
-                <a href={settings.social_facebook} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="Facebook">
-                  <Facebook className="w-4 h-4" />
-                </a>
-              )}
-              {settings?.social_youtube && (
-                <a href={settings.social_youtube} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="YouTube">
-                  <Youtube className="w-4 h-4" />
-                </a>
-              )}
-              {settings?.social_soundcloud && (
-                <a href={settings.social_soundcloud} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="SoundCloud">
-                  <Cloud className="w-4 h-4" />
-                </a>
-              )}
-              {settings?.social_mixcloud && (
-                <a href={settings.social_mixcloud} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="Mixcloud">
-                  <MixcloudIcon className="w-5 h-5" />
-                </a>
-              )}
-              {settings?.social_tiktok && (
-                <a href={settings.social_tiktok} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="TikTok">
-                  <TikTokIcon className="w-4 h-4" />
-                </a>
-              )}
-              {!settings?.social_instagram && !settings?.social_twitter && !settings?.social_facebook && !settings?.social_youtube && !settings?.social_soundcloud && !settings?.social_mixcloud && !settings?.social_tiktok && (
-                <span className="text-[10px] uppercase tracking-[0.2em] opacity-40">Social profiles not configured</span>
-              )}
+              <div className="flex flex-wrap justify-center items-center gap-4">
+                {settings?.social_instagram && (
+                  <a href={settings.social_instagram} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="Instagram">
+                    <Instagram className="w-4 h-4" />
+                  </a>
+                )}
+                {settings?.social_twitter && (
+                  <a href={settings.social_twitter} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="Twitter / X">
+                    <Twitter className="w-4 h-4" />
+                  </a>
+                )}
+                {settings?.social_facebook && (
+                  <a href={settings.social_facebook} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="Facebook">
+                    <Facebook className="w-4 h-4" />
+                  </a>
+                )}
+                {settings?.social_youtube && (
+                  <a href={settings.social_youtube} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="YouTube">
+                    <Youtube className="w-4 h-4" />
+                  </a>
+                )}
+                {settings?.social_soundcloud && (
+                  <a href={settings.social_soundcloud} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="SoundCloud">
+                    <Cloud className="w-4 h-4" />
+                  </a>
+                )}
+                {settings?.social_mixcloud && (
+                  <a href={settings.social_mixcloud} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="Mixcloud">
+                    <MixcloudIcon className="w-5 h-5" />
+                  </a>
+                )}
+                {settings?.social_tiktok && (
+                  <a href={settings.social_tiktok} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="TikTok">
+                    <TikTokIcon className="w-4 h-4" />
+                  </a>
+                )}
+                {!settings?.social_instagram && !settings?.social_twitter && !settings?.social_facebook && !settings?.social_youtube && !settings?.social_soundcloud && !settings?.social_mixcloud && !settings?.social_tiktok && (
+                  <span className="text-[10px] uppercase tracking-[0.2em] opacity-40">Social profiles not configured</span>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col items-center md:items-end space-y-2 text-center md:text-right">
+              <p className="font-black tracking-[0.2em] text-[10px]">© {new Date().getFullYear()} dejavufm.com. All rights reserved.</p>
+              <p className="text-[10px] uppercase tracking-[0.4em] opacity-30 italic text-center md:text-right">{appTagline}</p>
             </div>
           </div>
-          <div className="flex flex-col items-center md:items-end space-y-2 text-center md:text-right">
-            <p className="font-black tracking-[0.2em] text-[10px]">© {new Date().getFullYear()} dejavufm.com. All rights reserved.</p>
-            <p className="text-[10px] uppercase tracking-[0.4em] opacity-30 italic text-center md:text-right">{appTagline}</p>
+
+          <div className="w-[500px] max-w-full mx-auto border-t border-white/[0.03] pt-6 flex justify-center">
+            <p className={`text-[9px] md:text-[10px] uppercase tracking-[0.25em] text-center ${isLightMode ? 'text-black/30' : 'text-white/20'}`}>
+              Developed by{" "}
+              <a 
+                href="https://creativeengagementservices.com/web-agency" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className={`${isLightMode ? 'text-black/50 hover:text-black hover:border-black/30' : 'text-white/40 hover:text-white hover:border-white/30'} transition-all font-black border-b border-transparent pb-0.5`}
+              >
+                Creative Engagement Services
+              </a>
+            </p>
           </div>
         </footer>
       )}
