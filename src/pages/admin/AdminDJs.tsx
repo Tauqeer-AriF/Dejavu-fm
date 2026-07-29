@@ -190,7 +190,26 @@ export function AdminDJs() {
                     <div className="flex-1 min-w-0 space-y-2">
                       <div>
                         <span className="font-bold text-lg text-white group-hover:text-neon-blue transition-colors block truncate">{dj.name}</span>
-                        <span className="inline-block mt-0.5 text-[10px] font-bold uppercase tracking-wider text-neon-purple/85 px-2 py-0.5 rounded bg-neon-purple/10 border border-neon-purple/20">Resident DJ</span>
+                        <div className="flex flex-wrap gap-1.5 mt-1">
+                          {dj.badge1 !== undefined && dj.badge1 !== null && dj.badge1 !== "" ? (
+                            <span className="inline-block text-[10px] font-bold uppercase tracking-wider text-neon-purple/85 px-2 py-0.5 rounded bg-neon-purple/10 border border-neon-purple/20">
+                              {dj.badge1}
+                            </span>
+                          ) : (
+                            <span className="inline-block text-[10px] font-bold uppercase tracking-wider text-neon-purple/85 px-2 py-0.5 rounded bg-neon-purple/10 border border-neon-purple/20">
+                              Resident
+                            </span>
+                          )}
+                          {dj.badge2 !== undefined && dj.badge2 !== null && dj.badge2 !== "" ? (
+                            <span className="inline-block text-[10px] font-bold uppercase tracking-wider text-white/50 px-2 py-0.5 rounded bg-white/5 border border-white/10">
+                              {dj.badge2}
+                            </span>
+                          ) : (
+                            <span className="inline-block text-[10px] font-bold uppercase tracking-wider text-white/50 px-2 py-0.5 rounded bg-white/5 border border-white/10">
+                              Underground
+                            </span>
+                          )}
+                        </div>
                       </div>
                       {dj.bio && (
                         <span className="text-xs text-white/50 block line-clamp-2 leading-snug italic">
@@ -384,13 +403,15 @@ function EditDJForm({dj, onSave, onCancel}: {dj: any, onSave: ()=>void, onCancel
   const [instagram, setInstagram] = useState(dj.instagram || "");
   const [facebook, setFacebook] = useState(dj.facebook || "");
   const [mixcloud, setMixcloud] = useState(dj.mixcloud || "");
+  const [badge1, setBadge1] = useState(dj.badge1 !== undefined && dj.badge1 !== null ? dj.badge1 : "Resident");
+  const [badge2, setBadge2] = useState(dj.badge2 !== undefined && dj.badge2 !== null ? dj.badge2 : "Underground");
   const { showAlert } = useModal();
   
   const handleSave = async (e:any) => {
     e.preventDefault();
     const res = await fetchAdmin(`/api/admin/djs/${dj.id}`, {
       method: "PUT", headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({ name, bio, image_url: image, instagram, facebook, mixcloud })
+      body: JSON.stringify({ name, bio, image_url: image, instagram, facebook, mixcloud, badge1, badge2 })
     });
     if (res.ok) {
       showAlert({ title: "Success", message: `${name} updated successfully!`, style: "success" });
@@ -414,6 +435,16 @@ function EditDJForm({dj, onSave, onCancel}: {dj: any, onSave: ()=>void, onCancel
       <div>
         <label className="block text-xs uppercase mb-1 font-semibold text-white/40">Bio</label>
         <textarea value={bio} onChange={e=>setBio(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5 focus:outline-none focus:border-neon-purple text-sm" rows={2} />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs uppercase mb-1 font-semibold text-white/40">Badge 1 (Primary)</label>
+          <input value={badge1} onChange={e=>setBadge1(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5 focus:outline-none focus:border-neon-purple text-sm" placeholder="Resident" />
+        </div>
+        <div>
+          <label className="block text-xs uppercase mb-1 font-semibold text-white/40">Badge 2 (Secondary)</label>
+          <input value={badge2} onChange={e=>setBadge2(e.target.value)} className="w-full bg-panel-bg border border-white/10 rounded px-3 py-1.5 focus:outline-none focus:border-neon-purple text-sm" placeholder="Underground" />
+        </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
@@ -445,18 +476,21 @@ function AddDJForm({onAdd}: {onAdd:()=>void}) {
   const [instagram, setInstagram] = useState("");
   const [facebook, setFacebook] = useState("");
   const [mixcloud, setMixcloud] = useState("");
+  const [badge1, setBadge1] = useState("Resident");
+  const [badge2, setBadge2] = useState("Underground");
   const { showAlert } = useModal();
   
   const handleAdd = async (e:any) => {
     e.preventDefault();
     const res = await fetchAdmin("/api/admin/djs", {
       method: "POST", headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({ name, bio, image_url: image, instagram, facebook, mixcloud })
+      body: JSON.stringify({ name, bio, image_url: image, instagram, facebook, mixcloud, badge1, badge2 })
     });
     if (res.ok) {
       showAlert({ title: "Success", message: `${name} added to the roster!`, style: "success" });
       queryClient.invalidateQueries({ queryKey: ['djs'] });
       setName(""); setBio(""); setImage(""); setInstagram(""); setFacebook(""); setMixcloud("");
+      setBadge1("Resident"); setBadge2("Underground");
       onAdd();
     } else {
       showAlert({ title: "Error", message: "Failed to add DJ", style: "danger" });
@@ -492,6 +526,26 @@ function AddDJForm({onAdd}: {onAdd:()=>void}) {
               placeholder="Tell us about their style, genre, or residence..."
               rows={3}
             />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[10px] uppercase font-black tracking-widest text-white/30 mb-1">Badge 1 (Primary)</label>
+              <input 
+                value={badge1} 
+                onChange={e=>setBadge1(e.target.value)} 
+                className="w-full bg-[#0d0d0f] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-neon-purple" 
+                placeholder="Resident"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] uppercase font-black tracking-widest text-white/30 mb-1">Badge 2 (Secondary)</label>
+              <input 
+                value={badge2} 
+                onChange={e=>setBadge2(e.target.value)} 
+                className="w-full bg-[#0d0d0f] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-neon-purple" 
+                placeholder="Underground"
+              />
+            </div>
           </div>
         </div>
         

@@ -96,6 +96,7 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
 
   // Bulk actions state
   const [selectedUsernames, setSelectedUsernames] = useState<string[]>([]);
+  const [isRefreshingSessions, setIsRefreshingSessions] = useState(false);
 
   const filteredUsers = React.useMemo(() => {
     return users.filter(u => {
@@ -299,6 +300,25 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
       }
     } catch (e) {
       console.error("Failed to load active sessions:", e);
+    }
+  };
+
+  const handleForceRefresh = async () => {
+    setIsRefreshingSessions(true);
+    setError("");
+    setSuccess("");
+    try {
+      await Promise.all([
+        loadActiveSessions(),
+        loadUsers(true)
+      ]);
+      setSuccess("Session telemetry and staff listings refreshed successfully.");
+      setTimeout(() => setSuccess(""), 3500);
+    } catch (err) {
+      console.error("Failed to force refresh sessions:", err);
+      setError("Failed to reload session data.");
+    } finally {
+      setIsRefreshingSessions(false);
     }
   };
 
@@ -1529,10 +1549,12 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
                 </p>
               </div>
               <button
-                onClick={loadActiveSessions}
-                className={`inline-flex items-center gap-1.5 px-4 py-2 bg-neon-purple/10 text-neon-purple hover:bg-neon-purple/20 rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all`}
+                onClick={handleForceRefresh}
+                disabled={isRefreshingSessions}
+                className={`inline-flex items-center gap-1.5 px-4 py-2 bg-neon-purple/10 text-neon-purple hover:bg-neon-purple/20 rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
               >
-                <RefreshCw className="w-3.5 h-3.5" /> Force Refresh
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingSessions ? "animate-spin text-neon-blue" : ""}`} />
+                {isRefreshingSessions ? "Refreshing..." : "Force Refresh"}
               </button>
             </div>
 

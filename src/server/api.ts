@@ -2308,10 +2308,12 @@ apiRouter.get("/admin/djs", (req, res) => {
 });
 
 apiRouter.post("/admin/djs", (req, res) => {
-  const { name, bio, image_url, instagram, soundcloud, mixcloud, facebook } = req.body;
+  const { name, bio, image_url, instagram, soundcloud, mixcloud, facebook, badge1, badge2 } = req.body;
   const id = crypto.randomUUID();
-  db.prepare("INSERT INTO djs (id, name, bio, image_url, instagram, soundcloud, mixcloud, facebook) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-    .run(id, name, bio, image_url, instagram, soundcloud, mixcloud, facebook);
+  const b1 = badge1 !== undefined ? badge1 : 'Resident';
+  const b2 = badge2 !== undefined ? badge2 : 'Underground';
+  db.prepare("INSERT INTO djs (id, name, bio, image_url, instagram, soundcloud, mixcloud, facebook, badge1, badge2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .run(id, name, bio, image_url, instagram, soundcloud, mixcloud, facebook, b1, b2);
   
   // Auto-link staff account if username matches the DJ name
   try {
@@ -2326,9 +2328,11 @@ apiRouter.post("/admin/djs", (req, res) => {
 });
 
 apiRouter.put("/admin/djs/:id", (req, res) => {
-  const { name, bio, image_url, instagram, soundcloud, mixcloud, facebook } = req.body;
-  db.prepare("UPDATE djs SET name = ?, bio = ?, image_url = ?, instagram = ?, soundcloud = ?, mixcloud = ?, facebook = ? WHERE id = ?")
-    .run(name, bio, image_url, instagram, soundcloud, mixcloud, facebook, req.params.id);
+  const { name, bio, image_url, instagram, soundcloud, mixcloud, facebook, badge1, badge2 } = req.body;
+  const b1 = badge1 !== undefined ? badge1 : 'Resident';
+  const b2 = badge2 !== undefined ? badge2 : 'Underground';
+  db.prepare("UPDATE djs SET name = ?, bio = ?, image_url = ?, instagram = ?, soundcloud = ?, mixcloud = ?, facebook = ?, badge1 = ?, badge2 = ? WHERE id = ?")
+    .run(name, bio, image_url, instagram, soundcloud, mixcloud, facebook, b1, b2, req.params.id);
   logAction(req, 'UPDATE', 'dj', req.params.id, { name });
   res.json({ success: true });
 });
