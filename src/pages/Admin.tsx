@@ -570,7 +570,7 @@ export default function Admin() {
 
   // Render the Studio page as a full-screen, standalone component if the path matches
   if (location.pathname.includes('/studio')) {
-    if (userRole !== 'admin' && userRole !== 'dj') {
+    if (userRole && userRole !== 'admin' && userRole !== 'dj') {
       return <Navigate to={`${adminBasePath}/live-tools`} replace />;
     }
     return (
