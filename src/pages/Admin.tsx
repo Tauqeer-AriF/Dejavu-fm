@@ -18,6 +18,7 @@ const AdminSchedule = lazy(() => import("./admin/AdminSchedule").then(m => ({ de
 const AdminProfile = lazy(() => import("./admin/AdminProfile").then(m => ({ default: m.AdminProfile })));
 const AdminBranding = lazy(() => import("./admin/AdminSystem").then(m => ({ default: m.AdminBranding })));
 const AdminSettings = lazy(() => import("./admin/AdminSystem").then(m => ({ default: m.AdminSettings })));
+const AdminAdvanced = lazy(() => import("./admin/AdminSystem").then(m => ({ default: m.AdminAdvanced })));
 const AdminUsers = lazy(() => import("./admin/AdminUsers").then(m => ({ default: m.AdminUsers })));
 const AdminChatUsers = lazy(() => import("./admin/AdminChatUsers").then(m => ({ default: m.AdminChatUsers })));
 const AdminChatRoomSettings = lazy(() => import("./admin/AdminChatRoomSettings").then(m => ({ default: m.AdminChatRoomSettings })));
@@ -106,6 +107,7 @@ export default function Admin() {
     if (pathname.includes('/admin/shoutouts')) return 'In Shoutouts';
     if (pathname.includes('/admin/analytics')) return 'In Analytics & Stats';
     if (pathname.includes('/admin/system')) return 'In System Settings';
+    if (pathname.includes('/admin/advanced')) return 'In Advanced Features';
     if (pathname.includes('/admin/audit-logs')) return 'In Audit Logs';
     if (pathname.includes('/admin/bookings')) return 'In Bookings';
     if (pathname.includes('/admin/media')) return 'In Media Library';
@@ -687,6 +689,7 @@ export default function Admin() {
                       <Route path="/profile" element={<AdminProfile />} />
 
                       <Route path="/settings" element={userRole === 'admin' ? <AdminSettings /> : <Navigate to={adminBasePath} replace />} />
+                      <Route path="/advanced" element={userRole === 'admin' ? <AdminAdvanced /> : <Navigate to={adminBasePath} replace />} />
                       <Route path="/media" element={userRole === 'admin' ? <AdminMedia /> : <Navigate to={adminBasePath} replace />} />
                       <Route path="/branding" element={userRole === 'admin' ? <AdminBranding /> : <Navigate to={adminBasePath} replace />} />
                       <Route path="/users" element={userRole === 'admin' ? <AdminUsers isAdminUser={userRole === 'admin'} /> : <Navigate to={adminBasePath} replace />} />
