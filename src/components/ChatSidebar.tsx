@@ -3190,30 +3190,6 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                         ))}
                       </div>
                     </div>
-
-                    {/* Robo Seeds Selection */}
-                    <div className="space-y-3">
-                      <label className={`text-xs font-black uppercase tracking-widest ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>Generate Robot Seed</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="Type any word..."
-                          value={avatarSeed}
-                          onChange={(e) => setAvatarSeed(e.target.value)}
-                          className={`flex-1 border rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-neon-purple/50 transition-all ${isLightMode ? 'bg-black/5 border-black/10 text-black placeholder-black/30' : 'bg-black/50 border-white/10 text-white placeholder-white/20'}`}
-                        />
-                        <button
-                          onClick={() => {
-                            if (avatarSeed.trim()) {
-                              handleSaveAvatarUrl(`https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(avatarSeed)}`);
-                            }
-                          }}
-                          className="bg-neon-purple hover:bg-neon-blue text-white text-xs font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all"
-                        >
-                          Apply
-                        </button>
-                      </div>
-                    </div>
                   </div>
 
                   <div className={`pt-4 border-t mt-6 space-y-2 ${isLightMode ? 'border-black/10' : 'border-white/10'}`}>
