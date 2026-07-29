@@ -459,21 +459,6 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   const [isTabTransitioning, setIsTabTransitioning] = useState(false);
 
   useEffect(() => {
-    // Dynamically set PWA manifest specifically for Studio Inbox standalone app
-    const manifestElem = document.getElementById('manifest-link') || document.querySelector('link[rel="manifest"]');
-    const originalManifest = manifestElem ? manifestElem.getAttribute('href') : '/manifest.json';
-    if (manifestElem) {
-      manifestElem.setAttribute('href', '/manifest-studio.json');
-    }
-
-    return () => {
-      if (manifestElem && originalManifest) {
-        manifestElem.setAttribute('href', originalManifest);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
     const timer = setTimeout(() => {
       setIsInitialLoading(false);
     }, 300);
