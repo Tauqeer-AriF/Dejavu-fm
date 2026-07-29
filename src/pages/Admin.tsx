@@ -99,20 +99,33 @@ export default function Admin() {
   };
 
   const getAdminPageLabel = (pathname: string) => {
-    if (pathname.includes('/admin/studio')) return 'In Studio & Live Chat';
-    if (pathname.includes('/admin/users')) return 'In Staff Users';
-    if (pathname.includes('/admin/djs')) return 'In DJ Roster';
-    if (pathname.includes('/admin/schedule')) return 'In Schedule Management';
-    if (pathname.includes('/admin/ads')) return 'In Campaign Sliders';
-    if (pathname.includes('/admin/shoutouts')) return 'In Shoutouts';
-    if (pathname.includes('/admin/analytics')) return 'In Analytics & Stats';
-    if (pathname.includes('/admin/system')) return 'In System Settings';
-    if (pathname.includes('/admin/advanced')) return 'In Advanced Features';
-    if (pathname.includes('/admin/audit-logs')) return 'In Audit Logs';
-    if (pathname.includes('/admin/bookings')) return 'In Bookings';
-    if (pathname.includes('/admin/media')) return 'In Media Library';
-    if (pathname.includes('/admin/seo')) return 'In SEO Engine';
-    return 'In Dashboard Overview';
+    // Check specific dashboard route suffixes to map accurate tab names
+    if (pathname.includes('/studio')) return 'In Studio & Live Chat';
+    if (pathname.includes('/live-tools')) return 'In Live Tools';
+    if (pathname.includes('/menu')) return 'In Navigation Menu';
+    if (pathname.includes('/pages')) return 'In Custom Pages';
+    if (pathname.includes('/seo')) return 'In SEO Engine';
+    if (pathname.includes('/settings')) return 'In System Settings';
+    if (pathname.includes('/advanced')) return 'In Advanced Features';
+    if (pathname.includes('/media')) return 'In Media Library';
+    if (pathname.includes('/profile')) return 'In Profile Settings';
+    if (pathname.includes('/shoutouts')) return 'In Interactions';
+    if (pathname.includes('/bookings')) return 'In Agency Bookings';
+    if (pathname.includes('/branding')) return 'In Platform Branding';
+    if (pathname.includes('/djs')) return 'In DJ Roster';
+    if (pathname.includes('/popup')) return 'In Promo Popups';
+    if (pathname.includes('/ads')) return 'In Campaign Sliders';
+    if (pathname.includes('/schedule')) return 'In Schedule Management';
+    if (pathname.includes('/users')) return 'In Staff Users';
+    if (pathname.includes('/chat-users')) return 'In Chat Users';
+    if (pathname.includes('/chat-room-setting')) return 'In Data Operations';
+    if (pathname.includes('/backup')) return 'In System Backups';
+    if (pathname.includes('/audit-logs')) return 'In Audit Logs';
+    if (pathname.includes('/meta-integrations')) return 'In Meta Integrations';
+    if (pathname.includes('/analytics')) return 'In Analytics';
+    
+    // Default fallback when matching the root path (e.g. /admin or /admin/)
+    return 'In Analytics';
   };
 
   useEffect(() => {
