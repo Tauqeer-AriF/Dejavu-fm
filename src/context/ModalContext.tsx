@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertCircle, CheckCircle2, Info } from 'lucide-react';
@@ -29,21 +29,21 @@ export function ModalProvider({ children }: { children: ReactNode }) {
   const [modalOptions, setModalOptions] = useState<ModalOptions | null>(null);
   const [resolvePromise, setResolvePromise] = useState<((value: boolean) => void) | null>(null);
 
-  const showAlert = (options: Omit<ModalOptions, 'type'>) => {
+  const showAlert = useCallback((options: Omit<ModalOptions, 'type'>) => {
     return new Promise<void>((resolve) => {
       setModalOptions({ ...options, type: 'alert' });
       setIsOpen(true);
       setResolvePromise(() => () => resolve());
     });
-  };
+  }, []);
 
-  const showConfirm = (options: Omit<ModalOptions, 'type'>) => {
+  const showConfirm = useCallback((options: Omit<ModalOptions, 'type'>) => {
     return new Promise<boolean>((resolve) => {
       setModalOptions({ ...options, type: 'confirm' });
       setIsOpen(true);
       setResolvePromise(() => resolve);
     });
-  };
+  }, []);
 
   const handleClose = (value: boolean) => {
     setIsOpen(false);

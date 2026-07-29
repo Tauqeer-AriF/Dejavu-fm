@@ -6,10 +6,10 @@ import { useLogo } from '../hooks/useLogo';
 
 export function CinematicVisualizer({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const textContainerRef = useRef<HTMLDivElement>(null);
   const { getAnalyser, isPlaying, currentTrack, onAirInfo } = useAudio();
   const { isLightMode } = useLogo();
   const animationRef = useRef<number>();
-  const [pulseScale, setPulseScale] = useState(1);
   const isLightModeRef = useRef(isLightMode);
 
   useEffect(() => {
@@ -45,23 +45,36 @@ export function CinematicVisualizer({ isOpen, onClose }: { isOpen: boolean, onCl
     let smoothedBass = 0;
 
     const render = (time: number) => {
-      animationRef.current = requestAnimationFrame(render);
-      const dt = time - lastTime;
-      lastTime = time;
-
       const width = canvas.width;
       const height = canvas.height;
       const cx = width / 2;
       const cy = height / 2;
 
+      if (!isPlaying) {
+        // Draw elegant, static, non-looping idle frame
+        ctx.fillStyle = isLightModeRef.current ? '#f8fafc' : '#0a0a0f';
+        ctx.fillRect(0, 0, width, height);
+
+        const radius = Math.min(width, height) * 0.25;
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = isLightModeRef.current ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255, 255, 255, 0.08)';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        if (textContainerRef.current) {
+          textContainerRef.current.style.transform = 'scale(1)';
+        }
+        return; // Suspend animation loop entirely!
+      }
+
+      animationRef.current = requestAnimationFrame(render);
+      const dt = time - lastTime;
+      lastTime = time;
+
       // Respect light mode for fade background overlay
       ctx.fillStyle = isLightModeRef.current ? 'rgba(248, 250, 252, 0.25)' : 'rgba(10, 10, 15, 0.2)';
       ctx.fillRect(0, 0, width, height);
-
-      if (!isPlaying) {
-        setPulseScale(1);
-        return;
-      }
 
       if (analyser && dataArray) {
         analyser.getByteFrequencyData(dataArray);
@@ -77,7 +90,9 @@ export function CinematicVisualizer({ isOpen, onClose }: { isOpen: boolean, onCl
         // Smooth bass for scaling the circle (pulse)
         smoothedBass = smoothedBass * 0.8 + bassAvg * 0.2;
         const scale = 1 + (smoothedBass / 255) * 0.15;
-        setPulseScale(scale); // animate UI elements based on bass
+        if (textContainerRef.current) {
+          textContainerRef.current.style.transform = `scale(${scale})`;
+        }
 
         const count = analyser.frequencyBinCount / 4; // Use lower half of freq
         const radius = Math.min(width, height) * 0.25;
@@ -128,7 +143,9 @@ export function CinematicVisualizer({ isOpen, onClose }: { isOpen: boolean, onCl
         // Fallback procedural animation for iOS/Safari without Analyser
         const pulse = Math.sin(time * 0.003) * 0.5 + 0.5; // 0 to 1 pulse
         const scale = 1 + pulse * 0.08;
-        setPulseScale(scale);
+        if (textContainerRef.current) {
+          textContainerRef.current.style.transform = `scale(${scale})`;
+        }
 
         const count = 64;
         const radius = Math.min(width, height) * 0.25;
@@ -214,10 +231,9 @@ export function CinematicVisualizer({ isOpen, onClose }: { isOpen: boolean, onCl
             <X className="w-6 h-6" />
           </button>
 
-          <motion.div
-            className="absolute bottom-16 left-0 right-0 flex flex-col items-center pointer-events-none"
-            style={{ scale: pulseScale }}
-            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          <div
+            ref={textContainerRef}
+            className="absolute bottom-16 left-0 right-0 flex flex-col items-center pointer-events-none transition-transform duration-75 ease-out"
           >
             <div className={`px-12 py-8 rounded-5xl border shadow-2xl text-center max-w-2xl px-6 transition-all duration-300 ${
               isLightMode
@@ -233,7 +249,7 @@ export function CinematicVisualizer({ isOpen, onClose }: { isOpen: boolean, onCl
                 isLightMode ? 'text-slate-600' : 'text-white/70'
               }`}>{artist}</p>
             </div>
-          </motion.div>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>

@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
-import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles, Database, Video, Key, Facebook } from "lucide-react";
+import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles, Database, Video, Key, Facebook, Layers } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { useModal } from "../../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
@@ -33,16 +33,16 @@ export function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; 
   let navs = [
     { name: "Analytics", path: `${adminBasePath}`, icon: BarChart3 },
     { name: "Live Tools", path: `${adminBasePath}/live-tools`, icon: Radio },
+    { name: "Menu", path: `${adminBasePath}/menu`, icon: Menu },
+    { name: "Pages", path: `${adminBasePath}/pages`, icon: Layers },
+    { name: "SEO", path: `${adminBasePath}/seo`, icon: Globe },
     { name: "Settings", path: `${adminBasePath}/settings`, icon: Settings },
-    { name: "SEO", path: `${adminBasePath}/seo`, icon: Search },
     { name: "Media", path: `${adminBasePath}/media`, icon: Video },
-    { name: "Advanced", path: `${adminBasePath}/advanced`, icon: Ghost },
     { name: "My Profile", path: `${adminBasePath}/profile`, icon: User },
     { name: "Interactions", path: `${adminBasePath}/shoutouts`, icon: MessageSquare },
     { name: "Agency", path: `${adminBasePath}/bookings`, icon: Calendar },
     { name: "Branding", path: `${adminBasePath}/branding`, icon: HomeIcon },
     { name: "DJs", path: `${adminBasePath}/djs`, icon: Users },
-    { name: "Features", path: `${adminBasePath}/features`, icon: FileText },
     { name: "Pop-up", path: `${adminBasePath}/popup`, icon: Sparkles },
     { name: "Ads", path: `${adminBasePath}/ads`, icon: ImageIcon },
     { name: "Schedule", path: `${adminBasePath}/schedule`, icon: Calendar },

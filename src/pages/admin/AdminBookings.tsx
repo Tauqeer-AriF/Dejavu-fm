@@ -12,12 +12,14 @@ import { useLogo } from "../../hooks/useLogo";
 
 export function AdminBookings() {
   const { isLightMode } = useLogo();
-  const [activeSubTab, setActiveSubTab] = useState<'bookings' | 'arch421'>('bookings');
+  const [activeSubTab, setActiveSubTab] = useState<'bookings' | 'arch421' | 'form_submissions'>('bookings');
   
   const [bookings, setBookings] = useState<any[]>([]);
   const [registrations, setRegistrations] = useState<any[]>([]);
+  const [formSubmissions, setFormSubmissions] = useState<any[]>([]);
   
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const { showAlert, showConfirm } = useModal();
 
   // Arch421 CRUD States
@@ -25,6 +27,7 @@ export function AdminBookings() {
   const [isRegModalOpen, setIsRegModalOpen] = useState(false);
   const [regFormData, setRegFormData] = useState({ name: '', email: '', status: 'pending' });
   const [regSearch, setRegSearch] = useState('');
+  const [formSubSearch, setFormSubSearch] = useState('');
 
   const openCreateRegModal = () => {
     setSelectedReg(null);
@@ -94,6 +97,17 @@ export function AdminBookings() {
     );
   }, [registrations, regSearch]);
 
+  const filteredFormSubmissions = useMemo(() => {
+    if (!formSubSearch) return formSubmissions;
+    const query = formSubSearch.toLowerCase();
+    return formSubmissions.filter(s => 
+      (s.page_title && s.page_title.toLowerCase().includes(query)) || 
+      (s.form_title && s.form_title.toLowerCase().includes(query)) ||
+      (s.status && s.status.toLowerCase().includes(query)) ||
+      (s.data_json && s.data_json.toLowerCase().includes(query))
+    );
+  }, [formSubmissions, formSubSearch]);
+
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const loadBookings = () => {
@@ -104,10 +118,14 @@ export function AdminBookings() {
     return fetchAdmin("/api/admin/arch421/registrations").then(r => r.json()).then(setRegistrations).catch(err => console.error(err));
   };
 
+  const loadFormSubmissions = () => {
+    return fetchAdmin("/api/admin/form-submissions").then(r => r.json()).then(setFormSubmissions).catch(err => console.error(err));
+  };
+
   const loadAll = async () => {
     setIsRefreshing(true);
     try {
-      await Promise.all([loadBookings(), loadRegistrations()]);
+      await Promise.all([loadBookings(), loadRegistrations(), loadFormSubmissions()]);
     } catch (err) {
       console.error(err);
     } finally {
@@ -211,6 +229,80 @@ export function AdminBookings() {
     }
   };
 
+  // Custom Form Submissions specific actions
+  const updateFormSubmissionStatus = async (id: number, status: string) => {
+    await fetchAdmin(`/api/admin/form-submissions/${id}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    loadFormSubmissions();
+    showAlert({ title: "Updated", message: `Form submission status changed to ${status}`, style: "success" });
+  };
+
+  const handleDeleteFormSubmission = async (id: number, formTitle: string) => {
+    const confirmed = await showConfirm({
+      title: "Delete Submission",
+      message: `Are you sure you want to delete this submission from '${formTitle || "Custom Form"}'? This action cannot be undone.`,
+      style: "danger",
+      confirmText: "Delete Permanently"
+    });
+
+    if (confirmed) {
+      try {
+        const res = await fetchAdmin(`/api/admin/form-submissions/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          showAlert({ title: "Deleted", message: "Submission has been removed.", style: "success" });
+          loadFormSubmissions();
+        }
+      } catch (err) {
+        console.error("Failed to delete submission", err);
+        showAlert({ title: "Error", message: "Failed to delete submission", style: "danger" });
+      }
+    }
+  };
+
+  const exportFormSubmissionsToCSV = () => {
+    if (formSubmissions.length === 0) {
+      showAlert({ title: "No Data", message: "There are no submissions to export.", style: "warning" });
+      return;
+    }
+    
+    // Determine all unique dynamic fields keys to make them headers
+    const allKeys = new Set<string>();
+    const parsedSubmissions = formSubmissions.map(s => {
+      let data: Record<string, string> = {};
+      try {
+        data = JSON.parse(s.data_json);
+        Object.keys(data).forEach(k => allKeys.add(k));
+      } catch (e) {}
+      return { ...s, parsedData: data };
+    });
+
+    const dynamicHeaders = Array.from(allKeys);
+    const headers = ["ID", "Page Title", "Form Title", "Status", "Submitted At", ...dynamicHeaders];
+    
+    const rows = parsedSubmissions.map(s => [
+      s.id,
+      `"${(s.page_title || '').replace(/"/g, '""')}"`,
+      `"${(s.form_title || '').replace(/"/g, '""')}"`,
+      `"${(s.status || 'pending').replace(/"/g, '""')}"`,
+      `"${new Date(s.created_at).toLocaleString()}"`,
+      ...dynamicHeaders.map(h => `"${(s.parsedData[h] || '').replace(/"/g, '""')}"`)
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `custom_form_submissions_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showAlert({ title: "Success", message: "Submissions successfully exported to CSV.", style: "success" });
+  };
+
   return (
     <div className="space-y-8">
       <div className={`flex flex-col sm:flex-row sm:items-center justify-between border-b pb-6 gap-6 sm:gap-0 ${isLightMode ? 'border-black/10' : 'border-white/10'}`}>
@@ -267,8 +359,55 @@ export function AdminBookings() {
             <Layers className="w-4 h-4" />
             <span>Arch421 VIP Registrations ({registrations.length})</span>
           </button>
+          <button
+            onClick={() => setActiveSubTab('form_submissions')}
+            className={`px-6 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap flex items-center gap-2 ${
+              activeSubTab === 'form_submissions'
+                ? (isLightMode ? 'bg-black text-white' : 'bg-white text-dark-bg')
+                : (isLightMode ? 'text-slate-500 hover:text-black hover:bg-black/5' : 'text-white/50 hover:text-white hover:bg-white/5')
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            <span>Form Submissions ({formSubmissions.length})</span>
+          </button>
         </div>
       </div>
+
+      {activeSubTab === 'form_submissions' && (
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between mt-4">
+          {/* Search bar */}
+          <div className="relative w-full md:max-w-md">
+            <Search className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 ${isLightMode ? 'text-black/40' : 'text-white/40'}`} />
+            <input
+              type="text"
+              placeholder="Search custom forms, values, statuses..."
+              value={formSubSearch}
+              onChange={(e) => setFormSubSearch(e.target.value)}
+              className={`w-full pl-11 pr-4 py-3 text-xs font-bold rounded-2xl outline-none border transition-all ${
+                isLightMode 
+                  ? 'bg-white border-black/10 text-slate-800 placeholder-black/40 focus:border-neon-blue focus:ring-1 focus:ring-neon-blue' 
+                  : 'bg-white/5 border-white/5 text-white placeholder-white/30 focus:border-neon-blue focus:ring-1 focus:ring-neon-blue'
+              }`}
+            />
+          </div>
+
+          <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+            {formSubmissions.length > 0 && (
+              <button
+                onClick={exportFormSubmissionsToCSV}
+                className={`px-4 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 border w-full md:w-auto ${
+                  isLightMode 
+                    ? 'bg-black text-white hover:bg-slate-800 border-black/10' 
+                    : 'bg-white text-dark-bg hover:bg-slate-100 border-white/10'
+                }`}
+              >
+                <Download className="w-4 h-4 text-neon-blue" />
+                <span>Export CSV</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {activeSubTab === 'arch421' && (
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between mt-4">
@@ -464,7 +603,7 @@ export function AdminBookings() {
             </div>
           )}
         </>
-      ) : (
+      ) : activeSubTab === 'arch421' ? (
         <>
           {/* Desktop Table View for Arch421 registrations */}
           <div className={`hidden md:block overflow-hidden rounded-[2rem] border ${isLightMode ? 'border-black/10 bg-white shadow-sm' : 'border-white/5 bg-white/5'}`}>
@@ -609,6 +748,182 @@ export function AdminBookings() {
               <Ghost className={`w-12 h-12 mx-auto mb-4 ${isLightMode ? 'text-black/20' : 'text-white/5'}`} />
               <p className={`uppercase font-black tracking-widest text-xs ${isLightMode ? 'text-black/50' : 'text-white/20'}`}>
                 {regSearch ? "No matches found for your search" : "No VIP submissions received yet..."}
+              </p>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          {/* Desktop Table View for Form Submissions */}
+          <div className={`hidden md:block overflow-hidden rounded-[2rem] border ${isLightMode ? 'border-black/10 bg-white shadow-sm' : 'border-white/5 bg-white/5'}`}>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className={`border-b ${isLightMode ? 'border-black/10 bg-black/[0.02]' : 'border-white/10 bg-white/5'}`}>
+                    <th className={`p-6 text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Form Source</th>
+                    <th className={`p-6 text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Submission Content</th>
+                    <th className={`p-6 text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Status</th>
+                    <th className={`p-6 text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Submitted At</th>
+                    <th className={`p-6 text-[10px] font-black uppercase tracking-widest text-right ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody className={`divide-y ${isLightMode ? 'divide-black/10' : 'divide-white/5'}`}>
+                  {filteredFormSubmissions.map(s => {
+                    let parsedData: Record<string, string> = {};
+                    try {
+                      parsedData = JSON.parse(s.data_json);
+                    } catch (e) {}
+                    return (
+                      <tr key={s.id} className={`transition-colors group ${isLightMode ? 'hover:bg-black/[0.01] text-slate-800' : 'hover:bg-white/5 text-white'}`}>
+                        <td className="p-6">
+                          <div className="flex flex-col">
+                            <span className={`text-sm font-black tracking-tight ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
+                              {s.form_title || "Contact Form"}
+                            </span>
+                            <span className={`text-[10px] font-mono uppercase tracking-wider text-neon-blue`}>
+                              Page: {s.page_title || "Custom Page"}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-6 max-w-xs">
+                          <div className="space-y-1">
+                            {Object.entries(parsedData).slice(0, 3).map(([key, val]) => (
+                              <div key={key} className="text-xs truncate">
+                                <span className="font-bold opacity-70">{key}:</span> {String(val)}
+                              </div>
+                            ))}
+                            {Object.keys(parsedData).length > 3 && (
+                              <span className="text-[10px] font-bold text-neon-purple">+ {Object.keys(parsedData).length - 3} more fields</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-6">
+                          <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border ${
+                            s.status === 'reviewed' ? (isLightMode ? 'bg-green-50 text-green-600 border-green-200' : 'bg-green-500/10 text-green-400 border-green-500/20') :
+                            s.status === 'archived' ? (isLightMode ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-white/10 text-white/60 border-white/10') :
+                            (isLightMode ? 'bg-cyan-50 text-cyan-600 border-cyan-200 animate-pulse' : 'bg-neon-blue/10 text-neon-blue border-neon-blue/20 animate-pulse')
+                          }`}>
+                            {s.status || 'pending'}
+                          </span>
+                        </td>
+                        <td className="p-6">
+                          <span className={`text-xs font-mono ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>
+                            {new Date(s.created_at).toLocaleString()}
+                          </span>
+                        </td>
+                        <td className="p-6">
+                          <div className="flex items-center justify-end space-x-2">
+                            <button 
+                              onClick={() => setSelectedSubmission(s)} 
+                              className={`p-2.5 border rounded-xl transition-all transform hover:scale-105 ${isLightMode ? 'bg-black/5 hover:bg-black/10 border-black/10 text-black/60 hover:text-black' : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/60 hover:text-white'}`}
+                              title="View Full Details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={() => updateFormSubmissionStatus(s.id, 'reviewed')} 
+                              className={`p-2.5 border rounded-xl transition-all transform hover:scale-105 ${isLightMode ? 'bg-green-500/5 hover:bg-green-500/10 border-green-500/10 text-green-600/70 hover:text-green-600' : 'bg-green-500/5 hover:bg-green-500/10 border-green-500/10 text-green-400/60 hover:text-green-400'}`}
+                              title="Mark as Reviewed"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={() => updateFormSubmissionStatus(s.id, 'archived')} 
+                              className={`p-2.5 border rounded-xl transition-all transform hover:scale-105 ${isLightMode ? 'bg-yellow-500/5 hover:bg-yellow-500/10 border-yellow-500/10 text-yellow-600/70 hover:text-yellow-600' : 'bg-yellow-500/5 hover:bg-yellow-500/10 border-yellow-500/10 text-yellow-500/60 hover:text-yellow-500'}`}
+                              title="Archive Submission"
+                            >
+                              <Ban className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteFormSubmission(s.id, s.form_title)} 
+                              className={`p-2.5 border rounded-xl transition-all transform hover:scale-105 ${isLightMode ? 'bg-red-500/5 hover:bg-red-500/10 border-red-500/10 text-red-600/70 hover:text-red-600' : 'bg-red-500/5 hover:bg-red-500/10 border-red-500/10 text-red-500/60 hover:text-red-500'}`}
+                              title="Delete Submission"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Mobile Card View for Form Submissions */}
+          <div className="md:hidden grid grid-cols-1 gap-4">
+            {filteredFormSubmissions.map(s => {
+              let parsedData: Record<string, string> = {};
+              try {
+                parsedData = JSON.parse(s.data_json);
+              } catch (e) {}
+              return (
+                <motion.div 
+                  key={s.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`p-5 rounded-[2rem] border space-y-4 ${isLightMode ? 'bg-white border-black/10 shadow-sm text-slate-800' : 'glass-panel border-white/5 text-white'}`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-neon-purple block mb-1">Form Source</span>
+                      <p className={`font-black text-lg tracking-tighter ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{s.form_title || "Contact Form"}</p>
+                      <span className="text-[9px] font-mono text-neon-blue block">Page: {s.page_title}</span>
+                    </div>
+                    <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
+                      s.status === 'reviewed' ? (isLightMode ? 'bg-green-50 text-green-600 border-green-200' : 'bg-green-500/10 text-green-400 border-green-500/20') :
+                      s.status === 'archived' ? (isLightMode ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-white/10 text-white/60 border-white/10') :
+                      (isLightMode ? 'bg-cyan-50 text-cyan-600 border-cyan-200' : 'bg-neon-blue/10 text-neon-blue border-neon-blue/20')
+                    }`}>
+                      {s.status || 'pending'}
+                    </span>
+                  </div>
+
+                  <div className={`space-y-1.5 pt-2 border-t ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
+                    {Object.entries(parsedData).slice(0, 4).map(([key, val]) => (
+                      <div key={key} className="text-xs flex justify-between">
+                        <span className={`font-bold uppercase text-[9px] tracking-wider opacity-60`}>{key}:</span>
+                        <span className="truncate max-w-[200px]">{String(val)}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <button 
+                      onClick={() => setSelectedSubmission(s)}
+                      className={`flex-1 py-3 border rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center space-x-2 ${isLightMode ? 'bg-black/5 hover:bg-black/10 border-black/10 text-slate-700' : 'bg-white/5 border-white/10 text-white'}`}
+                    >
+                      <Eye className="w-3 h-3" />
+                      <span>Details</span>
+                    </button>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => updateFormSubmissionStatus(s.id, 'reviewed')}
+                        className={`p-3 border rounded-xl outline-none ${isLightMode ? 'bg-green-50 border-green-200 text-green-600' : 'bg-green-500/10 border-green-500/20 text-green-400'}`}
+                        title="Mark Reviewed"
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteFormSubmission(s.id, s.form_title)}
+                        className={`p-3 border rounded-xl outline-none ${isLightMode ? 'bg-red-50 border-red-200 text-red-600' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}
+                        title="Delete"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {filteredFormSubmissions.length === 0 && (
+            <div className={`py-20 text-center rounded-[3rem] border border-dashed ${isLightMode ? 'bg-white border-black/15 shadow-sm text-slate-800' : 'glass-panel border-white/5'}`}>
+              <Ghost className={`w-12 h-12 mx-auto mb-4 ${isLightMode ? 'text-black/20' : 'text-white/5'}`} />
+              <p className={`uppercase font-black tracking-widest text-xs ${isLightMode ? 'text-black/50' : 'text-white/20'}`}>
+                {formSubSearch ? "No matching submissions found" : "No custom form submissions recorded yet..."}
               </p>
             </div>
           )}
@@ -817,6 +1132,102 @@ export function AdminBookings() {
                     </button>
                   </div>
                 </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
+      {/* Form Submission Details Modal */}
+      {createPortal(
+        <AnimatePresence>
+          {selectedSubmission && (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setSelectedSubmission(null)}
+                className="absolute inset-0 bg-black/85 backdrop-blur-sm"
+              />
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className={`relative w-full max-w-xl border rounded-3xl shadow-2xl overflow-hidden z-10 ${isLightMode ? 'bg-white border-black/10 text-slate-800' : 'bg-dark-bg border-white/10 text-white'}`}
+              >
+                <div className="p-6 sm:p-8 space-y-6 max-h-[85vh] overflow-y-auto">
+                  <div className="flex justify-between items-start border-b pb-4 border-white/10">
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neon-blue block mb-1">Form Submission Details</span>
+                      <h4 className={`text-2xl font-black uppercase tracking-tight italic ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
+                        {selectedSubmission.form_title || "Contact Form"}
+                      </h4>
+                      <p className={`text-xs opacity-60 mt-1`}>
+                        Submitted from page <span className="font-bold text-neon-blue">"{selectedSubmission.page_title}"</span>
+                      </p>
+                    </div>
+                    <button 
+                      onClick={() => setSelectedSubmission(null)}
+                      className={`p-2 rounded-full transition-colors ${isLightMode ? 'hover:bg-black/5 text-black/40' : 'hover:bg-white/5 text-white/40'}`}
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4 text-xs font-mono border-b pb-4 border-white/10">
+                      <div>
+                        <span className="block text-[10px] font-black uppercase tracking-widest opacity-50">Status</span>
+                        <span className="font-bold uppercase text-neon-purple">{selectedSubmission.status || "pending"}</span>
+                      </div>
+                      <div>
+                        <span className="block text-[10px] font-black uppercase tracking-widest opacity-50">Submitted At</span>
+                        <span>{new Date(selectedSubmission.created_at).toLocaleString()}</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 pt-2">
+                      <span className="block text-[10px] font-black uppercase tracking-widest opacity-50">Form Field Responses</span>
+                      <div className="space-y-3">
+                        {(() => {
+                          let parsed: Record<string, string> = {};
+                          try {
+                            parsed = JSON.parse(selectedSubmission.data_json);
+                          } catch (e) {}
+                          return Object.entries(parsed).map(([key, val]) => (
+                            <div key={key} className={`p-4 rounded-2xl border ${isLightMode ? 'bg-slate-50 border-black/5' : 'bg-white/5 border-white/5'} space-y-1`}>
+                              <span className="block text-[10px] font-black uppercase tracking-wider text-neon-blue">{key}</span>
+                              <p className="text-xs sm:text-sm font-semibold whitespace-pre-wrap leading-relaxed">{String(val) || <span className="italic opacity-55">No reply provided</span>}</p>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-4 border-t border-white/10">
+                    <button 
+                      onClick={() => { updateFormSubmissionStatus(selectedSubmission.id, 'reviewed'); setSelectedSubmission(null); }}
+                      className={`flex-1 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${isLightMode ? 'bg-green-500/5 hover:bg-green-500/10 border-green-500/20 text-green-600' : 'bg-green-500/10 hover:bg-green-500/20 border-green-500/20 text-green-400'}`}
+                    >
+                      Mark Reviewed
+                    </button>
+                    <button 
+                      onClick={() => { updateFormSubmissionStatus(selectedSubmission.id, 'archived'); setSelectedSubmission(null); }}
+                      className={`flex-1 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${isLightMode ? 'bg-yellow-500/5 hover:bg-yellow-500/10 border-yellow-500/20 text-yellow-600' : 'bg-yellow-500/10 hover:bg-yellow-500/20 border-yellow-500/20 text-yellow-500'}`}
+                    >
+                      Archive
+                    </button>
+                    <button 
+                      onClick={() => { handleDeleteFormSubmission(selectedSubmission.id, selectedSubmission.form_title); setSelectedSubmission(null); }}
+                      className={`flex-1 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${isLightMode ? 'bg-red-500/5 hover:bg-red-500/10 border-red-500/20 text-red-600' : 'bg-red-500/10 hover:bg-red-500/20 border-red-500/20 text-red-500'}`}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
               </motion.div>
             </div>
           )}

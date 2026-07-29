@@ -1,9 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { NavLink } from 'react-router-dom';
-import { Radio, Calendar, Podcast, Shield as AdminIcon, Headphones, Menu, X, Video, MessageSquare, Sun, Moon, FileText, ChevronDown, ExternalLink, Info, Instagram, Twitter, Facebook, Youtube, Cloud, Music, Share2, Layers } from 'lucide-react';
+import { Radio, Calendar, Podcast, Shield as AdminIcon, Headphones, Menu, X, Video, MessageSquare, Sun, Moon, FileText, ChevronDown, ExternalLink, Info, Instagram, Twitter, Facebook, Youtube, Cloud, Music, Share2, Layers, Globe } from 'lucide-react';
 import { PlayerBar } from './components/PlayerBar';
-import { ChatSidebar } from './components/ChatSidebar';
-import { ShoutoutWidget } from './components/ShoutoutWidget';
 import { NotificationManager } from './components/NotificationManager';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { AudioProvider, useAudio } from './context/AudioContext';
@@ -19,9 +17,13 @@ import { useLogo } from './hooks/useLogo';
 import { SecretAdminPrompt } from './components/SecretAdminPrompt';
 import { SitePopup } from './components/SitePopup';
 import { AdvertisementSliders } from './components/AdvertisementSliders';
-import { CinematicVisualizer } from './components/CinematicVisualizer';
 import { AppLoader } from './components/AppLoader';
 import { FeaturesSlider } from './components/FeaturesSlider';
+
+// Lazy-loaded components for optimal performance & minimal initial bundle size
+const ChatSidebar = lazy(() => import('./components/ChatSidebar').then(m => ({ default: m.ChatSidebar })));
+const ShoutoutWidget = lazy(() => import('./components/ShoutoutWidget').then(m => ({ default: m.ShoutoutWidget })));
+const CinematicVisualizer = lazy(() => import('./components/CinematicVisualizer').then(m => ({ default: m.CinematicVisualizer })));
 // @ts-ignore
 import glitchLogoUrl from './assets/images/dejavufm_glitch_logo_1784796255055.png';
 import { ThemeAccessibilityDropdown } from './components/ThemeAccessibilityDropdown';
@@ -50,8 +52,18 @@ const Features = lazy(() => import('./pages/Features'));
 const FeatureDetail = lazy(() => import('./pages/FeatureDetail'));
 const Arch421 = lazy(() => import('./pages/Arch421'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const CustomDynamicPage = lazy(() => import('./pages/CustomDynamicPage').then(m => ({ default: m.CustomDynamicPage })));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false, // Prevents aggressive background fetching when switching tabs/windows or waking device
+      refetchOnReconnect: false,   // Prevents redundant fetches during minor network state changes
+      staleTime: 1000 * 30,        // Consider data fresh for 30 seconds to minimize redundant API requests
+      retry: 1,                    // Limit retries to prevent hammering server on failure
+    },
+  },
+});
 
 // Initialize global socket
 if (typeof window !== 'undefined') {
@@ -66,6 +78,8 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
   const [isFeaturesOpen, setIsFeaturesOpen] = useState(false);
   const [isMobileFeaturesOpen, setIsMobileFeaturesOpen] = useState(false);
   const [showSecretPrompt, setShowSecretPrompt] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [openMobileDropdownKey, setOpenMobileDropdownKey] = useState<string | null>(null);
   const { logoUrl, logoShape, isLightMode, settings } = useLogo();
 
   const adminPath = (settings?.admin_custom_path || '/admin').trim().replace(/\/+$/, '') || '/admin';
@@ -112,6 +126,299 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
 
   const featLiveTools = settings?.feat_live_tools !== '0';
   // Removed internal featChat definition since it's now a prop
+
+  // Custom navigation parsing from the master Menu tab settings
+  let customLabels: Record<string, string> = {};
+  if (settings?.menu_item_labels) {
+    try {
+      customLabels = JSON.parse(settings.menu_item_labels);
+    } catch {}
+  }
+
+  let customVisibility: Record<string, boolean> = {};
+  if (settings?.menu_item_visibility) {
+    try {
+      customVisibility = JSON.parse(settings.menu_item_visibility);
+    } catch {}
+  }
+
+  let customPaths: Record<string, string> = {};
+  if (settings?.menu_item_paths) {
+    try {
+      customPaths = JSON.parse(settings.menu_item_paths);
+    } catch {}
+  }
+
+  let customOrder: string[] = ['arch421', 'listen', 'watch', 'schedule', 'djs', 'podcasts', 'features'];
+  if (settings?.menu_order) {
+    customOrder = settings.menu_order.split(',').map((k: string) => k.trim());
+  }
+
+  let customSubItems: Record<string, { label: string; path: string; isExternal?: boolean }[]> = {};
+  if (settings?.menu_sub_items) {
+    try {
+      customSubItems = JSON.parse(settings.menu_sub_items);
+    } catch {}
+  }
+
+  // Backwards compatibility fallback for default features sub-items if not customized in the DB
+  if (!customSubItems['features'] || customSubItems['features'].length === 0) {
+    customSubItems['features'] = [
+      { path: '/features', label: 'All Features' },
+      { path: 'https://dejavufmstore.secure-decoration.com', label: 'Online Store', isExternal: true },
+      { path: '/about', label: 'About Station' },
+      { path: '/contact', label: 'Contact Us' }
+    ];
+  }
+
+  const defaultItems = [
+    { key: 'arch421', path: '/arch421', defaultLabel: 'Arch421' },
+    { key: 'listen', path: '/', defaultLabel: 'Listen' },
+    { key: 'watch', path: '/watch', defaultLabel: 'Watch' },
+    { key: 'schedule', path: '/schedule', defaultLabel: 'Schedule' },
+    { key: 'djs', path: '/djs', defaultLabel: 'DJs and Hosts' },
+    { key: 'podcasts', path: '/podcasts', defaultLabel: 'Podcasts' },
+    { key: 'features', path: '/features', defaultLabel: 'Features' }
+  ];
+
+  const renderedMenuItems = customOrder
+    .map(key => {
+      const isCustom = key.startsWith('custom_');
+      let path = '/';
+      let label = key;
+
+      if (isCustom) {
+        path = customPaths[key] || '#';
+        label = customLabels[key] || 'Custom Link';
+      } else {
+        const defaultItem = defaultItems.find(item => item.key === key);
+        if (!defaultItem) return null;
+        path = defaultItem.path;
+        label = customLabels[key] || defaultItem.defaultLabel;
+      }
+
+      const subItems = customSubItems[key] || [];
+      const hasSubItems = subItems.length > 0;
+
+      if (hasSubItems) {
+        return {
+          key,
+          render: (lbl: string) => (
+            <div 
+              key={key}
+              className="relative group h-full flex items-center"
+              onMouseEnter={() => setActiveDropdown(key)}
+              onMouseLeave={() => setActiveDropdown(null)}
+            >
+              <button 
+                onClick={() => setActiveDropdown(activeDropdown === key ? null : key)}
+                className={`px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                  subItems.some(sub => location.pathname === sub.path) 
+                    ? 'bg-white text-dark-bg shadow-xl' 
+                    : 'text-white/50 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                {lbl} <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${activeDropdown === key ? 'rotate-180' : ''}`} />
+              </button>
+
+              <AnimatePresence>
+                {activeDropdown === key && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+                    className="absolute top-[calc(100%+8px)] left-0 w-64 bg-dark-bg/95 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden z-[1001] p-1.5"
+                  >
+                    <div className="px-3 py-2 mb-1 border-b border-white/5">
+                      <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20">Explore</span>
+                    </div>
+                    {subItems.map((sub, subIdx) => {
+                      const isExt = sub.isExternal || sub.path.startsWith('http://') || sub.path.startsWith('https://');
+                      if (isExt) {
+                        return (
+                          <a 
+                            key={subIdx}
+                            href={sub.path} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] text-white/70 hover:text-white hover:bg-white/10 transition-all group/item"
+                            onClick={() => setActiveDropdown(null)}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-neon-blue/10 flex items-center justify-center group-hover/item:bg-neon-blue/20 transition-colors">
+                                <Radio className="w-4 h-4 text-neon-blue" />
+                              </div>
+                              {sub.label}
+                            </div>
+                            <ExternalLink className="w-3 h-3 text-white/30" />
+                          </a>
+                        );
+                      } else {
+                        return (
+                          <Link 
+                            key={subIdx}
+                            to={sub.path} 
+                            className="flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] text-white/70 hover:text-white hover:bg-white/10 transition-all group/item"
+                            onClick={() => setActiveDropdown(null)}
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-neon-purple/10 flex items-center justify-center group-hover/item:bg-neon-purple/20 transition-colors">
+                              <FileText className="w-4 h-4 text-neon-purple" />
+                            </div>
+                            {sub.label}
+                          </Link>
+                        );
+                      }
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )
+        };
+      }
+
+      // No sub-menu items, render as standard link
+      const isExternal = path.startsWith('http://') || path.startsWith('https://');
+      return {
+        key,
+        render: (lbl: string) => {
+          if (isExternal) {
+            return (
+              <a 
+                key={key} 
+                href={path} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap text-white/50 hover:text-white hover:bg-white/5 flex items-center gap-1"
+              >
+                {lbl}
+              </a>
+            );
+          } else {
+            // Apply special stylings if key matches arch421 or watch, etc.
+            if (key === 'arch421') {
+              return (
+                <NavLink 
+                  key={key} 
+                  to={path} 
+                  className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-[#f75c1e] text-white shadow-[0_0_20px_rgba(247,92,30,0.4)]' : 'text-[#f75c1e] bg-transparent hover:bg-[#f75c1e]/10'}`}
+                >
+                  {lbl}
+                </NavLink>
+              );
+            }
+            if (key === 'watch') {
+              return (
+                <NavLink 
+                  key={key} 
+                  to={path} 
+                  className={({isActive}) => `px-4 xl:px-8 py-3 flex items-center gap-2 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-neon-purple text-white shadow-[0_0_25px_rgba(176,38,255,0.4)]' : 'text-white/50 hover:text-white hover:bg-white/5'}`}
+                >
+                  <Radio className="w-4 h-4 hidden xl:block" /> {lbl}
+                </NavLink>
+              );
+            }
+            return (
+              <NavLink 
+                key={key} 
+                to={path} 
+                className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}
+              >
+                {lbl}
+              </NavLink>
+            );
+          }
+        }
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => {
+      if (!item) return false;
+      if (customVisibility[item.key] === false) return false;
+      if (item.key === 'watch' && featLiveTools === false) return false;
+      return true;
+    })
+    .map(item => {
+      const label = customLabels[item.key] || (defaultItems.find(d => d.key === item.key)?.defaultLabel || item.key);
+      return item.render(label);
+    });
+
+  const defaultMobileItems = [
+    { key: 'arch421', path: '/arch421', defaultLabel: 'Arch421', icon: <Layers className="w-5 h-5" />, color: 'text-[#f75c1e]' },
+    { key: 'listen', path: '/', defaultLabel: 'Listen', exact: true },
+    { key: 'watch', path: '/watch', defaultLabel: 'Watch', icon: <Radio className="w-5 h-5" />, color: 'text-neon-purple', conditional: featLiveTools },
+    { key: 'schedule', path: '/schedule', defaultLabel: 'Schedule' },
+    { key: 'djs', path: '/djs', defaultLabel: 'DJs and Hosts' },
+    { key: 'podcasts', path: '/podcasts', defaultLabel: 'Podcasts', matchPrefix: true },
+    { key: 'features', path: '/features', defaultLabel: 'Features' }
+  ];
+
+  const renderedMobileItems = customOrder
+    .map(key => {
+      const isCustom = key.startsWith('custom_');
+      let path = '/';
+      let label = key;
+      let isExternal = false;
+      let exact = false;
+      let matchPrefix = false;
+
+      if (isCustom) {
+        path = customPaths[key] || '#';
+        label = customLabels[key] || 'Custom Link';
+        isExternal = path.startsWith('http://') || path.startsWith('https://');
+      } else {
+        const defaultItem = defaultMobileItems.find(item => item.key === key);
+        if (!defaultItem) return null;
+        path = defaultItem.path || '/';
+        label = customLabels[key] || defaultItem.defaultLabel;
+        isExternal = !!(defaultItem as any).isExternal;
+        exact = !!defaultItem.exact;
+        matchPrefix = !!defaultItem.matchPrefix;
+      }
+
+      const subItems = customSubItems[key] || [];
+      const hasSubItems = subItems.length > 0;
+
+      if (hasSubItems) {
+        return {
+          key,
+          defaultLabel: label,
+          isMenu: true,
+          exact,
+          matchPrefix,
+          isOpen: openMobileDropdownKey === key,
+          setOpen: (open: boolean) => setOpenMobileDropdownKey(open ? key : null),
+          subItems: subItems.map(sub => ({
+            path: sub.path,
+            label: sub.label,
+            isExternal: sub.isExternal || sub.path.startsWith('http://') || sub.path.startsWith('https://'),
+            icon: <Globe className="w-4 h-4" />
+          }))
+        };
+      }
+
+      // Regular item
+      return {
+        key,
+        path,
+        defaultLabel: label,
+        isExternal,
+        exact,
+        matchPrefix,
+        icon: key === 'arch421' ? <Layers className="w-5 h-5" /> : (key === 'watch' ? <Radio className="w-5 h-5" /> : <Globe className="w-5 h-5" />),
+        color: key === 'arch421' ? 'text-[#f75c1e]' : (key === 'watch' ? 'text-neon-purple' : 'text-neon-blue')
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => {
+      if (!item) return false;
+      if (customVisibility[item.key] === false) return false;
+      if (item.key === 'watch' && featLiveTools === false) return false;
+      return true;
+    })
+    .map(item => ({
+      ...item,
+      label: customLabels[item.key] || item.defaultLabel
+    }));
 
   useEffect(() => {
     if (settings) {
@@ -240,90 +547,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
         </Link>
         
         <div className="hidden xl:flex items-center bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2rem] px-2 py-2 shadow-2xl">
-          <NavLink to="/arch421" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-[#f75c1e] text-white shadow-[0_0_20px_rgba(247,92,30,0.4)]' : 'text-[#f75c1e] bg-transparent hover:bg-[#f75c1e]/10'}`}>Arch421</NavLink>
-          <NavLink to="/" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>Listen</NavLink>
-          {featLiveTools && (
-            <NavLink to="/watch" className={({isActive}) => `px-4 xl:px-8 py-3 flex items-center gap-2 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-neon-purple text-white shadow-[0_0_25px_rgba(176,38,255,0.4)]' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>
-              <Radio className="w-4 h-4 hidden xl:block" /> Watch
-            </NavLink>
-          )}
-          <NavLink to="/schedule" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>Schedule</NavLink>
-          <NavLink to="/djs" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>DJs and Hosts</NavLink>
-          <NavLink to="/podcasts" className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive || location.pathname.startsWith('/podcasts/') ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}>Podcasts</NavLink>
-          
-          <div 
-            className="relative group h-full flex items-center"
-            onMouseEnter={() => setIsFeaturesOpen(true)}
-            onMouseLeave={() => setIsFeaturesOpen(false)}
-          >
-            <button 
-              onClick={() => setIsFeaturesOpen(!isFeaturesOpen)}
-              className={`px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap flex items-center gap-1.5 ${location.pathname.startsWith('/features') || location.pathname === '/contact' ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}
-            >
-              Features <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isFeaturesOpen ? 'rotate-180' : ''}`} />
-            </button>
-
-            <AnimatePresence>
-              {isFeaturesOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: 15, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-                  className="absolute top-[calc(100%+8px)] left-0 w-64 bg-dark-bg/95 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden z-[1001] p-1.5"
-                >
-                  <div className="px-3 py-2 mb-1 border-b border-white/5">
-                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20">Explore</span>
-                  </div>
-                  <Link 
-                    to="/features" 
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] text-white/70 hover:text-white hover:bg-white/10 transition-all group/item"
-                    onClick={() => setIsFeaturesOpen(false)}
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-neon-purple/10 flex items-center justify-center group-hover/item:bg-neon-purple/20 transition-colors">
-                      <FileText className="w-4 h-4 text-neon-purple" />
-                    </div>
-                    All Features
-                  </Link>
-                  <a 
-                    href="https://dejavufmstore.secure-decoration.com" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] text-white/70 hover:text-white hover:bg-white/10 transition-all group/item"
-                    onClick={() => setIsFeaturesOpen(false)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-neon-blue/10 flex items-center justify-center group-hover/item:bg-neon-blue/20 transition-colors">
-                        <Radio className="w-4 h-4 text-neon-blue" />
-                      </div>
-                      Online Store
-                    </div>
-                    <ExternalLink className="w-3 h-3 text-white/30" />
-                  </a>
-                  <Link 
-                    to="/about" 
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] text-white/70 hover:text-white hover:bg-white/10 transition-all group/item"
-                    onClick={() => setIsFeaturesOpen(false)}
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center group-hover/item:bg-yellow-500/20 transition-colors">
-                      <Info className="w-4 h-4 text-yellow-400" />
-                    </div>
-                    About Station
-                  </Link>
-                  <Link 
-                    to="/contact" 
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] text-white/70 hover:text-white hover:bg-white/10 transition-all group/item"
-                    onClick={() => setIsFeaturesOpen(false)}
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center group-hover/item:bg-green-500/20 transition-colors">
-                      <MessageSquare className="w-4 h-4 text-green-400" />
-                    </div>
-                    Contact Us
-                  </Link>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          {renderedMenuItems}
         </div>
 
         <div className="flex items-center space-x-2 md:space-x-4 xl:space-x-6 z-40">
@@ -384,28 +608,9 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
           >
             <div className="flex flex-col min-h-full px-8 pb-32 max-w-md mx-auto">
               <div className="flex flex-col space-y-2.5 mt-2 mb-auto">
-                {[
-                  { path: '/arch421', label: 'Arch421', icon: <Layers className="w-5 h-5" />, color: 'text-[#f75c1e]' },
-                  { path: '/', label: 'Listen', exact: true },
-                  ...(featLiveTools ? [{ path: '/watch', label: 'Watch', icon: <Radio className="w-5 h-5" />, color: 'text-neon-purple' }] : []),
-                  { path: '/schedule', label: 'Schedule' },
-                  { path: '/djs', label: 'DJs and Hosts' },
-                  { path: '/podcasts', label: 'Podcasts', matchPrefix: true },
-                  { 
-                    label: 'Features', 
-                    isMenu: true,
-                    isOpen: isMobileFeaturesOpen,
-                    setOpen: setIsMobileFeaturesOpen,
-                    subItems: [
-                      { path: '/features', label: 'All Features', icon: <FileText className="w-4 h-4" /> },
-                      { path: 'https://dejavufmstore.secure-decoration.com', label: 'Online Store', isExternal: true, icon: <ExternalLink className="w-4 h-4" /> },
-                      { path: '/about', label: 'About Station', icon: <Info className="w-4 h-4" /> },
-                      { path: '/contact', label: 'Contact', icon: <MessageSquare className="w-4 h-4" /> },
-                    ]
-                  },
-                ].map((item: any, index) => (
+                {renderedMobileItems.map((item: any, index) => (
                   <motion.div
-                    key={item.label}
+                    key={item.key}
                     initial={{ opacity: 0, x: -30 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
@@ -440,7 +645,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                                     onClick={() => setIsMobileMenuOpen(false)}
                                     className="flex items-center justify-between p-4 text-white/60 hover:text-white border-b border-white/5 last:border-0"
                                   >
-                                    <span className="text-lg font-medium tracking-tight uppercase tracking-[0.1em] text-[14px]">
+                                    <span className="text-lg font-medium tracking-tight uppercase tracking-[0.15em] text-[14px]">
                                       {sub.label}
                                     </span>
                                     {sub.icon}
@@ -452,7 +657,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                                     onClick={() => setIsMobileMenuOpen(false)}
                                     className={({isActive}) => `flex items-center justify-between p-4 border-b border-white/5 last:border-0 ${isActive ? 'text-white bg-white/10' : 'text-white/60 hover:text-white'}`}
                                   >
-                                    <span className="text-lg font-medium tracking-tight uppercase tracking-[0.1em] text-[14px]">
+                                    <span className="text-lg font-medium tracking-tight uppercase tracking-[0.15em] text-[14px]">
                                       {sub.label}
                                     </span>
                                     {sub.icon}
@@ -665,6 +870,7 @@ function AnimatedRoutes({ adminPath = '/admin' }: { adminPath?: string }) {
                 <Admin />
               </Suspense>
             } />
+            <Route path="/:slug" element={<CustomDynamicPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
@@ -1071,8 +1277,16 @@ function MainLayout() {
       {!isSplitActive && <Navigation onOpenChat={() => setIsChatOpen(true)} featChat={featChat} isStaff={isStaff} />}
       <SitePopup />
       <NotificationManager />
-      {featChat && !isSplitActive && <ChatSidebar isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />}
-      {featShoutouts && !isAdmin && !isSplitActive && <ShoutoutWidget isChatOpen={isChatOpen} />}
+      {featChat && !isSplitActive && (
+        <Suspense fallback={null}>
+          <ChatSidebar isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+        </Suspense>
+      )}
+      {featShoutouts && !isAdmin && !isSplitActive && (
+        <Suspense fallback={null}>
+          <ShoutoutWidget isChatOpen={isChatOpen} />
+        </Suspense>
+      )}
       
       <main className={location.pathname.includes('/studio') || isSplitActive ? "flex-1 w-full relative" : "flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 relative"}>
         {!isAdmin && !isSplitActive && <AdvertisementSliders position="top" />}
@@ -1145,7 +1359,11 @@ function MainLayout() {
       
       {!location.pathname.startsWith('/admin') && !isSplitActive && <MobileBottomBar featLiveTools={featLiveTools} />}
       {!isSplitActive && <PlayerBar />}
-      {featCinematic && <CinematicVisualizer isOpen={isCinematicOpen} onClose={toggleCinematic} />}
+      {featCinematic && (
+        <Suspense fallback={null}>
+          <CinematicVisualizer isOpen={isCinematicOpen} onClose={toggleCinematic} />
+        </Suspense>
+      )}
       {featPWA && <PWAInstallPrompt />}
       <ShareModal 
         isOpen={isShareOpen} 

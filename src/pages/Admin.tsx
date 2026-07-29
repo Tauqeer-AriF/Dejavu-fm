@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, Suspense, lazy } from "react";
 import { useNavigate, Routes, Route, useLocation, Navigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Sun, Moon, Radio, LogOut, Home as HomeIcon } from "lucide-react";
@@ -6,26 +6,30 @@ import { fetchAdmin } from "./admin/adminApi";
 import { LoadingFallback } from "./admin/LoadingFallback";
 import { AdminSecretGate } from "./admin/AdminAuth";
 import { AdminSidebar } from "./admin/AdminSidebar";
-import { AdminAnalytics } from "./admin/AdminAnalytics";
-import { AdminLiveTools } from "./admin/AdminLiveTools";
-import { AdminDJs } from "./admin/AdminDJs";
-import { AdminFeatures } from "./admin/AdminFeatures";
-import { AdminPopup } from "./admin/AdminPopup";
-import { AdminShoutouts } from "./admin/AdminShoutouts";
-import { AdminBookings } from "./admin/AdminBookings";
-import { AdminSchedule } from "./admin/AdminSchedule";
-import { AdminProfile } from "./admin/AdminProfile";
-import { AdminAdvanced, AdminBranding, AdminSettings } from "./admin/AdminSystem";
-import { AdminUsers } from "./admin/AdminUsers";
-import { AdminChatUsers } from "./admin/AdminChatUsers";
-import { AdminChatRoomSettings } from "./admin/AdminChatRoomSettings";
-import { AdminAuditLogs } from "./admin/AdminAuditLogs";
-import { AdminBackup } from "./admin/AdminBackup";
-import { AdminAds } from "./admin/AdminAds";
-import { AdminSEO } from "./admin/AdminSEO";
-import { AdminMedia } from "./admin/AdminMedia";
+
+// Lazy-loaded administrative sub-pages for optimal bundle size and minimal mount overhead
+const AdminAnalytics = lazy(() => import("./admin/AdminAnalytics").then(m => ({ default: m.AdminAnalytics })));
+const AdminLiveTools = lazy(() => import("./admin/AdminLiveTools").then(m => ({ default: m.AdminLiveTools })));
+const AdminDJs = lazy(() => import("./admin/AdminDJs").then(m => ({ default: m.AdminDJs })));
+const AdminPopup = lazy(() => import("./admin/AdminPopup").then(m => ({ default: m.AdminPopup })));
+const AdminShoutouts = lazy(() => import("./admin/AdminShoutouts").then(m => ({ default: m.AdminShoutouts })));
+const AdminBookings = lazy(() => import("./admin/AdminBookings").then(m => ({ default: m.AdminBookings })));
+const AdminSchedule = lazy(() => import("./admin/AdminSchedule").then(m => ({ default: m.AdminSchedule })));
+const AdminProfile = lazy(() => import("./admin/AdminProfile").then(m => ({ default: m.AdminProfile })));
+const AdminBranding = lazy(() => import("./admin/AdminSystem").then(m => ({ default: m.AdminBranding })));
+const AdminSettings = lazy(() => import("./admin/AdminSystem").then(m => ({ default: m.AdminSettings })));
+const AdminUsers = lazy(() => import("./admin/AdminUsers").then(m => ({ default: m.AdminUsers })));
+const AdminChatUsers = lazy(() => import("./admin/AdminChatUsers").then(m => ({ default: m.AdminChatUsers })));
+const AdminChatRoomSettings = lazy(() => import("./admin/AdminChatRoomSettings").then(m => ({ default: m.AdminChatRoomSettings })));
+const AdminAuditLogs = lazy(() => import("./admin/AdminAuditLogs").then(m => ({ default: m.AdminAuditLogs })));
+const AdminBackup = lazy(() => import("./admin/AdminBackup").then(m => ({ default: m.AdminBackup })));
+const AdminAds = lazy(() => import("./admin/AdminAds").then(m => ({ default: m.AdminAds })));
+const AdminMedia = lazy(() => import("./admin/AdminMedia").then(m => ({ default: m.AdminMedia })));
+const AdminMenu = lazy(() => import("./admin/AdminMenu").then(m => ({ default: m.AdminMenu })));
+const AdminPages = lazy(() => import("./admin/AdminPages").then(m => ({ default: m.AdminPages })));
 const AdminStudio = React.lazy(() => import("./admin/AdminStudio").then(m => ({ default: m.AdminStudio })));
 const AdminMetaIntegrations = React.lazy(() => import("./admin/AdminMetaIntegrations").then(m => ({ default: m.AdminMetaIntegrations })));
+const AdminSEO = lazy(() => import("./admin/AdminSEO").then(m => ({ default: m.AdminSEO })));
 import { useLogo } from "../hooks/useLogo";
 import { PremiumRingLoader } from "../components/PremiumRingLoader";
 import { AppLoader } from "../components/AppLoader";
@@ -101,12 +105,11 @@ export default function Admin() {
     if (pathname.includes('/admin/ads')) return 'In Campaign Sliders';
     if (pathname.includes('/admin/shoutouts')) return 'In Shoutouts';
     if (pathname.includes('/admin/analytics')) return 'In Analytics & Stats';
-    if (pathname.includes('/admin/seo')) return 'In SEO Settings';
     if (pathname.includes('/admin/system')) return 'In System Settings';
     if (pathname.includes('/admin/audit-logs')) return 'In Audit Logs';
     if (pathname.includes('/admin/bookings')) return 'In Bookings';
-    if (pathname.includes('/admin/features')) return 'In News & Features';
     if (pathname.includes('/admin/media')) return 'In Media Library';
+    if (pathname.includes('/admin/seo')) return 'In SEO Engine';
     return 'In Dashboard Overview';
   };
 
@@ -673,8 +676,9 @@ export default function Admin() {
                     <Routes location={location}>
                       <Route path="/" element={userRole === 'admin' ? <AdminAnalytics isAdminUser={true} /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
                       <Route path="/live-tools" element={<AdminLiveTools />} />
+                      <Route path="/menu" element={userRole === 'admin' ? <AdminMenu /> : <Navigate to={adminBasePath} replace />} />
+                      <Route path="/pages" element={userRole === 'admin' ? <AdminPages /> : <Navigate to={adminBasePath} replace />} />
                       <Route path="/djs" element={userRole === 'admin' ? <AdminDJs /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
-                      <Route path="/features" element={userRole === 'admin' ? <AdminFeatures /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
                       <Route path="/popup" element={userRole === 'admin' ? <AdminPopup /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
                       <Route path="/ads" element={userRole === 'admin' ? <AdminAds /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
                       <Route path="/shoutouts" element={<AdminShoutouts isAdminUser={userRole === 'admin'} />} />
@@ -683,9 +687,7 @@ export default function Admin() {
                       <Route path="/profile" element={<AdminProfile />} />
 
                       <Route path="/settings" element={userRole === 'admin' ? <AdminSettings /> : <Navigate to={adminBasePath} replace />} />
-                      <Route path="/seo" element={userRole === 'admin' ? <AdminSEO /> : <Navigate to={adminBasePath} replace />} />
                       <Route path="/media" element={userRole === 'admin' ? <AdminMedia /> : <Navigate to={adminBasePath} replace />} />
-                      <Route path="/advanced" element={userRole === 'admin' ? <AdminAdvanced /> : <Navigate to={adminBasePath} replace />} />
                       <Route path="/branding" element={userRole === 'admin' ? <AdminBranding /> : <Navigate to={adminBasePath} replace />} />
                       <Route path="/users" element={userRole === 'admin' ? <AdminUsers isAdminUser={userRole === 'admin'} /> : <Navigate to={adminBasePath} replace />} />
                       <Route path="/chat-users" element={userRole === 'admin' ? <AdminChatUsers isAdminUser={userRole === 'admin'} /> : <Navigate to={adminBasePath} replace />} />
@@ -693,6 +695,7 @@ export default function Admin() {
                       <Route path="/audit-logs" element={userRole === 'admin' ? <AdminAuditLogs /> : <Navigate to={adminBasePath} replace />} />
                       <Route path="/backup" element={userRole === 'admin' ? <AdminBackup /> : <Navigate to={adminBasePath} replace />} />
                       <Route path="/meta-integrations" element={userRole === 'admin' ? <AdminMetaIntegrations /> : <Navigate to={adminBasePath} replace />} />
+                      <Route path="/seo" element={userRole === 'admin' ? <AdminSEO /> : <Navigate to={adminBasePath} replace />} />
 
                       <Route path="*" element={<Navigate to={adminBasePath} replace />} />
                     </Routes>

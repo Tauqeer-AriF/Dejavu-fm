@@ -31,28 +31,28 @@ function DjDiskPlayButton({
       title={isPlaying ? "Pause Live Radio" : "Play Live Radio"}
       className="absolute top-[40%] sm:top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 group/djbtn active:scale-95 transition-all duration-300 focus:outline-none"
     >
-      {/* 1. Atmospheric Ambient Aura driven dynamically by brand colors */}
+      {/* 1. Atmospheric Ambient Aura driven dynamically by brand colors (Pulsation enabled on all devices using lightweight, hardware-accelerated rendering) */}
       <div 
         className={`absolute -inset-6 sm:-inset-10 rounded-full transition-all duration-700 blur-2xl pointer-events-none ${
-          isPlaying ? 'opacity-100 animate-pulse' : 'opacity-0 group-hover/djbtn:opacity-40'
+          isPlaying ? 'opacity-100 animate-pulse-aura-light' : 'opacity-0 group-hover/djbtn:opacity-40'
         }`}
         style={{
           background: `radial-gradient(circle, var(--color-neon-purple, #b026ff) 0%, var(--color-neon-blue, #00d2ff) 55%, transparent 80%)`
         }}
       />
 
-      {/* Live Audio Rippling Expansion Rings in Brand Colors */}
+      {/* Live Audio Rippling Expansion Rings in Brand Colors (Now enabled on all screens using ultra-lightweight, hardware-accelerated custom animations) */}
       {isPlaying && (
-        <>
+        <div className="absolute inset-0 pointer-events-none">
           <div 
-            className="absolute -inset-3 sm:-inset-5 rounded-full border animate-[ping_2.5s_cubic-bezier(0,0,0.2,1)_infinite] pointer-events-none" 
-            style={{ borderColor: 'var(--color-neon-blue, #00d2ff)', opacity: 0.5 }}
+            className="absolute -inset-3 sm:-inset-5 rounded-full border animate-pulse-ring-light-1 pointer-events-none" 
+            style={{ borderColor: 'var(--color-neon-blue, #00d2ff)' }}
           />
           <div 
-            className="absolute -inset-6 sm:-inset-9 rounded-full border animate-[ping_3.5s_cubic-bezier(0,0,0.2,1)_1s_infinite] pointer-events-none" 
-            style={{ borderColor: 'var(--color-neon-purple, #b026ff)', opacity: 0.35 }}
+            className="absolute -inset-6 sm:-inset-9 rounded-full border animate-pulse-ring-light-2 pointer-events-none" 
+            style={{ borderColor: 'var(--color-neon-purple, #b026ff)' }}
           />
-        </>
+        </div>
       )}
 
       {/* 2. Outer Luxury Chamfered Brushed Metal Chassis */}

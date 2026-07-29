@@ -2760,7 +2760,8 @@ apiRouter.put("/admin/settings", authorizeRole(['admin', 'dj']), (req, res) => {
     "backup_frequency_hours", "backup_enabled", "popup_delay", "studio_name", "studio_image",
     "social_instagram", "social_twitter", "social_facebook", "social_youtube", "social_soundcloud", "social_mixcloud", "social_tiktok",
     "default_theme", "under_header_text", "under_header_align",
-    "features_slider_enabled", "features_slider_pages", "admin_custom_path"
+    "features_slider_enabled", "features_slider_pages", "admin_custom_path",
+    "menu_order", "menu_item_labels", "menu_item_visibility", "menu_item_paths", "menu_sub_items"
   ];
   
   for (const key of allowedKeys) {
@@ -4237,6 +4238,190 @@ apiRouter.delete("/admin/ads/:id", authMiddleware, authorizeRole('admin'), (req:
   db.prepare("DELETE FROM advertisements WHERE id = ?").run(req.params.id);
   logAction(req, 'DELETE', 'advertisement', req.params.id);
   res.json({ success: true });
+});
+
+// ==========================================
+// Custom Dynamic Pages API Endpoints
+// ==========================================
+
+// Public: Get all published custom pages
+apiRouter.get("/pages", (req, res) => {
+  try {
+    const pages = db.prepare("SELECT id, slug, title, description, is_published, created_at, updated_at FROM custom_pages WHERE is_published = 1 ORDER BY title ASC").all();
+    res.json(pages);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Public: Get a single custom page by slug
+apiRouter.get("/pages/slug/:slug", (req, res) => {
+  try {
+    const page = db.prepare("SELECT * FROM custom_pages WHERE slug = ? AND is_published = 1").get(req.params.slug);
+    if (!page) {
+      return res.status(404).json({ error: "Page not found" });
+    }
+    res.json(page);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Get all custom pages (including unpublished)
+apiRouter.get("/admin/pages", authMiddleware, authorizeRole('admin'), (req, res) => {
+  try {
+    const pages = db.prepare("SELECT * FROM custom_pages ORDER BY created_at DESC").all();
+    res.json(pages);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Get a single custom page by ID
+apiRouter.get("/admin/pages/:id", authMiddleware, authorizeRole('admin'), (req, res) => {
+  try {
+    const page = db.prepare("SELECT * FROM custom_pages WHERE id = ?").get(req.params.id);
+    if (!page) {
+      return res.status(404).json({ error: "Page not found" });
+    }
+    res.json(page);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Create a custom page
+apiRouter.post("/admin/pages", authMiddleware, authorizeRole('admin'), (req: any, res: any) => {
+  try {
+    const { slug, title, description, content, is_published } = req.body;
+    if (!slug || !title) {
+      return res.status(400).json({ error: "Slug and title are required" });
+    }
+
+    // Check slug uniqueness
+    const existing = db.prepare("SELECT 1 FROM custom_pages WHERE slug = ?").get(slug.trim().toLowerCase());
+    if (existing) {
+      return res.status(400).json({ error: "A page with this URL slug already exists" });
+    }
+
+    const id = crypto.randomUUID();
+    const publishedVal = is_published ? 1 : 0;
+    const contentStr = typeof content === "string" ? content : JSON.stringify(content || []);
+
+    db.prepare(`
+      INSERT INTO custom_pages (id, slug, title, description, content, is_published, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    `).run(id, slug.trim().toLowerCase(), title.trim(), description || "", contentStr, publishedVal);
+
+    logAction(req, 'CREATE', 'custom_page', id, { title });
+    res.status(201).json({ success: true, id, slug });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Update a custom page
+apiRouter.put("/admin/pages/:id", authMiddleware, authorizeRole('admin'), (req: any, res: any) => {
+  try {
+    const { slug, title, description, content, is_published } = req.body;
+    if (!slug || !title) {
+      return res.status(400).json({ error: "Slug and title are required" });
+    }
+
+    // Check slug uniqueness for other pages
+    const existing = db.prepare("SELECT 1 FROM custom_pages WHERE slug = ? AND id != ?").get(slug.trim().toLowerCase(), req.params.id);
+    if (existing) {
+      return res.status(400).json({ error: "A page with this URL slug already exists" });
+    }
+
+    const publishedVal = is_published ? 1 : 0;
+    const contentStr = typeof content === "string" ? content : JSON.stringify(content || []);
+
+    db.prepare(`
+      UPDATE custom_pages
+      SET slug = ?, title = ?, description = ?, content = ?, is_published = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `).run(slug.trim().toLowerCase(), title.trim(), description || "", contentStr, publishedVal, req.params.id);
+
+    logAction(req, 'UPDATE', 'custom_page', req.params.id, { title });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Delete a custom page
+apiRouter.delete("/admin/pages/:id", authMiddleware, authorizeRole('admin'), (req: any, res: any) => {
+  try {
+    db.prepare("DELETE FROM custom_pages WHERE id = ?").run(req.params.id);
+    logAction(req, 'DELETE', 'custom_page', req.params.id);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// Custom Page Form Submissions API Endpoints
+// ==========================================
+
+// Public: Submit form data from a custom dynamic page
+apiRouter.post("/pages/:pageId/submit", (req, res) => {
+  try {
+    const { pageId } = req.params;
+    const { formTitle, formData } = req.body;
+
+    if (!formData || typeof formData !== 'object') {
+      return res.status(400).json({ error: "Invalid form data submission." });
+    }
+
+    // Fetch page to verify and get title
+    const page = db.prepare("SELECT title FROM custom_pages WHERE id = ?").get(pageId);
+    if (!page) {
+      return res.status(404).json({ error: "Target custom page not found." });
+    }
+
+    const dataJson = JSON.stringify(formData);
+    const info = db.prepare(`
+      INSERT INTO custom_form_submissions (page_id, page_title, form_title, data_json, status, created_at)
+      VALUES (?, ?, ?, ?, 'pending', datetime('now'))
+    `).run(pageId, page.title, formTitle || "Form Submission", dataJson);
+
+    res.json({ success: true, id: info.lastInsertRowid });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Fetch all custom form submissions
+apiRouter.get("/admin/form-submissions", authMiddleware, authorizeRole('admin'), (req: any, res: any) => {
+  try {
+    const submissions = db.prepare("SELECT * FROM custom_form_submissions ORDER BY created_at DESC").all();
+    res.json(submissions);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Update custom form submission status
+apiRouter.put("/admin/form-submissions/:id/status", authMiddleware, authorizeRole('admin'), (req: any, res: any) => {
+  try {
+    const { status } = req.body;
+    db.prepare("UPDATE custom_form_submissions SET status = ? WHERE id = ?").run(status, req.params.id);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Delete a custom form submission
+apiRouter.delete("/admin/form-submissions/:id", authMiddleware, authorizeRole('admin'), (req: any, res: any) => {
+  try {
+    db.prepare("DELETE FROM custom_form_submissions WHERE id = ?").run(req.params.id);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Global Error Handler Middleware

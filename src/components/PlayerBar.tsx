@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 
 function Visualizer({ isPlaying, volume }: { isPlaying: boolean; volume: number }) {
   const numBars = 16;
-  const [heights, setHeights] = useState<number[]>(Array(numBars).fill(10));
+  const containerRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef<number>();
   const { getAnalyser } = useAudio();
   
@@ -16,6 +16,7 @@ function Visualizer({ isPlaying, volume }: { isPlaying: boolean; volume: number 
     
     const animate = () => {
       const analyser = getAnalyser();
+      const children = containerRef.current?.children;
       
       if (isPlaying && volume > 0 && analyser) {
         const dataArray = new Uint8Array(analyser.frequencyBinCount);
@@ -30,38 +31,75 @@ function Visualizer({ isPlaying, volume }: { isPlaying: boolean; volume: number 
         }
 
         if (hasData) {
-          const newHeights = Array.from({ length: numBars }, (_, i) => {
-            const binIndex = Math.floor(i * (dataArray.length * 0.4) / numBars); 
-            const value = dataArray[binIndex]; 
-            const percent = (value / 255) * 100;
-            return Math.max(15, percent);
-          });
-          setHeights(newHeights);
+          if (children) {
+            for (let i = 0; i < numBars; i++) {
+              const binIndex = Math.floor(i * (dataArray.length * 0.4) / numBars); 
+              const value = dataArray[binIndex]; 
+              const percent = (value / 255) * 100;
+              const h = Math.min(100, Math.max(15, percent));
+              const child = children[i] as HTMLDivElement;
+              if (child) {
+                child.style.height = `${h}%`;
+                child.style.opacity = '0.9';
+              }
+            }
+          }
           requestRef.current = requestAnimationFrame(animate);
         } else {
-          setHeights(Array.from({ length: numBars }, () => {
-            const min = 15;
-            const max = 20 + (80 * volume);
-            return Math.random() * (max - min) + min;
-          }));
+          if (children) {
+            for (let i = 0; i < numBars; i++) {
+              const min = 15;
+              const max = 20 + (80 * volume);
+              const val = Math.random() * (max - min) + min;
+              const child = children[i] as HTMLDivElement;
+              if (child) {
+                child.style.height = `${val}%`;
+                child.style.opacity = '0.9';
+              }
+            }
+          }
           interval = setTimeout(animate, 150);
         }
       } else if (isPlaying && volume > 0) {
-        setHeights(Array.from({ length: numBars }, () => {
-          const min = 15;
-          const max = 20 + (80 * volume);
-          return Math.random() * (max - min) + min;
-        }));
+        if (children) {
+          for (let i = 0; i < numBars; i++) {
+            const min = 15;
+            const max = 20 + (80 * volume);
+            const val = Math.random() * (max - min) + min;
+            const child = children[i] as HTMLDivElement;
+            if (child) {
+              child.style.height = `${val}%`;
+              child.style.opacity = '0.9';
+            }
+          }
+        }
         interval = setTimeout(animate, 150);
       } else {
-        setHeights(Array(numBars).fill(10));
+        if (children) {
+          for (let i = 0; i < numBars; i++) {
+            const child = children[i] as HTMLDivElement;
+            if (child) {
+              child.style.height = '10%';
+              child.style.opacity = '0.2';
+            }
+          }
+        }
       }
     };
     
     if (isPlaying) {
       animate();
     } else {
-      setHeights(Array(numBars).fill(10));
+      const children = containerRef.current?.children;
+      if (children) {
+        for (let i = 0; i < numBars; i++) {
+          const child = children[i] as HTMLDivElement;
+          if (child) {
+            child.style.height = '10%';
+            child.style.opacity = '0.2';
+          }
+        }
+      }
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
     }
     
@@ -72,12 +110,16 @@ function Visualizer({ isPlaying, volume }: { isPlaying: boolean; volume: number 
   }, [isPlaying, volume, getAnalyser]);
 
   return (
-    <div className="flex items-end space-x-[2px] h-8 mr-8 align-bottom">
-      {heights.map((h, i) => (
+    <div ref={containerRef} className="flex items-end space-x-[2px] h-8 mr-8 align-bottom">
+      {Array.from({ length: numBars }).map((_, i) => (
         <div 
           key={i} 
-          className={`w-1 rounded-full transition-all ease-linear ${isPlaying ? 'duration-50' : 'duration-150'} ${i % 3 === 0 ? 'bg-neon-purple shadow-[0_0_12px_rgba(176,38,255,0.6)]' : i % 3 === 1 ? 'bg-neon-blue shadow-[0_0_12px_rgba(0,210,255,0.6)]' : 'bg-white shadow-[0_0_12px_rgba(255,255,255,0.6)]'}`}
-          style={{ height: `${Math.min(100, Math.max(15, h))}%`, opacity: isPlaying && volume > 0 ? 0.9 : 0.2 }}
+          className={`w-1 rounded-full ${
+            isPlaying 
+              ? 'transition-[opacity] duration-150 ease-linear' 
+              : 'transition-[height,opacity] duration-500 ease-out'
+          } ${i % 3 === 0 ? 'bg-neon-purple shadow-[0_0_12px_rgba(176,38,255,0.6)]' : i % 3 === 1 ? 'bg-neon-blue shadow-[0_0_12px_rgba(0,210,255,0.6)]' : 'bg-white shadow-[0_0_12px_rgba(255,255,255,0.6)]'}`}
+          style={{ height: '10%', opacity: 0.2 }}
         />
       ))}
     </div>

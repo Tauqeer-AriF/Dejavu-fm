@@ -524,6 +524,33 @@ export function initDb() {
     CREATE INDEX IF NOT EXISTS idx_user_blocks_blocker ON user_blocks(blocker);
     CREATE INDEX IF NOT EXISTS idx_user_blocks_blocked ON user_blocks(blocked);
   `);
+  runMigration('custom_pages_table_v1', `
+    CREATE TABLE IF NOT EXISTS custom_pages (
+      id TEXT PRIMARY KEY,
+      slug TEXT UNIQUE NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      content TEXT NOT NULL,
+      is_published INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_custom_pages_slug ON custom_pages(slug);
+    CREATE INDEX IF NOT EXISTS idx_custom_pages_published ON custom_pages(is_published);
+  `);
+  runMigration('custom_form_submissions_table_v1', `
+    CREATE TABLE IF NOT EXISTS custom_form_submissions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      page_id TEXT NOT NULL,
+      page_title TEXT NOT NULL,
+      form_title TEXT,
+      data_json TEXT NOT NULL,
+      status TEXT DEFAULT 'pending',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_custom_form_submissions_page ON custom_form_submissions(page_id);
+    CREATE INDEX IF NOT EXISTS idx_custom_form_submissions_created ON custom_form_submissions(created_at);
+  `);
   try {
     db.prepare(`
       UPDATE admins 
