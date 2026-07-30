@@ -21,7 +21,12 @@ const itemVariants = {
 import { SkeletonPodcast } from "../components/Skeleton";
 
 export default function PodcastsPage() {
-  const { isLightMode } = useLogo();
+  const { isLightMode, getPageTitle } = useLogo();
+
+  const rawTitle = getPageTitle('podcasts', 'Podcasts');
+  const words = rawTitle.split(' ');
+  const firstPart = words.slice(0, -1).join(' ') || '';
+  const lastWord = words.length > 1 ? words[words.length - 1] : words[0];
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get("s") || "";
@@ -109,14 +114,14 @@ export default function PodcastsPage() {
             animate={{ opacity: 0.05 }}
             className="absolute -top-12 left-0 text-[10rem] font-black uppercase tracking-tighter text-stroke hidden md:block select-none pointer-events-none"
           >
-            Podcasts
+            {lastWord}
           </motion.div>
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className={`text-4xl sm:text-6xl md:text-8xl font-black font-display uppercase tracking-tighter leading-none relative z-10 drop-shadow-2xl ${isLightMode ? 'text-slate-900' : 'text-white'}`}
           >
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue">Podcasts</span>
+            {firstPart && firstPart + " "}<span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue">{lastWord}</span>
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0 }}

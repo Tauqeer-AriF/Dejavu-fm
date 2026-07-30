@@ -12,7 +12,7 @@ import { Toaster, toast } from 'sonner';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
-import { convertToLocalTime } from './lib/timeUtils';
+import { convertToLocalTime, getLondonTime } from './lib/timeUtils';
 import { useLogo } from './hooks/useLogo';
 import { SecretAdminPrompt } from './components/SecretAdminPrompt';
 import { SitePopup } from './components/SitePopup';
@@ -1086,7 +1086,7 @@ function MainLayout() {
   useEffect(() => {
     const updateOnAir = () => {
       const schedule = Array.isArray(scheduleData) ? scheduleData : [];
-      const now = new Date();
+      const now = getLondonTime();
       const currentDay = now.getDay();
       const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
@@ -1137,12 +1137,12 @@ function MainLayout() {
     if (settings) {
       if (settings.stream_url) setStreamUrl(settings.stream_url);
       
-      if (settings.seo_title) {
+      if (settings.app_name) {
+        document.title = settings.app_name;
+      } else if (settings.seo_title) {
         document.title = settings.seo_title;
       } else if (settings.app_title) {
         document.title = settings.app_title;
-      } else if (settings.app_name) {
-        document.title = settings.app_name;
       }
 
       const updateMetaTag = (attrName: string, attrValue: string, content: string) => {
@@ -1241,18 +1241,19 @@ function MainLayout() {
   // Dynamic Client-Side SEO Engine: Automatically update tab titles & meta on route navigation
   useEffect(() => {
     if (isAdmin) {
+      const adminAppName = settings?.app_name || "DejavuFM";
       if (location.pathname.includes('/admin/studio')) {
-        document.title = "Studio Inbox | DejavuFM";
+        document.title = `Studio Inbox | ${adminAppName}`;
       } else if (location.pathname.includes('/admin/advanced')) {
-        document.title = "Advanced Features | DejavuFM";
+        document.title = `Advanced Features | ${adminAppName}`;
       } else {
-        document.title = "Dashboard | DejavuFM";
+        document.title = `Dashboard | ${adminAppName}`;
       }
       return;
     }
 
-    const appTitle = settings?.seo_title || settings?.app_title || settings?.app_name || "DejavuFM";
-    const baseDesc = settings?.seo_description || "DejavuFM is the underground radio station combining London beats with global energy.";
+    const appTitle = settings?.app_name || "DejavuFM";
+    const baseDesc = settings?.seo_description || `${appTitle} is the underground radio station combining London beats with global energy.`;
     
     const updateMetaTag = (attrName: string, attrValue: string, content: string) => {
       const selector = attrName === 'property' ? `meta[property="${attrValue}"]` : `meta[name="${attrValue}"]`;
@@ -1265,33 +1266,53 @@ function MainLayout() {
       element.content = content;
     };
 
+    let customPageTitles: Record<string, string> = {};
+    if (settings?.menu_item_page_titles) {
+      try {
+        customPageTitles = JSON.parse(settings.menu_item_page_titles);
+      } catch (e) {}
+    }
+
     let title = appTitle;
     let desc = baseDesc;
 
     if (location.pathname === "/arch421") {
-      title = `ARCH 421: THE UNMUTED ARCHIVES. OPENING SOON. | ${appTitle}`;
+      const pageTitle = customPageTitles['arch421'] || "ARCH 421: THE UNMUTED ARCHIVES. OPENING SOON.";
+      title = `${pageTitle} | ${appTitle}`;
       desc = "Unlock the exclusive archives of ARCH 421. Opening soon on DejavuFM. Be ready for the unmuted sound experience.";
     } else if (location.pathname === "/watch") {
-      title = `Watch Live Studio Feed | ${appTitle}`;
+      const pageTitle = customPageTitles['watch'] || "Watch Live Studio Feed";
+      title = `${pageTitle} | ${appTitle}`;
       desc = "Watch our resident DJs live from the DejavuFM broadcasting studio. Tune into underground sound, live chats, and visual feeds.";
     } else if (location.pathname === "/schedule") {
-      title = `Radio Broadcast Schedule & Timetable | ${appTitle}`;
+      const pageTitle = customPageTitles['schedule'] || "Radio Broadcast Schedule & Timetable";
+      title = `${pageTitle} | ${appTitle}`;
       desc = "Check out the full weekly broadcast timetable on DejavuFM. Find slot times for your favorite Resident DJs and never miss a live show.";
     } else if (location.pathname === "/djs") {
-      title = `Resident DJs, Hosts & Creators | ${appTitle}`;
+      const pageTitle = customPageTitles['djs'] || "Resident DJs, Hosts & Creators";
+      title = `${pageTitle} | ${appTitle}`;
       desc = "Meet the incredible resident DJs and hosts of DejavuFM. Discover bios, scheduled times, and dynamic audio archives from London's finest.";
     } else if (location.pathname === "/podcasts") {
-      title = `Podcasts & Audio Catch-Up Library | ${appTitle}`;
+      const pageTitle = customPageTitles['podcasts'] || "Podcasts & Audio Catch-Up Library";
+      title = `${pageTitle} | ${appTitle}`;
       desc = "Missed a live set? Catch up with our comprehensive podcast archive containing past shows, guest mixes, and exclusive interviews on demand.";
     } else if (location.pathname === "/features") {
-      title = `Features, News & Highlights | ${appTitle}`;
+      const pageTitle = customPageTitles['features'] || "Features, News & Highlights";
+      title = `${pageTitle} | ${appTitle}`;
       desc = "Stay informed with the latest DejavuFM features, underground radio news, event highlights, and special announcement postings.";
     } else if (location.pathname === "/about") {
-      title = `About Us & Station History | ${appTitle}`;
+      const pageTitle = customPageTitles['about'] || "About Us & Station History";
+      title = `${pageTitle} | ${appTitle}`;
       desc = "The heartbeat of London's underground since 2005. Read about our journey, culture, and our dedication to showcasing underground music.";
     } else if (location.pathname === "/contact") {
-      title = `Contact Us & Request Studio Line | ${appTitle}`;
+      const pageTitle = customPageTitles['contact'] || "Contact Us & Request Studio Line";
+      title = `${pageTitle} | ${appTitle}`;
       desc = "Get in touch with the team at DejavuFM. Drop a line for inquiries, partnerships, resident bookings, or general suggestions.";
+    } else if (location.pathname === "/") {
+      const pageTitle = customPageTitles['listen'] || "";
+      if (pageTitle) {
+        title = `${pageTitle} | ${appTitle}`;
+      }
     }
 
     document.title = title;

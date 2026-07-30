@@ -2765,7 +2765,7 @@ apiRouter.put("/admin/settings", authorizeRole(['admin', 'dj']), (req, res) => {
     "social_instagram", "social_twitter", "social_facebook", "social_youtube", "social_soundcloud", "social_mixcloud", "social_tiktok",
     "default_theme", "under_header_text", "under_header_align",
     "features_slider_enabled", "features_slider_pages", "admin_custom_path",
-    "menu_order", "menu_item_labels", "menu_item_visibility", "menu_item_paths", "menu_sub_items"
+    "menu_order", "menu_item_labels", "menu_item_visibility", "menu_item_paths", "menu_sub_items", "menu_item_page_titles"
   ];
   
   for (const key of allowedKeys) {

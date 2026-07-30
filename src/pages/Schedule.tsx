@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Bell, BellOff, Calendar as CalendarIcon, Search, Layers } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
-import { convertToLocalTime } from "../lib/timeUtils";
+import { convertToLocalTime, getLondonTime } from "../lib/timeUtils";
 import { useLogo } from "../hooks/useLogo";
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -26,7 +26,7 @@ const itemVariants = {
 export default function Schedule() {
   const [reminders, setReminders] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<number | 'all'>(() => {
-    return new Date().getDay();
+    return getLondonTime().getDay();
   });
   const [searchQuery, setSearchQuery] = useState("");
   
@@ -35,7 +35,12 @@ export default function Schedule() {
     queryFn: () => fetch("/api/public/schedule").then(res => res.json())
   });
 
-  const { logoUrl, isLightMode, settings, resolveDjImage } = useLogo();
+  const { logoUrl, isLightMode, settings, resolveDjImage, getPageTitle } = useLogo();
+
+  const rawTitle = getPageTitle('schedule', 'Weekly Schedule');
+  const words = rawTitle.split(' ');
+  const firstPart = words.slice(0, -1).join(' ') || '';
+  const lastWord = words.length > 1 ? words[words.length - 1] : words[0];
 
   useEffect(() => {
     const saved = localStorage.getItem('dejavu_reminders');
@@ -100,7 +105,7 @@ export default function Schedule() {
   }, [scheduleData]);
 
   const [timeCtx, setTimeCtx] = useState(() => {
-    const now = new Date();
+    const now = getLondonTime();
     return {
       day: now.getDay(),
       time: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
@@ -109,7 +114,7 @@ export default function Schedule() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      const now = new Date();
+      const now = getLondonTime();
       setTimeCtx({
         day: now.getDay(),
         time: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
@@ -165,7 +170,7 @@ export default function Schedule() {
               isLightMode ? 'text-slate-900' : 'text-white'
             }`}
           >
-            Weekly <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue">Schedule</span>
+            {firstPart && firstPart + " "}<span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue">{lastWord}</span>
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0 }}

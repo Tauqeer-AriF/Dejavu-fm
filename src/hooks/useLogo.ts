@@ -176,5 +176,19 @@ export function useLogo() {
     return djPhoto;
   };
 
-  return { logoUrl, logoShape, isLightMode, settings, resolveDjImage };
+  const getPageTitle = (key: string, defaultTitle: string): string => {
+    if (settings?.menu_item_page_titles) {
+      try {
+        const titles = JSON.parse(settings.menu_item_page_titles);
+        if (titles[key] && titles[key].trim() !== "") {
+          return titles[key];
+        }
+      } catch (e) {
+        console.error("Failed to parse menu_item_page_titles", e);
+      }
+    }
+    return defaultTitle;
+  };
+
+  return { logoUrl, logoShape, isLightMode, settings, resolveDjImage, getPageTitle };
 }

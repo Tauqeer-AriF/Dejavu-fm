@@ -37,6 +37,7 @@ export function AdminMenu() {
   // Menu Configuration
   const [menuItems, setMenuItems] = useState<MenuItem[]>(DEFAULT_MENU_ITEMS);
   const [menuItemLabels, setMenuItemLabels] = useState<Record<string, string>>({});
+  const [menuItemPageTitles, setMenuItemPageTitles] = useState<Record<string, string>>({});
   const [menuItemVisibility, setMenuItemVisibility] = useState<Record<string, boolean>>({});
   const [menuItemPaths, setMenuItemPaths] = useState<Record<string, string>>({});
   const [menuSubItems, setMenuSubItems] = useState<Record<string, { label: string; path: string; isExternal?: boolean }[]>>({});
@@ -69,6 +70,16 @@ export function AdminMenu() {
           }
         }
         setMenuItemLabels(parsedLabels);
+
+        let parsedPageTitles: Record<string, string> = {};
+        if (data.menu_item_page_titles) {
+          try {
+            parsedPageTitles = JSON.parse(data.menu_item_page_titles);
+          } catch (e) {
+            console.error('Failed to parse menu_item_page_titles', e);
+          }
+        }
+        setMenuItemPageTitles(parsedPageTitles);
 
         let parsedPaths: Record<string, string> = {};
         if (data.menu_item_paths) {
@@ -220,6 +231,13 @@ export function AdminMenu() {
     }));
   };
 
+  const handlePageTitleChange = (key: string, value: string) => {
+    setMenuItemPageTitles(prev => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
   const handlePathChange = (key: string, value: string) => {
     setMenuItemPaths(prev => ({
       ...prev,
@@ -308,6 +326,7 @@ export function AdminMenu() {
     const visibilityStr = JSON.stringify(menuItemVisibility);
     const pathsStr = JSON.stringify(menuItemPaths);
     const subItemsStr = JSON.stringify(menuSubItems);
+    const pageTitlesStr = JSON.stringify(menuItemPageTitles);
 
     try {
       const res = await fetchAdmin('/api/admin/settings', {
@@ -321,6 +340,7 @@ export function AdminMenu() {
           menu_item_visibility: visibilityStr,
           menu_item_paths: pathsStr,
           menu_sub_items: subItemsStr,
+          menu_item_page_titles: pageTitlesStr,
         },
       });
 
@@ -425,7 +445,7 @@ export function AdminMenu() {
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 max-w-xl w-full justify-end ml-auto">
+                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 max-w-xl w-full justify-end ml-auto">
                       {/* Sub-menu Toggle Button */}
                       <button
                         type="button"
@@ -440,18 +460,36 @@ export function AdminMenu() {
                         <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                       </button>
 
-                      {/* Label Input */}
-                      <input
-                        type="text"
-                        value={currentLabel}
-                        onChange={(e) => handleLabelChange(item.key, e.target.value)}
-                        placeholder={item.defaultLabel}
-                        className={`flex-1 min-w-[120px] rounded-xl px-3.5 py-2 text-xs font-semibold outline-none transition-all border ${
-                          isLightMode 
-                            ? 'bg-white border-black/10 text-black placeholder:text-black/30 focus:border-neon-purple' 
-                            : 'bg-black/50 border-white/5 text-white placeholder:text-white/20 focus:border-neon-purple'
-                        }`}
-                      />
+                      {/* Stacked Inputs */}
+                      <div className="flex-1 min-w-[150px] flex flex-col gap-1.5">
+                        <label className={`text-[9px] font-black uppercase tracking-wider ${isLightMode ? 'text-slate-400' : 'text-white/40'}`}>Menu Label</label>
+                        <input
+                          type="text"
+                          value={currentLabel}
+                          onChange={(e) => handleLabelChange(item.key, e.target.value)}
+                          placeholder={item.defaultLabel}
+                          className={`w-full rounded-xl px-3 py-1.5 text-xs font-semibold outline-none transition-all border ${
+                            isLightMode 
+                              ? 'bg-white border-black/10 text-black placeholder:text-black/30 focus:border-neon-purple' 
+                              : 'bg-black/50 border-white/5 text-white placeholder:text-white/20 focus:border-neon-purple'
+                          }`}
+                        />
+                      </div>
+
+                      <div className="flex-1 min-w-[150px] flex flex-col gap-1.5">
+                        <label className={`text-[9px] font-black uppercase tracking-wider ${isLightMode ? 'text-slate-400' : 'text-white/40'}`}>Page Title</label>
+                        <input
+                          type="text"
+                          value={menuItemPageTitles[item.key] || ''}
+                          onChange={(e) => handlePageTitleChange(item.key, e.target.value)}
+                          placeholder={item.defaultLabel}
+                          className={`w-full rounded-xl px-3 py-1.5 text-xs font-semibold outline-none transition-all border ${
+                            isLightMode 
+                              ? 'bg-white border-black/10 text-black placeholder:text-black/30 focus:border-neon-purple' 
+                              : 'bg-black/50 border-white/5 text-white placeholder:text-white/20 focus:border-neon-purple'
+                          }`}
+                        />
+                      </div>
 
                       {/* Visibility Toggle */}
                       <button

@@ -101,7 +101,9 @@ const getSecureImageUrl = (url?: string) => {
 };
 
 export default function WatchLive() {
-  const { logoUrl, resolveDjImage, isLightMode } = useLogo();
+  const { logoUrl, resolveDjImage, isLightMode, getPageTitle } = useLogo();
+  
+  const rawTitle = getPageTitle('watch', 'Live Studio Cam');
   
   const [trackOverlay, setTrackOverlay] = useState<{artist: string, title: string} | null>(null);
   const overlayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -276,8 +278,8 @@ export default function WatchLive() {
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
               </span>
               <span className="text-[10px] font-black uppercase tracking-widest opacity-80 whitespace-nowrap">
-                <span className="hidden sm:inline">Live Studio Cam</span>
-                <span className="sm:hidden">Live Cam</span>
+                <span className="hidden sm:inline">{rawTitle}</span>
+                <span className="sm:hidden">{rawTitle.includes(' ') ? rawTitle.split(' ')[0] : rawTitle}</span>
               </span>
             </div>
             

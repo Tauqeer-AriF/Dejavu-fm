@@ -144,7 +144,12 @@ export default function DJs() {
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  const { logoUrl, isLightMode, resolveDjImage } = useLogo();
+  const { logoUrl, isLightMode, resolveDjImage, getPageTitle } = useLogo();
+
+  const rawTitle = getPageTitle('djs', 'The Residents');
+  const words = rawTitle.split(' ');
+  const firstPart = words.slice(0, -1).join(' ') || '';
+  const lastWord = words.length > 1 ? words[words.length - 1] : words[0];
 
   const filteredDjs = useMemo(() => {
     if (!djs) return [];
@@ -200,12 +205,12 @@ export default function DJs() {
            transition={{ duration: 1 }}
            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[4rem] sm:text-[10rem] md:text-[16rem] font-black pointer-events-none uppercase tracking-tighter w-full text-transparent text-stroke opacity-10 select-none whitespace-nowrap overflow-hidden"
         >
-          Residents
+          {lastWord}
         </motion.div>
         <h1 className={`text-4xl sm:text-6xl md:text-8xl font-display font-black uppercase tracking-tighter relative z-10 drop-shadow-2xl ${
           isLightMode ? 'text-slate-900' : 'text-white'
         }`}>
-          The <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue">Residents</span>
+          {firstPart && firstPart + " "}<span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue">{lastWord}</span>
         </h1>
         <p className={`text-base md:text-lg font-light tracking-wide relative z-10 max-w-2xl mx-auto border-t pt-8 transition-colors ${
           isLightMode ? 'border-black/5 text-slate-500' : 'border-white/5 text-white/50'

@@ -196,7 +196,7 @@ function DynamicForm({ pageId, block, isLightMode }: DynamicFormProps) {
 
 export function CustomDynamicPage() {
   const { slug } = useParams();
-  const { isLightMode } = useLogo();
+  const { isLightMode, getPageTitle, settings } = useLogo();
   const navigate = useNavigate();
   const [page, setPage] = useState<CustomPageData | null>(null);
   const [blocks, setBlocks] = useState<PageBlock[]>([]);
@@ -247,6 +247,14 @@ export function CustomDynamicPage() {
       });
   }, [slug]);
 
+  useEffect(() => {
+    if (page) {
+      const appTitle = settings?.app_name || "DejavuFM";
+      const customTitle = getPageTitle(`custom_page_${page.slug}`, page.title);
+      document.title = `${customTitle} | ${appTitle}`;
+    }
+  }, [page, settings, getPageTitle]);
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] w-full py-24 gap-4">
@@ -296,7 +304,7 @@ export function CustomDynamicPage() {
                   )}
                   <div className="relative z-10 space-y-3 w-full">
                     <h1 className={`text-4xl md:text-5xl font-black uppercase tracking-tight ${block.imageUrl ? 'text-white' : isLightMode ? 'text-slate-900' : 'text-white'}`}>
-                      {block.title || "Untitled Heading"}
+                      {(block.title === page.title) ? getPageTitle(`custom_page_${page.slug}`, page.title) : (block.title || "Untitled Heading")}
                     </h1>
                     {block.subtitle && (
                       <p className={`text-sm sm:text-base tracking-wide max-w-xl ${

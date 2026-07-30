@@ -26,7 +26,12 @@ const previewText = (post: BlogPost) => {
 
 export default function Features() {
   const [query, setQuery] = useState("");
-  const { isLightMode } = useLogo();
+  const { isLightMode, getPageTitle } = useLogo();
+
+  const rawTitle = getPageTitle('features', 'Features');
+  const words = rawTitle.split(' ');
+  const firstPart = words.slice(0, -1).join(' ') || '';
+  const lastWord = words.length > 1 ? words[words.length - 1] : words[0];
 
   const { data: posts = [], isLoading } = useQuery<BlogPost[]>({
     queryKey: ["features"],
@@ -78,12 +83,12 @@ export default function Features() {
             animate={{ opacity: 0.06 }}
             className="absolute -top-14 left-0 text-[8rem] md:text-[12rem] font-black uppercase tracking-tighter text-stroke select-none pointer-events-none hidden sm:block"
           >
-            Features
+            {lastWord}
           </motion.div>
           <h1 className={`relative text-4xl sm:text-6xl md:text-8xl font-display font-black uppercase tracking-tighter leading-none z-10 ${
             isLightMode ? 'text-slate-900' : 'text-white'
           }`}>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue">Features</span>
+            {firstPart && firstPart + " "}<span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue">{lastWord}</span>
           </h1>
           <p className={`relative mt-6 text-base md:text-lg font-light tracking-wide border-l-2 pl-6 transition-colors ${
             isLightMode ? 'border-neon-purple/50 text-slate-500' : 'border-neon-purple/30 text-white/50'

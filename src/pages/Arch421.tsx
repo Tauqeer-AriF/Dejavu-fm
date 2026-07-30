@@ -12,7 +12,8 @@ import {
 import { Link } from 'react-router-dom';
 
 export default function Arch421() {
-  const { isLightMode } = useLogo();
+  const { isLightMode, getPageTitle } = useLogo();
+  const rawTitle = getPageTitle('arch421', 'ARCH421');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -112,7 +113,7 @@ export default function Arch421() {
           <h1 className={`text-3xl md:text-5xl font-display font-black uppercase tracking-tighter ${
             isLightMode ? 'text-slate-900' : 'text-white'
           }`}>
-            ARCH421
+            {rawTitle}
           </h1>
         </div>
 

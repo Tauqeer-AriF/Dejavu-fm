@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { convertToLocalTime } from '../lib/timeUtils';
+import { convertToLocalTime, getLondonTime } from '../lib/timeUtils';
 import { useLogo } from '../hooks/useLogo';
 import { toast } from 'sonner';
 
@@ -23,7 +23,7 @@ export function NotificationManager() {
       if (reminderIds.length === 0) return;
 
       const schedule = Array.isArray(scheduleData) ? scheduleData : [];
-      const now = new Date();
+      const now = getLondonTime();
       
       // Target time: exactly 10 minutes from now (rounded to the minute)
       const targetTime = new Date(now.getTime() + 10 * 60000);

@@ -7,7 +7,7 @@ import { useModal } from "../../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
 import { fetchAdmin } from "./adminApi";
 import { ImageUploadField } from "./ImageUploadField";
-import { convertToLocalTime } from "../../lib/timeUtils";
+import { convertToLocalTime, getLondonTime } from "../../lib/timeUtils";
 import { useLogo } from "../../hooks/useLogo";
 
 
@@ -25,7 +25,7 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
 
   const currentShow = useMemo(() => {
     const schedule = Array.isArray(scheduleData) ? scheduleData : [];
-    const now = new Date();
+    const now = getLondonTime();
     const currentDay = now.getDay();
     const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
