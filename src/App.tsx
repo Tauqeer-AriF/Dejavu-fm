@@ -1309,10 +1309,8 @@ function MainLayout() {
       title = `${pageTitle} | ${appTitle}`;
       desc = "Get in touch with the team at DejavuFM. Drop a line for inquiries, partnerships, resident bookings, or general suggestions.";
     } else if (location.pathname === "/") {
-      const pageTitle = customPageTitles['listen'] || "";
-      if (pageTitle) {
-        title = `${pageTitle} | ${appTitle}`;
-      }
+      const tagline = settings?.app_tagline || "The UKs Most Influential Independent Radio Station";
+      title = `${appTitle} | ${tagline}`;
     }
 
     document.title = title;
