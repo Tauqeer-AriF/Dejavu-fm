@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Bell, BellOff, Calendar as CalendarIcon, Search, Layers } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
-import { convertToLocalTime } from "../lib/timeUtils";
+import { convertToLocalTime, getLondonTime } from "../lib/timeUtils";
 import { useLogo } from "../hooks/useLogo";
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -26,7 +26,7 @@ const itemVariants = {
 export default function Schedule() {
   const [reminders, setReminders] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<number | 'all'>(() => {
-    return new Date().getDay();
+    return getLondonTime().getDay();
   });
   const [searchQuery, setSearchQuery] = useState("");
   
@@ -100,7 +100,7 @@ export default function Schedule() {
   }, [scheduleData]);
 
   const [timeCtx, setTimeCtx] = useState(() => {
-    const now = new Date();
+    const now = getLondonTime();
     return {
       day: now.getDay(),
       time: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
@@ -109,7 +109,7 @@ export default function Schedule() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      const now = new Date();
+      const now = getLondonTime();
       setTimeCtx({
         day: now.getDay(),
         time: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`

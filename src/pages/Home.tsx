@@ -6,7 +6,7 @@ import { useLogo } from "../hooks/useLogo";
 import { Play, Pause, Mic2, Tv, Clock, X, MessageSquare, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { io } from "socket.io-client";
-import { convertToLocalTime } from "../lib/timeUtils";
+import { convertToLocalTime, getLondonTime } from "../lib/timeUtils";
 
 function DjDiskPlayButton({
   isPlaying,
@@ -232,7 +232,7 @@ export default function Home() {
 
 
   const [timeCtx, setTimeCtx] = useState(() => {
-    const now = new Date();
+    const now = getLondonTime();
     return {
       day: now.getDay(),
       time: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
@@ -241,7 +241,7 @@ export default function Home() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      const now = new Date();
+      const now = getLondonTime();
       setTimeCtx({
         day: now.getDay(),
         time: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`

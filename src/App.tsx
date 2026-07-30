@@ -12,7 +12,7 @@ import { Toaster, toast } from 'sonner';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
-import { convertToLocalTime } from './lib/timeUtils';
+import { convertToLocalTime, getLondonTime } from './lib/timeUtils';
 import { useLogo } from './hooks/useLogo';
 import { SecretAdminPrompt } from './components/SecretAdminPrompt';
 import { SitePopup } from './components/SitePopup';
@@ -1086,7 +1086,7 @@ function MainLayout() {
   useEffect(() => {
     const updateOnAir = () => {
       const schedule = Array.isArray(scheduleData) ? scheduleData : [];
-      const now = new Date();
+      const now = getLondonTime();
       const currentDay = now.getDay();
       const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
