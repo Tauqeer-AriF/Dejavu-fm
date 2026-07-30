@@ -592,25 +592,6 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                   </motion.div>
                 )}
               </div>
-              {appTagline && appTagline.trim() !== "" && (
-                <div className="flex items-center gap-1.5 mt-1 hidden md:flex max-w-[180px] sm:max-w-[220px] md:max-w-[260px] lg:max-w-[300px] xl:max-w-[340px]">
-                  <span className="w-1.5 h-[1px] bg-neon-purple/50 group-hover:w-3.5 transition-all duration-300 shrink-0" />
-                  <span 
-                    className={`uppercase font-black transition-colors duration-300 truncate block ${
-                      isLongTagline 
-                        ? "text-[7.5px] md:text-[8px] tracking-[0.15em] sm:tracking-[0.18em]" 
-                        : "text-[8px] md:text-[9px] tracking-[0.3em] md:tracking-[0.35em]"
-                    } ${
-                      isLightMode 
-                        ? "text-slate-900/40 group-hover:text-slate-950/60" 
-                        : "text-white/30 group-hover:text-white/50"
-                    }`}
-                    title={appTagline}
-                  >
-                    {appTagline}
-                  </span>
-                </div>
-              )}
             </div>
           )}
         </Link>
