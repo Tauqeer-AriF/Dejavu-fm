@@ -58,6 +58,7 @@ const Features = lazy(() => import('./pages/Features'));
 const FeatureDetail = lazy(() => import('./pages/FeatureDetail'));
 const Arch421 = lazy(() => import('./pages/Arch421'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const CustomDynamicPage = lazy(() => import('./pages/CustomDynamicPage').then(m => ({ default: m.CustomDynamicPage })));
 
 const queryClient = new QueryClient({
@@ -913,6 +914,8 @@ function AnimatedRoutes({ adminPath = '/admin' }: { adminPath?: string }) {
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/arch421" element={<Arch421 />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/dejavufm-privacy-policy" element={<PrivacyPolicy />} />
             <Route path={`${adminPath}/*`} element={
               <Suspense fallback={
                 <AppLoader size="lg" fullScreen />
@@ -1340,7 +1343,7 @@ function MainLayout() {
 
   return (
     <>
-      <div className={`min-h-screen ${isAdmin || isSplitActive ? '' : 'pb-40 md:pb-32'} flex flex-col relative overflow-x-hidden bg-dark-bg selection:bg-neon-purple selection:text-white`}>
+      <div className={`min-h-screen ${isAdmin || isSplitActive ? '' : 'pb-40 md:pb-32'} flex flex-col relative overflow-x-clip bg-dark-bg selection:bg-neon-purple selection:text-white`}>
       {/* Premium Moving Mesh Background */}
       <div className="fixed inset-0 z-0 pointer-events-none opacity-40">
         <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-neon-purple/20 rounded-full blur-[120px] animate-[pulse_10s_ease-in-out_infinite]"></div>
@@ -1429,6 +1432,7 @@ function MainLayout() {
             <div className="flex flex-col items-center md:items-end space-y-2 text-center md:text-right">
               <p className="font-black tracking-[0.2em] text-[10px]">© {new Date().getFullYear()} dejavufm.com. All rights reserved.</p>
               <p className="text-[10px] uppercase tracking-[0.4em] opacity-30 italic text-center md:text-right">{appTagline}</p>
+              <Link to="/privacy-policy" className="text-[10px] font-black uppercase tracking-[0.2em] text-neon-purple hover:text-neon-blue hover:underline transition-all mt-1">Privacy Policy</Link>
             </div>
           </div>
 

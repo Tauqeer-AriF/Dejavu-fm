@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import path from 'path';
 import fs from 'fs';
 import * as tar from 'tar';
+import crypto from 'crypto';
 
 const isWritableDir = (dirPath: string): boolean => {
   try {
@@ -736,6 +737,41 @@ export function initDb() {
     console.log("[DB] High-performance indexes verified / created successfully.");
   } catch (indexErr) {
     console.error("[DB] Warning: Failed to create some database indexes:", indexErr);
+  }
+
+  // Seed the privacy policy page into the custom_pages table if it doesn't exist
+  try {
+    const existingPage = db.prepare("SELECT 1 FROM custom_pages WHERE slug = ?").get('privacy-policy');
+    if (!existingPage) {
+      const pageId = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
+      const sampleBlocks = [
+        {
+          id: 'b1',
+          type: 'header',
+          title: 'Privacy Policy',
+          subtitle: 'Your privacy is paramount at DejavuFM',
+          align: 'center'
+        },
+        {
+          id: 'b2',
+          type: 'text',
+          content: 'This Privacy Policy describes how we collect, use, process, and share your personal information when you access our broadcasting platform. We do not sell or lease your personal information. Our goal is to connect music creators with audiences while establishing the highest tier of security.'
+        }
+      ];
+      db.prepare(`
+        INSERT INTO custom_pages (id, slug, title, description, content, is_published)
+        VALUES (?, ?, ?, ?, ?, 1)
+      `).run(
+        pageId, 
+        'privacy-policy', 
+        'Privacy Policy', 
+        'DejavuFM Privacy Policy and terms for user data protection', 
+        JSON.stringify(sampleBlocks)
+      );
+      console.log("[DB] Seeded privacy-policy page in custom_pages table.");
+    }
+  } catch (err) {
+    console.error("[DB] Warning: Failed to seed privacy-policy in custom_pages table:", err);
   }
 
   console.log("[DB] Database initialization complete.");
