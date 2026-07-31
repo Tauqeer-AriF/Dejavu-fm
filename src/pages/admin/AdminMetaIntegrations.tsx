@@ -51,7 +51,7 @@ export function AdminMetaIntegrations() {
     facebook: false
   });
   const [platformConfigs, setPlatformConfigs] = useState<Record<string, Record<string, string>>>({
-    whatsapp: { phone: '', verifyToken: 'dejavu_whatsapp_secret_key', phoneId: '' },
+    whatsapp: { phone: '', verifyToken: 'dejavu_whatsapp_secret_key', phoneId: '', accessToken: '' },
     instagram: { accountId: '', accessToken: '' },
     facebook: { pageId: '', pageAccessToken: '' }
   });
@@ -90,7 +90,8 @@ export function AdminMetaIntegrations() {
           whatsapp: { 
             phone: settings.studio_platform_configs.whatsapp?.phone || '', 
             verifyToken: settings.studio_platform_configs.whatsapp?.verifyToken || 'dejavu_whatsapp_secret_key',
-            phoneId: settings.studio_platform_configs.whatsapp?.phoneId || ''
+            phoneId: settings.studio_platform_configs.whatsapp?.phoneId || '',
+            accessToken: settings.studio_platform_configs.whatsapp?.accessToken || ''
           },
           instagram: { 
             accountId: settings.studio_platform_configs.instagram?.accountId || '', 
@@ -219,11 +220,25 @@ export function AdminMetaIntegrations() {
     }
 
     if (platformId === 'whatsapp') {
-      const { phone, verifyToken } = config;
+      const { phone, verifyToken, phoneId, accessToken } = config;
       if (!phone || !phone.trim()) {
         setTestResult({
           success: false,
-          message: "Handshake Failed: Phone Number is required. Please verify details in the Configuration card."
+          message: "Handshake Failed: Registered Phone Number is required. Please verify details in the Configuration card."
+        });
+        return;
+      }
+      if (!phoneId || !phoneId.trim()) {
+        setTestResult({
+          success: false,
+          message: "Handshake Failed: Phone Number ID is required to route message dispatches."
+        });
+        return;
+      }
+      if (!accessToken || accessToken.trim().length < 15) {
+        setTestResult({
+          success: false,
+          message: "Handshake Failed: WhatsApp Cloud API Access Token is empty or too short. Please paste your System User Access Token."
         });
         return;
       }
@@ -236,7 +251,7 @@ export function AdminMetaIntegrations() {
       }
       setTestResult({
         success: true,
-        message: "Handshake Successful! Established direct pipeline with WhatsApp Cloud API."
+        message: "Handshake Successful! Established direct pipeline with WhatsApp Cloud API using registered Phone Number ID and Access Token."
       });
     } else if (platformId === 'instagram') {
       const { accountId, accessToken } = config;
@@ -607,6 +622,20 @@ export function AdminMetaIntegrations() {
                     }`}
                   />
                 </div>
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">WhatsApp Access Token (Permanent / System User Token)</label>
+                  <input 
+                    type="password"
+                    placeholder="EAAGzD..."
+                    value={platformConfigs.whatsapp?.accessToken || ''}
+                    onChange={(e) => handleUpdatePlatformField('whatsapp', 'accessToken', e.target.value)}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
+                      isLightMode 
+                        ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
+                        : 'bg-zinc-950/40 border-zinc-800 text-zinc-100 focus:bg-zinc-950'
+                    }`}
+                  />
+                </div>
               </div>
             </div>
 
@@ -635,7 +664,8 @@ export function AdminMetaIntegrations() {
                 <button
                   onClick={() => handleSaveConfig('whatsapp', { 
                     phone: platformConfigs.whatsapp.phone,
-                    phoneId: platformConfigs.whatsapp.phoneId
+                    phoneId: platformConfigs.whatsapp.phoneId,
+                    accessToken: platformConfigs.whatsapp.accessToken || ''
                   })}
                   className="col-span-2 sm:col-span-1 w-full sm:w-auto sm:ml-2 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 text-xs font-semibold rounded-xl transition shadow-sm text-center flex items-center justify-center"
                 >

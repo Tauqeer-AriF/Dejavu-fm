@@ -36,11 +36,15 @@ export class MetaService {
 
     switch (platform) {
       case 'whatsapp': {
-        const phoneId = config.phone || '';
-        const token = config.verifyToken || ''; // Or system access token
+        const phoneId = config.phoneId || config.phone || '';
+        const token = config.accessToken || config.verifyToken || process.env.WHATSAPP_ACCESS_TOKEN || '';
         
-        if (!phoneId || !token) {
-          throw new Error('WhatsApp Business Phone Number ID or Access Token is missing from configurations.');
+        if (!phoneId) {
+          throw new Error('WhatsApp Business Phone Number ID is missing. Please configure it in the Admin Dashboard under Meta Integrations.');
+        }
+
+        if (!token || token === 'dejavu_whatsapp_secret_key') {
+          throw new Error('WhatsApp Cloud API Access Token is missing or invalid. Please configure your Permanent System User Access Token in the Admin Dashboard under Meta Integrations.');
         }
 
         console.log(`[Meta Service] Sending WhatsApp message via phoneId ${phoneId} to ${recipientId}`);
