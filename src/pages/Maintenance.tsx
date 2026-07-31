@@ -9,7 +9,7 @@ interface MaintenanceProps {
 }
 
 export default function Maintenance({ settings }: MaintenanceProps) {
-  const { logoUrl, isLightMode } = useLogo();
+  const { logoUrl, logoShape, isLightMode } = useLogo();
   const { isPlaying, isBuffering, togglePlay, currentTrack } = useAudio();
   const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
 
@@ -63,15 +63,19 @@ export default function Maintenance({ settings }: MaintenanceProps) {
       <header className="relative z-10 flex flex-col sm:flex-row items-center justify-between w-full max-w-7xl mx-auto gap-4 sm:gap-0">
         <div className="flex items-center gap-3">
           {logoUrl && (
-            <div className={`h-12 w-12 flex items-center justify-center rounded-xl p-1 border overflow-hidden ${
+            <div className={`h-12 flex items-center justify-center rounded-xl p-1 border overflow-hidden ${
+              logoShape === 'rectangle' ? 'w-28 sm:w-32 px-2' : 'w-12 h-12'
+            } ${
               isLightMode ? "bg-white border-black/10" : "bg-white/5 border-white/10"
             }`}>
               <img src={logoUrl} alt={appName} className="h-full w-full object-contain" referrerPolicy="no-referrer" />
             </div>
           )}
-          <span className="font-display font-black tracking-tighter text-lg uppercase">
-            {appName}
-          </span>
+          {logoShape !== 'rectangle' && (
+            <span className="font-display font-black tracking-tighter text-lg uppercase">
+              {appName}
+            </span>
+          )}
         </div>
 
         {/* Live Indicator */}
