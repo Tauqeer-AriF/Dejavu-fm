@@ -126,7 +126,7 @@ export default function PrivacyPolicy() {
         <div className="lg:col-span-3 space-y-12">
           {/* Section 1: Introduction */}
           <section id="intro" className={`glass-panel p-8 rounded-3xl space-y-5 transition-colors scroll-mt-28 ${
-            isLightMode ? 'bg-white/50 border-black/10 text-slate-700' : 'bg-black/40 border-white/5 text-white/80'
+            isLightMode ? 'bg-slate-50/50 border-black/10 text-slate-700' : 'bg-black/40 border-white/5 text-white/80'
           }`}>
             <h2 className={`text-2xl font-display font-black uppercase tracking-tight flex items-center gap-3 ${
               isLightMode ? 'text-slate-900' : 'text-white'
@@ -146,7 +146,7 @@ export default function PrivacyPolicy() {
 
           {/* Section 2: Information We Collect */}
           <section id="data-collect" className={`glass-panel p-8 rounded-3xl space-y-5 transition-colors scroll-mt-28 ${
-            isLightMode ? 'bg-white/50 border-black/10 text-slate-700' : 'bg-black/40 border-white/5 text-white/80'
+            isLightMode ? 'bg-slate-50/50 border-black/10 text-slate-700' : 'bg-black/40 border-white/5 text-white/80'
           }`}>
             <h2 className={`text-2xl font-display font-black uppercase tracking-tight flex items-center gap-3 ${
               isLightMode ? 'text-slate-900' : 'text-white'
@@ -177,7 +177,7 @@ export default function PrivacyPolicy() {
 
           {/* Section 3: How We Use Your Information */}
           <section id="data-use" className={`glass-panel p-8 rounded-3xl space-y-5 transition-colors scroll-mt-28 ${
-            isLightMode ? 'bg-white/50 border-black/10 text-slate-700' : 'bg-black/40 border-white/5 text-white/80'
+            isLightMode ? 'bg-slate-50/50 border-black/10 text-slate-700' : 'bg-black/40 border-white/5 text-white/80'
           }`}>
             <h2 className={`text-2xl font-display font-black uppercase tracking-tight flex items-center gap-3 ${
               isLightMode ? 'text-slate-900' : 'text-white'
@@ -201,7 +201,7 @@ export default function PrivacyPolicy() {
 
           {/* Section 4: Media & Shoutouts */}
           <section id="media-shoutouts" className={`glass-panel p-8 rounded-3xl space-y-5 transition-colors scroll-mt-28 ${
-            isLightMode ? 'bg-white/50 border-black/10 text-slate-700' : 'bg-black/40 border-white/5 text-white/80'
+            isLightMode ? 'bg-slate-50/50 border-black/10 text-slate-700' : 'bg-black/40 border-white/5 text-white/80'
           }`}>
             <h2 className={`text-2xl font-display font-black uppercase tracking-tight flex items-center gap-3 ${
               isLightMode ? 'text-slate-900' : 'text-white'
@@ -224,7 +224,7 @@ export default function PrivacyPolicy() {
 
           {/* Section 5: Streams & Analytics */}
           <section id="audio-streams" className={`glass-panel p-8 rounded-3xl space-y-5 transition-colors scroll-mt-28 ${
-            isLightMode ? 'bg-white/50 border-black/10 text-slate-700' : 'bg-black/40 border-white/5 text-white/80'
+            isLightMode ? 'bg-slate-50/50 border-black/10 text-slate-700' : 'bg-black/40 border-white/5 text-white/80'
           }`}>
             <h2 className={`text-2xl font-display font-black uppercase tracking-tight flex items-center gap-3 ${
               isLightMode ? 'text-slate-900' : 'text-white'
@@ -244,7 +244,7 @@ export default function PrivacyPolicy() {
 
           {/* Section 6: Cookies & Local Storage */}
           <section id="cookies-auth" className={`glass-panel p-8 rounded-3xl space-y-5 transition-colors scroll-mt-28 ${
-            isLightMode ? 'bg-white/50 border-black/10 text-slate-700' : 'bg-black/40 border-white/5 text-white/80'
+            isLightMode ? 'bg-slate-50/50 border-black/10 text-slate-700' : 'bg-black/40 border-white/5 text-white/80'
           }`}>
             <h2 className={`text-2xl font-display font-black uppercase tracking-tight flex items-center gap-3 ${
               isLightMode ? 'text-slate-900' : 'text-white'
@@ -272,7 +272,7 @@ export default function PrivacyPolicy() {
 
           {/* Section 7: Your Rights & Choices */}
           <section id="data-rights" className={`glass-panel p-8 rounded-3xl space-y-5 transition-colors scroll-mt-28 ${
-            isLightMode ? 'bg-white/50 border-black/10 text-slate-700' : 'bg-black/40 border-white/5 text-white/80'
+            isLightMode ? 'bg-slate-50/50 border-black/10 text-slate-700' : 'bg-black/40 border-white/5 text-white/80'
           }`}>
             <h2 className={`text-2xl font-display font-black uppercase tracking-tight flex items-center gap-3 ${
               isLightMode ? 'text-slate-900' : 'text-white'
@@ -315,7 +315,7 @@ export default function PrivacyPolicy() {
                 For questions about this Privacy Policy, your user profile data, or to make data deletion requests, you can reach out directly to our Data Protection Officer:
               </p>
               <div className={`p-5 rounded-2xl border ${
-                isLightMode ? 'bg-white border-black/10 text-slate-800' : 'bg-black/50 border-white/10 text-white/95'
+                isLightMode ? 'bg-slate-50 border-black/10 text-slate-800' : 'bg-black/50 border-white/10 text-white/95'
               }`}>
                 <p className="font-semibold text-neon-purple uppercase text-xs tracking-wider mb-2">Station Data Operations & Support</p>
                 <p className="text-sm">Email: <a href="mailto:info@dejavufm.com" className="text-neon-blue hover:underline font-medium">info@dejavufm.com</a></p>
