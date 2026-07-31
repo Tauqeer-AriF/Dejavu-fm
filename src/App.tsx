@@ -59,6 +59,7 @@ const FeatureDetail = lazy(() => import('./pages/FeatureDetail'));
 const Arch421 = lazy(() => import('./pages/Arch421'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const Maintenance = lazy(() => import('./pages/Maintenance'));
 const CustomDynamicPage = lazy(() => import('./pages/CustomDynamicPage').then(m => ({ default: m.CustomDynamicPage })));
 
 const queryClient = new QueryClient({
@@ -1340,6 +1341,14 @@ function MainLayout() {
   const featPWA = settings?.feat_pwa !== '0';
   const featBookings = settings?.feat_bookings !== '0';
   const featLiveTools = settings?.feat_live_tools !== '0';
+
+  if (settings?.maintenance_mode === '1' && !isAdmin) {
+    return (
+      <Suspense fallback={<div className="min-h-screen w-full bg-[#080809] flex items-center justify-center text-white/40">Loading Transmission...</div>}>
+        <Maintenance settings={settings} />
+      </Suspense>
+    );
+  }
 
   return (
     <>

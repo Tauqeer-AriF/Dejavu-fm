@@ -1,10 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Database, Download, RefreshCw, Clock, AlertTriangle, ShieldCheck, Upload, Trash2, RotateCcw, Trash } from 'lucide-react';
+import { Database, Download, RefreshCw, Clock, AlertTriangle, ShieldCheck, Upload, Trash2, RotateCcw, Trash, Cloud, CheckCircle, ExternalLink, CloudUpload } from 'lucide-react';
 import { toast } from 'sonner';
 import { useModal } from '../../context/ModalContext';
 import { fetchAdmin } from './adminApi';
 import { useLogo } from '../../hooks/useLogo';
+import { 
+  initAuthListener, 
+  googleSignIn, 
+  googleSignOut, 
+  getCachedToken, 
+  uploadBackupToDrive,
+  listBackupsInDrive,
+  deleteBackupFromDrive,
+  downloadFileFromDrive
+} from '../../lib/googleDriveService';
 
 export function AdminBackup() {
   const { isLightMode } = useLogo();
@@ -24,6 +34,17 @@ export function AdminBackup() {
   const [nextBackupIn, setNextBackupIn] = useState<string>("");
   const [isChecking, setIsChecking] = useState(false);
   const { showConfirm } = useModal();
+
+  const [googleUser, setGoogleUser] = useState<any>(null);
+  const [googleToken, setGoogleToken] = useState<string | null>(null);
+  const [isLinking, setIsLinking] = useState(false);
+  const [uploadingToDrive, setUploadingToDrive] = useState<Record<string, boolean>>({});
+  
+  // Google Drive integration specific states
+  const [driveBackups, setDriveBackups] = useState<any[]>([]);
+  const [loadingDrive, setLoadingDrive] = useState(false);
+  const [autoUploadToDrive, setAutoUploadToDrive] = useState(true);
+  const [deletingDriveFileId, setDeletingDriveFileId] = useState<string | null>(null);
 
   const waitForServer = async (startProgress: number, oldServerId?: string) => {
     let progress = startProgress;
@@ -94,7 +115,239 @@ export function AdminBackup() {
     }
   };
 
+  const loadDriveBackups = async (token: string) => {
+    setLoadingDrive(true);
+    try {
+      const files = await listBackupsInDrive(token);
+      setDriveBackups(files);
+    } catch (e) {
+      console.error('Failed to load drive backups:', e);
+    } finally {
+      setLoadingDrive(false);
+    }
+  };
+
   useEffect(() => { loadBackups(); }, []);
+
+  useEffect(() => {
+    const unsubscribe = initAuthListener((user, token) => {
+      setGoogleUser(user);
+      setGoogleToken(token);
+      if (user && token) {
+        loadDriveBackups(token);
+      } else {
+        setDriveBackups([]);
+      }
+    });
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
+  const handleLinkGoogleDrive = async () => {
+    setIsLinking(true);
+    try {
+      const result = await googleSignIn();
+      if (result) {
+        setGoogleUser(result.user);
+        setGoogleToken(result.accessToken);
+        toast.success(`Google Drive connected as ${result.user.email}!`);
+        loadDriveBackups(result.accessToken);
+      } else {
+        toast.info('Sign-in cancelled.');
+      }
+    } catch (e: any) {
+      if (
+        e?.code === 'auth/popup-closed-by-user' ||
+        e?.code === 'auth/cancelled-popup-request' ||
+        e?.code === 'auth/popup-blocked'
+      ) {
+        toast.info('Sign-in cancelled.');
+      } else {
+        console.error(e);
+        toast.error(e?.message || 'Failed to connect Google Drive.');
+      }
+    } finally {
+      setIsLinking(false);
+    }
+  };
+
+  const handleUnlinkGoogleDrive = async () => {
+    try {
+      await googleSignOut();
+      setGoogleUser(null);
+      setGoogleToken(null);
+      setDriveBackups([]);
+      toast.success('Google Drive disconnected.');
+    } catch (e: any) {
+      toast.error('Failed to disconnect Google Drive.');
+    }
+  };
+
+  const handleSendToDrive = async (filename: string, label?: string) => {
+    const activeToken = googleToken || getCachedToken();
+    if (!activeToken) {
+      toast.error("Google Drive is not connected. Please connect your Google account in the panel below first.");
+      return;
+    }
+
+    setUploadingToDrive(prev => ({ ...prev, [filename]: true }));
+    const toastId = toast.loading(`Preparing cloud transfer for ${filename}...`);
+
+    try {
+      // 1. Fetch file from server
+      const adminToken = localStorage.getItem("admin_token");
+      const res = await fetch(`/api/admin/database/download-file/${filename}`, {
+        headers: {
+          'Authorization': `Bearer ${adminToken}`
+        }
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to retrieve backup file from server.");
+      }
+
+      const blob = await res.blob();
+
+      // 2. Upload to Google Drive
+      toast.loading(`Uploading to Google Drive...`, { id: toastId });
+      const driveResult = await uploadBackupToDrive(filename, blob, activeToken, label);
+
+      toast.success(`Uploaded successfully to Google Drive!`, { id: toastId });
+      
+      // Refresh the Drive backups list
+      loadDriveBackups(activeToken);
+    } catch (error: any) {
+      console.error("[GDrive Upload Error]", error);
+      toast.error(error?.message || "Failed to upload to Google Drive.", { id: toastId });
+    } finally {
+      setUploadingToDrive(prev => ({ ...prev, [filename]: false }));
+    }
+  };
+
+  const handleDeleteDriveBackup = async (fileId: string, filename: string) => {
+    const activeToken = googleToken || getCachedToken();
+    if (!activeToken) {
+      toast.error("Google Drive connection lost.");
+      return;
+    }
+
+    const confirmed = await showConfirm({
+      title: "Delete Cloud Backup",
+      message: `Are you sure you want to permanently delete "${filename}" from your Google Drive? This action cannot be undone.`,
+      style: "danger",
+      confirmText: "Delete Cloud File"
+    });
+    if (!confirmed) return;
+
+    setDeletingDriveFileId(fileId);
+    try {
+      await deleteBackupFromDrive(fileId, activeToken);
+      toast.success("Cloud backup deleted from Google Drive!");
+      loadDriveBackups(activeToken);
+    } catch (err: any) {
+      console.error("Failed to delete drive backup", err);
+      toast.error(err?.message || "Failed to delete cloud backup.");
+    } finally {
+      setDeletingDriveFileId(null);
+    }
+  };
+
+  const handleRestoreDriveBackup = async (fileId: string, filename: string) => {
+    const activeToken = googleToken || getCachedToken();
+    if (!activeToken) {
+      toast.error("Google Drive connection lost.");
+      return;
+    }
+
+    const confirmed = await showConfirm({
+      title: "Restore Cloud Snapshot",
+      message: `CRITICAL WARNING: This will download "${filename}" from Google Drive, replace your entire current database, and RESTART the server. Proceed?`,
+      style: "danger",
+      confirmText: "Restore & Restart"
+    });
+    if (!confirmed) return;
+
+    setIsRestoring(true);
+    setRestoreProgress(5);
+    setRestoreStatusMsg("Downloading snapshot from Google Drive...");
+
+    try {
+      // 1. Download file content from Google Drive
+      const blob = await downloadFileFromDrive(fileId, activeToken);
+
+      // Get current server ID to detect when it actually restarts
+      const healthRes = await fetch('/api/health').then(r => r.json()).catch(() => ({}));
+      const oldServerId = healthRes.serverId;
+
+      setRestoreProgress(20);
+      setRestoreStatusMsg("Preparing cloud bundle upload...");
+
+      // 2. Perform chunked upload to our local server
+      const CHUNK_SIZE = 1024 * 1024; // 1MB chunks
+      const totalChunks = Math.ceil(blob.size / CHUNK_SIZE);
+      const sessionId = `upload-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+      for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+        const start = chunkIndex * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, blob.size);
+        const chunk = blob.slice(start, end);
+
+        const formData = new FormData();
+        formData.append('chunk', chunk);
+        formData.append('sessionId', sessionId);
+        formData.append('chunkIndex', String(chunkIndex));
+        formData.append('totalChunks', String(totalChunks));
+        formData.append('filename', filename);
+
+        const percent = Math.round((chunkIndex / totalChunks) * 100);
+        setRestoreProgress(Math.round(20 + percent * 0.4)); // Visually up to 60%
+        setRestoreStatusMsg(`Uploading Database (${percent}%)...`);
+
+        const res = await fetch('/api/admin/database/restore/upload-chunk', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
+          },
+          body: formData
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.error || `Failed to upload chunk ${chunkIndex + 1}/${totalChunks}`);
+        }
+      }
+
+      setRestoreProgress(70);
+      setRestoreStatusMsg("Finalizing restore & rebooting server...");
+
+      const finalizeRes = await fetchAdmin('/api/admin/database/restore/finalize-file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId })
+      });
+
+      if (!finalizeRes.ok) {
+        const errorData = await finalizeRes.json().catch(() => ({}));
+        throw new Error(errorData.error || "Server rejected the finalized backup file.");
+      }
+
+      setRestoreProgress(80);
+      const isUp = await waitForServer(80, oldServerId);
+      if (isUp) {
+        toast.success('Database restored successfully from Google Drive! Reconnecting...');
+        setTimeout(() => window.location.reload(), 800);
+      } else {
+        throw new Error('Server reboot timed out. The database might still be restoring. Please refresh manually in a moment.');
+      }
+    } catch (error: any) {
+      console.error("[CLOUD RESTORE ERROR]", error);
+      toast.error(error?.message || "Failed to restore backup from Google Drive.");
+      setIsRestoring(false);
+      setRestoreProgress(0);
+      setRestoreStatusMsg("");
+    }
+  };
 
   useEffect(() => {
     if (!backupEnabled || !lastAttempt || lastStatus === 'never') {
@@ -126,11 +379,12 @@ export function AdminBackup() {
 
   const handleCreateSnapshot = async () => {
     setIsDownloading(true);
+    const labelToUpload = backupLabel;
     try {
       const res = await fetchAdmin('/api/admin/database/snapshot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ label: backupLabel })
+        body: JSON.stringify({ label: labelToUpload })
       });
 
       if (res.ok) {
@@ -138,9 +392,16 @@ export function AdminBackup() {
         setBackupLabel("");
         loadBackups();
         
-        // Auto-download the newly created file for the user
         const data = await res.json();
+        
+        // Auto-download the newly created file for the user
         handleDownloadSpecific(data.filename);
+
+        // Auto-upload to Google Drive if selected
+        const activeToken = googleToken || getCachedToken();
+        if (autoUploadToDrive && activeToken) {
+          handleSendToDrive(data.filename, labelToUpload);
+        }
       } else {
         const data = await res.json().catch(() => ({}));
         toast.error(data.error || 'Failed to create snapshot.');
@@ -518,6 +779,20 @@ export function AdminBackup() {
                 placeholder="Label (e.g. Pre-Update V2)"
                 className={`w-full rounded-xl px-4 py-3 text-sm focus:border-cyan-500 outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black placeholder:text-black/40' : 'bg-black/40 border-white/10 text-white placeholder:text-white/20'}`}
               />
+              {googleUser && googleToken && (
+                <div className="flex items-center gap-2 pt-1 select-none">
+                  <input
+                    type="checkbox"
+                    id="autoUploadToDriveCheckbox"
+                    checked={autoUploadToDrive}
+                    onChange={(e) => setAutoUploadToDrive(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500 accent-cyan-500"
+                  />
+                  <label htmlFor="autoUploadToDriveCheckbox" className={`text-[10px] font-black uppercase tracking-wider cursor-pointer ${isLightMode ? 'text-black/60 hover:text-black' : 'text-white/60 hover:text-white'}`}>
+                    Also upload to Google Drive
+                  </label>
+                </div>
+              )}
             </div>
             <button
               onClick={handleCreateSnapshot}
@@ -625,6 +900,179 @@ export function AdminBackup() {
             </div>
           </div>
 
+          <div className={`lg:col-span-2 rounded-2xl p-5 sm:p-6 space-y-4 border transition-colors ${isLightMode ? 'bg-[#f8f9fa] border-black/5' : 'bg-black/40 border-white/5'}`}>
+            <div className={`flex items-center gap-3 ${isLightMode ? 'text-[#4285F4]' : 'text-neon-blue'}`}>
+              <Cloud className="w-5 h-5" />
+              <h3 className="font-bold uppercase tracking-widest text-sm">Google Drive Cloud Sync</h3>
+            </div>
+            
+            <p className={`text-xs leading-relaxed ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
+              Establish an offsite backup channel by linking your Google account. This allows you to securely store critical station snapshots directly in your personal Google Drive storage.
+            </p>
+
+            <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors ${isLightMode ? 'bg-[#ffffff] border-black/10' : 'bg-white/5 border-white/10'}`}>
+              {googleUser && googleToken ? (
+                <div className="flex items-center gap-3">
+                  {googleUser.photoURL ? (
+                    <img 
+                      src={googleUser.photoURL} 
+                      alt={googleUser.displayName || 'Google User'} 
+                      referrerPolicy="no-referrer"
+                      className="w-10 h-10 rounded-full border border-green-500/30"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center text-green-500 font-bold text-sm">
+                      {(googleUser.displayName || googleUser.email || 'G').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-black uppercase tracking-tight ${isLightMode ? 'text-black' : 'text-white'}`}>
+                        {googleUser.displayName || 'Google Account'}
+                      </span>
+                      <span className="bg-green-500/10 text-green-500 text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded">
+                        Connected
+                      </span>
+                    </div>
+                    <p className={`text-[10px] font-mono ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
+                      {googleUser.email}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 shrink-0">
+                    <Cloud className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="bg-red-500/10 text-red-500 text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded">
+                      Not Connected
+                    </span>
+                    <p className={`text-[10px] font-medium mt-0.5 ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
+                      Link Google Drive to enable direct cloud transfers.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                {googleUser && googleToken ? (
+                  <button
+                    onClick={handleUnlinkGoogleDrive}
+                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
+                      isLightMode 
+                        ? 'bg-red-600/10 hover:bg-red-600 text-red-600 hover:text-white border-red-600/20' 
+                        : 'bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border-red-500/20'
+                    }`}
+                  >
+                    Disconnect
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleLinkGoogleDrive}
+                    disabled={isLinking}
+                    className="flex items-center gap-2.5 px-4 py-2.5 border border-[#dadce0] rounded-xl text-xs font-semibold bg-white text-[#3c4043] hover:bg-[#f8f9fa] shadow-sm hover:shadow active:bg-[#f1f3f4] transition-all disabled:opacity-50 cursor-pointer"
+                  >
+                    {isLinking ? (
+                      <RefreshCw className="w-4 h-4 animate-spin text-gray-500" />
+                    ) : (
+                      <svg className="w-4 h-4 shrink-0" viewBox="0 0 48 48">
+                        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+                        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
+                        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
+                        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+                      </svg>
+                    )}
+                    <span>Connect Google Drive</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {googleUser && googleToken && (
+              <div className={`pt-4 mt-4 border-t border-dashed ${isLightMode ? 'border-black/10' : 'border-white/10'}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className={`text-[11px] font-black uppercase tracking-widest ${isLightMode ? 'text-[#4285F4]' : 'text-neon-blue'}`}>
+                    Cloud Snapshots in Google Drive
+                  </h4>
+                  <button
+                    onClick={() => loadDriveBackups(googleToken)}
+                    disabled={loadingDrive}
+                    className={`p-1.5 rounded-lg transition-all border ${isLightMode ? 'bg-black/5 hover:bg-black/10 border-black/10 text-black' : 'bg-white/5 hover:bg-white/10 border-white/5 text-white'}`}
+                    title="Refresh cloud backups"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${loadingDrive ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+
+                {loadingDrive ? (
+                  <div className="flex items-center justify-center py-6">
+                    <RefreshCw className="w-5 h-5 animate-spin text-neon-blue" />
+                  </div>
+                ) : driveBackups.length > 0 ? (
+                  <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+                    {driveBackups.map((dbFile) => (
+                      <div 
+                        key={dbFile.id} 
+                        className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl transition-all border gap-3 ${
+                          isLightMode 
+                            ? 'bg-white border-black/5 hover:border-black/10 hover:shadow-sm' 
+                            : 'bg-white/5 border-white/5 hover:border-white/10'
+                        }`}
+                      >
+                        <div className="min-w-0 overflow-hidden flex-1">
+                          <h5 className={`font-black uppercase tracking-tight text-xs mb-0.5 truncate ${isLightMode ? 'text-cyan-700' : 'text-neon-blue'}`}>
+                            {dbFile.name}
+                          </h5>
+                          <p className={`text-[9px] uppercase tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
+                            {new Date(dbFile.createdTime).toLocaleString()} • {dbFile.size ? `${(parseInt(dbFile.size) / 1024 / 1024).toFixed(2)} MB` : 'Unknown Size'}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1.5 justify-end shrink-0">
+                          {dbFile.webViewLink && (
+                            <a 
+                              href={dbFile.webViewLink} 
+                              target="_blank" 
+                              rel="noreferrer"
+                              className={`p-2 rounded-lg transition-all ${isLightMode ? 'bg-black/5 hover:bg-gray-100 text-black/50 hover:text-black' : 'bg-white/5 hover:bg-white/10 text-white/40 hover:text-white'}`}
+                              title="Open in Google Drive"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                          <button 
+                            onClick={() => handleRestoreDriveBackup(dbFile.id, dbFile.name)}
+                            disabled={isRestoring}
+                            className={`p-2 rounded-lg transition-all disabled:opacity-30 ${isLightMode ? 'bg-black/5 hover:bg-green-100 text-black/50 hover:text-green-700' : 'bg-white/5 hover:bg-green-500/20 text-white/40 hover:text-green-400'}`}
+                            title="Restore snapshot directly from Google Drive"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteDriveBackup(dbFile.id, dbFile.name)}
+                            disabled={deletingDriveFileId === dbFile.id}
+                            className={`p-2 rounded-lg transition-all ${isLightMode ? 'bg-black/5 hover:bg-red-100 text-black/50 hover:text-red-600' : 'bg-white/5 hover:bg-red-500/20 text-white/40 hover:text-red-500'}`}
+                            title="Delete snapshot from Google Drive"
+                          >
+                            {deletingDriveFileId === dbFile.id ? (
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin text-red-500" />
+                            ) : (
+                              <Trash2 className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className={`text-center py-6 text-[9px] uppercase tracking-widest font-black ${isLightMode ? 'text-black/30' : 'text-white/20'}`}>
+                    No DejavuFM cloud snapshots found in your Drive.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className={`lg:col-span-2 rounded-2xl p-5 sm:p-6 border transition-colors ${isLightMode ? 'bg-[#f8f9fa] border-black/5' : 'bg-black/40 border-white/5'}`}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div className={`flex items-center gap-3 ${isLightMode ? 'text-black' : 'text-white'}`}>
@@ -656,6 +1104,30 @@ export function AdminBackup() {
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5 justify-end">
+                      <button 
+                        onClick={() => {
+                          if (!googleUser || !googleToken) {
+                            toast.info("Please connect your Google account in the Google Drive panel above first.");
+                            return;
+                          }
+                          handleSendToDrive(b.name, b.label);
+                        }}
+                        disabled={uploadingToDrive[b.name]}
+                        className={`p-2.5 rounded-xl transition-all ${
+                          !googleUser || !googleToken
+                            ? isLightMode ? 'bg-black/5 hover:bg-black/10 text-black/20' : 'bg-white/5 hover:bg-white/10 text-white/10'
+                            : isLightMode 
+                              ? 'bg-black/5 hover:bg-green-100 text-black/40 hover:text-green-700' 
+                              : 'bg-white/5 hover:bg-green-500/20 text-white/30 hover:text-green-400'
+                        }`}
+                        title={googleUser && googleToken ? "Upload to Google Drive" : "Connect Google Drive to upload"}
+                      >
+                        {uploadingToDrive[b.name] ? (
+                          <RefreshCw className="w-4 h-4 animate-spin text-green-500" />
+                        ) : (
+                          <CloudUpload className="w-4 h-4" />
+                        )}
+                      </button>
                       <button 
                         onClick={() => handleDownloadSpecific(b.name)}
                         className={`p-2.5 rounded-xl transition-all ${isLightMode ? 'bg-black/5 hover:bg-purple-100 text-black/40 hover:text-purple-700' : 'bg-white/5 hover:bg-neon-purple/20 text-white/30 hover:text-neon-purple'}`}

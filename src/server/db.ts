@@ -636,6 +636,11 @@ export function initDb() {
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('studio_name', 'DejavuFM Studio');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('studio_image', '/icon.svg');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('default_theme', 'dark');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('maintenance_mode', '0');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('maintenance_title', 'TEMPORARY CLOSED FOR MAINTENANCE');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('maintenance_text', 'Our sound engineers are performing essential system updates. We will be back on-air shortly with upgraded streams, podcasts, and archives.');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('maintenance_end_time', '');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('maintenance_show_player', '0');
   }
 
   // Ensure admin secret exists

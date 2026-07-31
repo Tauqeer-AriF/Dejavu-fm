@@ -25,6 +25,7 @@
     "esbuild": "^0.28.0",
     "express": "^4.21.2",
     "express-rate-limit": "^8.5.1",
+    "firebase": "^12.17.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.546.0",

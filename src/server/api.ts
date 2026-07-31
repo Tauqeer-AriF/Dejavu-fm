@@ -2765,15 +2765,18 @@ apiRouter.put("/admin/settings", authorizeRole(['admin', 'dj']), (req, res) => {
     "social_instagram", "social_twitter", "social_facebook", "social_youtube", "social_soundcloud", "social_mixcloud", "social_tiktok",
     "default_theme", "under_header_text", "under_header_align",
     "features_slider_enabled", "features_slider_pages", "admin_custom_path",
-    "menu_order", "menu_item_labels", "menu_item_visibility", "menu_item_paths", "menu_sub_items", "menu_item_page_titles"
+    "menu_order", "menu_item_labels", "menu_item_visibility", "menu_item_paths", "menu_sub_items", "menu_item_page_titles",
+    "maintenance_mode", "maintenance_title", "maintenance_text", "maintenance_end_time", "maintenance_show_player"
   ];
   
   for (const key of allowedKeys) {
     if (req.body[key] !== undefined) {
-      if (key === 'is_on_air') {
-        updateStmt.run(key, req.body[key] ? '1' : '0');
+      if (key === 'is_on_air' || key === 'maintenance_mode' || key === 'maintenance_show_player') {
+        const isTrue = req.body[key] === '1' || req.body[key] === 1 || req.body[key] === true || req.body[key] === 'true';
+        updateStmt.run(key, isTrue ? '1' : '0');
       } else {
-        updateStmt.run(key, req.body[key].toString());
+        const val = req.body[key] === null ? "" : req.body[key].toString();
+        updateStmt.run(key, val);
       }
       if (key === 'rss_feed_url') {
         clearPodcastCache();
