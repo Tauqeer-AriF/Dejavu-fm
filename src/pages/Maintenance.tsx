@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { useLogo } from "../hooks/useLogo";
-import { Globe, Instagram, Twitter, Facebook, Youtube, Radio, ArrowRight, ShieldCheck, Clock, Play, Pause } from "lucide-react";
+import { Clock, Radio, Play, Pause } from "lucide-react";
 import { useAudio } from "../context/AudioContext";
 
 interface MaintenanceProps {
@@ -43,13 +43,6 @@ export default function Maintenance({ settings }: MaintenanceProps) {
     const interval = setInterval(calculateTime, 1000);
     return () => clearInterval(interval);
   }, [endTime]);
-
-  const socialLinks = [
-    { icon: <Instagram className="w-5 h-5" />, url: settings?.social_instagram, name: "Instagram" },
-    { icon: <Twitter className="w-5 h-5" />, url: settings?.social_twitter, name: "Twitter" },
-    { icon: <Facebook className="w-5 h-5" />, url: settings?.social_facebook, name: "Facebook" },
-    { icon: <Youtube className="w-5 h-5" />, url: settings?.social_youtube, name: "Youtube" },
-  ].filter(link => link.url && link.url.trim() !== "");
 
   const appName = settings?.app_name || "DejavuFM";
   const adminCustomPath = (settings?.admin_custom_path || '/admin').trim().replace(/\/+$/, '') || '/admin';
@@ -230,40 +223,14 @@ export default function Maintenance({ settings }: MaintenanceProps) {
         </motion.div>
       </main>
 
-      {/* Footer Area with Socials */}
-      <footer className="relative z-10 grid grid-cols-1 md:grid-cols-3 items-center w-full max-w-7xl mx-auto gap-4 sm:gap-6 border-t border-dashed transition-colors pt-6 sm:pt-8 pb-4 sm:pb-0 border-black/5 dark:border-white/5">
-        {/* Social Links (Left on desktop, Centered on mobile) */}
-        <div className="flex items-center justify-center md:justify-start order-2 md:order-1">
-          {socialLinks.length > 0 && (
-            <div className="flex items-center gap-4">
-              {socialLinks.map((link, idx) => (
-                <a
-                  key={idx}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`p-2.5 rounded-full transition-colors border ${
-                    isLightMode 
-                      ? "bg-white hover:bg-black/5 border-black/10 text-black/60 hover:text-black" 
-                      : "bg-white/5 hover:bg-white/10 border-white/10 text-white/60 hover:text-white"
-                  }`}
-                  title={link.name}
-                >
-                  {link.icon}
-                </a>
-              ))}
-            </div>
-          )}
-        </div>
-
+      {/* Footer Area */}
+      <footer className="relative z-10 flex items-center justify-center w-full max-w-7xl mx-auto border-t border-dashed transition-colors pt-6 sm:pt-8 pb-4 sm:pb-0 border-black/5 dark:border-white/5">
         {/* Centered Copyright */}
-        <div className={`text-xs font-mono font-medium text-center order-1 md:order-2 ${isLightMode ? "text-black/40" : "text-white/40"}`}>
+        <div className={`text-xs font-mono font-medium text-center ${isLightMode ? "text-black/40" : "text-white/40"}`}>
           © {new Date().getFullYear()} {appName}. All rights reserved.
         </div>
-
-        {/* Balanced spacer for desktop grid */}
-        <div className="hidden md:block order-3"></div>
       </footer>
     </div>
   );
 }
+
