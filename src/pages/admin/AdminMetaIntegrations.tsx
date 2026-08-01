@@ -426,18 +426,18 @@ export function AdminMetaIntegrations() {
     <div className="space-y-8">
       {/* Overview & Global Controller Section */}
       <div className={`p-4 sm:p-6 md:p-8 rounded-3xl border transition-all ${isLightMode ? 'bg-white border-zinc-200/80 shadow-sm' : 'bg-zinc-900/50 border-zinc-800/80 shadow-xl'}`}>
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 pb-6 border-b border-zinc-100 dark:border-zinc-800/80">
+        <div className={`flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 pb-6 border-b ${isLightMode ? "border-zinc-100" : "border-zinc-800/80"}`}>
           <div className="space-y-2">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-violet-500/10 dark:bg-violet-500/20 rounded-xl border border-violet-500/15">
-                <Shield className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+              <div className={`p-2.5 rounded-xl border border-violet-500/15 ${isLightMode ? "bg-violet-500/10" : "bg-violet-500/20"}`}>
+                <Shield className={`w-5 h-5 ${isLightMode ? "text-violet-600" : "text-violet-400"}`} />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50 font-sans tracking-tight">Meta Integrations</h2>
-                <p className="text-xs text-zinc-400 dark:text-zinc-500 font-medium">Configure webhook processing and credential pipelines</p>
+                <h2 className={`text-xl font-semibold font-sans tracking-tight ${isLightMode ? "text-zinc-900" : "text-zinc-50"}`}>Meta Integrations</h2>
+                <p className={`text-xs font-medium ${isLightMode ? "text-zinc-400" : "text-zinc-500"}`}>Configure webhook processing and credential pipelines</p>
               </div>
             </div>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-2xl pt-1">
+            <p className={`text-sm max-w-2xl pt-1 ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>
               Connect your Meta Developer applications to receive message payloads in real-time. Toggle ingestion for individual channels, validate credentials, and simulate live data payloads.
             </p>
           </div>
@@ -445,15 +445,15 @@ export function AdminMetaIntegrations() {
           <div className="flex items-center gap-4 w-full lg:w-auto">
             <div className={`p-4 rounded-2xl flex items-center justify-between gap-6 border ${isLightMode ? 'bg-zinc-50 border-zinc-100' : 'bg-zinc-950/40 border-zinc-800/50'} w-full sm:min-w-[280px]`}>
               <div className="space-y-0.5">
-                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Global Webhook Ingestion</span>
-                <p className={`text-[10px] font-mono uppercase tracking-wider font-semibold ${globalEnabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-400'}`}>
+                <span className={`text-xs font-semibold ${isLightMode ? "text-zinc-700" : "text-zinc-300"}`}>Global Webhook Ingestion</span>
+                <p className={`text-[10px] font-mono uppercase tracking-wider font-semibold ${globalEnabled ? (isLightMode ? "text-emerald-600" : "text-emerald-400") : "text-zinc-400"}`}>
                   {globalEnabled ? "Active & Listening" : "Suspended"}
                 </p>
               </div>
               <button
                 onClick={handleToggleGlobal}
                 className={`w-12 h-7 rounded-full p-0.5 transition-colors duration-300 relative focus:outline-none focus:ring-2 focus:ring-violet-500/20 ${
-                  globalEnabled ? "bg-violet-600" : "bg-zinc-300 dark:bg-zinc-700"
+                  globalEnabled ? "bg-violet-600" : (isLightMode ? "bg-zinc-300" : "bg-zinc-700")
                 }`}
               >
                 <div
@@ -469,14 +469,14 @@ export function AdminMetaIntegrations() {
         {/* Callback configuration details */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className={`p-4 rounded-xl border flex flex-col gap-1.5 ${isLightMode ? 'bg-zinc-50/50 border-zinc-200/60' : 'bg-zinc-900/20 border-zinc-800/40'}`}>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-sans">Webhook Callback URL</span>
-            <div className="font-mono text-xs font-bold text-violet-600 dark:text-violet-400 break-all select-all">
+            <span className={`text-[10px] font-semibold uppercase tracking-wider font-sans ${isLightMode ? "text-zinc-400" : "text-zinc-500"}`}>Webhook Callback URL</span>
+            <div className={`font-mono text-xs font-bold break-all select-all ${isLightMode ? "text-violet-600" : "text-violet-400"}`}>
               {webhookCallbackUrl}
             </div>
           </div>
 
           <div className={`p-4 rounded-xl border flex flex-col gap-1.5 ${isLightMode ? 'bg-zinc-50/50 border-zinc-200/60' : 'bg-zinc-900/20 border-zinc-800/40'}`}>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-sans block">Verification Token</span>
+            <span className={`text-[10px] font-semibold uppercase tracking-wider font-sans block ${isLightMode ? "text-zinc-400" : "text-zinc-500"}`}>Verification Token</span>
             {isEditingToken ? (
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                 <input
@@ -493,7 +493,7 @@ export function AdminMetaIntegrations() {
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={handleSaveVerifyToken}
-                    className="flex-1 sm:flex-none px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-semibold font-sans transition text-center"
+                    className="flex-1 sm:flex-none px-3 py-1.5 bg-violet-600 hover:bg-violet-500 !text-white rounded-lg text-xs font-semibold font-sans transition text-center"
                   >
                     Save
                   </button>
@@ -502,7 +502,7 @@ export function AdminMetaIntegrations() {
                       setCustomVerifyToken(defaultVerifyToken);
                       setIsEditingToken(false);
                     }}
-                    className="flex-1 sm:flex-none px-2 py-1.5 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs rounded-lg font-sans transition text-center"
+                    className={`flex-1 sm:flex-none px-2 py-1.5 text-xs rounded-lg font-sans transition text-center ${isLightMode ? "bg-zinc-200 hover:bg-zinc-300 text-zinc-700" : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300"}`}
                   >
                     Cancel
                   </button>
@@ -510,10 +510,10 @@ export function AdminMetaIntegrations() {
               </div>
             ) : (
               <div className="flex items-center gap-2.5">
-                <div className="font-mono text-xs font-bold text-zinc-800 dark:text-zinc-200">{defaultVerifyToken}</div>
+                <div className={`font-mono text-xs font-bold ${isLightMode ? "text-zinc-800" : "text-zinc-200"}`}>{defaultVerifyToken}</div>
                 <button
                   onClick={() => setIsEditingToken(true)}
-                  className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 rounded-md transition"
+                  className={`p-1 rounded-md transition ${isLightMode ? "hover:bg-zinc-100 text-zinc-400 hover:text-zinc-600" : "hover:bg-zinc-800/60 text-zinc-500 hover:text-zinc-300"}`}
                   title="Edit verify token"
                 >
                   <Edit className="w-3.5 h-3.5" />
@@ -530,22 +530,22 @@ export function AdminMetaIntegrations() {
         {/* WhatsApp Row */}
         <div className={`p-4 sm:p-6 md:p-8 rounded-3xl border flex flex-col lg:flex-row gap-8 transition-all ${isLightMode ? 'bg-white border-zinc-200/80 shadow-sm' : 'bg-zinc-900/50 border-zinc-800/80 shadow-xl'}`}>
           {/* Identity & Control Column */}
-          <div className="w-full lg:w-[280px] shrink-0 border-b lg:border-b-0 lg:border-r border-zinc-100 dark:border-zinc-800/50 pb-5 lg:pb-0 lg:pr-8 flex flex-col justify-between space-y-6">
+          <div className={`w-full lg:w-[280px] shrink-0 border-b lg:border-b-0 lg:border-r pb-5 lg:pb-0 lg:pr-8 flex flex-col justify-between space-y-6 ${isLightMode ? "border-zinc-100" : "border-zinc-800/50"}`}>
             <div className="space-y-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-2xl border border-emerald-500/15">
+                  <div className={`p-2.5 bg-emerald-500/10 rounded-2xl border border-emerald-500/15 ${isLightMode ? "text-emerald-600" : "text-emerald-400"}`}>
                     <MessageSquare className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-base text-zinc-900 dark:text-zinc-50">WhatsApp</h3>
+                    <h3 className={`font-semibold text-base ${isLightMode ? "text-zinc-900" : "text-zinc-50"}`}>WhatsApp</h3>
                     <span className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider block">Cloud API</span>
                   </div>
                 </div>
                 <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${
                   connectedPlatforms.whatsapp 
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20' 
-                    : 'bg-zinc-50 text-zinc-500 border-zinc-200 dark:bg-zinc-800/50 dark:text-zinc-400 dark:border-zinc-800'
+                    ? '${isLightMode ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"}' 
+                    : '${isLightMode ? "bg-zinc-50 text-zinc-500 border-zinc-200" : "bg-zinc-800/50 text-zinc-400 border-zinc-800"}'
                 }`}>
                   {connectedPlatforms.whatsapp ? "Connected" : "Inactive"}
                 </span>
@@ -562,22 +562,22 @@ export function AdminMetaIntegrations() {
                   onClick={() => handleTogglePlatformWebhook('whatsapp')}
                   className={`text-[10px] font-semibold uppercase tracking-wider px-3 py-1 rounded-lg transition ${
                     platformToggles.whatsapp 
-                      ? 'bg-violet-600 text-white shadow-sm' 
-                      : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400'
+                      ? 'bg-violet-600 !text-white shadow-sm' 
+                      : '${isLightMode ? "bg-zinc-100 hover:bg-zinc-200 text-zinc-600" : "bg-zinc-800 hover:bg-zinc-700 text-zinc-400"}'
                   }`}
                 >
                   {platformToggles.whatsapp ? "Active" : "Disabled"}
                 </button>
               </div>
 
-              <div className="flex items-center justify-between text-xs py-1 border-t border-zinc-100 dark:border-zinc-800/40 pt-3">
+              <div className={`flex items-center justify-between text-xs py-1 border-t pt-3 ${isLightMode ? "border-zinc-100" : "border-zinc-800/40"}`}>
                 <span className="text-zinc-400 font-medium">Platform Link</span>
                 <button 
                   onClick={() => handleTogglePlatformConnection('whatsapp')}
                   className={`text-[10px] font-semibold uppercase tracking-wider px-3 py-1 rounded-lg transition border ${
                     connectedPlatforms.whatsapp 
-                      ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20 dark:hover:bg-red-500/20' 
-                      : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-300 dark:border-zinc-800 dark:hover:bg-zinc-800'
+                      ? '${isLightMode ? "bg-red-50 text-red-600 border-red-200 hover:bg-red-100" : "bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20"}' 
+                      : '${isLightMode ? "bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50" : "bg-zinc-900 text-zinc-300 border-zinc-800 hover:bg-zinc-800"}'
                   }`}
                 >
                   {connectedPlatforms.whatsapp ? "Disconnect" : "Link Connect"}
@@ -590,12 +590,12 @@ export function AdminMetaIntegrations() {
           <div className="flex-1 flex flex-col justify-between space-y-6 lg:pl-4">
             <div className="space-y-4">
               <div>
-                <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block mb-1">Developer Credentials</span>
+                <span className={`text-[10px] font-bold uppercase tracking-wider block mb-1 ${isLightMode ? "text-zinc-400" : "text-zinc-500"}`}>Developer Credentials</span>
                 <p className="text-xs text-zinc-400">Map the specific phone registrations from your Meta Developer app.</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Registered Phone Number</label>
+                  <label className={`text-[11px] font-medium ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>Registered Phone Number</label>
                   <input 
                     type="text"
                     placeholder="+447123456789"
@@ -609,7 +609,7 @@ export function AdminMetaIntegrations() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Phone Number ID</label>
+                  <label className={`text-[11px] font-medium ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>Phone Number ID</label>
                   <input 
                     type="text"
                     placeholder="e.g. 102948572019485"
@@ -623,7 +623,7 @@ export function AdminMetaIntegrations() {
                   />
                 </div>
                 <div className="space-y-1.5 md:col-span-2">
-                  <label className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">WhatsApp Access Token (Permanent / System User Token)</label>
+                  <label className={`text-[11px] font-medium ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>WhatsApp Access Token (Permanent / System User Token)</label>
                   <input 
                     type="password"
                     placeholder="EAAGzD..."
@@ -639,16 +639,16 @@ export function AdminMetaIntegrations() {
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950/40 border border-zinc-100 dark:border-zinc-800/60 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className={`p-4 rounded-xl border flex flex-col md:flex-row md:items-center md:justify-between gap-4 ${isLightMode ? "bg-zinc-50 border-zinc-100" : "bg-zinc-950/40 border-zinc-800/60"}`}>
               <div className="space-y-0.5">
-                <span className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Pipeline Sandbox</span>
+                <span className={`text-[10px] font-semibold uppercase tracking-wider block ${isLightMode ? "text-zinc-400" : "text-zinc-500"}`}>Pipeline Sandbox</span>
                 <p className="text-xs text-zinc-400">Validate connection or dispatch simulated webhook events.</p>
               </div>
               <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
                 <button
                   onClick={() => handleTestHandshake('whatsapp')}
                   disabled={testingPlatform === 'whatsapp'}
-                  className="w-full sm:w-auto px-4 py-2 bg-white hover:bg-zinc-50 border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 dark:hover:bg-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 font-medium rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm"
+                  className={`w-full sm:w-auto px-4 py-2 border text-xs font-medium rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm ${isLightMode ? "bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-700" : "bg-zinc-900 border-zinc-800 hover:bg-zinc-800 text-zinc-300"}`}
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${testingPlatform === 'whatsapp' ? 'animate-spin' : ''}`} />
                   Test Pipeline
@@ -656,7 +656,7 @@ export function AdminMetaIntegrations() {
                 <button
                   onClick={() => handleSimulateWebhook('whatsapp')}
                   disabled={simulatingPlatform === 'whatsapp'}
-                  className="w-full sm:w-auto px-4 py-2 bg-violet-50 hover:bg-violet-100 dark:bg-violet-500/10 dark:hover:bg-violet-500/20 border border-violet-100 dark:border-violet-500/20 text-xs text-violet-700 dark:text-violet-400 font-medium rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm"
+                  className={`w-full sm:w-auto px-4 py-2 border text-xs font-medium rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm ${isLightMode ? "bg-violet-50 hover:bg-violet-100 border-violet-100 text-violet-700" : "bg-violet-500/10 hover:bg-violet-500/20 border-violet-500/20 text-violet-400"}`}
                 >
                   <Play className="w-3.5 h-3.5" />
                   Simulate Webhook
@@ -667,7 +667,7 @@ export function AdminMetaIntegrations() {
                     phoneId: platformConfigs.whatsapp.phoneId,
                     accessToken: platformConfigs.whatsapp.accessToken || ''
                   })}
-                  className="col-span-2 sm:col-span-1 w-full sm:w-auto sm:ml-2 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 text-xs font-semibold rounded-xl transition shadow-sm text-center flex items-center justify-center"
+                  className={`col-span-2 sm:col-span-1 w-full sm:w-auto sm:ml-2 px-4 py-2 text-xs font-semibold rounded-xl transition shadow-sm text-center flex items-center justify-center ${isLightMode ? "bg-zinc-900 hover:bg-zinc-800 !text-white" : "bg-zinc-100 hover:bg-zinc-200 text-zinc-900"}`}
                 >
                   Save
                 </button>
@@ -679,7 +679,7 @@ export function AdminMetaIntegrations() {
         {/* Instagram Row */}
         <div className={`p-4 sm:p-6 md:p-8 rounded-3xl border flex flex-col lg:flex-row gap-8 transition-all ${isLightMode ? 'bg-white border-zinc-200/80 shadow-sm' : 'bg-zinc-900/50 border-zinc-800/80 shadow-xl'}`}>
           {/* Identity & Control Column */}
-          <div className="w-full lg:w-[280px] shrink-0 border-b lg:border-b-0 lg:border-r border-zinc-100 dark:border-zinc-800/50 pb-5 lg:pb-0 lg:pr-8 flex flex-col justify-between space-y-6">
+          <div className={`w-full lg:w-[280px] shrink-0 border-b lg:border-b-0 lg:border-r pb-5 lg:pb-0 lg:pr-8 flex flex-col justify-between space-y-6 ${isLightMode ? "border-zinc-100" : "border-zinc-800/50"}`}>
             <div className="space-y-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3">
@@ -687,14 +687,14 @@ export function AdminMetaIntegrations() {
                     <Instagram className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-base text-zinc-900 dark:text-zinc-50">Instagram</h3>
+                    <h3 className={`font-semibold text-base ${isLightMode ? "text-zinc-900" : "text-zinc-50"}`}>Instagram</h3>
                     <span className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider block">Graph API</span>
                   </div>
                 </div>
                 <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${
                   connectedPlatforms.instagram 
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20' 
-                    : 'bg-zinc-50 text-zinc-500 border-zinc-200 dark:bg-zinc-800/50 dark:text-zinc-400 dark:border-zinc-800'
+                    ? '${isLightMode ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"}' 
+                    : '${isLightMode ? "bg-zinc-50 text-zinc-500 border-zinc-200" : "bg-zinc-800/50 text-zinc-400 border-zinc-800"}'
                 }`}>
                   {connectedPlatforms.instagram ? "Connected" : "Inactive"}
                 </span>
@@ -711,22 +711,22 @@ export function AdminMetaIntegrations() {
                   onClick={() => handleTogglePlatformWebhook('instagram')}
                   className={`text-[10px] font-semibold uppercase tracking-wider px-3 py-1 rounded-lg transition ${
                     platformToggles.instagram 
-                      ? 'bg-violet-600 text-white shadow-sm' 
-                      : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400'
+                      ? 'bg-violet-600 !text-white shadow-sm' 
+                      : '${isLightMode ? "bg-zinc-100 hover:bg-zinc-200 text-zinc-600" : "bg-zinc-800 hover:bg-zinc-700 text-zinc-400"}'
                   }`}
                 >
                   {platformToggles.instagram ? "Active" : "Disabled"}
                 </button>
               </div>
 
-              <div className="flex items-center justify-between text-xs py-1 border-t border-zinc-100 dark:border-zinc-800/40 pt-3">
+              <div className={`flex items-center justify-between text-xs py-1 border-t pt-3 ${isLightMode ? "border-zinc-100" : "border-zinc-800/40"}`}>
                 <span className="text-zinc-400 font-medium">Platform Link</span>
                 <button 
                   onClick={() => handleTogglePlatformConnection('instagram')}
                   className={`text-[10px] font-semibold uppercase tracking-wider px-3 py-1 rounded-lg transition border ${
                     connectedPlatforms.instagram 
-                      ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20 dark:hover:bg-red-500/20' 
-                      : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-300 dark:border-zinc-800 dark:hover:bg-zinc-800'
+                      ? '${isLightMode ? "bg-red-50 text-red-600 border-red-200 hover:bg-red-100" : "bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20"}' 
+                      : '${isLightMode ? "bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50" : "bg-zinc-900 text-zinc-300 border-zinc-800 hover:bg-zinc-800"}'
                   }`}
                 >
                   {connectedPlatforms.instagram ? "Disconnect" : "Link Connect"}
@@ -739,12 +739,12 @@ export function AdminMetaIntegrations() {
           <div className="flex-1 flex flex-col justify-between space-y-6 lg:pl-4">
             <div className="space-y-4">
               <div>
-                <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block mb-1">Developer Credentials</span>
+                <span className={`text-[10px] font-bold uppercase tracking-wider block mb-1 ${isLightMode ? "text-zinc-400" : "text-zinc-500"}`}>Developer Credentials</span>
                 <p className="text-xs text-zinc-400">Instagram Professional account mappings and secure system users.</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Instagram Account ID</label>
+                  <label className={`text-[11px] font-medium ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>Instagram Account ID</label>
                   <input 
                     type="text"
                     placeholder="e.g. 178414012345678"
@@ -758,7 +758,7 @@ export function AdminMetaIntegrations() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Graph Access Token</label>
+                  <label className={`text-[11px] font-medium ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>Graph Access Token</label>
                   <input 
                     type="password"
                     placeholder="••••••••••••••••"
@@ -774,16 +774,16 @@ export function AdminMetaIntegrations() {
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950/40 border border-zinc-100 dark:border-zinc-800/60 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className={`p-4 rounded-xl border flex flex-col md:flex-row md:items-center md:justify-between gap-4 ${isLightMode ? "bg-zinc-50 border-zinc-100" : "bg-zinc-950/40 border-zinc-800/60"}`}>
               <div className="space-y-0.5">
-                <span className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Pipeline Sandbox</span>
+                <span className={`text-[10px] font-semibold uppercase tracking-wider block ${isLightMode ? "text-zinc-400" : "text-zinc-500"}`}>Pipeline Sandbox</span>
                 <p className="text-xs text-zinc-400">Validate connection or dispatch simulated webhook events.</p>
               </div>
               <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
                 <button
                   onClick={() => handleTestHandshake('instagram')}
                   disabled={testingPlatform === 'instagram'}
-                  className="w-full sm:w-auto px-4 py-2 bg-white hover:bg-zinc-50 border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 dark:hover:bg-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 font-medium rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm"
+                  className={`w-full sm:w-auto px-4 py-2 border text-xs font-medium rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm ${isLightMode ? "bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-700" : "bg-zinc-900 border-zinc-800 hover:bg-zinc-800 text-zinc-300"}`}
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${testingPlatform === 'instagram' ? 'animate-spin' : ''}`} />
                   Test Pipeline
@@ -791,7 +791,7 @@ export function AdminMetaIntegrations() {
                 <button
                   onClick={() => handleSimulateWebhook('instagram')}
                   disabled={simulatingPlatform === 'instagram'}
-                  className="w-full sm:w-auto px-4 py-2 bg-violet-50 hover:bg-violet-100 dark:bg-violet-500/10 dark:hover:bg-violet-500/20 border border-violet-100 dark:border-violet-500/20 text-xs text-violet-700 dark:text-violet-400 font-medium rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm"
+                  className={`w-full sm:w-auto px-4 py-2 border text-xs font-medium rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm ${isLightMode ? "bg-violet-50 hover:bg-violet-100 border-violet-100 text-violet-700" : "bg-violet-500/10 hover:bg-violet-500/20 border-violet-500/20 text-violet-400"}`}
                 >
                   <Play className="w-3.5 h-3.5" />
                   Simulate Webhook
@@ -801,7 +801,7 @@ export function AdminMetaIntegrations() {
                     accountId: platformConfigs.instagram.accountId,
                     accessToken: platformConfigs.instagram.accessToken
                   })}
-                  className="col-span-2 sm:col-span-1 w-full sm:w-auto sm:ml-2 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 text-xs font-semibold rounded-xl transition shadow-sm text-center flex items-center justify-center"
+                  className={`col-span-2 sm:col-span-1 w-full sm:w-auto sm:ml-2 px-4 py-2 text-xs font-semibold rounded-xl transition shadow-sm text-center flex items-center justify-center ${isLightMode ? "bg-zinc-900 hover:bg-zinc-800 !text-white" : "bg-zinc-100 hover:bg-zinc-200 text-zinc-900"}`}
                 >
                   Save
                 </button>
@@ -813,7 +813,7 @@ export function AdminMetaIntegrations() {
         {/* Facebook Messenger Row */}
         <div className={`p-4 sm:p-6 md:p-8 rounded-3xl border flex flex-col lg:flex-row gap-8 transition-all ${isLightMode ? 'bg-white border-zinc-200/80 shadow-sm' : 'bg-zinc-900/50 border-zinc-800/80 shadow-xl'}`}>
           {/* Identity & Control Column */}
-          <div className="w-full lg:w-[280px] shrink-0 border-b lg:border-b-0 lg:border-r border-zinc-100 dark:border-zinc-800/50 pb-5 lg:pb-0 lg:pr-8 flex flex-col justify-between space-y-6">
+          <div className={`w-full lg:w-[280px] shrink-0 border-b lg:border-b-0 lg:border-r pb-5 lg:pb-0 lg:pr-8 flex flex-col justify-between space-y-6 ${isLightMode ? "border-zinc-100" : "border-zinc-800/50"}`}>
             <div className="space-y-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3">
@@ -821,14 +821,14 @@ export function AdminMetaIntegrations() {
                     <Facebook className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-base text-zinc-900 dark:text-zinc-50">Messenger</h3>
+                    <h3 className={`font-semibold text-base ${isLightMode ? "text-zinc-900" : "text-zinc-50"}`}>Messenger</h3>
                     <span className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider block">Facebook Page</span>
                   </div>
                 </div>
                 <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${
                   connectedPlatforms.facebook 
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20' 
-                    : 'bg-zinc-50 text-zinc-500 border-zinc-200 dark:bg-zinc-800/50 dark:text-zinc-400 dark:border-zinc-800'
+                    ? '${isLightMode ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"}' 
+                    : '${isLightMode ? "bg-zinc-50 text-zinc-500 border-zinc-200" : "bg-zinc-800/50 text-zinc-400 border-zinc-800"}'
                 }`}>
                   {connectedPlatforms.facebook ? "Connected" : "Inactive"}
                 </span>
@@ -845,22 +845,22 @@ export function AdminMetaIntegrations() {
                   onClick={() => handleTogglePlatformWebhook('facebook')}
                   className={`text-[10px] font-semibold uppercase tracking-wider px-3 py-1 rounded-lg transition ${
                     platformToggles.facebook 
-                      ? 'bg-violet-600 text-white shadow-sm' 
-                      : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400'
+                      ? 'bg-violet-600 !text-white shadow-sm' 
+                      : '${isLightMode ? "bg-zinc-100 hover:bg-zinc-200 text-zinc-600" : "bg-zinc-800 hover:bg-zinc-700 text-zinc-400"}'
                   }`}
                 >
                   {platformToggles.facebook ? "Active" : "Disabled"}
                 </button>
               </div>
 
-              <div className="flex items-center justify-between text-xs py-1 border-t border-zinc-100 dark:border-zinc-800/40 pt-3">
+              <div className={`flex items-center justify-between text-xs py-1 border-t pt-3 ${isLightMode ? "border-zinc-100" : "border-zinc-800/40"}`}>
                 <span className="text-zinc-400 font-medium">Platform Link</span>
                 <button 
                   onClick={() => handleTogglePlatformConnection('facebook')}
                   className={`text-[10px] font-semibold uppercase tracking-wider px-3 py-1 rounded-lg transition border ${
                     connectedPlatforms.facebook 
-                      ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20 dark:hover:bg-red-500/20' 
-                      : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-300 dark:border-zinc-800 dark:hover:bg-zinc-800'
+                      ? '${isLightMode ? "bg-red-50 text-red-600 border-red-200 hover:bg-red-100" : "bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20"}' 
+                      : '${isLightMode ? "bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50" : "bg-zinc-900 text-zinc-300 border-zinc-800 hover:bg-zinc-800"}'
                   }`}
                 >
                   {connectedPlatforms.facebook ? "Disconnect" : "Link Connect"}
@@ -873,12 +873,12 @@ export function AdminMetaIntegrations() {
           <div className="flex-1 flex flex-col justify-between space-y-6 lg:pl-4">
             <div className="space-y-4">
               <div>
-                <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block mb-1">Developer Credentials</span>
+                <span className={`text-[10px] font-bold uppercase tracking-wider block mb-1 ${isLightMode ? "text-zinc-400" : "text-zinc-500"}`}>Developer Credentials</span>
                 <p className="text-xs text-zinc-400">Map specific Facebook Pages and authorized permanent Page Access Tokens.</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Facebook Page ID</label>
+                  <label className={`text-[11px] font-medium ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>Facebook Page ID</label>
                   <input 
                     type="text"
                     placeholder="e.g. 1029485720194"
@@ -892,7 +892,7 @@ export function AdminMetaIntegrations() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Page Access Token</label>
+                  <label className={`text-[11px] font-medium ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>Page Access Token</label>
                   <input 
                     type="password"
                     placeholder="••••••••••••••••"
@@ -908,16 +908,16 @@ export function AdminMetaIntegrations() {
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950/40 border border-zinc-100 dark:border-zinc-800/60 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className={`p-4 rounded-xl border flex flex-col md:flex-row md:items-center md:justify-between gap-4 ${isLightMode ? "bg-zinc-50 border-zinc-100" : "bg-zinc-950/40 border-zinc-800/60"}`}>
               <div className="space-y-0.5">
-                <span className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Pipeline Sandbox</span>
+                <span className={`text-[10px] font-semibold uppercase tracking-wider block ${isLightMode ? "text-zinc-400" : "text-zinc-500"}`}>Pipeline Sandbox</span>
                 <p className="text-xs text-zinc-400">Validate connection or dispatch simulated webhook events.</p>
               </div>
               <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
                 <button
                   onClick={() => handleTestHandshake('facebook')}
                   disabled={testingPlatform === 'facebook'}
-                  className="w-full sm:w-auto px-4 py-2 bg-white hover:bg-zinc-50 border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 dark:hover:bg-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 font-medium rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm"
+                  className={`w-full sm:w-auto px-4 py-2 border text-xs font-medium rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm ${isLightMode ? "bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-700" : "bg-zinc-900 border-zinc-800 hover:bg-zinc-800 text-zinc-300"}`}
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${testingPlatform === 'facebook' ? 'animate-spin' : ''}`} />
                   Test Pipeline
@@ -925,7 +925,7 @@ export function AdminMetaIntegrations() {
                 <button
                   onClick={() => handleSimulateWebhook('facebook')}
                   disabled={simulatingPlatform === 'facebook'}
-                  className="w-full sm:w-auto px-4 py-2 bg-violet-50 hover:bg-violet-100 dark:bg-violet-500/10 dark:hover:bg-violet-500/20 border border-violet-100 dark:border-violet-500/20 text-xs text-violet-700 dark:text-violet-400 font-medium rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm"
+                  className={`w-full sm:w-auto px-4 py-2 border text-xs font-medium rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm ${isLightMode ? "bg-violet-50 hover:bg-violet-100 border-violet-100 text-violet-700" : "bg-violet-500/10 hover:bg-violet-500/20 border-violet-500/20 text-violet-400"}`}
                 >
                   <Play className="w-3.5 h-3.5" />
                   Simulate Webhook
@@ -935,7 +935,7 @@ export function AdminMetaIntegrations() {
                     pageId: platformConfigs.facebook.pageId,
                     pageAccessToken: platformConfigs.facebook.pageAccessToken
                   })}
-                  className="col-span-2 sm:col-span-1 w-full sm:w-auto sm:ml-2 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 text-xs font-semibold rounded-xl transition shadow-sm text-center flex items-center justify-center"
+                  className={`col-span-2 sm:col-span-1 w-full sm:w-auto sm:ml-2 px-4 py-2 text-xs font-semibold rounded-xl transition shadow-sm text-center flex items-center justify-center ${isLightMode ? "bg-zinc-900 hover:bg-zinc-800 !text-white" : "bg-zinc-100 hover:bg-zinc-200 text-zinc-900"}`}
                 >
                   Save
                 </button>
@@ -955,13 +955,13 @@ export function AdminMetaIntegrations() {
             className={`p-6 rounded-2xl border ${
               testResult 
                 ? testResult.success 
-                  ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' 
-                  : 'bg-red-500/5 border-red-500/20 text-red-600 dark:text-red-400'
-                : 'bg-violet-500/5 border-violet-500/20 text-violet-600 dark:text-violet-400'
+                  ? (isLightMode ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-600" : "bg-emerald-500/5 border-emerald-500/20 text-emerald-400") 
+                  : (isLightMode ? "bg-red-500/5 border-red-500/20 text-red-600" : "bg-red-500/5 border-red-500/20 text-red-400")
+                : (isLightMode ? "bg-violet-500/5 border-violet-500/20 text-violet-600" : "bg-violet-500/5 border-violet-500/20 text-violet-400")
             }`}
           >
             <div className="flex items-start gap-4">
-              <div className="p-2.5 rounded-xl bg-white dark:bg-zinc-900 shadow-sm border border-zinc-100 dark:border-zinc-800/40">
+              <div className={`p-2.5 rounded-xl shadow-sm border ${isLightMode ? "bg-white border-zinc-100" : "bg-zinc-900 border-zinc-800/40"}`}>
                 {testResult ? (
                   testResult.success ? <CheckCircle2 className="w-5 h-5 text-emerald-500" /> : <AlertCircle className="w-5 h-5 text-red-500" />
                 ) : (
@@ -978,9 +978,9 @@ export function AdminMetaIntegrations() {
               </div>
               <button 
                 onClick={() => { setTestingPlatform(null); setTestResult(null); }}
-                className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
+                className={`p-1.5 rounded-lg transition ${isLightMode ? "hover:bg-zinc-100" : "hover:bg-zinc-800"}`}
               >
-                <X className="w-4 h-4 text-zinc-400 dark:text-zinc-500" />
+                <X className={`w-4 h-4 ${isLightMode ? "text-zinc-400" : "text-zinc-500"}`} />
               </button>
             </div>
           </motion.div>
