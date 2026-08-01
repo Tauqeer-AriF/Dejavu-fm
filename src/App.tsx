@@ -1386,12 +1386,16 @@ function MainLayout() {
       </main>
 
       {!isAdmin && !isSplitActive && (
-        <footer className="w-full max-w-7xl mx-auto p-4 md:p-8 pt-24 border-t border-white/5 relative flex flex-col gap-10 text-white/40 text-sm mb-40 md:mb-32">
+        <footer className={`w-full max-w-7xl mx-auto p-4 md:p-8 pt-24 border-t relative flex flex-col gap-10 text-sm mb-40 md:mb-32 ${isLightMode ? 'border-black/10 text-black/60' : 'border-white/5 text-white/40'}`}>
           <div className="flex flex-col md:flex-row items-center justify-between gap-10 w-full">
             <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-4 w-full md:w-auto">
               <button 
                 onClick={handleShare} 
-                className="flex items-center justify-center gap-2.5 px-6 py-3 md:p-0 md:w-10 md:h-10 rounded-full bg-neon-purple/[0.04] md:bg-white/5 border border-neon-purple/20 md:border-white/10 text-white/70 md:text-white/50 hover:text-white hover:border-neon-purple/50 hover:bg-neon-purple/10 transition-all shadow-md hover:shadow-xl cursor-pointer order-first md:order-last w-full max-w-[240px] md:max-w-none md:w-10 mb-[10px] md:mb-0" 
+                className={`flex items-center justify-center gap-2.5 px-6 py-3 md:p-0 md:w-10 md:h-10 rounded-full transition-all shadow-md hover:shadow-xl cursor-pointer order-first md:order-last w-full max-w-[240px] md:max-w-none md:w-10 mb-[10px] md:mb-0 border ${
+                  isLightMode 
+                    ? 'bg-black/[0.03] border-black/10 text-black/70 hover:text-neon-purple hover:border-neon-purple/50 hover:bg-neon-purple/5' 
+                    : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-neon-purple/50 hover:bg-neon-purple/10'
+                }`}
                 title="Share Website"
               >
                 <Share2 className="w-4 h-4 text-neon-purple animate-pulse" />
@@ -1400,60 +1404,132 @@ function MainLayout() {
 
               <div className="flex flex-wrap justify-center items-center gap-4">
                 {settings?.social_instagram && (
-                  <a href={settings.social_instagram} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="Instagram">
+                  <a 
+                    href={settings.social_instagram} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-md hover:shadow-xl ${
+                      isLightMode 
+                        ? 'bg-black/[0.03] border-black/10 text-black/60 hover:text-black hover:border-black/30 hover:bg-black/10' 
+                        : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
+                    }`} 
+                    title="Instagram"
+                  >
                     <Instagram className="w-4 h-4" />
                   </a>
                 )}
                 {settings?.social_twitter && (
-                  <a href={settings.social_twitter} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="Twitter / X">
+                  <a 
+                    href={settings.social_twitter} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-md hover:shadow-xl ${
+                      isLightMode 
+                        ? 'bg-black/[0.03] border-black/10 text-black/60 hover:text-black hover:border-black/30 hover:bg-black/10' 
+                        : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
+                    }`} 
+                    title="Twitter / X"
+                  >
                     <Twitter className="w-4 h-4" />
                   </a>
                 )}
                 {settings?.social_facebook && (
-                  <a href={settings.social_facebook} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="Facebook">
+                  <a 
+                    href={settings.social_facebook} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-md hover:shadow-xl ${
+                      isLightMode 
+                        ? 'bg-black/[0.03] border-black/10 text-black/60 hover:text-black hover:border-black/30 hover:bg-black/10' 
+                        : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
+                    }`} 
+                    title="Facebook"
+                  >
                     <Facebook className="w-4 h-4" />
                   </a>
                 )}
                 {settings?.social_youtube && (
-                  <a href={settings.social_youtube} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="YouTube">
+                  <a 
+                    href={settings.social_youtube} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-md hover:shadow-xl ${
+                      isLightMode 
+                        ? 'bg-black/[0.03] border-black/10 text-black/60 hover:text-black hover:border-black/30 hover:bg-black/10' 
+                        : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
+                    }`} 
+                    title="YouTube"
+                  >
                     <Youtube className="w-4 h-4" />
                   </a>
                 )}
                 {settings?.social_soundcloud && (
-                  <a href={settings.social_soundcloud} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="SoundCloud">
+                  <a 
+                    href={settings.social_soundcloud} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-md hover:shadow-xl ${
+                      isLightMode 
+                        ? 'bg-black/[0.03] border-black/10 text-black/60 hover:text-black hover:border-black/30 hover:bg-black/10' 
+                        : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
+                    }`} 
+                    title="SoundCloud"
+                  >
                     <Cloud className="w-4 h-4" />
                   </a>
                 )}
                 {settings?.social_mixcloud && (
-                  <a href={settings.social_mixcloud} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="Mixcloud">
+                  <a 
+                    href={settings.social_mixcloud} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-md hover:shadow-xl ${
+                      isLightMode 
+                        ? 'bg-black/[0.03] border-black/10 text-black/60 hover:text-black hover:border-black/30 hover:bg-black/10' 
+                        : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
+                    }`} 
+                    title="Mixcloud"
+                  >
                     <MixcloudIcon className="w-5 h-5" />
                   </a>
                 )}
                 {settings?.social_tiktok && (
-                  <a href={settings.social_tiktok} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all shadow-md hover:shadow-xl" title="TikTok">
+                  <a 
+                    href={settings.social_tiktok} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-md hover:shadow-xl ${
+                      isLightMode 
+                        ? 'bg-black/[0.03] border-black/10 text-black/60 hover:text-black hover:border-black/30 hover:bg-black/10' 
+                        : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
+                    }`} 
+                    title="TikTok"
+                  >
                     <TikTokIcon className="w-4 h-4" />
                   </a>
                 )}
                 {!settings?.social_instagram && !settings?.social_twitter && !settings?.social_facebook && !settings?.social_youtube && !settings?.social_soundcloud && !settings?.social_mixcloud && !settings?.social_tiktok && (
-                  <span className="text-[10px] uppercase tracking-[0.2em] opacity-40">Social profiles not configured</span>
+                  <span className={`text-[10px] uppercase tracking-[0.2em] ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>Social profiles not configured</span>
                 )}
               </div>
             </div>
             <div className="flex flex-col items-center md:items-end space-y-2 text-center md:text-right">
-              <p className="font-black tracking-[0.2em] text-[10px]">© {new Date().getFullYear()} dejavufm.com. All rights reserved.</p>
-              <p className="text-[10px] uppercase tracking-[0.4em] opacity-30 italic text-center md:text-right">{appTagline}</p>
+              <p className={`font-black tracking-[0.2em] text-[10px] ${isLightMode ? 'text-black/70' : 'text-white/60'}`}>© {new Date().getFullYear()} dejavufm.com. All rights reserved.</p>
+              <p className="text-[10px] uppercase tracking-[0.3em] font-bold italic text-center md:text-right text-[#7a7878]">
+                {appTagline}
+              </p>
               <Link to="/privacy-policy" className="text-[10px] font-black uppercase tracking-[0.2em] text-neon-purple hover:text-neon-blue hover:underline transition-all mt-1">Privacy Policy</Link>
             </div>
           </div>
 
-          <div className="w-[500px] max-w-full mx-auto border-t border-white/[0.03] pt-6 flex justify-center">
-            <p className={`text-[9px] md:text-[10px] uppercase tracking-[0.25em] text-center ${isLightMode ? 'text-black/30' : 'text-white/20'}`}>
+          <div className={`w-[500px] max-w-full mx-auto border-t pt-6 flex justify-center ${isLightMode ? 'border-black/10' : 'border-white/[0.05]'}`}>
+            <p className={`text-[9px] md:text-[10px] uppercase tracking-[0.25em] text-center ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>
               Developed by{" "}
               <a 
                 href="https://creativeengagementservices.com/web-agency" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className={`${isLightMode ? 'text-black/50 hover:text-black hover:border-black/30' : 'text-white/40 hover:text-white hover:border-white/30'} transition-all font-black border-b border-transparent pb-0.5`}
+                className={`${isLightMode ? 'text-black/60 hover:text-black hover:border-black/40' : 'text-white/50 hover:text-white hover:border-white/40'} transition-all font-black border-b border-transparent pb-0.5`}
               >
                 Creative Engagement Services
               </a>
