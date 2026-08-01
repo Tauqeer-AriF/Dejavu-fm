@@ -383,7 +383,7 @@ export function AdminMenu() {
           </div>
           <div>
             <h2 className={`text-2xl sm:text-3xl font-display font-black uppercase tracking-tight ${isLightMode ? 'text-black' : 'text-white'}`}>Menu & Branding Control</h2>
-            <p className={`text-xs sm:text-sm ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Customize front-view menu orders, labels, and nest custom pages or drop-down sub-menus.</p>
+            <p className={`text-xs sm:text-sm ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Customise front-view menu orders, labels, and nest custom pages or drop-down sub-menus.</p>
           </div>
         </div>
       </div>

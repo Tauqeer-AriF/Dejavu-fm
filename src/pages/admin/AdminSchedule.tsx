@@ -58,7 +58,7 @@ export function AdminSchedule() {
       <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4 ${isLightMode ? "border-black/10" : "border-white/10"}`}>
         <div>
           <h3 className={`text-2xl font-bold ${isLightMode ? "text-black" : "text-white"}`}>Manage Schedule</h3>
-          <p className={`text-xs mt-1 ${isLightMode ? "text-black/50" : "text-white/50"}`}>Organize and edit weekly live slots by day.</p>
+          <p className={`text-xs mt-1 ${isLightMode ? "text-black/50" : "text-white/50"}`}>Organise and edit weekly live slots by day.</p>
         </div>
         
         {/* Search Bar */}

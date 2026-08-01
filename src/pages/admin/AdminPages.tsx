@@ -110,7 +110,7 @@ export function AdminPages() {
         id: `block_${Date.now()}`,
         type: 'header',
         title: "Welcome to My Page",
-        subtitle: "A highly customizable dynamic sub-page",
+        subtitle: "A highly customisable dynamic sub-page",
       }
     ]);
     setIsEditing(true);
@@ -338,7 +338,7 @@ export function AdminPages() {
             <Layers className="w-6 h-6" /> Dynamic Pages Builder
           </h2>
           <p className={`text-xs mt-1 ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>
-            Create and edit fully customized pages with images, embedded maps/video players, links, and headers.
+            Create and edit fully customised pages with images, embedded maps/video players, links, and headers.
           </p>
         </div>
 
@@ -542,7 +542,7 @@ export function AdminPages() {
                 </label>
                 <input
                   type="text"
-                  placeholder="A short description summarizing this page for search engines."
+                  placeholder="A short description summarising this page for search engines."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className={`w-full rounded-xl px-4 py-2.5 text-xs font-semibold outline-none transition-all border ${
@@ -777,7 +777,7 @@ export function AdminPages() {
                                 placeholder="Optional subtitle or tagline"
                               />
                             </div>
-                            <div className="space-y-2">
+                             <div className="space-y-2">
                               <label className={`block text-[9px] uppercase font-black tracking-widest ${isLightMode ? 'text-slate-500' : 'text-white/30'}`}>
                                 Header Alignment
                               </label>
@@ -791,7 +791,7 @@ export function AdminPages() {
                                 }`}
                               >
                                 <option value="left">Left Aligned</option>
-                                <option value="center">Centered</option>
+                                <option value="center">Centred</option>
                                 <option value="right">Right Aligned</option>
                               </select>
                             </div>
@@ -839,7 +839,7 @@ export function AdminPages() {
                                   }`}
                                 >
                                   <option value="left">Left Aligned</option>
-                                  <option value="center">Centered</option>
+                                  <option value="center">Centred</option>
                                   <option value="right">Right Aligned</option>
                                 </select>
                               </div>
@@ -875,7 +875,7 @@ export function AdminPages() {
                                 placeholder="Caption shown underneath the image"
                               />
                             </div>
-                            <div className="space-y-2">
+                             <div className="space-y-2">
                               <label className={`block text-[9px] uppercase font-black tracking-widest ${isLightMode ? 'text-slate-500' : 'text-white/30'}`}>
                                 Image Alignment
                               </label>
@@ -889,7 +889,7 @@ export function AdminPages() {
                                 }`}
                               >
                                 <option value="left">Left Aligned</option>
-                                <option value="center">Centered</option>
+                                <option value="center">Centred</option>
                                 <option value="right">Right Aligned</option>
                               </select>
                             </div>
@@ -948,7 +948,7 @@ export function AdminPages() {
                                 <option value="minimal">Minimal Link Underline</option>
                               </select>
                             </div>
-                            <div className="space-y-2">
+                             <div className="space-y-2">
                               <label className={`block text-[9px] uppercase font-black tracking-widest ${isLightMode ? 'text-slate-500' : 'text-white/30'}`}>
                                 Button Alignment
                               </label>
@@ -962,7 +962,7 @@ export function AdminPages() {
                                 }`}
                               >
                                 <option value="left">Left Aligned</option>
-                                <option value="center">Centered</option>
+                                <option value="center">Centred</option>
                                 <option value="right">Right Aligned</option>
                               </select>
                             </div>
@@ -1067,7 +1067,7 @@ export function AdminPages() {
                                   }`}
                                 />
                               </div>
-                              <div className="space-y-2">
+                               <div className="space-y-2">
                                 <label className={`block text-[9px] uppercase font-black tracking-widest ${isLightMode ? 'text-slate-500' : 'text-white/30'}`}>
                                   Form Header Alignment
                                 </label>
@@ -1081,7 +1081,7 @@ export function AdminPages() {
                                   }`}
                                 >
                                   <option value="left">Left Aligned</option>
-                                  <option value="center">Centered</option>
+                                  <option value="center">Centred</option>
                                   <option value="right">Right Aligned</option>
                                 </select>
                               </div>

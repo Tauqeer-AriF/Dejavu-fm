@@ -239,7 +239,7 @@ export function AdminPopup() {
               </div>
             </div>
           </div>
-          <button type="submit" className="w-full bg-neon-purple text-white font-black py-5 rounded-[1.25rem] hover:bg-neon-blue transition-all uppercase tracking-[0.2em] text-xs shadow-xl shadow-neon-purple/20">Initialize Pop-up</button>
+          <button type="submit" className="w-full bg-neon-purple text-white font-black py-5 rounded-[1.25rem] hover:bg-neon-blue transition-all uppercase tracking-[0.2em] text-xs shadow-xl shadow-neon-purple/20">Initialise Pop-up</button>
         </form>
       </div>
 

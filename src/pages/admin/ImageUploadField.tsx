@@ -143,7 +143,7 @@ export function ImageUploadField({
               {uploading ? (
                 <div className="flex flex-col items-center gap-2">
                   <Loader2 className="w-5 h-5 text-neon-purple animate-spin" />
-                  <span className={`text-xs ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>Optimizing & Uploading...</span>
+                  <span className={`text-xs ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>Optimising & Uploading...</span>
                 </div>
               ) : (
                 <div className="flex items-center gap-3 w-full min-w-0 justify-center px-1">

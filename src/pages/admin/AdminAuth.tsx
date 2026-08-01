@@ -56,13 +56,13 @@ export function AdminSecretGate({ onPass, onLogin }: { onPass: () => void; onLog
           </div>
           <div className="space-y-2">
             <h2 className={`text-2xl font-display font-black uppercase tracking-tight ${isLightMode ? 'text-slate-900' : 'text-white'}`}>Security Check</h2>
-            <p className={`text-sm font-medium ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>Identify yourself to proceed to the control center.</p>
+            <p className={`text-sm font-medium ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>Identify yourself to proceed to the control centre.</p>
           </div>
         </div>
 
         <form onSubmit={handleSecretSubmit} className="space-y-6">
           <div className="space-y-2 text-left">
-            <label className={`text-[10px] uppercase font-black tracking-widest ml-4 ${isLightMode ? 'text-slate-500' : 'text-white/30'}`}>Authorized Name</label>
+            <label className={`text-[10px] uppercase font-black tracking-widest ml-4 ${isLightMode ? 'text-slate-500' : 'text-white/30'}`}>Authorised Name</label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}

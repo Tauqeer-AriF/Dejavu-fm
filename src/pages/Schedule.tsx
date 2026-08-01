@@ -180,7 +180,7 @@ export default function Schedule() {
               isLightMode ? 'border-neon-purple/50 text-slate-500' : 'border-neon-purple/30 text-white/50'
             }`}
           >
-            Browse scheduled live broadcasts easily. Find your favorite DJs and never miss a beat.
+            Browse scheduled live broadcasts easily. Find your favourite DJs and never miss a beat.
           </motion.p>
         </div>
 

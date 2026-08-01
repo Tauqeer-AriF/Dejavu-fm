@@ -68,7 +68,7 @@ export function AdminSEO() {
         </div>
         <div>
           <h2 className={`text-2xl sm:text-3xl font-display font-black uppercase tracking-tight ${isLightMode ? 'text-black' : 'text-white'}`}>SEO Engine</h2>
-          <p className={`text-xs sm:text-sm ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Optimize your station's visibility on search and social platforms.</p>
+          <p className={`text-xs sm:text-sm ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Optimise your station's visibility on search and social platforms.</p>
         </div>
       </div>
 

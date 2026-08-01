@@ -853,9 +853,9 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     setTestResult(null);
 
     const steps = [
-      "Initializing secure TLS handshake with connection gateway...",
+      "Initialising secure TLS handshake with connection gateway...",
       "Resolving endpoint routing paths and data structures...",
-      "Transmitting credential signature authorization payload...",
+      "Transmitting credential signature authorisation payload...",
       "Verifying access token credentials with API server..."
     ];
 
@@ -967,7 +967,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     } else {
       setTestResult({
         success: false,
-        message: "Validation Error: Selected connection pipeline channel is unrecognized."
+        message: "Validation Error: Selected connection pipeline channel is unrecognised."
       });
     }
   };
@@ -2266,9 +2266,9 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             <div className="space-y-1">
               <h2 className="text-xl font-bold uppercase tracking-wider text-white flex items-center gap-3">
                 <Radio className="w-6 h-6 text-neon-blue" />
-                Global Broadcast Center
+                Global Broadcast Centre
               </h2>
-              <p className="text-xs text-white/50">Transmit a synchronized message across multiple connected listener channels simultaneously.</p>
+              <p className="text-xs text-white/50">Transmit a synchronised message across multiple connected listener channels simultaneously.</p>
             </div>
             <div className="text-[10px] text-white/30 uppercase font-mono tracking-widest bg-white/[0.02] px-3 py-1 rounded-lg border border-white/5">
               TARGETING: <span className="text-neon-blue">{broadcastChannels.length} CHANNELS</span>
@@ -2642,7 +2642,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         <div className="max-w-4xl mx-auto space-y-8 pb-36 md:pb-12">
           <div className="space-y-1">
             <h2 className="text-xl font-bold uppercase tracking-wider text-white">Studio Desk Settings</h2>
-            <p className="text-xs text-white/50">Manage notifications, customize default responses, and administer storage caches.</p>
+            <p className="text-xs text-white/50">Manage notifications, customise default responses, and administer storage caches.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -1292,7 +1292,7 @@ function MainLayout() {
     } else if (location.pathname === "/schedule") {
       const pageTitle = customPageTitles['schedule'] || "Radio Broadcast Schedule & Timetable";
       title = `${pageTitle} | ${appTitle}`;
-      desc = "Check out the full weekly broadcast timetable on DejavuFM. Find slot times for your favorite Resident DJs and never miss a live show.";
+      desc = "Check out the full weekly broadcast timetable on DejavuFM. Find slot times for your favourite Resident DJs and never miss a live show.";
     } else if (location.pathname === "/djs") {
       const pageTitle = customPageTitles['djs'] || "Resident DJs, Hosts & Creators";
       title = `${pageTitle} | ${appTitle}`;

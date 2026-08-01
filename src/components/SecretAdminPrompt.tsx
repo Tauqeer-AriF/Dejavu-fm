@@ -91,7 +91,7 @@ export function SecretAdminPrompt({ isOpen, onClose, isLightMode }: SecretAdminP
                 </div>
                 <div className="space-y-2">
                   <h2 className={`text-2xl font-display font-black uppercase tracking-tight ${isLightMode ? 'text-black' : 'text-white'}`}>Security Check</h2>
-                  <p className={`text-sm font-medium ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>To proceed to the control center, please identify yourself.</p>
+                  <p className={`text-sm font-medium ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>To proceed to the control centre, please identify yourself.</p>
                 </div>
               </div>
 

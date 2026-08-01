@@ -720,7 +720,7 @@ export default function Admin() {
             <div className="flex items-center space-x-4 mt-4">
               <div className="h-px w-12 bg-neon-purple" />
               <p className={`text-xs md:text-sm font-mono uppercase tracking-[0.3em] ${location.pathname.includes('admin') ? 'text-[var(--theme-text)] opacity-40' : 'text-white/40'}`}>
-                Control center for DejavuFM station
+                Control centre for DejavuFM station
               </p>
             </div>
           </motion.div>

@@ -75,7 +75,7 @@ export function AdminAdvanced() {
   const toggleItems = [
     { id: 'feat_chat', title: 'Chat Room', description: 'Enable real-time chat functionality.' },
     { id: 'feat_shoutouts', title: 'Shoutout Widget', description: 'Enable direct interaction (fire, hearts, messages).' },
-    { id: 'feat_cinematic', title: 'Cinematic Visualizer', description: 'Enable the immersive audio visualizer mode.' },
+    { id: 'feat_cinematic', title: 'Cinematic Visualiser', description: 'Enable the immersive audio visualiser mode.' },
     { id: 'feat_pwa', title: 'PWA Install Prompt', description: 'Prompt users to install the web app to their home screen.' },
     { id: 'feat_bookings', title: 'DJ Bookings (Agency)', description: 'Enable the DJ inquiry and booking system.' },
     { id: 'feat_live_tools', title: 'Live Tools / Studio Cam', description: 'Enable the studio camera watch live tools.' },
@@ -510,7 +510,7 @@ export function AdminBranding() {
                 className={`w-full rounded-xl px-4 py-3 text-sm focus:border-neon-purple outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`}
               >
                 <option value="left">Left (Desktop)</option>
-                <option value="center">Center</option>
+                <option value="center">Centre</option>
                 <option value="right">Right (Desktop)</option>
               </select>
               <span className="text-[10px] opacity-40 mt-1 block">Alignment on desktop screens (always centered on mobile).</span>
@@ -543,15 +543,15 @@ export function AdminBranding() {
           <div className={`space-y-4 pt-4 border-t transition-colors ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
             <ImageUploadField label="Logo URL (Global / Fallback)" value={logoUrl} onChange={setLogoUrl} placeholder="https://..." description="Base logo used if specific theme logos are missing." />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <ImageUploadField label="Dark Mode Logo" value={logoDark} onChange={setLogoDark} description="Optimized for dark backgrounds." />
-              <ImageUploadField label="Light Mode Logo" value={logoLight} onChange={setLogoLight} description="Optimized for light backgrounds." />
+              <ImageUploadField label="Dark Mode Logo" value={logoDark} onChange={setLogoDark} description="Optimised for dark backgrounds." />
+              <ImageUploadField label="Light Mode Logo" value={logoLight} onChange={setLogoLight} description="Optimised for light backgrounds." />
             </div>
             <ImageUploadField label="Favicon URL" value={favicon} onChange={setFavicon} description="The browser tab icon (.ico or .png)." />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
             <div>
-              <label className={`block text-[10px] uppercase mb-1 font-bold tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Primary Brand Color</label>
+              <label className={`block text-[10px] uppercase mb-1 font-bold tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Primary Brand Colour</label>
               <div className="flex items-center space-x-2">
                 <input 
                   type="color" 
@@ -568,7 +568,7 @@ export function AdminBranding() {
               </div>
             </div>
             <div>
-              <label className={`block text-[10px] uppercase mb-1 font-bold tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Secondary Color</label>
+              <label className={`block text-[10px] uppercase mb-1 font-bold tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Secondary Colour</label>
               <div className="flex items-center space-x-2">
                 <input 
                   type="color" 
@@ -1040,7 +1040,7 @@ export function AdminSettings() {
           <div className={`pt-6 border-t space-y-3 transition-colors ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
             <h4 className={`text-lg font-bold ${isLightMode ? 'text-black' : 'text-white'}`}>Dashboard Access URL / Path</h4>
             <p className={`text-[11px] leading-relaxed ${isLightMode ? 'text-black/60' : 'text-white/50'}`}>
-              Customize the URL path used to access the Creator Dashboard in the future. Default is <code className="px-1.5 py-0.5 rounded bg-neon-purple/10 text-neon-purple font-mono font-bold">/admin</code>. You can change this to any custom path (e.g., <code className="px-1.5 py-0.5 rounded bg-neon-purple/10 text-neon-purple font-mono font-bold">/control-panel</code> or <code className="px-1.5 py-0.5 rounded bg-neon-purple/10 text-neon-purple font-mono font-bold">/station-admin</code>).
+              Customise the URL path used to access the Creator Dashboard in the future. Default is <code className="px-1.5 py-0.5 rounded bg-neon-purple/10 text-neon-purple font-mono font-bold">/admin</code>. You can change this to any custom path (e.g., <code className="px-1.5 py-0.5 rounded bg-neon-purple/10 text-neon-purple font-mono font-bold">/control-panel</code> or <code className="px-1.5 py-0.5 rounded bg-neon-purple/10 text-neon-purple font-mono font-bold">/station-admin</code>).
             </p>
             <div>
               <label className={`block text-[10px] uppercase mb-1 font-bold tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Dashboard Path</label>
@@ -1110,7 +1110,7 @@ function AdminSecretSettings() {
   return (
     <div className="space-y-3">
       <h4 className={`text-lg font-bold ${isLightMode ? 'text-black' : 'text-white'}`}>Admin Portal Security</h4>
-      <label className={`block text-[10px] uppercase mb-1 font-bold tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Secret Access Answer (Authorized Name)</label>
+      <label className={`block text-[10px] uppercase mb-1 font-bold tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Secret Access Answer (Authorised Name)</label>
       <div className="flex flex-col sm:flex-row gap-3 relative">
         <div className="relative flex-1">
           <input 

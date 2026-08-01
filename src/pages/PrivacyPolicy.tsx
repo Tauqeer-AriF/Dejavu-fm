@@ -187,13 +187,13 @@ export default function PrivacyPolicy() {
             </h2>
             <div className="border-t border-white/5 pt-4 space-y-4 text-sm md:text-base leading-relaxed font-light">
               <p>
-                Your data is strictly utilized for the functional execution of {appName}'s services:
+                Your data is strictly utilised for the functional execution of {appName}'s services:
               </p>
               <ul className="list-disc pl-5 space-y-2">
                 <li>Providing high-fidelity, adaptive live audio and video streaming on your web browser or mobile client.</li>
                 <li>Powering live chatroom interactions, ensuring message indexing, and displaying real-time listener counts.</li>
                 <li>Transmitting shoutouts directly to the on-air DJ's dashboard interface.</li>
-                <li>Providing analytics to help our engineers optimize server loads during peak listening hours.</li>
+                <li>Providing analytics to help our engineers optimise server loads during peak listening hours.</li>
                 <li>Detecting, preventing, and prosecuting disruptive activities, fraudulent requests, or unauthorized bot access.</li>
               </ul>
             </div>
@@ -214,7 +214,7 @@ export default function PrivacyPolicy() {
                 When you upload images, sound bytes, or short videos to submit as shoutouts, our backend handles these securely:
               </p>
               <p>
-                We run optimization algorithms (such as converting image files to light `.webp` files) and store media inside a secure `/uploads` directory on our server. Submissions are delivered to on-air DJs and broadcast strictly inside the context of the requested show.
+                We run optimisation algorithms (such as converting image files to light `.webp` files) and store media inside a secure `/uploads` directory on our server. Submissions are delivered to on-air DJs and broadcast strictly inside the context of the requested show.
               </p>
               <p>
                 Our platform enforces an automatic media deletion cleanup timer (configured inside our system settings) that periodically purges older or orphaned files from the server, keeping storage clean and lightweight.

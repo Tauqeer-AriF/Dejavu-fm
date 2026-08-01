@@ -874,7 +874,7 @@ export function AdminMetaIntegrations() {
             <div className="space-y-4">
               <div>
                 <span className={`text-[10px] font-bold uppercase tracking-wider block mb-1 ${isLightMode ? "text-zinc-400" : "text-zinc-500"}`}>Developer Credentials</span>
-                <p className="text-xs text-zinc-400">Map specific Facebook Pages and authorized permanent Page Access Tokens.</p>
+                <p className="text-xs text-zinc-400">Map specific Facebook Pages and authorised permanent Page Access Tokens.</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
