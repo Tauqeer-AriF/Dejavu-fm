@@ -379,6 +379,7 @@ export default function Home() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.2, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           className="relative -mt-10 sm:-mt-14 lg:mt-0 group w-full lg:w-[45%] flex justify-center pt-2 pb-8 sm:py-12 md:py-6 lg:py-12"
+          style={{ marginTop: '-120px', paddingTop: '8px' }}
         >
           <div className={`relative w-full aspect-square max-w-[280px] sm:max-w-[340px] md:max-w-[400px] lg:max-w-[480px] rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/5 group-hover:border-white/20 transition-all duration-700 ${
             (resolveDjImage(onAirInfo?.djPhoto) === logoUrl) && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-black shadow-inner' : 'bg-transparent') : ''
