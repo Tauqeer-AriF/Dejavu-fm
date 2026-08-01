@@ -23,7 +23,7 @@ import { SkeletonPodcast } from "../components/Skeleton";
 export default function PodcastsPage() {
   const { isLightMode, getPageTitle } = useLogo();
 
-  const rawTitle = getPageTitle('podcasts', 'Podcasts');
+  const rawTitle = getPageTitle('podcasts', 'The Podcasts');
   const words = rawTitle.split(' ');
   const firstPart = words.slice(0, -1).join(' ') || '';
   const lastWord = words.length > 1 ? words[words.length - 1] : words[0];

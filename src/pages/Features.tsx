@@ -2,8 +2,8 @@ import { BlogPost } from "../types";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { CalendarDays, FileText, Search, X, ExternalLink } from "lucide-react";
-import { useMemo, useState } from "react";
+import { CalendarDays, FileText, Search, X, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
 import { useLogo } from "../hooks/useLogo";
 
 
@@ -26,9 +26,10 @@ const previewText = (post: BlogPost) => {
 
 export default function Features() {
   const [query, setQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const { isLightMode, getPageTitle } = useLogo();
 
-  const rawTitle = getPageTitle('features', 'Features');
+  const rawTitle = getPageTitle('features', 'The Features');
   const words = rawTitle.split(' ');
   const firstPart = words.slice(0, -1).join(' ') || '';
   const lastWord = words.length > 1 ? words[words.length - 1] : words[0];
@@ -49,6 +50,20 @@ export default function Features() {
       post.content.toLowerCase().includes(normalized)
     );
   }, [posts, query]);
+
+  const itemsPerPage = 9;
+  const totalPages = Math.max(1, Math.ceil(filteredPosts.length / itemsPerPage));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
+  const paginatedPosts = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredPosts.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredPosts, currentPage]);
 
   if (isLoading) {
     return (
@@ -101,13 +116,19 @@ export default function Features() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
           <input
             value={query}
-            onChange={event => setQuery(event.target.value)}
+            onChange={event => {
+              setQuery(event.target.value);
+              setCurrentPage(1);
+            }}
             placeholder="Search features..."
             className="w-full pl-11 pr-12 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/20 transition-all font-medium"
           />
           {query && (
             <button
-              onClick={() => setQuery("")}
+              onClick={() => {
+                setQuery("");
+                setCurrentPage(1);
+              }}
               className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full transition-all hover:bg-white/10 text-white/40 hover:text-white"
             >
               <X className="w-3.5 h-3.5" />
@@ -116,85 +137,147 @@ export default function Features() {
         </div>
       </div>
 
-      {filteredPosts.length ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 px-4">
-          {filteredPosts.map((post, index) => (
-            <motion.article
-              key={post.id}
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05, duration: 0.5 }}
-              whileHover="hover"
-              className={`group glass-panel rounded-2xl overflow-hidden hover:border-neon-purple/30 transition-all relative flex flex-col h-full ${
-                isLightMode ? 'bg-white border-black/10' : 'border-white/10 bg-[#0A0A0A]/80 backdrop-blur-xl'
-              }`}
-            >
-              <motion.div
-                className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 z-30"
-                variants={{ hover: { x: ['-150%', '150%'] } }}
-                transition={{ duration: 0.75, ease: "easeInOut" }}
-                initial={{ x: '-150%' }}
-              />
-              <Link to={`/features/${post.slug}`} className="block">
-                <div className="aspect-[16/10] overflow-hidden relative">
-                  <img
-                    src={post.image_url || fallbackImage}
-                    alt={post.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                  />
-                  <div className={`absolute inset-0 bg-gradient-to-t ${
-                    isLightMode ? 'from-white/90 via-transparent' : 'from-black/90 via-transparent'
-                  }`} />
-                  <div className={`feature-date-badge absolute left-5 bottom-5 flex items-center gap-2 px-3 py-1.5 rounded-full border shadow-md backdrop-blur-md ${
-                    isLightMode ? 'bg-white border-slate-200 text-slate-900' : 'bg-black/75 border-white/10 text-white'
-                  }`}>
-                    <CalendarDays className="w-3.5 h-3.5 text-neon-blue shrink-0" />
-                    <span className={`text-[9px] uppercase tracking-widest font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{formatDate(post.created_at)}</span>
+      {paginatedPosts.length ? (
+        <div className="space-y-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 px-4">
+            {paginatedPosts.map((post, index) => (
+              <motion.article
+                key={post.id}
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05, duration: 0.5 }}
+                whileHover="hover"
+                className={`group glass-panel rounded-2xl overflow-hidden hover:border-neon-purple/30 transition-all relative flex flex-col h-full ${
+                  isLightMode ? 'bg-white border-black/10' : 'border-white/10 bg-[#0A0A0A]/80 backdrop-blur-xl'
+                }`}
+              >
+                <motion.div
+                  className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 z-30"
+                  variants={{ hover: { x: ['-150%', '150%'] } }}
+                  transition={{ duration: 0.75, ease: "easeInOut" }}
+                  initial={{ x: '-150%' }}
+                />
+                <Link to={`/features/${post.slug}`} className="block">
+                  <div className="aspect-[16/10] overflow-hidden relative">
+                    <img
+                      src={post.image_url || fallbackImage}
+                      alt={post.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                    />
+                    <div className={`absolute inset-0 bg-gradient-to-t ${
+                      isLightMode ? 'from-white/90 via-transparent' : 'from-black/90 via-transparent'
+                    }`} />
+                    <div className={`feature-date-badge absolute left-5 bottom-5 flex items-center gap-2 px-3 py-1.5 rounded-full border shadow-md backdrop-blur-md ${
+                      isLightMode ? 'bg-white border-slate-200 text-slate-900' : 'bg-black/75 border-white/10 text-white'
+                    }`}>
+                      <CalendarDays className="w-3.5 h-3.5 text-neon-blue shrink-0" />
+                      <span className={`text-[9px] uppercase tracking-widest font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{formatDate(post.created_at)}</span>
+                    </div>
                   </div>
-                </div>
-              </Link>
-
-              <div className="p-6 flex flex-col gap-4 flex-1">
-                <Link to={`/features/${post.slug}`} className="block space-y-4 flex-1">
-                  <div className="flex items-center gap-2 text-neon-purple">
-                    <FileText className="w-4 h-4" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.25em]">Feature Post</span>
-                  </div>
-                  <h2 className={`text-2xl font-display font-black tracking-tight leading-tight group-hover:text-neon-blue transition-colors ${
-                    isLightMode ? 'text-slate-900' : 'text-white'
-                  }`}>
-                    {post.title}
-                  </h2>
-                  <p className={`text-sm leading-relaxed line-clamp-3 transition-colors ${
-                    isLightMode ? 'text-slate-500' : 'text-white/55'
-                  }`}>
-                    {previewText(post)}
-                  </p>
                 </Link>
-                
-                <div className={`flex items-center justify-between pt-4 border-t mt-auto z-10 relative ${
-                  isLightMode ? 'border-black/5' : 'border-white/5'
-                }`}>
-                  <Link to={`/features/${post.slug}`} className={`text-[10px] uppercase tracking-[0.25em] font-black group-hover:text-neon-blue transition-colors ${
-                    isLightMode ? 'text-slate-400' : 'text-white/40'
-                  }`}>
-                    Read article
+
+                <div className="p-6 flex flex-col gap-4 flex-1">
+                  <Link to={`/features/${post.slug}`} className="block space-y-4 flex-1">
+                    <div className="flex items-center gap-2 text-neon-purple">
+                      <FileText className="w-4 h-4" />
+                      <span className="text-[10px] font-black uppercase tracking-[0.25em]">Feature Post</span>
+                    </div>
+                    <h2 className={`text-2xl font-display font-black tracking-tight leading-tight group-hover:text-neon-blue transition-colors ${
+                      isLightMode ? 'text-slate-900' : 'text-white'
+                    }`}>
+                      {post.title}
+                    </h2>
+                    <p className={`text-sm leading-relaxed line-clamp-3 transition-colors ${
+                      isLightMode ? 'text-slate-500' : 'text-white/55'
+                    }`}>
+                      {previewText(post)}
+                    </p>
                   </Link>
-                  {post.link_url && (
-                    <a
-                      href={post.link_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-neon-blue/10 border border-neon-blue/20 text-neon-blue rounded-full text-[9px] font-black uppercase tracking-widest hover:bg-neon-blue/20 transition-colors"
-                    >
-                      Visit Link
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  )}
+                  
+                  <div className={`flex items-center justify-between pt-4 border-t mt-auto z-10 relative ${
+                    isLightMode ? 'border-black/5' : 'border-white/5'
+                  }`}>
+                    <Link to={`/features/${post.slug}`} className={`text-[10px] uppercase tracking-[0.25em] font-black group-hover:text-neon-blue transition-colors ${
+                      isLightMode ? 'text-slate-400' : 'text-white/40'
+                    }`}>
+                      Read article
+                    </Link>
+                    {post.link_url && (
+                      <a
+                        href={post.link_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-neon-blue/10 border border-neon-blue/20 text-neon-blue rounded-full text-[9px] font-black uppercase tracking-widest hover:bg-neon-blue/20 transition-colors"
+                      >
+                        Visit Link
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
                 </div>
+              </motion.article>
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-12 px-4">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className={`feature-pagination-btn p-2.5 rounded-xl border transition-all ${
+                  currentPage === 1
+                    ? isLightMode
+                      ? "bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed"
+                      : "bg-white/5 border-white/5 text-white/20 cursor-not-allowed"
+                    : isLightMode
+                    ? "bg-white hover:bg-slate-100 border-slate-200 hover:border-slate-400 text-slate-700 hover:text-slate-950 shadow-sm"
+                    : "bg-white/5 hover:bg-white/10 border-white/10 text-white hover:text-white"
+                }`}
+                aria-label="Previous page"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-center gap-1.5">
+                {Array.from({ length: totalPages }).map((_, i) => {
+                  const pageNumber = i + 1;
+                  const isActive = pageNumber === currentPage;
+                  return (
+                    <button
+                      key={pageNumber}
+                      onClick={() => setCurrentPage(pageNumber)}
+                      className={`feature-pagination-btn h-10 min-w-[40px] px-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border ${
+                        isActive
+                          ? "active-page-btn bg-neon-purple border-neon-purple text-white shadow-lg shadow-neon-purple/20"
+                          : isLightMode
+                          ? "bg-white border-slate-200 hover:border-slate-400 text-slate-700 hover:text-slate-950 shadow-sm"
+                          : "bg-white/5 border-white/10 hover:border-white/20 text-white/60 hover:text-white"
+                      }`}
+                    >
+                      {pageNumber}
+                    </button>
+                  );
+                })}
               </div>
-            </motion.article>
-          ))}
+
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className={`feature-pagination-btn p-2.5 rounded-xl border transition-all ${
+                  currentPage === totalPages
+                    ? isLightMode
+                      ? "bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed"
+                      : "bg-white/5 border-white/5 text-white/20 cursor-not-allowed"
+                    : isLightMode
+                    ? "bg-white hover:bg-slate-100 border-slate-200 hover:border-slate-400 text-slate-700 hover:text-slate-950 shadow-sm"
+                    : "bg-white/5 hover:bg-white/10 border-white/10 text-white hover:text-white"
+                }`}
+                aria-label="Next page"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className={`mx-4 py-20 text-center glass-panel rounded-2xl border-dashed flex flex-col items-center justify-center gap-4 ${
