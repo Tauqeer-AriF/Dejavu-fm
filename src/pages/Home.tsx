@@ -381,7 +381,7 @@ export default function Home() {
           className="relative -mt-10 sm:-mt-14 lg:mt-0 group w-full lg:w-[45%] flex justify-center pt-2 pb-8 sm:py-12 md:py-6 lg:py-12"
         >
           <div className={`relative w-full aspect-square max-w-[280px] sm:max-w-[340px] md:max-w-[400px] lg:max-w-[480px] rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/5 group-hover:border-white/20 transition-all duration-700 ${
-            (resolveDjImage(onAirInfo?.djPhoto) === logoUrl) && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''
+            (resolveDjImage(onAirInfo?.djPhoto) === logoUrl) && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-black shadow-inner' : 'bg-transparent') : ''
           }`}>
             <img 
               src={resolveDjImage(onAirInfo?.djPhoto)}
@@ -467,7 +467,7 @@ export default function Home() {
                 <div className={`w-16 h-16 md:w-24 md:h-24 rounded-2xl overflow-hidden shrink-0 border relative group-hover:border-neon-purple/40 transition-all duration-500 shadow-2xl ${
                   isLightMode ? 'border-black/10' : 'border-white/10'
                 } ${
-                  resolveDjImage(nextShow.dj_photo) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-white' : 'bg-transparent') : ''
+                  resolveDjImage(nextShow.dj_photo) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-black shadow-inner' : 'bg-transparent') : ''
                 }`}>
                   <img src={resolveDjImage(nextShow.dj_photo)} alt={nextShow.dj_name} className={`w-full h-full filter grayscale group-hover:grayscale-0 transition-all duration-700 scale-100 group-hover:scale-110 ${resolveDjImage(nextShow.dj_photo) === logoUrl && logoUrl ? 'object-contain p-2' : 'object-cover'}`} />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>

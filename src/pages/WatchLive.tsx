@@ -395,7 +395,15 @@ export default function WatchLive() {
           {/* DJ and Show Info */}
           <div className={`flex p-4 ${isLightMode ? 'bg-black/5 border-black/10' : 'bg-dark-bg/80 border-white/5'} border-t flex-row items-center gap-4 shrink-0`}>
              {resolveDjImage(onAirInfo?.djPhoto) && (
-               <div className="w-16 h-16 rounded-xl overflow-hidden shadow-2xl border-2 border-neon-purple/30 shrink-0 bg-white/5">
+               <div className={`w-16 h-16 rounded-xl overflow-hidden shadow-2xl border-2 border-neon-purple/30 shrink-0 ${
+                 resolveDjImage(onAirInfo?.djPhoto) === logoUrl && logoUrl
+                   ? isLightMode
+                     ? 'bg-black shadow-inner'
+                     : 'bg-white/5'
+                   : isLightMode
+                   ? 'bg-slate-100'
+                   : 'bg-white/5'
+               }`}>
                  <img src={resolveDjImage(onAirInfo?.djPhoto)} alt={onAirInfo?.djName || "DJ"} className={`w-full h-full ${resolveDjImage(onAirInfo?.djPhoto) === logoUrl && logoUrl ? 'object-contain p-2' : 'object-cover'}`} />
                </div>
              )}
