@@ -562,11 +562,11 @@ button:not(.absolute) {
   color: rgba(17, 24, 39, 0.7) !important;
 }
 
-.admin-light-mode .admin-page-wrapper .text-neon-purple {
+.admin-light-mode .admin-page-wrapper .text-neon-purple:not(:hover) {
   color: var(--color-neon-purple) !important;
 }
 
-.admin-light-mode .admin-page-wrapper .text-neon-blue {
+.admin-light-mode .admin-page-wrapper .text-neon-blue:not(:hover) {
   color: var(--color-neon-blue) !important;
 }
 
@@ -739,10 +739,10 @@ button:not(.absolute) {
 }
 
 /* Inactive Sidebar Links */
-.admin-light-mode .admin-dashboard-container a:not([class*="bg-neon-purple\/20"]) {
+.admin-light-mode .admin-dashboard-container a:not([class*="bg-neon-purple\/20"]):not([class*="bg-neon-purple\/10"]) {
   color: rgba(17, 24, 39, 0.7) !important;
 }
-.admin-light-mode .admin-dashboard-container a:not([class*="bg-neon-purple\/20"]):hover {
+.admin-light-mode .admin-dashboard-container a:not([class*="bg-neon-purple\/20"]):not([class*="bg-neon-purple\/10"]):hover {
   background-color: rgba(0, 0, 0, 0.04) !important;
   color: #111827 !important;
 }

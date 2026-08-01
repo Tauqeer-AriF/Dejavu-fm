@@ -66,7 +66,7 @@ export function SecretAdminPrompt({ isOpen, onClose, isLightMode }: SecretAdminP
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className={`absolute inset-0 backdrop-blur-xl ${isLightMode ? 'bg-white/80' : 'bg-black/80'}`}
+            className={`absolute inset-0 backdrop-blur-xl ${isLightMode ? 'bg-[#ffffff]/80' : 'bg-black/80'}`}
           />
           
           <motion.div
@@ -112,7 +112,7 @@ export function SecretAdminPrompt({ isOpen, onClose, isLightMode }: SecretAdminP
                     <button
                       type="submit"
                       disabled={isVerifying || !answer.trim()}
-                      className={`absolute right-2 top-2 bottom-2 px-4 rounded-xl font-bold transition-all hover:scale-105 active:scale-95 disabled:opacity-40 ${isLightMode ? 'bg-white text-black border border-black/10 shadow-sm hover:bg-gray-50' : 'bg-white text-dark-bg disabled:grayscale'}`}
+                      className={`absolute right-2 top-2 bottom-2 px-4 rounded-xl font-bold transition-all hover:scale-105 active:scale-95 disabled:opacity-40 ${isLightMode ? 'bg-[#ffffff] text-black border border-black/10 shadow-sm hover:bg-gray-50' : 'bg-white text-dark-bg disabled:grayscale'}`}
                       style={isLightMode ? { backgroundColor: '#ffffff' } : {}}
                     >
                       {isVerifying ? (

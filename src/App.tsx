@@ -798,6 +798,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
 }
 
 function MobileBottomBar({ featLiveTools }: { featLiveTools: boolean }) {
+  const { isLightMode } = useLogo();
   const location = useLocation();
   const isOnPodcasts = location.pathname.startsWith('/podcasts/');
   const isOnDJs = location.pathname.startsWith('/djs/');
@@ -837,7 +838,7 @@ function MobileBottomBar({ featLiveTools }: { featLiveTools: boolean }) {
       onClick={(e) => e.stopPropagation()}
       onTouchStart={(e) => e.stopPropagation()}
     >
-        <div className="bg-dark-bg/90 backdrop-blur-[24px] rounded-[1.75rem] py-1.5 px-1.5 flex items-center shadow-[0_18px_45px_rgba(0,0,0,0.45)] border border-white/10 relative overflow-hidden group pointer-events-auto">
+        <div className={`backdrop-blur-[24px] rounded-[1.75rem] py-1.5 px-1.5 flex items-center shadow-[0_18px_45px_rgba(0,0,0,0.45)] border relative overflow-hidden group pointer-events-auto ${isLightMode ? "bg-[#ffffff]/90 border-black/10" : "bg-dark-bg/90 border-white/10"}`}>
           <div className="absolute inset-0 bg-gradient-to-t from-neon-purple/10 to-transparent pointer-events-none" />
           
           {[
@@ -852,7 +853,7 @@ function MobileBottomBar({ featLiveTools }: { featLiveTools: boolean }) {
               to={item.to} 
               className={({isActive}) => {
                 const isMatch = item.active !== undefined ? item.active : isActive;
-                return `relative flex-1 flex items-center justify-center rounded-[1.5rem] transition-all duration-500 h-[52px] z-10 pointer-events-auto ${isMatch ? 'text-neon-purple active-bottom-glow' : 'text-white/40 hover:text-white/70'}`
+                return `relative flex-1 flex items-center justify-center rounded-[1.5rem] transition-all duration-500 h-[52px] z-10 pointer-events-auto ${isMatch ? 'text-neon-purple active-bottom-glow' : isLightMode ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70'}`
               }}
             >
               {({isActive}) => {
@@ -870,7 +871,7 @@ function MobileBottomBar({ featLiveTools }: { featLiveTools: boolean }) {
                     {isMatch && (
                       <motion.div 
                         layoutId="bottom-glow"
-                        className="absolute inset-0 bg-white/5 rounded-[1.5rem] -z-0 border border-white/10"
+                        className={`absolute inset-0 rounded-[1.5rem] -z-0 border ${isLightMode ? "bg-black/5 border-black/10" : "bg-white/5 border-white/10"}`}
                         transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
                       />
                     )}

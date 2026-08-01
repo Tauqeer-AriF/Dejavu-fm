@@ -224,7 +224,7 @@ export function CinematicVisualizer({ isOpen, onClose }: { isOpen: boolean, onCl
             onClick={onClose}
             className={`absolute top-8 right-8 z-10 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 border ${
               isLightMode
-                ? 'bg-white hover:bg-slate-100 border-slate-200 text-slate-800 shadow-md'
+                ? 'bg-[#ffffff] hover:bg-slate-100 border-slate-200 text-slate-800 shadow-md'
                 : 'bg-white/10 hover:bg-white/20 border-white/10 text-white backdrop-blur-md'
             }`}
           >
@@ -237,7 +237,7 @@ export function CinematicVisualizer({ isOpen, onClose }: { isOpen: boolean, onCl
           >
             <div className={`px-12 py-8 rounded-5xl border shadow-2xl text-center max-w-2xl px-6 transition-all duration-300 ${
               isLightMode
-                ? 'bg-white border-slate-200/80 shadow-[0_12px_40px_rgba(0,0,0,0.06)]'
+                ? 'bg-[#ffffff] border-slate-200/80 shadow-[0_12px_40px_rgba(0,0,0,0.06)]'
                 : 'bg-black/40 backdrop-blur-xl border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.5)]'
             }`}>
               <h2 className={`text-4xl md:text-5xl font-display font-black tracking-tight mb-4 ${

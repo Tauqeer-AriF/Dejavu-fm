@@ -5,7 +5,7 @@ import { useLogo } from '../hooks/useLogo';
 import { motion, AnimatePresence } from 'motion/react';
 import { useQuery } from '@tanstack/react-query';
 
-function Visualizer({ isPlaying, volume }: { isPlaying: boolean; volume: number }) {
+function Visualizer({ isPlaying, volume, isLightMode }: { isPlaying: boolean; volume: number; isLightMode: boolean }) {
   const numBars = 16;
   const containerRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef<number>();
@@ -118,7 +118,7 @@ function Visualizer({ isPlaying, volume }: { isPlaying: boolean; volume: number 
             isPlaying 
               ? 'transition-[opacity] duration-150 ease-linear' 
               : 'transition-[height,opacity] duration-500 ease-out'
-          } ${i % 3 === 0 ? 'bg-neon-purple shadow-[0_0_12px_rgba(176,38,255,0.6)]' : i % 3 === 1 ? 'bg-neon-blue shadow-[0_0_12px_rgba(0,210,255,0.6)]' : 'bg-white shadow-[0_0_12px_rgba(255,255,255,0.6)]'}`}
+          } ${i % 3 === 0 ? 'bg-neon-purple shadow-[0_0_12px_rgba(176,38,255,0.6)]' : i % 3 === 1 ? 'bg-neon-blue shadow-[0_0_12px_rgba(0,210,255,0.6)]' : `${isLightMode ? "bg-black/60 shadow-[0_0_12px_rgba(0,0,0,0.1)]" : "bg-[#ffffff] shadow-[0_0_12px_rgba(255,255,255,0.6)]"}`}`}
           style={{ height: '10%', opacity: 0.2 }}
         />
       ))}
@@ -127,6 +127,7 @@ function Visualizer({ isPlaying, volume }: { isPlaying: boolean; volume: number 
 }
 
 function QualitySelector() {
+  const { isLightMode } = useLogo();
   const { data: settings } = useQuery({
     queryKey: ['settings'],
     queryFn: () => fetch('/api/public/settings').then(res => res.json()),
@@ -152,7 +153,7 @@ function QualitySelector() {
     <div className="relative">
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 text-white/40 hover:text-white transition-all text-[9px] md:text-xs font-bold uppercase tracking-widest bg-white/5 hover:bg-white/10 px-2 md:px-3 py-1 md:py-1.5 rounded-lg border border-white/5"
+        className={`flex items-center space-x-2 transition-all text-[9px] md:text-xs font-bold uppercase tracking-widest px-2 md:px-3 py-1 md:py-1.5 rounded-lg border ${isLightMode ? "text-black/40 hover:text-black bg-black/5 hover:bg-black/10 border-black/5" : "text-white/40 hover:text-white bg-white/5 hover:bg-white/10 border-white/5"}`}
       >
         <Sliders className="w-3 h-3 md:w-3.5 md:h-3.5" />
         <span>{qualityLabels[quality] || quality}</span>
@@ -161,8 +162,8 @@ function QualitySelector() {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-[60]" onClick={() => setIsOpen(false)} />
-          <div className="absolute bottom-full right-0 mb-4 bg-dark-bg/95 backdrop-blur-3xl border border-white/10 rounded-2xl p-1.5 shadow-2xl z-[70] min-w-[140px] animate-in fade-in slide-in-from-bottom-2 duration-200">
-            <p className="px-3 py-2 text-[10px] uppercase tracking-widest text-white/30 font-bold border-b border-white/5 mb-1">Select Quality</p>
+          <div className={`absolute bottom-full right-0 mb-4 backdrop-blur-3xl border rounded-2xl p-1.5 shadow-2xl z-[70] min-w-[140px] animate-in fade-in slide-in-from-bottom-2 duration-200 ${isLightMode ? "bg-[#ffffff]/95 border-black/10" : "bg-dark-bg/95 border-white/10"}`}>
+            <p className={`px-3 py-2 text-[10px] uppercase tracking-widest font-bold border-b mb-1 ${isLightMode ? "text-black/30 border-black/5" : "text-white/30 border-white/5"}`}>Select Quality</p>
             {availableQualities.map((q) => (
               <button
                 key={q}
@@ -170,7 +171,7 @@ function QualitySelector() {
                   setQuality(q);
                   setIsOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2.5 rounded-xl text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all ${quality === q ? 'bg-neon-purple text-white shadow-[0_0_15px_rgba(176,38,255,0.4)]' : 'text-white/50 hover:bg-white/5 hover:text-white'}`}
+                className={`w-full text-left px-3 py-2.5 rounded-xl text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all ${quality === q ? 'bg-neon-purple text-white shadow-[0_0_15px_rgba(176,38,255,0.4)]' : isLightMode ? 'text-black/50 hover:bg-black/5 hover:text-black' : 'text-white/50 hover:bg-white/5 hover:text-white'}`}
               >
                 {qualityLabels[q]}
               </button>
@@ -215,11 +216,11 @@ export function PlayerBar() {
           transition={{ type: 'spring', damping: 25, stiffness: 200 }}
           className="hidden sm:block fixed bottom-[104px] sm:bottom-[112px] xl:bottom-8 left-0 right-0 z-50 px-3 sm:px-6 pointer-events-none"
         >
-          <div className="max-w-6xl mx-auto bg-dark-bg/95 backdrop-blur-3xl rounded-2xl md:rounded-3xl h-20 md:h-28 flex items-center px-4 md:px-10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 relative group pointer-events-auto">
+          <div className={`max-w-6xl mx-auto backdrop-blur-3xl rounded-2xl md:rounded-3xl h-20 md:h-28 flex items-center px-4 md:px-10 border relative group pointer-events-auto ${isLightMode ? "bg-[#ffffff]/95 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-black/10" : "bg-dark-bg/95 shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-white/10"}`}>
             {/* Close/Minimize Button */}
             <button 
               onClick={() => setIsMinimized(true)}
-              className="absolute top-2 right-2 md:top-4 md:right-4 p-2 text-white/30 hover:text-white hover:bg-white/10 rounded-full transition-all"
+              className={`absolute top-2 right-2 md:top-4 md:right-4 p-2 rounded-full transition-all ${isLightMode ? "text-black/30 hover:text-black hover:bg-black/10" : "text-white/30 hover:text-white hover:bg-white/10"}`}
               title="Minimize Player"
             >
               <Minimize2 className="w-4 h-4" />
@@ -247,27 +248,27 @@ export function PlayerBar() {
               
               <div className="flex-1 min-w-0 pr-2">
                 <div className="flex items-center space-x-2 md:space-x-3 mb-1 flex-wrap gap-y-1">
-                  <p className="text-white/60 text-[8px] md:text-xs uppercase tracking-[0.2em] font-black flex items-center shrink-0">
-                    <span className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full mr-2 glow-box shrink-0 ${isBuffering && isPlaying ? 'bg-amber-500 animate-pulse' : isPlaying ? 'bg-neon-blue animate-pulse' : 'bg-white/20'}`}></span>
+                  <p className={`text-[8px] md:text-xs uppercase tracking-[0.2em] font-black flex items-center shrink-0 ${isLightMode ? "text-black/60" : "text-white/60"}`}>
+                    <span className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full mr-2 glow-box shrink-0 ${isBuffering && isPlaying ? 'bg-amber-500 animate-pulse' : isPlaying ? 'bg-neon-blue animate-pulse' : isLightMode ? 'bg-black/20' : 'bg-white/20'}`}></span>
                     <span className="truncate">
                       {isBuffering && isPlaying ? 'Buffering feed...' : (activeType === 'podcast' ? 'Podcast Player' : (onAirInfo ? 'Broadcasting Live' : 'Auto-Mix Mode'))}
                     </span>
                   </p>
                 </div>
                 
-                <h4 className="text-white font-display font-bold text-sm md:text-2xl truncate tracking-tight leading-tight mb-1">
+                <h4 className={`font-display font-bold text-sm md:text-2xl truncate tracking-tight leading-tight mb-1 ${isLightMode ? "text-black" : "text-white"}`}>
                   {activeType === 'podcast' && podcastTrack ? (
                     <div className="flex items-center truncate">
                       <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue font-black uppercase italic tracking-tighter mr-2 pr-2 shrink-0">EPISODE</span>
-                      <span className="text-white opacity-80 font-medium truncate">{podcastTrack.title}</span>
+                      <span className={`opacity-80 font-medium truncate ${isLightMode ? "text-black" : "text-white"}`}>{podcastTrack.title}</span>
                     </div>
                   ) : onAirInfo ? (
                     <div className="flex items-center truncate">
                       <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue font-black uppercase italic tracking-tighter mr-2 pr-2 shrink-0">{onAirInfo.djName}</span>
-                      <span className="text-white opacity-80 font-medium truncate">{onAirInfo.showName}</span>
+                      <span className={`opacity-80 font-medium truncate ${isLightMode ? "text-black" : "text-white"}`}>{onAirInfo.showName}</span>
                     </div>
                   ) : (
-                    <span className="opacity-80">DejavuFM Global Stream</span>
+                    <span className={`opacity-80 ${isLightMode ? "text-black" : "text-white"}`}>DejavuFM Global Stream</span>
                   )}
                 </h4>
                 <div className="lg:hidden flex items-center">
@@ -279,10 +280,10 @@ export function PlayerBar() {
             <div className="flex items-center justify-center shrink-0 mx-2 md:mx-6 relative">
               <button 
                 onClick={togglePlay}
-                className="w-12 h-12 md:w-20 md:h-20 rounded-full bg-white text-dark-bg flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_40px_rgba(255,255,255,0.3)] relative group/play z-10"
+                className={`w-12 h-12 md:w-20 md:h-20 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all relative group/play z-10 ${isLightMode ? "bg-black text-[#ffffff] shadow-[0_0_40px_rgba(0,0,0,0.2)]" : "bg-white text-dark-bg shadow-[0_0_40px_rgba(255,255,255,0.3)]"}`}
               >
                 {isBuffering && isPlaying ? (
-                  <div className="w-6 h-6 md:w-10 md:h-10 rounded-full border-4 border-dark-bg border-t-neon-blue animate-spin" />
+                  <div className={`w-6 h-6 md:w-10 md:h-10 rounded-full border-4 border-t-neon-blue animate-spin ${isLightMode ? "border-[#ffffff]" : "border-dark-bg"}`} />
                 ) : isPlaying ? (
                   <Pause className="w-6 h-6 md:w-10 md:h-10 fill-current" />
                 ) : (
@@ -293,8 +294,8 @@ export function PlayerBar() {
               {/* Animated rings around play button */}
               {isPlaying && (
                 <>
-                  <div className="absolute inset-0 rounded-full border border-white/20 animate-[ping_2s_linear_infinite] scale-150 opacity-0"></div>
-                  <div className="absolute inset-0 rounded-full border border-white/10 animate-[ping_3s_linear_infinite] scale-[2] opacity-0"></div>
+                  <div className={`absolute inset-0 rounded-full border animate-[ping_2s_linear_infinite] scale-150 opacity-0 ${isLightMode ? "border-black/20" : "border-white/20"}`}></div>
+                  <div className={`absolute inset-0 rounded-full border animate-[ping_3s_linear_infinite] scale-[2] opacity-0 ${isLightMode ? "border-black/10" : "border-white/10"}`}></div>
                 </>
               )}
             </div>
@@ -302,8 +303,8 @@ export function PlayerBar() {
             <div className="flex-1 flex justify-end items-center space-x-6 hidden lg:flex">
               <div className="flex flex-col items-end space-y-2">
                 <QualitySelector />
-                <div className="flex items-center space-x-3 bg-white/5 px-4 py-2 rounded-xl border border-white/5">
-                  <Volume2 className="text-white/40 w-4 h-4" />
+                <div className={`flex items-center space-x-3 px-4 py-2 rounded-xl border ${isLightMode ? "bg-black/5 border-black/5" : "bg-white/5 border-white/5"}`}>
+                  <Volume2 className={`w-4 h-4 ${isLightMode ? "text-black/40" : "text-white/40"}`} />
                   <input 
                     type="range" 
                     min="0" 
@@ -320,9 +321,9 @@ export function PlayerBar() {
                 className="relative group transition-opacity hover:opacity-80"
                 title="Open Cinematic Visualizer"
               >
-                <Visualizer isPlaying={isPlaying} volume={volume} />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
-                  <Monitor className="w-5 h-5 text-white" />
+                <Visualizer isPlaying={isPlaying} volume={volume} isLightMode={isLightMode} />
+                <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg ${isLightMode ? "bg-[#ffffff]/40" : "bg-black/40"}`}>
+                  <Monitor className={`w-5 h-5 ${isLightMode ? "text-black" : "text-white"}`} />
                 </div>
               </button>
             </div>
@@ -340,20 +341,20 @@ export function PlayerBar() {
           dragElastic={0.1}
           dragMomentum={false}
         >
-          <div className="bg-dark-bg/80 backdrop-blur-3xl border border-white/10 rounded-full p-1.5 flex items-center shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+          <div className={`backdrop-blur-3xl border rounded-full p-1.5 flex items-center ${isLightMode ? "bg-[#ffffff]/80 border-black/10 shadow-[0_20px_50px_rgba(0,0,0,0.1)]" : "bg-dark-bg/80 border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]"}`}>
              <button 
               onClick={() => setIsMinimized(false)}
-              className="p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-all mr-1"
+              className={`p-2 rounded-full transition-all mr-1 ${isLightMode ? "text-black/50 hover:text-black hover:bg-black/10" : "text-white/50 hover:text-white hover:bg-white/10"}`}
               title="Expand Player"
             >
               <ChevronUp className="w-5 h-5" />
             </button>
             <button 
               onClick={togglePlay}
-              className="w-12 h-12 rounded-full bg-white text-dark-bg flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_10px_30px_rgba(255,255,255,0.3)]"
+              className={`w-12 h-12 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all ${isLightMode ? "bg-black text-[#ffffff] shadow-[0_10px_30px_rgba(0,0,0,0.2)]" : "bg-white text-dark-bg shadow-[0_10px_30px_rgba(255,255,255,0.3)]"}`}
             >
               {isBuffering && isPlaying ? (
-                <div className="w-5 h-5 rounded-full border-2 border-dark-bg border-t-neon-blue animate-spin" />
+                <div className={`w-5 h-5 rounded-full border-2 border-t-neon-blue animate-spin ${isLightMode ? "border-[#ffffff]" : "border-dark-bg"}`} />
               ) : isPlaying ? (
                 <Pause className="w-5 h-5 fill-current" />
               ) : (

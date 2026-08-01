@@ -729,14 +729,14 @@ export default function Admin() {
             {(userRole === 'admin' || userRole === 'dj') && (
               <Link
                 to={`${adminBasePath}/studio`}
-                className="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-full border border-neon-purple/30 bg-neon-purple/10 text-neon-purple font-bold uppercase text-xs tracking-widest transition hover:bg-neon-purple hover:text-white hover:shadow-lg hover:shadow-neon-purple/20 relative"
+                className="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-full border border-neon-purple/30 bg-neon-purple/10 text-[var(--color-neon-purple)] font-bold uppercase text-xs tracking-widest transition hover:bg-neon-purple hover:text-[#ffffff] hover:shadow-lg hover:shadow-neon-purple/20 relative"
                 title="Go to Live Studio Tools"
               >
                 <Radio className="w-4 h-4" />
                 Studio
                 {totalUnread > 0 && (
                   <span 
-                    className="absolute -top-1.5 -right-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-black font-mono leading-none text-white border border-[#0A0C16]/40 shadow-[0_2px_10px_-1px_var(--color-neon-purple)]"
+                    className="absolute -top-1.5 -right-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-black font-mono leading-none text-[#ffffff] border border-[#0A0C16]/40 shadow-[0_2px_10px_-1px_var(--color-neon-purple)]"
                     style={{ background: 'linear-gradient(135deg, var(--color-neon-purple), var(--color-neon-blue))' }}
                   >
                     {totalUnread}
