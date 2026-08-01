@@ -130,6 +130,16 @@ export default function WatchLive() {
   const featChat = settings?.feat_chat !== '0';
 
   const [isSplitActive, setIsSplitActive] = useState(false);
+  const [hasInitializedSplit, setHasInitializedSplit] = useState(false);
+
+  useEffect(() => {
+    if (settings && !hasInitializedSplit) {
+      const autoFullscreen = settings.feat_auto_fullscreen !== '0';
+      setIsSplitActive(autoFullscreen);
+      setHasInitializedSplit(true);
+    }
+  }, [settings, hasInitializedSplit]);
+
   const [viewportHeight, setViewportHeight] = useState('100dvh');
   const [viewportOffsetTop, setViewportOffsetTop] = useState(0);
 

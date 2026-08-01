@@ -27,6 +27,7 @@ export function AdminAdvanced() {
     feat_bookings: true,
     feat_live_tools: true,
     feat_stream_quality: true,
+    feat_auto_fullscreen: true,
   });
   const { showAlert } = useModal();
 
@@ -40,6 +41,7 @@ export function AdminAdvanced() {
         feat_bookings: serverSettings.feat_bookings !== '0',
         feat_live_tools: serverSettings.feat_live_tools !== '0',
         feat_stream_quality: serverSettings.feat_stream_quality !== '0',
+        feat_auto_fullscreen: serverSettings.feat_auto_fullscreen !== '0',
       });
     }
   }, [serverSettings]);
@@ -90,23 +92,64 @@ export function AdminAdvanced() {
         <form onSubmit={handleSave} className="space-y-6">
           <div className="grid gap-4">
             {toggleItems.map(item => (
-              <div key={item.id} className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${isLightMode ? 'bg-black/5 border-black/10' : 'bg-white/5 border-white/10'}`}>
-                <div className="flex-1 pr-4">
-                  <h3 className={`text-lg sm:text-xl font-bold mb-1 ${isLightMode ? 'text-black' : 'text-white'}`}>{item.title}</h3>
-                  <p className={`text-xs sm:text-sm ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>{item.description}</p>
+              <React.Fragment key={item.id}>
+                <div className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${isLightMode ? 'bg-black/5 border-black/10' : 'bg-white/5 border-white/10'}`}>
+                  <div className="flex-1 pr-4">
+                    <h3 className={`text-lg sm:text-xl font-bold mb-1 ${isLightMode ? 'text-black' : 'text-white'}`}>{item.title}</h3>
+                    <p className={`text-xs sm:text-sm ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>{item.description}</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer" 
+                      checked={features[item.id] || false} 
+                      onChange={e => handleToggle(item.id, e.target.checked)} 
+                    />
+                    <div className={`w-14 h-7 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-neon-purple shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] ${
+                      isLightMode ? 'bg-black/10' : 'bg-white/10'
+                    }`}></div>
+                  </label>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                  <input 
-                    type="checkbox" 
-                    className="sr-only peer" 
-                    checked={features[item.id] || false} 
-                    onChange={e => handleToggle(item.id, e.target.checked)} 
-                  />
-                  <div className={`w-14 h-7 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-neon-purple shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] ${
-                    isLightMode ? 'bg-black/10' : 'bg-white/10'
-                  }`}></div>
-                </label>
-              </div>
+
+                {item.id === 'feat_live_tools' && (
+                  <div className={`ml-6 sm:ml-10 pl-4 border-l-2 transition-all duration-300 -mt-2 mb-2 ${
+                    features['feat_live_tools'] 
+                      ? 'border-neon-purple/40 opacity-100' 
+                      : 'border-white/5 opacity-40'
+                  }`}>
+                    <div className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${
+                      isLightMode ? 'bg-black/[0.02] border-black/5' : 'bg-white/[0.02] border-white/5'
+                    }`}>
+                      <div className="flex-1 pr-4 text-left">
+                        <h4 className={`text-base font-bold mb-1 ${
+                          features['feat_live_tools'] 
+                            ? isLightMode ? 'text-black' : 'text-white' 
+                            : isLightMode ? 'text-black/40' : 'text-white/40'
+                        }`}>
+                          ↳ Studio Cam Auto-Fullscreen
+                        </h4>
+                        <p className={`text-xs ${isLightMode ? 'text-black/50 font-medium' : 'text-white/40'}`}>
+                          Automatically open the watch live studio cam in full-screen split mode upon page load.
+                        </p>
+                      </div>
+                      <label className={`relative inline-flex items-center shrink-0 ${
+                        features['feat_live_tools'] ? 'cursor-pointer' : 'cursor-not-allowed'
+                      }`}>
+                        <input 
+                          type="checkbox" 
+                          className="sr-only peer" 
+                          checked={features['feat_auto_fullscreen'] || false} 
+                          disabled={!features['feat_live_tools']}
+                          onChange={e => handleToggle('feat_auto_fullscreen', e.target.checked)} 
+                        />
+                        <div className={`w-12 h-6 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-neon-purple shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] ${
+                          isLightMode ? 'bg-black/10' : 'bg-white/10'
+                        }`}></div>
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </React.Fragment>
             ))}
           </div>
           <button 
