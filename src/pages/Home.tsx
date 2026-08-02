@@ -302,7 +302,10 @@ export default function Home() {
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       className="flex flex-col space-y-8 md:space-y-12 pb-2 md:pb-4"
     >
-      <div className="flex flex-col lg:flex-row items-center justify-center lg:justify-between min-h-[calc(100vh-80px)] lg:min-h-[calc(100vh-270px)] pb-32 lg:pb-0 gap-8 md:gap-12 relative px-4">
+      <div 
+        className="flex flex-col lg:flex-row items-center justify-center lg:justify-between min-h-[calc(100vh-80px)] lg:min-h-[calc(100vh-270px)] pb-32 lg:pb-0 gap-8 md:gap-12 relative px-4 lg:[--margin-bottom:0px]"
+        style={{ marginBottom: 'var(--margin-bottom)' }}
+      >
         <div className="hidden lg:flex flex-1 space-y-6 md:space-y-8 z-10 w-full flex-col items-center lg:items-start pt-4 lg:pt-0">
           <div className="space-y-4 md:space-y-6 flex flex-col items-center lg:items-start text-center lg:text-left">
             <motion.div 
@@ -501,7 +504,7 @@ export default function Home() {
         </div>
       )}
 
-      <div className={`w-full py-5 md:py-8 border-y overflow-hidden relative group ${isLightMode ? 'border-black/5 bg-black/[0.01]' : 'border-white/5 bg-white/[0.01]'}`}>
+      <div className={`w-screen relative left-1/2 -translate-x-1/2 py-5 md:py-8 border-y overflow-hidden group ${isLightMode ? 'border-black/5 bg-black/[0.01]' : 'border-white/5 bg-white/[0.01]'}`}>
         <div className="flex whitespace-nowrap animate-[marquee_180s_linear_infinite] group-hover:[animation-play-state:paused] space-x-12 md:space-x-24 w-max">
           {Array.from({ length: 12 }).map((_, i) => (
             <div key={i} className="flex items-center space-x-12 md:space-x-16 shrink-0">
