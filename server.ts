@@ -923,6 +923,59 @@ Sitemap: ${origin}/sitemap.xml`);
       socket.emit('chatHistory', chatHistory);
     });
 
+    socket.on('requestHistory', () => {
+      const username = (socket as any).username;
+      if (!username) {
+        socket.emit('chatHistory', chatHistory);
+        return;
+      }
+
+      if (!db.open) return;
+      try {
+        const adminCheck = db.prepare("SELECT 1 FROM admins WHERE LOWER(username) = ?").get(username.toLowerCase());
+        const isUserAdmin = !!adminCheck;
+
+        let privateHistory;
+        if (isUserAdmin) {
+          privateHistory = db.prepare("SELECT * FROM private_messages ORDER BY timestamp ASC").all() as any[];
+        } else {
+          privateHistory = db.prepare("SELECT * FROM private_messages WHERE sender = ? OR recipient = ? ORDER BY timestamp ASC").all(username, username) as any[];
+        }
+
+        const enrichedHistory = privateHistory.map(m => {
+          let avatar_url = null;
+          try {
+            const senderAdmin = db.prepare("SELECT photo_url FROM admins WHERE LOWER(username) = ?").get(m.sender.toLowerCase()) as any;
+            if (senderAdmin && senderAdmin.photo_url) {
+              avatar_url = senderAdmin.photo_url;
+            } else {
+              const u = db.prepare("SELECT avatar_url FROM users WHERE username = ?").get(m.sender) as any;
+              if (u) avatar_url = u.avatar_url;
+            }
+          } catch {}
+          return {
+            ...m,
+            user: m.sender,
+            avatar_url: avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${m.sender}`
+          };
+        });
+
+        socket.emit('privateHistory', enrichedHistory);
+        socket.emit('chatHistory', chatHistory);
+
+        if (isUserAdmin) {
+          try {
+            const shoutoutHistory = db.prepare("SELECT * FROM shoutouts ORDER BY timestamp ASC").all() as any[];
+            socket.emit('shoutoutHistory', shoutoutHistory);
+          } catch (shoutoutErr) {
+            console.error("Failed to load shoutout history in requestHistory:", shoutoutErr);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load history on requestHistory:", err);
+      }
+    });
+
     socket.on('registerUser', (username, pageData) => {
       if (!username) return;
       const rawUser = typeof username === 'string' ? username : username.username;
