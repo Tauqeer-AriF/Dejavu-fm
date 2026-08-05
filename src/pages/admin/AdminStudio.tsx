@@ -434,7 +434,11 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       setThreads({});
 
       if (socketRef.current && socketRef.current.connected) {
-        socketRef.current.emit('requestHistory');
+        if (adminUsername) {
+          socketRef.current.emit('registerUser', adminUsername);
+        } else {
+          socketRef.current.emit('requestHistory');
+        }
       }
       toast.success("Studio Inbox refreshed");
     } catch (e) {

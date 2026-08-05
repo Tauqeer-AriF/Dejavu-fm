@@ -207,92 +207,96 @@ export function AdminMetaIntegrations() {
     setTestResult(null);
     const config = platformConfigs[platformId] || {};
 
-    const steps = [
-      "Securing communication channel with Meta Graph API...",
-      "Validating credentials and permissions (pages_messaging)...",
-      "Authenticating against Meta Business Platform...",
-      "Validating active webhook subscriptions..."
-    ];
+    try {
+      const steps = [
+        "Securing communication channel with Meta Graph API...",
+        "Validating credentials and permissions (pages_messaging)...",
+        "Authenticating against Meta Business Platform...",
+        "Validating active webhook subscriptions..."
+      ];
 
-    for (const step of steps) {
-      setTestProgress(step);
-      await new Promise(resolve => setTimeout(resolve, 800));
-    }
+      for (const step of steps) {
+        setTestProgress(step);
+        await new Promise(resolve => setTimeout(resolve, 800));
+      }
 
-    if (platformId === 'whatsapp') {
-      const { phone, verifyToken, phoneId, accessToken } = config;
-      if (!phone || !phone.trim()) {
+      if (platformId === 'whatsapp') {
+        const { phone, verifyToken, phoneId, accessToken } = config;
+        if (!phone || !phone.trim()) {
+          setTestResult({
+            success: false,
+            message: "Handshake Failed: Registered Phone Number is required. Please verify details in the Configuration card."
+          });
+          return;
+        }
+        if (!phoneId || !phoneId.trim()) {
+          setTestResult({
+            success: false,
+            message: "Handshake Failed: Phone Number ID is required to route message dispatches."
+          });
+          return;
+        }
+        if (!accessToken || accessToken.trim().length < 15) {
+          setTestResult({
+            success: false,
+            message: "Handshake Failed: WhatsApp Cloud API Access Token is empty or too short. Please paste your System User Access Token."
+          });
+          return;
+        }
+        if (!verifyToken || verifyToken.trim().length < 6) {
+          setTestResult({
+            success: false,
+            message: "Handshake Failed: Webhook Verify Token is empty or too short (must be at least 6 characters)."
+          });
+          return;
+        }
         setTestResult({
-          success: false,
-          message: "Handshake Failed: Registered Phone Number is required. Please verify details in the Configuration card."
+          success: true,
+          message: "Handshake Successful! Established direct pipeline with WhatsApp Cloud API using registered Phone Number ID and Access Token."
         });
-        return;
-      }
-      if (!phoneId || !phoneId.trim()) {
+      } else if (platformId === 'instagram') {
+        const { accountId, accessToken } = config;
+        if (!accountId || !/^\d+$/.test(accountId.trim())) {
+          setTestResult({
+            success: false,
+            message: "Handshake Failed: Instagram Account ID must be a numeric string. Check Meta developer panel."
+          });
+          return;
+        }
+        if (!accessToken || accessToken.trim().length < 15) {
+          setTestResult({
+            success: false,
+            message: "Handshake Failed: Meta Graph Access Token is invalid or expired."
+          });
+          return;
+        }
         setTestResult({
-          success: false,
-          message: "Handshake Failed: Phone Number ID is required to route message dispatches."
+          success: true,
+          message: "Handshake Successful! Authenticated session with Instagram Graph endpoints."
         });
-        return;
-      }
-      if (!accessToken || accessToken.trim().length < 15) {
+      } else if (platformId === 'facebook') {
+        const { pageId, pageAccessToken } = config;
+        if (!pageId || !/^\d+$/.test(pageId.trim())) {
+          setTestResult({
+            success: false,
+            message: "Handshake Failed: Facebook Page ID must contain numeric digits only."
+          });
+          return;
+        }
+        if (!pageAccessToken || pageAccessToken.trim().length < 15) {
+          setTestResult({
+            success: false,
+            message: "Handshake Failed: Page Access Token is empty or expired. Please re-generate page token."
+          });
+          return;
+        }
         setTestResult({
-          success: false,
-          message: "Handshake Failed: WhatsApp Cloud API Access Token is empty or too short. Please paste your System User Access Token."
+          success: true,
+          message: "Handshake Successful! Real-time webhook subscription verified on Facebook Page."
         });
-        return;
       }
-      if (!verifyToken || verifyToken.trim().length < 6) {
-        setTestResult({
-          success: false,
-          message: "Handshake Failed: Webhook Verify Token is empty or too short (must be at least 6 characters)."
-        });
-        return;
-      }
-      setTestResult({
-        success: true,
-        message: "Handshake Successful! Established direct pipeline with WhatsApp Cloud API using registered Phone Number ID and Access Token."
-      });
-    } else if (platformId === 'instagram') {
-      const { accountId, accessToken } = config;
-      if (!accountId || !/^\d+$/.test(accountId.trim())) {
-        setTestResult({
-          success: false,
-          message: "Handshake Failed: Instagram Account ID must be a numeric string. Check Meta developer panel."
-        });
-        return;
-      }
-      if (!accessToken || accessToken.trim().length < 15) {
-        setTestResult({
-          success: false,
-          message: "Handshake Failed: Meta Graph Access Token is invalid or expired."
-        });
-        return;
-      }
-      setTestResult({
-        success: true,
-        message: "Handshake Successful! Authenticated session with Instagram Graph endpoints."
-      });
-    } else if (platformId === 'facebook') {
-      const { pageId, pageAccessToken } = config;
-      if (!pageId || !/^\d+$/.test(pageId.trim())) {
-        setTestResult({
-          success: false,
-          message: "Handshake Failed: Facebook Page ID must contain numeric digits only."
-        });
-        return;
-      }
-      if (!pageAccessToken || pageAccessToken.trim().length < 15) {
-        setTestResult({
-          success: false,
-          message: "Handshake Failed: Page Access Token is empty or expired. Please re-generate page token."
-        });
-        return;
-      }
-      setTestResult({
-        success: true,
-        message: "Handshake Successful! Real-time webhook subscription verified on Facebook Page."
-      });
+    } finally {
+      setTestingPlatform(null);
     }
   };
 
