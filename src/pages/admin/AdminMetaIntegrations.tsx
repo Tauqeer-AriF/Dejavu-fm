@@ -18,7 +18,9 @@ import {
   Facebook,
   Instagram,
   MessageSquare,
-  Edit
+  Edit,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
@@ -58,6 +60,10 @@ export function AdminMetaIntegrations() {
 
   const [customVerifyToken, setCustomVerifyToken] = useState("dejavu_whatsapp_secret_key");
   const [isEditingToken, setIsEditingToken] = useState(false);
+
+  const [showWhatsAppToken, setShowWhatsAppToken] = useState(false);
+  const [showInstagramToken, setShowInstagramToken] = useState(false);
+  const [showFacebookToken, setShowFacebookToken] = useState(false);
 
   // Load states from settings response when loaded
   useEffect(() => {
@@ -628,17 +634,31 @@ export function AdminMetaIntegrations() {
                 </div>
                 <div className="space-y-1.5 md:col-span-2">
                   <label className={`text-[11px] font-medium ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>WhatsApp Access Token (Permanent / System User Token)</label>
-                  <input 
-                    type="password"
-                    placeholder="EAAGzD..."
-                    value={platformConfigs.whatsapp?.accessToken || ''}
-                    onChange={(e) => handleUpdatePlatformField('whatsapp', 'accessToken', e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
-                      isLightMode 
-                        ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
-                        : 'bg-zinc-950/40 border-zinc-800 text-zinc-100 focus:bg-zinc-950'
-                    }`}
-                  />
+                  <div className="relative">
+                    <input 
+                      type={showWhatsAppToken ? "text" : "password"}
+                      placeholder="EAAGzD..."
+                      value={platformConfigs.whatsapp?.accessToken || ''}
+                      onChange={(e) => handleUpdatePlatformField('whatsapp', 'accessToken', e.target.value)}
+                      className={`w-full pl-4 pr-11 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
+                        isLightMode 
+                          ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
+                          : 'bg-zinc-950/40 border-zinc-800 text-zinc-100 focus:bg-zinc-950'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowWhatsAppToken(!showWhatsAppToken)}
+                      className={`absolute right-3.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors ${
+                        isLightMode 
+                          ? 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100' 
+                          : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                      }`}
+                      title={showWhatsAppToken ? "Hide access token" : "Show access token"}
+                    >
+                      {showWhatsAppToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -761,19 +781,33 @@ export function AdminMetaIntegrations() {
                     }`}
                   />
                 </div>
-                <div className="space-y-1.5">
+                 <div className="space-y-1.5">
                   <label className={`text-[11px] font-medium ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>Graph Access Token</label>
-                  <input 
-                    type="password"
-                    placeholder="••••••••••••••••"
-                    value={platformConfigs.instagram?.accessToken || ''}
-                    onChange={(e) => handleUpdatePlatformField('instagram', 'accessToken', e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
-                      isLightMode 
-                        ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
-                        : 'bg-zinc-950/40 border-zinc-800 text-zinc-100 focus:bg-zinc-950'
-                    }`}
-                  />
+                  <div className="relative">
+                    <input 
+                      type={showInstagramToken ? "text" : "password"}
+                      placeholder="••••••••••••••••"
+                      value={platformConfigs.instagram?.accessToken || ''}
+                      onChange={(e) => handleUpdatePlatformField('instagram', 'accessToken', e.target.value)}
+                      className={`w-full pl-4 pr-11 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
+                        isLightMode 
+                          ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
+                          : 'bg-zinc-950/40 border-zinc-800 text-zinc-100 focus:bg-zinc-950'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowInstagramToken(!showInstagramToken)}
+                      className={`absolute right-3.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors ${
+                        isLightMode 
+                          ? 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100' 
+                          : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                      }`}
+                      title={showInstagramToken ? "Hide access token" : "Show access token"}
+                    >
+                      {showInstagramToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -895,19 +929,33 @@ export function AdminMetaIntegrations() {
                     }`}
                   />
                 </div>
-                <div className="space-y-1.5">
+                 <div className="space-y-1.5">
                   <label className={`text-[11px] font-medium ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>Page Access Token</label>
-                  <input 
-                    type="password"
-                    placeholder="••••••••••••••••"
-                    value={platformConfigs.facebook?.pageAccessToken || ''}
-                    onChange={(e) => handleUpdatePlatformField('facebook', 'pageAccessToken', e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
-                      isLightMode 
-                        ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
-                        : 'bg-zinc-950/40 border-zinc-800 text-zinc-100 focus:bg-zinc-950'
-                    }`}
-                  />
+                  <div className="relative">
+                    <input 
+                      type={showFacebookToken ? "text" : "password"}
+                      placeholder="••••••••••••••••"
+                      value={platformConfigs.facebook?.pageAccessToken || ''}
+                      onChange={(e) => handleUpdatePlatformField('facebook', 'pageAccessToken', e.target.value)}
+                      className={`w-full pl-4 pr-11 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
+                        isLightMode 
+                          ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
+                          : 'bg-zinc-950/40 border-zinc-800 text-zinc-100 focus:bg-zinc-950'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowFacebookToken(!showFacebookToken)}
+                      className={`absolute right-3.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors ${
+                        isLightMode 
+                          ? 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100' 
+                          : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                      }`}
+                      title={showFacebookToken ? "Hide access token" : "Show access token"}
+                    >
+                      {showFacebookToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
