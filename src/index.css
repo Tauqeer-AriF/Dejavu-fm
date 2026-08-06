@@ -1214,6 +1214,12 @@ button:not(.absolute) {
   animation: eq-bar-3 0.9s ease-in-out infinite;
 }
 
+/* Custom forces and badges */
+.force-text-white {
+  color: #ffffff !important;
+}
+
+
 
 
 

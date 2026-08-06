@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
-import { LogOut, Send, Paperclip, X, Maximize, Mic, MessageSquare, Search, ArrowLeft, Image as ImageIcon, Music, Video, Volume2, VolumeX, Ban, Trash2, Eraser, ShieldAlert, MailX, PlusCircle, Square, Pin, CheckSquare, MailOpen, Mail, Trash, Eye, EyeOff, Settings, Link2, Globe, RefreshCw, Download, Phone, Facebook, Instagram, Twitch, Activity, CheckCircle, AlertTriangle, Camera, Check, Sun, Moon, Megaphone, Share2, Radio, Clock, Timer } from "lucide-react";
+import { LogOut, Send, Paperclip, X, Maximize, Mic, MessageSquare, Search, ArrowLeft, Image as ImageIcon, Music, Video, Volume2, VolumeX, Ban, Trash2, Eraser, ShieldAlert, MailX, PlusCircle, Square, Pin, CheckSquare, MailOpen, Mail, Trash, Eye, EyeOff, Settings, Link2, Globe, RefreshCw, Download, Phone, Facebook, Instagram, Twitch, Activity, CheckCircle, AlertTriangle, Camera, Check, Sun, Moon, Megaphone, Share2, Radio, Clock, Timer, Inbox, MoreVertical, Menu } from "lucide-react";
 import { toast } from "sonner";
 import { fetchAdmin } from "./adminApi";
 import { useModal } from "../../context/ModalContext";
@@ -271,9 +271,9 @@ const PlatformFieldInput = ({
   const inputType = isPassword ? (showPassword ? 'text' : 'password') : 'text';
 
   return (
-    <div className="space-y-1 text-left">
+    <div className="space-y-1.5 text-left">
       <div className="flex items-center justify-between flex-wrap gap-1">
-        <label className={`text-[10px] font-bold uppercase tracking-wider ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>
+        <label className={`text-[10px] font-bold uppercase tracking-wider font-mono ${isLightMode ? 'text-slate-400' : 'text-white/30'}`}>
           {label}
         </label>
         {val !== initialValue && (
@@ -282,11 +282,12 @@ const PlatformFieldInput = ({
               onSave(val);
               toast.success(`Saved configuration parameter for ${platformId.toUpperCase()}`);
             }}
-            className={`text-[9px] font-bold uppercase tracking-widest ${
-              isLightMode ? 'text-purple-600 hover:text-purple-700' : 'text-neon-blue hover:brightness-110'
+            className={`text-[9px] font-bold uppercase tracking-wider font-mono flex items-center gap-1 transition-all duration-150 hover:scale-105 active:scale-95 ${
+              isLightMode ? 'text-purple-600 hover:text-purple-700' : 'text-cyan-400 hover:text-cyan-300'
             }`}
           >
-            Save Parameter
+            <Check className="w-3 h-3" />
+            <span>Save Parameter</span>
           </button>
         )}
       </div>
@@ -297,20 +298,20 @@ const PlatformFieldInput = ({
           onChange={e => setVal(e.target.value)}
           placeholder={placeholder}
           disabled={disabled}
-          className={`w-full rounded-xl pl-3 pr-10 py-2 text-xs transition-all ${
+          className={`w-full rounded-xl pl-3.5 pr-10 py-2.5 text-xs transition-all duration-200 outline-none ${
             isLightMode
-              ? `bg-slate-50 hover:bg-white text-slate-900 border ${val !== initialValue ? 'border-neon-purple ring-1 ring-neon-purple/20' : 'border-slate-200'} placeholder-slate-400 focus:bg-white focus:outline-none focus:border-neon-purple focus:ring-2 focus:ring-neon-purple/20`
-              : `bg-black/40 hover:bg-black/60 text-white border ${val !== initialValue ? 'border-neon-blue/30' : 'border-white/5'} placeholder-white/20 focus:outline-none focus:border-neon-blue/45 focus:ring-1 focus:ring-neon-blue/15`
-          } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              ? `bg-slate-50/60 hover:bg-slate-100/50 text-slate-800 border ${val !== initialValue ? 'border-purple-500 ring-2 ring-purple-500/10' : 'border-slate-200'} placeholder-slate-400 focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10`
+              : `bg-[#04050a]/40 hover:bg-[#04050a]/70 text-slate-100 border ${val !== initialValue ? 'border-cyan-500/50 ring-2 ring-cyan-500/10' : 'border-white/[0.04]'} placeholder-white/20 focus:bg-[#04050a] focus:border-neon-purple/50 focus:ring-2 focus:ring-neon-purple/10`
+          } ${disabled ? 'opacity-40 cursor-not-allowed bg-slate-100/50' : ''}`}
         />
         {isPassword && !disabled && (
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors p-1 rounded-md ${
+            className={`absolute right-3.5 top-1/2 -translate-y-1/2 transition-all p-1 rounded-lg ${
               isLightMode
                 ? 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
-                : 'text-white/30 hover:text-white hover:bg-white/5'
+                : 'text-white/30 hover:text-white hover:bg-white/10'
             }`}
             title={showPassword ? "Hide token" : "Show token"}
           >
@@ -518,6 +519,51 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   const [attachment, setAttachment] = useState<File | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sidebarFilter, setSidebarFilter] = useState<string>('all');
+  const filterScrollRef = useRef<HTMLDivElement>(null);
+  const dragStartRef = useRef<{ isDragging: boolean; startX: number; scrollLeft: number; hasMoved: boolean }>({
+    isDragging: false,
+    startX: 0,
+    scrollLeft: 0,
+    hasMoved: false,
+  });
+
+  const handleFilterMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    const container = filterScrollRef.current;
+    if (!container) return;
+    dragStartRef.current = {
+      isDragging: true,
+      startX: e.pageX - container.offsetLeft,
+      scrollLeft: container.scrollLeft,
+      hasMoved: false,
+    };
+  };
+
+  const handleFilterMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const drag = dragStartRef.current;
+    if (!drag.isDragging) return;
+    const container = filterScrollRef.current;
+    if (!container) return;
+    e.preventDefault();
+    const x = e.pageX - container.offsetLeft;
+    const walk = (x - drag.startX) * 1.5;
+    if (Math.abs(walk) > 5) {
+      drag.hasMoved = true;
+    }
+    container.scrollLeft = drag.scrollLeft - walk;
+  };
+
+  const handleFilterMouseUpOrLeave = () => {
+    dragStartRef.current.isDragging = false;
+  };
+
+  const handleFilterWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    const container = filterScrollRef.current;
+    if (!container) return;
+    if (e.deltaY !== 0) {
+      container.scrollLeft += e.deltaY;
+    }
+  };
   const socketRef = useRef<any>(null);
   const [selectedThreads, setSelectedThreads] = useState<string[]>([]);
   const [pinnedThreads, setPinnedThreads] = useState<string[]>(() => {
@@ -551,6 +597,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   const [isSavingAutoDelete, setIsSavingAutoDelete] = useState(false);
   const [customValInput, setCustomValInput] = useState('24');
   const [customUnitInput, setCustomUnitInput] = useState<'hours' | 'days'>('hours');
+  const [isMobileSettingsOpen, setIsMobileSettingsOpen] = useState(false);
 
   const componentMountedTime = useRef(Date.now()).current;
   const [currentTimestamp, setCurrentTimestamp] = useState(Date.now());
@@ -2251,14 +2298,28 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   };
 
   const sortedThreads = useMemo(() => {
-    const filtered = Object.values(threads).filter((thread: UserThread) => thread.user.toLowerCase().includes(searchQuery.toLowerCase()));
+    let filtered = Object.values(threads).filter((thread: UserThread) => 
+      thread.user.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    
+    // Apply sidebar tab filters
+    if (sidebarFilter === 'unread') {
+      filtered = filtered.filter((thread: UserThread) => thread.unreadCount > 0);
+    } else if (sidebarFilter === 'pinned') {
+      filtered = filtered.filter((thread: UserThread) => pinnedThreads.includes(thread.user.toLowerCase()));
+    } else if (sidebarFilter === 'chat') {
+      filtered = filtered.filter((thread: UserThread) => getThreadSource(thread) === 'public_chat');
+    } else if (sidebarFilter !== 'all') {
+      filtered = filtered.filter((thread: UserThread) => getThreadSource(thread) === sidebarFilter);
+    }
+
     return filtered.sort((a: UserThread, b: UserThread) => {
       const aIsPinned = pinnedThreads.includes(a.user.toLowerCase());
       const bIsPinned = pinnedThreads.includes(b.user.toLowerCase());
       if (aIsPinned !== bIsPinned) return aIsPinned ? -1 : 1;
       return b.lastMessageTimestamp - a.lastMessageTimestamp;
     });
-  }, [threads, searchQuery, pinnedThreads]);
+  }, [threads, searchQuery, pinnedThreads, sidebarFilter]);
 
   const currentThread = selectedUser ? threads[selectedUser.toLowerCase()] : null;
   const isTwitchChat = currentThread ? (getThreadSource(currentThread) === 'twitch') : false;
@@ -2307,12 +2368,12 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Column: Message Composer */}
             <div className="lg:col-span-2 space-y-6">
-              <div className={`border rounded-2xl p-6 space-y-4 shadow-sm ${
-                isStudioLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#0D0F1D] border-white/5 shadow-xl'
+              <div className={`rounded-xl p-6 space-y-5 border ${
+                isStudioLight ? 'bg-white border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.01)]' : 'bg-[#0d0f1e]/80 border-white/[0.04] shadow-xl'
               }`}>
                 <div className="space-y-1.5">
-                  <label className={`text-[10px] font-bold uppercase tracking-widest block ${
-                    isStudioLight ? 'text-slate-500' : 'text-white/40'
+                  <label className={`text-[10px] font-bold uppercase tracking-wider font-mono block ${
+                    isStudioLight ? 'text-slate-400' : 'text-white/30'
                   }`}>
                     Broadcast Payload
                   </label>
@@ -2320,10 +2381,10 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                     value={broadcastText}
                     onChange={(e) => setBroadcastText(e.target.value)}
                     placeholder="Enter your broadcast message here... Use @username to target specific listeners if needed."
-                    className={`w-full h-48 rounded-xl p-4 text-sm transition-all resize-none ${
+                    className={`w-full h-48 rounded-xl p-4 text-sm transition-all duration-200 resize-none outline-none ${
                       isStudioLight
-                        ? 'bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-neon-purple focus:ring-2 focus:ring-neon-purple/20'
-                        : 'bg-black/40 border border-white/5 text-white placeholder-white/20 focus:outline-none focus:border-neon-blue/40 focus:ring-1 focus:ring-neon-blue/20'
+                        ? 'bg-slate-50/60 border border-slate-200 text-slate-800 placeholder-slate-400/80 focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10'
+                        : 'bg-[#04050a]/40 border border-white/[0.04] text-slate-200 placeholder-white/20 focus:bg-[#04050a] focus:border-neon-purple/50 focus:ring-2 focus:ring-neon-purple/10'
                     }`}
                   />
                 </div>
@@ -2331,13 +2392,13 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                 {/* Attachment Section */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className={`text-[10px] font-bold uppercase tracking-widest ${
-                      isStudioLight ? 'text-slate-500' : 'text-white/40'
+                    <label className={`text-[10px] font-bold uppercase tracking-wider font-mono ${
+                      isStudioLight ? 'text-slate-400' : 'text-white/30'
                     }`}>
                       Media Attachment
                     </label>
                     {attachment && (
-                      <button onClick={() => setAttachment(null)} className="text-[9px] font-bold text-red-500 uppercase tracking-widest hover:text-red-600">
+                      <button onClick={() => setAttachment(null)} className="text-[9px] font-bold text-red-500 uppercase tracking-widest hover:text-red-600 font-mono">
                         Clear Attachment
                       </button>
                     )}
@@ -2348,19 +2409,19 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                   ) : (
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      className={`w-full py-6 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-2 transition-all group ${
+                      className={`w-full py-6 border border-dashed rounded-xl flex flex-col items-center justify-center gap-2 transition-all duration-200 group cursor-pointer ${
                         isStudioLight
                           ? 'border-slate-200 hover:border-slate-300 text-slate-500 hover:text-slate-700 bg-slate-50/50 hover:bg-slate-100/50'
-                          : 'border-white/5 hover:border-white/10 text-white/30 hover:text-white/50 bg-white/[0.02]'
+                          : 'border-white/[0.08] hover:border-white/20 text-white/30 hover:text-white/50 bg-white/[0.01]'
                       }`}
                     >
-                      <div className={`p-3 rounded-xl transition-all ${
-                        isStudioLight ? 'bg-white shadow-sm group-hover:bg-slate-50' : 'bg-white/[0.02] group-hover:bg-white/[0.05]'
+                      <div className={`p-3 rounded-xl transition-all duration-200 ${
+                        isStudioLight ? 'bg-white shadow-3xs group-hover:bg-slate-50' : 'bg-white/[0.02] group-hover:bg-white/[0.05]'
                       }`}>
-                        <Paperclip className="w-5 h-5" />
+                        <Paperclip className="w-5 h-5 text-neon-purple" />
                       </div>
                       <span className="text-xs font-semibold">Attach Image, Audio, or Video</span>
-                      <span className="text-[10px] opacity-60">Maximum size: 20MB</span>
+                      <span className="text-[10px] opacity-60 font-mono">Maximum size: 20MB</span>
                     </button>
                   )}
                   <input
@@ -2372,22 +2433,22 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                   />
                 </div>
 
-                <div className="pt-4">
+                <div className="pt-2">
                   <button
                     onClick={handleBroadcast}
                     disabled={isBroadcasting || (!broadcastText.trim() && !attachment)}
-                    className={`w-full py-4 rounded-xl font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
+                    className={`w-full py-3.5 rounded-xl font-bold uppercase tracking-wider font-mono text-xs transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.01] active:scale-[0.99] ${
                       isBroadcasting || (!broadcastText.trim() && !attachment)
-                        ? (isStudioLight ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed' : 'bg-white/5 text-white/20 cursor-not-allowed')
-                        : 'bg-gradient-to-r from-neon-purple via-neon-purple/80 to-neon-blue hover:brightness-105 text-white shadow-md'
+                        ? (isStudioLight ? 'bg-slate-100 text-slate-400 border border-slate-200/80 cursor-not-allowed' : 'bg-white/5 text-white/20 border border-white/5 cursor-not-allowed')
+                        : 'bg-gradient-to-r from-neon-purple to-neon-blue hover:brightness-105 text-white shadow-md'
                     }`}
                   >
                     {isBroadcasting ? (
-                      <RefreshCw className="w-5 h-5 animate-spin" />
+                      <RefreshCw className="w-4 h-4 animate-spin" />
                     ) : (
-                      <Share2 className="w-5 h-5" />
+                      <Share2 className="w-4 h-4" />
                     )}
-                    <span>{isBroadcasting ? 'Transmitting...' : 'Execute Global Broadcast'}</span>
+                    <span>{isBroadcasting ? 'TRANSMITTING STREAM...' : 'EXECUTE GLOBAL BROADCAST'}</span>
                   </button>
                 </div>
               </div>
@@ -2395,36 +2456,36 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
             {/* Right Column: Channel Selector */}
             <div className="space-y-6">
-              <div className={`border rounded-2xl p-6 space-y-4 ${
-                isStudioLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#0D0F1D] border-white/5'
+              <div className={`rounded-xl p-6 space-y-4 border ${
+                isStudioLight ? 'bg-white border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.01)]' : 'bg-[#0d0f1e]/80 border-white/[0.04]'
               }`}>
-                <div className="flex items-center justify-between">
-                  <h3 className={`text-xs font-bold uppercase tracking-widest ${
+                <div className="flex items-center justify-between border-b pb-2 border-dashed border-white/10">
+                  <h3 className={`text-xs font-extrabold uppercase tracking-wider font-display ${
                     isStudioLight ? 'text-slate-700' : 'text-white/80'
                   }`}>
-                    Active Pipelines
+                    ARM BROADCAST CHANNELS
                   </h3>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2.5">
                     <button 
                       onClick={() => setBroadcastChannels(channels.map(c => c.id))}
-                      className={`text-[9px] font-bold uppercase ${
-                        isStudioLight ? 'text-neon-purple hover:text-neon-purple/85' : 'text-neon-blue'
+                      className={`text-[9px] font-bold uppercase font-mono ${
+                        isStudioLight ? 'text-purple-600 hover:text-purple-700' : 'text-cyan-400 hover:text-cyan-300'
                       }`}
                     >
-                      All
+                      ALL
                     </button>
                     <button 
                       onClick={() => setBroadcastChannels([])}
-                      className={`text-[9px] font-bold uppercase ${
-                        isStudioLight ? 'text-slate-400 hover:text-slate-600' : 'text-white/30'
+                      className={`text-[9px] font-bold uppercase font-mono ${
+                        isStudioLight ? 'text-slate-400 hover:text-slate-600' : 'text-white/30 hover:text-white/50'
                       }`}
                     >
-                      None
+                      NONE
                     </button>
                   </div>
                 </div>
                 
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   {channels.map(channel => {
                     const isSelected = broadcastChannels.includes(channel.id);
                     const isPlatform = ['whatsapp', 'instagram', 'facebook', 'twitch', 'tiktok'].includes(channel.id);
@@ -2435,29 +2496,35 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                         key={channel.id}
                         onClick={() => toggleChannel(channel.id)}
                         disabled={!isConnected}
-                        className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 cursor-pointer hover:scale-102 active:scale-98 ${
                           isSelected 
-                            ? `${channel.bg} ${channel.color} font-semibold` 
+                            ? (isStudioLight
+                                ? 'bg-red-50/80 border-red-300/80 text-red-800 font-bold'
+                                : 'bg-red-500/5 border-red-500/30 text-red-400 font-bold shadow-[0_0_12px_rgba(239,68,68,0.1)]') 
                             : (isStudioLight 
-                                ? 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900' 
-                                : 'bg-black/20 border-white/5 text-white/40 hover:text-white/60 hover:border-white/10')
-                        } ${!isConnected ? 'opacity-30 grayscale cursor-not-allowed' : ''}`}
+                                ? 'bg-slate-50 border-slate-200/80 text-slate-600 hover:bg-slate-100 hover:text-slate-900' 
+                                : 'bg-white/[0.01] border-white/[0.03] text-white/40 hover:text-white/70 hover:border-white/[0.08]')
+                        } ${!isConnected ? 'opacity-25 grayscale cursor-not-allowed' : ''}`}
                       >
-                        <div className={`p-2 rounded-lg ${
-                          isSelected ? (isStudioLight ? 'bg-white/80 shadow-xs' : 'bg-white/10') : (isStudioLight ? 'bg-white border border-slate-200/60' : 'bg-white/[0.03]')
+                        <div className={`p-2 rounded-lg transition-colors ${
+                          isSelected 
+                            ? (isStudioLight ? 'bg-white shadow-3xs text-red-600' : 'bg-red-500/10 text-red-400') 
+                            : (isStudioLight ? 'bg-white border border-slate-200/60' : 'bg-white/[0.02]')
                         }`}>
                           <channel.icon className="w-4 h-4" />
                         </div>
-                        <div className="text-left flex-1">
-                          <div className="text-[11px] font-bold uppercase tracking-tight">{channel.name}</div>
-                          <div className="text-[9px] opacity-60 font-mono">
-                            {isConnected ? (isSelected ? 'SELECTED' : 'AVAILABLE') : 'DISCONNECTED'}
+                        <div className="text-left flex-1 min-w-0">
+                          <div className="text-[10px] font-extrabold uppercase tracking-wider font-mono truncate">{channel.name}</div>
+                          <div className="text-[8px] tracking-widest font-mono font-semibold opacity-60">
+                            {isConnected ? (isSelected ? 'ARMED & ACTIVE' : 'READY TO ARM') : 'STATION OFFLINE'}
                           </div>
                         </div>
-                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                          isSelected ? 'border-current bg-current/10' : (isStudioLight ? 'border-slate-300' : 'border-white/10')
+                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
+                          isSelected 
+                            ? (isStudioLight ? 'border-red-500 bg-red-500/10' : 'border-red-500/50 bg-red-500/25 text-red-400') 
+                            : (isStudioLight ? 'border-slate-300' : 'border-white/10')
                         }`}>
-                          {isSelected && <Check className="w-2.5 h-2.5" />}
+                          {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />}
                         </div>
                       </button>
                     );
@@ -2578,44 +2645,60 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
               const isConnected = connectedPlatforms[platform.id];
               const config = platformConfigs[platform.id] || {};
               return (
-                <div key={platform.id} className={`border rounded-2xl p-6 flex flex-col space-y-5 transition-all relative overflow-hidden group ${
+                <div key={platform.id} className={`rounded-xl p-6 flex flex-col space-y-6 transition-all duration-300 relative overflow-hidden border ${
                   isStudioLight
-                    ? 'bg-white border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md'
-                    : 'bg-[#0D0F1D] border-white/5 hover:border-white/10 hover:shadow-[0_4px_30px_rgba(0,0,0,0.4)]'
+                    ? 'bg-white border-slate-200/80 shadow-[0_4px_24px_rgba(0,0,0,0.02)] hover:border-slate-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.06)]'
+                    : 'bg-gradient-to-b from-[#0d0f1e] to-[#070913] border-white/[0.04] hover:border-white/[0.08] shadow-[0_4px_24px_rgba(0,0,0,0.25)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.45)]'
                 }`}>
-                  <div className={`absolute top-0 left-0 w-2 h-full bg-gradient-to-b ${platform.color}`} />
+                  {/* Subtle top brand colored thin accent line to represent channel category */}
+                  <div className={`absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r ${platform.color} opacity-80`} />
                   
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${platform.color} flex items-center justify-center text-white border border-white/10 shrink-0 shadow-sm`} style={{ boxShadow: `0 0 15px ${platform.glow}` }}>
-                        <platform.icon className="w-5 h-5" />
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3.5">
+                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-105 border shrink-0 ${
+                        isConnected
+                          ? (isStudioLight 
+                              ? `bg-slate-50 border-slate-200 shadow-3xs` 
+                              : `bg-white/[0.02] border-white/10`)
+                          : (isStudioLight 
+                              ? 'bg-slate-50 border-slate-100' 
+                              : 'bg-white/[0.01] border-white/5')
+                      }`} style={isConnected && !isStudioLight ? { boxShadow: `0 0 20px ${platform.glow}` } : undefined}>
+                        <platform.icon className={`w-5 h-5 transition-colors ${
+                          isConnected 
+                            ? (platform.id === 'whatsapp' ? 'text-emerald-500' : platform.id === 'twitch' ? 'text-purple-500' : platform.id === 'instagram' ? 'text-pink-500' : platform.id === 'facebook' ? 'text-blue-500' : 'text-cyan-400')
+                            : (isStudioLight ? 'text-slate-400' : 'text-white/20')
+                        }`} />
                       </div>
                       <div className="min-w-0">
-                        <h3 className={`text-sm font-bold truncate ${
-                          isStudioLight ? 'text-slate-900' : 'text-white'
+                        <h3 className={`text-xs font-extrabold uppercase tracking-wider font-display ${
+                          isStudioLight ? 'text-slate-900' : 'text-slate-100'
                         }`}>
                           {platform.name}
                         </h3>
-                        <p className={`text-[10px] ${
-                          isConnected 
-                            ? (isStudioLight ? 'text-emerald-600 font-semibold' : 'text-emerald-400') 
-                            : (isStudioLight ? 'text-slate-400' : 'text-white/40')
-                        }`}>
-                          {isConnected ? 'Active pipeline online' : 'Offline'}
-                        </p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+                          <span className={`text-[10px] font-mono font-medium ${
+                            isConnected 
+                              ? (isStudioLight ? 'text-emerald-600' : 'text-emerald-400') 
+                              : (isStudioLight ? 'text-slate-400' : 'text-white/30')
+                          }`}>
+                            {isConnected ? 'ONLINE PIPELINE ACTIVE' : 'PIPELINE DISCONNECTED'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                     
                     <button
                       onClick={() => handleTogglePlatform(platform.id)}
-                      className={`sm:self-auto self-start px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 border ${
+                      className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider font-mono transition-all duration-200 border cursor-pointer hover:scale-105 active:scale-95 ${
                         isConnected
                           ? (isStudioLight 
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100 shadow-xs' 
-                              : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.15)]')
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
+                              : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/15')
                           : (isStudioLight 
-                              ? 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 hover:text-slate-900' 
-                              : 'bg-white/[0.02] text-white/40 border-white/5 hover:bg-white/[0.05]')
+                              ? 'bg-slate-50 text-slate-600 border-slate-200/80 hover:bg-slate-100' 
+                              : 'bg-white/[0.02] text-white/50 border-white/5 hover:bg-white/[0.05]')
                       }`}
                     >
                       {isConnected ? 'Disconnect' : 'Connect'}
@@ -2623,67 +2706,66 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                   </div>
 
                   <p className={`text-[11px] leading-relaxed ${
-                    isStudioLight ? 'text-slate-600' : 'text-white/50'
+                    isStudioLight ? 'text-slate-500' : 'text-slate-400/80'
                   }`}>
                     {platform.desc}
                   </p>
 
                   {['whatsapp', 'instagram', 'facebook'].includes(platform.id) ? (
-                    <div className="space-y-3.5 pt-2">
-                      <div className={`rounded-xl border p-3.5 space-y-2.5 ${
-                        isStudioLight ? 'bg-slate-50/90 border-slate-200 text-slate-800' : 'bg-black/35 border-white/5 text-white'
-                      }`}>
-                        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider font-mono">
-                          <span className={isStudioLight ? 'text-slate-500' : 'text-white/40'}>Configuration Parameters</span>
-                          <span className="text-[9px] px-1.5 py-0.5 rounded border bg-neon-purple/15 text-neon-purple border-neon-purple/20 font-semibold">
-                            Meta Managed
+                    <div className="space-y-4 pt-1">
+                      {/* Premium flattened non-nested telemetry/parameters structure */}
+                      <div className="space-y-2.5 font-mono text-[11px]">
+                        <div className="flex items-center justify-between border-b border-dashed pb-1.5 border-white/10">
+                          <span className={`text-[9px] font-bold uppercase tracking-wider ${isStudioLight ? 'text-slate-400' : 'text-white/30'}`}>Configuration parameters</span>
+                          <span className="text-[8px] px-1.5 py-0.5 rounded border border-purple-500/10 bg-purple-500/5 text-purple-400 font-bold uppercase tracking-widest">
+                            Meta Cloud API
                           </span>
                         </div>
-                        <div className="space-y-2 text-xs">
+                        <div className="space-y-2">
                           {platform.id === 'whatsapp' && (
                             <>
-                              <div className="flex items-center justify-between font-mono">
-                                <span className={`text-[10px] ${isStudioLight ? 'text-slate-500' : 'text-white/40'}`}>PHONE ID:</span>
-                                <span className={`font-bold ${isStudioLight ? 'text-slate-900' : 'text-white/95'}`}>
-                                  {config.phone ? config.phone : <span className={`${isStudioLight ? 'text-rose-600' : 'text-red-400/80'} italic text-[10px]`}>Not Configured</span>}
+                              <div className="flex items-center justify-between">
+                                <span className={isStudioLight ? 'text-slate-400' : 'text-white/20'}>PHONE NUMBER ID:</span>
+                                <span className={`font-bold ${isStudioLight ? 'text-slate-800' : 'text-white/80'}`}>
+                                  {config.phone ? config.phone : <span className="text-rose-500/80 italic text-[10px]">Not configured</span>}
                                 </span>
                               </div>
-                              <div className="flex items-center justify-between font-mono">
-                                <span className={`text-[10px] ${isStudioLight ? 'text-slate-500' : 'text-white/40'}`}>VERIFY TOKEN:</span>
-                                <span className="font-bold text-neon-purple">
-                                  {config.verifyToken ? "••••••••" : <span className={`${isStudioLight ? 'text-rose-600' : 'text-red-400/80'} italic text-[10px]`}>Not Configured</span>}
+                              <div className="flex items-center justify-between">
+                                <span className={isStudioLight ? 'text-slate-400' : 'text-white/20'}>SYSTEM ACCESS TOKEN:</span>
+                                <span className={`font-bold ${config.verifyToken ? 'text-cyan-400' : 'text-rose-500/80 italic text-[10px]'}`}>
+                                  {config.verifyToken ? "••••••••••••" : "Not configured"}
                                 </span>
                               </div>
                             </>
                           )}
                           {platform.id === 'instagram' && (
                             <>
-                              <div className="flex items-center justify-between font-mono">
-                                <span className={`text-[10px] ${isStudioLight ? 'text-slate-500' : 'text-white/40'}`}>ACCOUNT ID:</span>
-                                <span className={`font-bold ${isStudioLight ? 'text-slate-900' : 'text-white/95'}`}>
-                                  {config.accountId ? config.accountId : <span className={`${isStudioLight ? 'text-rose-600' : 'text-red-400/80'} italic text-[10px]`}>Not Configured</span>}
+                              <div className="flex items-center justify-between">
+                                <span className={isStudioLight ? 'text-slate-400' : 'text-white/20'}>INSTAGRAM ACCOUNT ID:</span>
+                                <span className={`font-bold ${isStudioLight ? 'text-slate-800' : 'text-white/80'}`}>
+                                  {config.accountId ? config.accountId : <span className="text-rose-500/80 italic text-[10px]">Not configured</span>}
                                 </span>
                               </div>
-                              <div className="flex items-center justify-between font-mono">
-                                <span className={`text-[10px] ${isStudioLight ? 'text-slate-500' : 'text-white/40'}`}>GRAPH TOKEN:</span>
-                                <span className="font-bold text-neon-purple">
-                                  {config.accessToken ? "••••••••" : <span className={`${isStudioLight ? 'text-rose-600' : 'text-red-400/80'} italic text-[10px]`}>Not Configured</span>}
+                              <div className="flex items-center justify-between">
+                                <span className={isStudioLight ? 'text-slate-400' : 'text-white/20'}>GRAPH ACCESS KEY:</span>
+                                <span className={`font-bold ${config.accessToken ? 'text-cyan-400' : 'text-rose-500/80 italic text-[10px]'}`}>
+                                  {config.accessToken ? "••••••••••••" : "Not configured"}
                                 </span>
                               </div>
                             </>
                           )}
                           {platform.id === 'facebook' && (
                             <>
-                              <div className="flex items-center justify-between font-mono">
-                                <span className={`text-[10px] ${isStudioLight ? 'text-slate-500' : 'text-white/40'}`}>PAGE ID:</span>
-                                <span className={`font-bold ${isStudioLight ? 'text-slate-900' : 'text-white/95'}`}>
-                                  {config.pageId ? config.pageId : <span className={`${isStudioLight ? 'text-rose-600' : 'text-red-400/80'} italic text-[10px]`}>Not Configured</span>}
+                              <div className="flex items-center justify-between">
+                                <span className={isStudioLight ? 'text-slate-400' : 'text-white/20'}>FACEBOOK PAGE ID:</span>
+                                <span className={`font-bold ${isStudioLight ? 'text-slate-800' : 'text-white/80'}`}>
+                                  {config.pageId ? config.pageId : <span className="text-rose-500/80 italic text-[10px]">Not configured</span>}
                                 </span>
                               </div>
-                              <div className="flex items-center justify-between font-mono">
-                                <span className={`text-[10px] ${isStudioLight ? 'text-slate-500' : 'text-white/40'}`}>PAGE TOKEN:</span>
-                                <span className="font-bold text-neon-purple">
-                                  {config.pageAccessToken ? "••••••••" : <span className={`${isStudioLight ? 'text-rose-600' : 'text-red-400/80'} italic text-[10px]`}>Not Configured</span>}
+                              <div className="flex items-center justify-between">
+                                <span className={isStudioLight ? 'text-slate-400' : 'text-white/20'}>PAGE ACCESS TOKEN:</span>
+                                <span className={`font-bold ${config.pageAccessToken ? 'text-cyan-400' : 'text-rose-500/80 italic text-[10px]'}`}>
+                                  {config.pageAccessToken ? "••••••••••••" : "Not configured"}
                                 </span>
                               </div>
                             </>
@@ -2693,18 +2775,18 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
                       <Link
                         to="/admin/meta-integrations"
-                        className={`w-full py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 border ${
+                        className={`w-full py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider font-mono transition-all flex items-center justify-center gap-1.5 border hover:scale-102 duration-150 cursor-pointer ${
                           isStudioLight 
-                            ? 'bg-neon-purple/10 hover:bg-neon-purple/20 text-neon-purple border-neon-purple/20 shadow-xs' 
-                            : 'bg-neon-purple/5 hover:bg-neon-purple/15 border-neon-purple/10 hover:border-neon-purple/20 text-neon-purple'
+                            ? 'bg-purple-50 hover:bg-purple-100/75 text-purple-700 border-purple-200/60 shadow-3xs' 
+                            : 'bg-white/[0.02] hover:bg-white/[0.05] border-white/5 hover:border-white/10 text-white/80'
                         }`}
                       >
                         <Settings className="w-3.5 h-3.5" />
-                        <span>Manage Developer Credentials</span>
+                        <span>Configure Developer Credentials</span>
                       </Link>
                     </div>
                   ) : (
-                    <div className="space-y-3 pt-2">
+                    <div className="space-y-4 pt-1">
                       {platform.fields.map(field => (
                         <PlatformFieldInput
                           key={field.key}
@@ -2722,21 +2804,21 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                     </div>
                   )}
 
-                  <div className={`pt-4 border-t space-y-3 ${isStudioLight ? 'border-slate-200' : 'border-white/5'}`}>
+                  <div className={`pt-4 border-t space-y-3.5 ${isStudioLight ? 'border-slate-100' : 'border-white/5'}`}>
                     <div className="flex items-center justify-between">
                       <span className={`text-[10px] font-bold uppercase tracking-wider font-mono ${
-                        isStudioLight ? 'text-slate-500' : 'text-white/40'
+                        isStudioLight ? 'text-slate-400' : 'text-white/30'
                       }`}>
-                        Integration Credentials Diagnostic
+                        Credentials Diagnostic Suite
                       </span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       <button
                         onClick={() => handleTestConnection(platform.id)}
-                        className={`py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 border ${
+                        className={`py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider font-mono transition-all flex items-center justify-center gap-1.5 border cursor-pointer hover:scale-102 active:scale-98 ${
                           isStudioLight
-                            ? 'bg-sky-50 hover:bg-sky-100 text-sky-700 border-sky-200 shadow-xs'
-                            : 'bg-gradient-to-r from-neon-blue/10 to-indigo-600/10 hover:from-neon-blue/20 hover:to-indigo-600/20 border-neon-blue/20 hover:border-neon-blue/40 text-neon-blue'
+                            ? 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                            : 'bg-white/[0.02] hover:bg-white/[0.06] border-white/5 hover:border-white/10 text-white/80'
                         }`}
                       >
                         <RefreshCw className="w-3.5 h-3.5" />
@@ -2746,18 +2828,18 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                       {isConnected ? (
                         <button
                           onClick={() => simulatePlatformMessage(platform.id)}
-                          className={`py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 border ${
+                          className={`py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider font-mono transition-all flex items-center justify-center gap-1.5 border cursor-pointer hover:scale-102 active:scale-98 ${
                             isStudioLight
-                              ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 shadow-xs'
-                              : 'bg-gradient-to-r from-emerald-500/10 to-teal-500/10 hover:from-emerald-500/20 hover:to-teal-500/20 border-emerald-500/20 hover:border-emerald-500/30 text-emerald-400'
+                              ? 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200/60'
+                              : 'bg-neon-purple/10 hover:bg-neon-purple/20 border-neon-purple/20 text-neon-purple hover:text-white'
                           }`}
                         >
                           <PlusCircle className="w-3.5 h-3.5" />
                           <span>Simulate DM</span>
                         </button>
                       ) : (
-                        <div className={`py-2 border rounded-xl text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 select-none ${
-                          isStudioLight ? 'bg-slate-100 border-slate-200 text-slate-400' : 'bg-white/[0.01] border-white/5 text-white/20'
+                        <div className={`py-2.5 border rounded-xl text-[10px] font-bold uppercase tracking-wider font-mono flex items-center justify-center gap-1.5 select-none ${
+                          isStudioLight ? 'bg-slate-50 border-slate-100 text-slate-300' : 'bg-white/[0.01] border-white/[0.02] text-white/20'
                         }`}>
                           <PlusCircle className="w-3.5 h-3.5 opacity-30" />
                           <span>Connect to Simulate</span>
@@ -2781,151 +2863,167 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       }`}>
         <div className="max-w-4xl mx-auto space-y-8 pb-36 md:pb-12">
           <div className="space-y-1">
-            <h2 className={`text-xl font-bold uppercase tracking-wider ${
-              isStudioLight ? 'text-slate-900' : 'text-white'
+            <h2 className={`text-xl font-bold uppercase tracking-wider font-display ${
+              isStudioLight ? 'text-slate-900' : 'text-slate-100'
             }`}>
               Studio Desk Settings
             </h2>
             <p className={`text-xs ${isStudioLight ? 'text-slate-500' : 'text-white/50'}`}>
-              Manage notifications, customise default responses, and administer storage caches.
+              Manage system alerts, customize quick-response templates, and configure automated purge timers.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className={`border rounded-2xl p-6 space-y-4 ${
-              isStudioLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#0D0F1D] border-white/5'
+            <div className={`rounded-xl p-6 space-y-5 border flex flex-col justify-between ${
+              isStudioLight ? 'bg-white border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.01)]' : 'bg-[#0d0f1e]/80 border-white/[0.04]'
             }`}>
-              <h3 className={`text-xs font-bold uppercase tracking-widest ${
-                isStudioLight ? 'text-slate-700' : 'text-white/80'
-              }`}>
-                Notification Sounds
-              </h3>
-              <p className={`text-xs leading-relaxed ${
-                isStudioLight ? 'text-slate-500' : 'text-white/40'
-              }`}>
-                Turn on or off instant auditory feedback on incoming listener shoutouts and live direct messages.
-              </p>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Volume2 className="w-4 h-4 text-purple-500" />
+                  <h3 className={`text-xs font-extrabold uppercase tracking-wider font-display ${
+                    isStudioLight ? 'text-slate-700' : 'text-slate-200'
+                  }`}>
+                    System Auditory Alerts
+                  </h3>
+                </div>
+                <p className={`text-[11px] leading-relaxed ${
+                  isStudioLight ? 'text-slate-500' : 'text-slate-400/80'
+                }`}>
+                  Toggle immediate acoustic notifications whenever new listener messages, live shoutouts, or priority DMs land on your deck.
+                </p>
+              </div>
               
-              <div className={`flex items-center justify-between p-3 rounded-xl border ${
-                isStudioLight ? 'bg-slate-50 border-slate-200' : 'bg-black/20 border-white/5'
+              <div className={`flex items-center justify-between p-4 rounded-xl border ${
+                isStudioLight ? 'bg-slate-50 border-slate-200/80' : 'bg-white/[0.01] border-white/[0.03]'
               }`}>
-                <div>
-                  <span className={`text-xs font-semibold block ${
-                    isStudioLight ? 'text-slate-800' : 'text-white/80'
+                <div className="space-y-0.5">
+                  <span className={`text-[11px] font-bold uppercase font-mono tracking-wide ${
+                    isStudioLight ? 'text-slate-800' : 'text-slate-300'
                   }`}>
-                    Receive Ring Alerts
+                    Live Ring Alerts
                   </span>
-                  <span className={`text-[10px] font-mono ${
-                    isStudioLight ? 'text-slate-400' : 'text-white/30'
-                  }`}>
-                    SOUND STATE: {soundEnabled ? "ACTIVE" : "MUTED"}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`w-1.5 h-1.5 rounded-full ${soundEnabled ? 'bg-purple-500 animate-pulse' : 'bg-slate-500'}`} />
+                    <span className={`text-[9px] font-mono ${
+                      isStudioLight ? 'text-slate-400' : 'text-white/30'
+                    }`}>
+                      STATUS: {soundEnabled ? "ARMED & ENGAGED" : "SYSTEM MUTED"}
+                    </span>
+                  </div>
                 </div>
                 <button
                   onClick={toggleSound}
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                  className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200 border cursor-pointer hover:scale-105 active:scale-95 ${
                     soundEnabled 
-                      ? 'bg-neon-purple/15 text-neon-purple border border-neon-purple/20 shadow-xs'
-                      : (isStudioLight ? 'bg-slate-100 text-slate-400 border border-slate-200' : 'bg-white/5 text-white/30 border border-white/5')
+                      ? (isStudioLight 
+                          ? 'bg-purple-50 text-purple-700 border-purple-200 shadow-3xs'
+                          : 'bg-neon-purple/10 text-neon-purple border border-neon-purple/20 shadow-[0_0_12px_rgba(176,38,255,0.15)]')
+                      : (isStudioLight 
+                          ? 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100' 
+                          : 'bg-white/[0.01] text-white/30 border border-white/5 hover:bg-white/[0.03]')
                   }`}
                 >
-                  {soundEnabled ? <Volume2 className="w-4.5 h-4.5" /> : <VolumeX className="w-4.5 h-4.5" />}
+                  {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
                 </button>
               </div>
             </div>
 
-            <div className={`border rounded-2xl p-6 space-y-4 ${
-              isStudioLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#0D0F1D] border-white/5'
+            <div className={`rounded-xl p-6 space-y-4 border flex flex-col justify-between ${
+              isStudioLight ? 'bg-white border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.01)]' : 'bg-[#0d0f1e]/80 border-white/[0.04]'
             }`}>
-              <div className="flex items-center justify-between">
-                <h3 className={`text-xs font-bold uppercase tracking-widest ${
-                  isStudioLight ? 'text-slate-700' : 'text-white/80'
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-purple-500" />
+                    <h3 className={`text-xs font-extrabold uppercase tracking-wider font-display ${
+                      isStudioLight ? 'text-slate-700' : 'text-slate-200'
+                    }`}>
+                      Desk Quick Replies
+                    </h3>
+                  </div>
+                  <button
+                    onClick={addCustomReply}
+                    className="px-2.5 py-1 rounded-xl text-[9px] font-bold uppercase tracking-wider font-mono transition-all duration-200 border bg-neon-purple/10 hover:bg-neon-purple/25 border-neon-purple/20 text-neon-purple hover:text-white cursor-pointer hover:scale-105"
+                  >
+                    + ADD TEMPLATE
+                  </button>
+                </div>
+                <p className={`text-[11px] leading-relaxed ${
+                  isStudioLight ? 'text-slate-500' : 'text-slate-400/80'
                 }`}>
-                  Quick Replies
-                </h3>
-                <button
-                  onClick={addCustomReply}
-                  className="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border bg-neon-purple/10 hover:bg-neon-purple/20 border-neon-purple/20 text-neon-purple"
-                >
-                  Add Custom
-                </button>
+                  Pre-configured macro snippets positioned directly below the chat layout to accelerate live communication.
+                </p>
               </div>
-              <p className={`text-xs leading-relaxed ${
-                isStudioLight ? 'text-slate-500' : 'text-white/40'
-              }`}>
-                Fast-delivery response templates rendered at the bottom of open conversation workspaces.
-              </p>
               
-              <div className={`space-y-1.5 max-h-48 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full ${
+              <div className={`space-y-1.5 max-h-40 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full ${
                 isStudioLight ? '[&::-webkit-scrollbar-thumb]:bg-slate-200' : '[&::-webkit-scrollbar-thumb]:bg-white/5'
               }`}>
                 {DEFAULT_QUICK_REPLIES.map(reply => (
-                  <div key={reply} className={`flex items-center justify-between p-2.5 rounded-xl border text-xs ${
+                  <div key={reply} className={`flex items-center justify-between p-2.5 rounded-xl border text-[11px] font-mono ${
                     isStudioLight 
-                      ? 'bg-slate-50 border-slate-200 text-slate-700' 
-                      : 'bg-black/20 border-white/5 text-white/60'
+                      ? 'bg-slate-50 border-slate-200/60 text-slate-700' 
+                      : 'bg-[#04050a]/30 border-white/[0.03] text-white/70'
                   }`}>
                     <span className="truncate pr-4">{reply}</span>
-                    <span className={`text-[8px] uppercase tracking-wider font-mono font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                      isStudioLight ? 'text-slate-500 bg-slate-200/70' : 'text-white/20 bg-white/5'
+                    <span className={`text-[8px] uppercase tracking-widest font-mono font-bold px-1.5 py-0.5 rounded border shrink-0 ${
+                      isStudioLight ? 'text-slate-400 bg-slate-100/80 border-slate-200/40' : 'text-white/20 bg-white/[0.02] border-white/5'
                     }`}>
-                      System
+                      SYSTEM
                     </span>
                   </div>
                 ))}
                 {customReplies.map(reply => (
-                  <div key={reply} className={`flex items-center justify-between p-2.5 rounded-xl border text-xs ${
+                  <div key={reply} className={`flex items-center justify-between p-2.5 rounded-xl border text-[11px] font-mono ${
                     isStudioLight 
-                      ? 'bg-neon-purple/10 border-neon-purple/20 text-neon-purple' 
-                      : 'bg-neon-purple/5 rounded-xl border border-neon-purple/10 text-neon-purple'
+                      ? 'bg-purple-50/80 border-purple-200/60 text-purple-700' 
+                      : 'bg-neon-purple/5 border-neon-purple/20 text-neon-purple'
                   }`}>
                     <span className="truncate pr-4 font-semibold">{reply}</span>
                     <button
                       onClick={() => removeCustomReply(reply)}
-                      className="p-1 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all shrink-0"
+                      className="p-1 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all shrink-0 cursor-pointer"
                       title="Delete reply template"
                     >
-                      <X className="w-3.5 h-3.5" />
+                      <X className="w-3 h-3" />
                     </button>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className={`border rounded-2xl p-6 space-y-5 md:col-span-2 ${
-              isStudioLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#0D0F1D] border-white/5'
+            <div className={`rounded-xl p-6 space-y-6 md:col-span-2 border ${
+              isStudioLight ? 'bg-white border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.01)]' : 'bg-[#0d0f1e]/80 border-white/[0.04]'
             }`}>
-              <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b ${
-                isStudioLight ? 'border-slate-200' : 'border-white/5'
+              <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-dashed ${
+                isStudioLight ? 'border-slate-100' : 'border-white/5'
               }`}>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-neon-purple" />
-                    <h3 className={`text-xs font-bold uppercase tracking-widest ${
-                      isStudioLight ? 'text-slate-700' : 'text-white/80'
+                    <Clock className="w-4 h-4 text-purple-500" />
+                    <h3 className={`text-xs font-extrabold uppercase tracking-wider font-display ${
+                      isStudioLight ? 'text-slate-700' : 'text-slate-200'
                     }`}>
-                      Automatic Chat Purge (Retention Timer)
+                      Automatic Workspace Purge (Retention Policy)
                     </h3>
                   </div>
-                  <p className={`text-xs leading-relaxed ${
-                    isStudioLight ? 'text-slate-500' : 'text-white/40'
+                  <p className={`text-[11px] leading-relaxed ${
+                    isStudioLight ? 'text-slate-500' : 'text-slate-400/80'
                   }`}>
-                    Automatically purge and delete all public chat room messages, private listener DMs, and live shoutouts periodically after a specified duration.
+                    Automatically delete old public messages, private DMs, and live shoutouts to prevent disk leaks and maintain peak operational performance.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => handleSaveAutoDelete(!autoDeleteEnabled, autoDeleteHours)}
                   disabled={isSavingAutoDelete}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none shrink-0 ${
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none shrink-0 cursor-pointer ${
                     autoDeleteEnabled 
-                      ? 'bg-neon-purple shadow-[0_0_12px_rgba(var(--color-neon-purple-rgb,176,38,255),0.5)]' 
+                      ? 'bg-neon-purple shadow-[0_0_12px_rgba(176,38,255,0.4)]' 
                       : (isStudioLight ? 'bg-slate-200' : 'bg-white/10')
                   }`}
-                  style={autoDeleteEnabled ? { boxShadow: `0 0 12px ${primaryColor}80` } : undefined}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
                       autoDeleteEnabled ? 'translate-x-6' : 'translate-x-1'
                     }`}
                   />
@@ -2933,14 +3031,12 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
               </div>
 
               {autoDeleteEnabled && (
-                <div className={`p-4 rounded-xl space-y-4 border ${
-                  isStudioLight ? 'bg-slate-50/80 border-slate-200' : 'bg-white/[0.02] border-white/5'
-                }`}>
-                  <div className="space-y-2">
-                    <label className={`text-[11px] font-semibold uppercase tracking-wider block ${
-                      isStudioLight ? 'text-slate-600' : 'text-white/60'
+                <div className="space-y-5 animate-fadeIn">
+                  <div className="space-y-2.5">
+                    <label className={`text-[10px] font-bold uppercase tracking-wider font-mono block ${
+                      isStudioLight ? 'text-slate-400' : 'text-white/30'
                     }`}>
-                      Auto-Purge Interval Frequency
+                      Retention Interval Frequency
                     </label>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       {[
@@ -2957,16 +3053,15 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                           type="button"
                           onClick={() => handleSaveAutoDelete(true, preset.hours)}
                           disabled={isSavingAutoDelete}
-                          className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border ${
+                          className={`px-3 py-2 rounded-xl text-[11px] font-mono transition-all duration-150 border cursor-pointer ${
                             autoDeleteHours === preset.hours
                               ? (isStudioLight 
-                                  ? 'bg-neon-purple/15 border-neon-purple/30 text-neon-purple font-bold shadow-xs' 
-                                  : 'bg-neon-purple/20 border-neon-purple/50 text-neon-purple font-bold shadow-[0_0_10px_rgba(var(--color-neon-purple-rgb,176,38,255),0.2)]')
+                                  ? 'bg-purple-50 border-purple-200 text-purple-700 font-bold shadow-3xs' 
+                                  : 'bg-neon-purple/10 border-neon-purple/30 text-neon-purple font-bold')
                               : (isStudioLight 
-                                  ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100' 
-                                  : 'bg-white/5 border-white/5 text-white/60 hover:text-white hover:bg-white/10')
+                                  ? 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100' 
+                                  : 'bg-white/[0.01] border-white/5 text-white/50 hover:text-white/80 hover:bg-white/[0.03]')
                           }`}
-                          style={autoDeleteHours === preset.hours && !isStudioLight ? { boxShadow: `0 0 10px ${primaryColor}40` } : undefined}
                         >
                           {preset.label}
                         </button>
@@ -2975,17 +3070,17 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                   </div>
 
                   {/* Custom Duration Input */}
-                  <div className={`pt-2 border-t space-y-2 ${isStudioLight ? 'border-slate-200' : 'border-white/5'}`}>
-                    <label className={`text-[11px] font-semibold uppercase tracking-wider block ${
-                      isStudioLight ? 'text-slate-600' : 'text-white/60'
+                  <div className={`pt-4 border-t border-dashed space-y-2.5 ${isStudioLight ? 'border-slate-100' : 'border-white/5'}`}>
+                    <label className={`text-[10px] font-bold uppercase tracking-wider font-mono block ${
+                      isStudioLight ? 'text-slate-400' : 'text-white/30'
                     }`}>
-                      Custom Duration Time
+                      Custom Duration Timeframe
                     </label>
-                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
-                      <div className={`flex-1 min-w-[120px] flex items-center gap-2 border rounded-xl px-3 py-1.5 transition-colors ${
+                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
+                      <div className={`flex-1 min-w-[140px] flex items-center gap-2 border rounded-xl px-3 py-2 transition-colors ${
                         isStudioLight 
-                          ? 'bg-white border-slate-200 focus-within:border-neon-purple focus-within:ring-1 focus-within:ring-neon-purple/20' 
-                          : 'bg-white/5 border-white/10 focus-within:border-neon-purple/50'
+                          ? 'bg-slate-50/60 border-slate-200 focus-within:bg-white focus-within:border-purple-500' 
+                          : 'bg-[#04050a]/40 border-white/[0.04] focus-within:border-neon-purple/50'
                       }`}>
                         <input
                           type="number"
@@ -2994,70 +3089,69 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                           value={customValInput}
                           onChange={(e) => setCustomValInput(e.target.value)}
                           placeholder="e.g. 5"
-                          className={`w-full bg-transparent text-xs font-medium focus:outline-none ${
-                            isStudioLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-white/20'
+                          className={`w-full bg-transparent text-xs font-mono focus:outline-none ${
+                            isStudioLight ? 'text-slate-800 placeholder:text-slate-400' : 'text-slate-200 placeholder:text-white/20'
                           }`}
                         />
                         <select
                           value={customUnitInput}
                           onChange={(e) => setCustomUnitInput(e.target.value as 'hours' | 'days')}
-                          className="bg-transparent text-xs font-bold focus:outline-none cursor-pointer pr-1 text-neon-purple"
+                          className="bg-transparent text-xs font-bold font-mono focus:outline-none cursor-pointer pr-1 text-purple-500 outline-none"
                         >
-                          <option value="hours" className={isStudioLight ? 'bg-white text-slate-900' : 'bg-[#0D0F1D] text-white'}>Hours</option>
-                          <option value="days" className={isStudioLight ? 'bg-white text-slate-900' : 'bg-[#0D0F1D] text-white'}>Days</option>
+                          <option value="hours" className={isStudioLight ? 'bg-white text-slate-800' : 'bg-[#0D0F1D] text-white'}>Hours</option>
+                          <option value="days" className={isStudioLight ? 'bg-white text-slate-800' : 'bg-[#0D0F1D] text-white'}>Days</option>
                         </select>
                       </div>
                       <button
                         type="button"
                         onClick={handleApplyCustomTime}
                         disabled={isSavingAutoDelete}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 border ${
+                        className={`px-4 py-2.5 rounded-xl text-xs font-bold font-mono transition-all duration-150 shrink-0 border cursor-pointer hover:scale-102 active:scale-98 ${
                           isStudioLight 
-                            ? 'bg-neon-purple/15 hover:bg-neon-purple/25 border-neon-purple/20 text-neon-purple shadow-xs' 
-                            : 'bg-neon-purple/20 hover:bg-neon-purple/30 border-neon-purple/40 text-neon-purple hover:text-white shadow-[0_0_10px_rgba(var(--color-neon-purple-rgb,176,38,255),0.15)]'
+                            ? 'bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700 shadow-3xs' 
+                            : 'bg-[#04050a] hover:bg-white/[0.02] border-white/5 hover:border-white/10 text-white/80'
                         }`}
-                        style={!isStudioLight ? { boxShadow: `0 0 10px ${primaryColor}40` } : undefined}
                       >
                         Set Custom Time
                       </button>
                     </div>
                   </div>
 
-                  <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-3 border-t text-[11px] ${
-                    isStudioLight ? 'border-slate-200 text-slate-600' : 'border-white/5 text-white/60'
+                  <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-4 border-t border-dashed text-[11px] font-mono ${
+                    isStudioLight ? 'border-slate-100 text-slate-500' : 'border-white/5 text-white/50'
                   }`}>
                     <div className="flex items-center gap-2">
-                      <Timer className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      <Timer className="w-4.5 h-4.5 text-amber-500 shrink-0" />
                       <span>
-                        Next scheduled purge: <strong className={`font-mono ${isStudioLight ? 'text-slate-900' : 'text-white'}`}>{nextAutoDeleteRunLabel}</strong>
+                        Next scheduled purge: <strong className={`font-extrabold ${isStudioLight ? 'text-slate-800' : 'text-slate-200'}`}>{nextAutoDeleteRunLabel}</strong>
                         {autoDeleteTimeLeft && (
                           <span className={`ml-1.5 font-bold ${isStudioLight ? 'text-amber-600' : 'text-amber-400'}`}>({autoDeleteTimeLeft})</span>
                         )}
                       </span>
                     </div>
                     {autoDeleteLastRun && (
-                      <div className={isStudioLight ? 'text-slate-400' : 'text-white/40'}>
-                        Last purge run: <span className="font-mono">{new Date(autoDeleteLastRun).toLocaleString()}</span>
+                      <div className="text-[10px]">
+                        Last purge run: <span className="font-bold">{new Date(autoDeleteLastRun).toLocaleString()}</span>
                       </div>
                     )}
                   </div>
                 </div>
               )}
 
-              <div className={`p-4 rounded-xl space-y-3 border ${
-                isStudioLight ? 'bg-red-50/60 border-red-200' : 'bg-red-500/[0.02] border-red-500/10'
+              <div className={`p-5 rounded-xl space-y-3.5 border ${
+                isStudioLight ? 'bg-red-50/50 border-red-100' : 'bg-red-500/[0.02] border-red-500/10'
               }`}>
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                  <span className={`text-xs font-bold ${isStudioLight ? 'text-red-900' : 'text-white'}`}>Manual Full Database Wipe</span>
+                  <span className={`text-[11px] font-extrabold font-mono uppercase tracking-wider ${isStudioLight ? 'text-red-900' : 'text-red-400'}`}>Manual Full Database Wipe</span>
                 </div>
-                <p className={`text-[11px] leading-relaxed ${isStudioLight ? 'text-red-700/80' : 'text-white/40'}`}>Permanently purge and delete all public chat room messages, private listener DMs, and live studio shoutouts recorded in the system immediately.</p>
+                <p className={`text-[11px] leading-relaxed ${isStudioLight ? 'text-slate-500' : 'text-white/40'}`}>Permanently purge and delete all public chat room messages, private listener DMs, and live studio shoutouts recorded in the system immediately.</p>
                 <button
                   onClick={handleClearAllChatsAndShoutouts}
-                  className={`w-full px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                  className={`w-full px-3 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider font-mono transition-all duration-150 border cursor-pointer hover:scale-[1.01] active:scale-[0.99] ${
                     isStudioLight 
-                      ? 'bg-red-100 hover:bg-red-200 border-red-300 text-red-800 shadow-xs' 
-                      : 'bg-red-600/10 hover:bg-red-600/25 border-red-500/20 text-red-400 hover:text-white shadow-[0_0_15px_rgba(239,68,68,0.1)]'
+                      ? 'bg-red-50 hover:bg-red-100/80 border-red-200/80 text-red-700 shadow-3xs' 
+                      : 'bg-red-600/10 hover:bg-red-600/20 border-red-500/20 text-red-400 hover:border-red-500/40 hover:text-white'
                   }`}
                 >
                   Clear All Chats, DMs & Shoutouts Now
@@ -3133,8 +3227,8 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       }`}>
         <div className="max-w-xl mx-auto space-y-8 pb-36 md:pb-12">
           <div className="space-y-1">
-            <h2 className={`text-xl font-bold uppercase tracking-wider ${
-              isStudioLight ? 'text-slate-900' : 'text-white'
+            <h2 className={`text-xl font-bold uppercase tracking-wider font-display ${
+              isStudioLight ? 'text-slate-900' : 'text-slate-100'
             }`}>
               Studio Profile
             </h2>
@@ -3143,8 +3237,8 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             </p>
           </div>
 
-          <div className={`border rounded-2xl p-6 space-y-6 ${
-            isStudioLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#0D0F1D] border-white/5'
+          <div className={`rounded-xl p-6 space-y-6 border ${
+            isStudioLight ? 'bg-white border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.01)]' : 'bg-[#0d0f1e]/80 border-white/[0.04]'
           }`}>
             <div className="flex flex-col items-center gap-4 text-center">
               <div className="relative group">
@@ -3152,13 +3246,13 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                   src={studioImage} 
                   alt="Studio Logo" 
                   className={`w-24 h-24 rounded-2xl object-cover shadow-md transition-all duration-300 group-hover:brightness-50 border ${
-                    isStudioLight ? 'bg-slate-100 border-slate-200' : 'bg-white/5 border-white/10'
+                    isStudioLight ? 'bg-slate-100 border-slate-200/60' : 'bg-white/5 border-white/10'
                   }`}
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = '/icon.svg';
                   }}
                 />
-                <label className="absolute inset-0 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
+                <label className="absolute inset-0 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                   <div className="p-2 rounded-xl bg-black/60 border border-white/10 text-white/80 hover:text-white transition-colors">
                     <Camera className="w-5 h-5" />
                   </div>
@@ -3177,24 +3271,20 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                 )}
               </div>
               <div className="space-y-2">
-                <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${
-                  isStudioLight 
-                    ? 'text-neon-purple bg-neon-purple/15 border-neon-purple/20' 
-                    : 'text-neon-purple bg-neon-purple/10 border-neon-purple/20'
-                }`}>
-                  Station Identity
+                <span className="text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded border border-purple-500/10 bg-purple-500/5 text-purple-400 font-mono">
+                  STATION IDENTITY
                 </span>
                 <p className={`text-[11px] mt-1 max-w-xs mx-auto ${
-                  isStudioLight ? 'text-slate-500' : 'text-white/40'
+                  isStudioLight ? 'text-slate-500' : 'text-slate-400/80'
                 }`}>
-                  Upload a new picture or select an existing logo image from your station Media Library.
+                  Upload a custom picture or select an existing logo image from your station Media Library.
                 </p>
 
                 <div className="flex items-center justify-center gap-2.5 pt-2">
-                  <label className={`px-3.5 py-2 border rounded-xl text-xs font-semibold cursor-pointer transition-all flex items-center gap-2 ${
+                  <label className={`px-3.5 py-2 border rounded-xl text-xs font-semibold cursor-pointer transition-all duration-150 flex items-center gap-2 hover:scale-102 ${
                     isStudioLight 
-                      ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700' 
-                      : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/80 hover:text-white'
+                      ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700 shadow-3xs' 
+                      : 'bg-white/[0.01] hover:bg-white/[0.03] border-white/5 text-white/80 hover:text-white'
                   }`}>
                     <Paperclip className="w-3.5 h-3.5 text-neon-purple" />
                     <span>Upload File</span>
@@ -3210,14 +3300,13 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                   <button
                     type="button"
                     onClick={() => setIsProfileMediaPickerOpen(true)}
-                    className={`px-3.5 py-2 border rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
+                    className={`px-3.5 py-2 border rounded-xl text-xs font-semibold transition-all duration-150 flex items-center gap-2 cursor-pointer hover:scale-102 ${
                       isStudioLight 
-                        ? 'bg-neon-purple/15 hover:bg-neon-purple/25 border-neon-purple/20 text-neon-purple shadow-xs' 
-                        : 'bg-neon-purple/20 hover:bg-neon-purple/30 border-neon-purple/40 text-neon-purple hover:text-white shadow-[0_0_12px_rgba(var(--color-neon-purple-rgb,176,38,255),0.15)]'
+                        ? 'bg-purple-50 hover:bg-purple-100 border-purple-200/60 text-purple-700 shadow-3xs' 
+                        : 'bg-white/[0.01] hover:bg-white/[0.03] border-white/5 text-white/80'
                     }`}
-                    style={!isStudioLight ? { boxShadow: `0 0 12px ${primaryColor}40` } : undefined}
                   >
-                    <ImageIcon className="w-3.5 h-3.5" />
+                    <ImageIcon className="w-3.5 h-3.5 text-purple-500" />
                     <span>Select from Media</span>
                   </button>
                 </div>
@@ -3233,10 +3322,10 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
               }} 
             />
 
-            <div className={`space-y-4 pt-4 border-t ${isStudioLight ? 'border-slate-200' : 'border-white/5'}`}>
+            <div className={`space-y-4 pt-4 border-t border-dashed ${isStudioLight ? 'border-slate-100' : 'border-white/5'}`}>
               <div className="space-y-2">
-                <label className={`text-xs font-semibold block ${
-                  isStudioLight ? 'text-slate-800' : 'text-white/80'
+                <label className={`text-[10px] font-bold uppercase tracking-wider font-mono block ${
+                  isStudioLight ? 'text-slate-400' : 'text-white/30'
                 }`}>
                   Studio Representative Name
                 </label>
@@ -3247,35 +3336,35 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                     onChange={(e) => setStudioName(e.target.value)}
                     placeholder="e.g. DejavuFM Studio"
                     maxLength={50}
-                    className={`w-full border rounded-xl px-4 py-3 text-xs transition-colors ${
+                    className={`w-full border rounded-xl px-4 py-3 text-xs transition-all duration-200 outline-none ${
                       isStudioLight
-                        ? 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-neon-purple focus:ring-2 focus:ring-neon-purple/20'
-                        : 'bg-black/40 border-white/5 text-white placeholder-white/20 focus:outline-none focus:border-neon-purple/50'
+                        ? 'bg-slate-50/60 border-slate-200 text-slate-800 placeholder-slate-400/80 focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10'
+                        : 'bg-[#04050a]/40 border-white/[0.04] text-slate-200 placeholder-white/20 focus:bg-[#04050a] focus:border-neon-purple/50 focus:ring-2 focus:ring-neon-purple/10'
                     }`}
                   />
                 </div>
                 <span className={`text-[10px] block leading-relaxed ${
-                  isStudioLight ? 'text-slate-500' : 'text-white/30'
+                  isStudioLight ? 'text-slate-400' : 'text-white/30'
                 }`}>
                   This custom identity replaces the default "DejavuFM Studio" label across public chat, listener shoutouts, and private inbox rooms.
                 </span>
               </div>
 
-              <div className="pt-4">
+              <div className="pt-2">
                 <button
                   onClick={handleSaveProfile}
                   disabled={isSavingProfile || isUploadingImage}
-                  className="w-full py-3 bg-gradient-to-r from-neon-purple via-neon-purple/80 to-neon-blue rounded-xl text-xs font-bold uppercase tracking-wider text-white hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 shadow-md"
+                  className="w-full py-3 bg-gradient-to-r from-neon-purple to-neon-blue rounded-xl text-xs font-bold uppercase tracking-wider font-mono text-white hover:brightness-105 active:scale-[0.99] transition-all disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 shadow-md cursor-pointer"
                 >
                   {isSavingProfile ? (
                     <>
                       <div className="w-4 h-4 border-2 border-t-white border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin" />
-                      <span>Saving Profile...</span>
+                      <span>SAVING PROFILE...</span>
                     </>
                   ) : (
                     <>
                       <Check className="w-4 h-4" />
-                      <span>Save Studio Identity</span>
+                      <span>SAVE STUDIO IDENTITY</span>
                     </>
                   )}
                 </button>
@@ -3357,7 +3446,8 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        {/* Desktop Buttons */}
+        <div className="hidden md:flex items-center gap-2 sm:gap-3 shrink-0">
           <Link to="/admin" className={`inline-flex items-center gap-1.5 px-2.5 py-2 sm:px-4 sm:py-2 rounded-xl text-[11px] font-semibold uppercase tracking-wider transition-all border ${
             studioTheme === 'light'
               ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
@@ -3402,6 +3492,128 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           <button onClick={onLogout} className="p-2 sm:p-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 transition-all text-red-400/90 hover:text-red-400" title="Logout">
             <LogOut className="w-4 h-4" />
           </button>
+        </div>
+
+        {/* Mobile Buttons (Sleek, Premium, Hidden Clutter) */}
+        <div className="flex md:hidden items-center gap-1.5 shrink-0 relative">
+          <Link to="/admin" className={`p-2 rounded-xl transition-all border ${
+            studioTheme === 'light'
+              ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+              : 'bg-white/[0.05] hover:bg-white/10 text-white/80 border-white/10'
+          }`} title="Back to Dashboard">
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          
+          <button 
+            onClick={() => setIsMobileSettingsOpen(!isMobileSettingsOpen)} 
+            className={`p-2 rounded-xl transition-all border cursor-pointer ${
+              isMobileSettingsOpen
+                ? (studioTheme === 'light' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-neon-purple/20 text-neon-purple border-neon-purple/30')
+                : (studioTheme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200' : 'bg-white/[0.05] hover:bg-white/10 text-white/70 border-white/10')
+            }`}
+            title="Desk Menu"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+
+          {/* Premium Mobile Menu Dropdown Popover */}
+          <AnimatePresence>
+            {isMobileSettingsOpen && (
+              <>
+                {/* Backdrop to close click */}
+                <div 
+                  className="fixed inset-0 z-40 bg-black/5" 
+                  onClick={() => setIsMobileSettingsOpen(false)} 
+                />
+                
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                  transition={{ duration: 0.15 }}
+                  className={`absolute right-0 top-full mt-2 w-56 rounded-xl border p-2 z-50 shadow-xl ${
+                    studioTheme === 'light'
+                      ? 'bg-white border-slate-200 text-slate-900 shadow-[0_10px_30px_rgba(0,0,0,0.08)]'
+                      : 'bg-[#0D0F1D] border-white/10 text-white shadow-[0_10px_40px_rgba(0,0,0,0.5)]'
+                  }`}
+                >
+                  <div className={`px-3 py-2 border-b text-[10px] uppercase font-sans tracking-wider font-extrabold mb-1 ${
+                    studioTheme === 'light' ? 'border-slate-100 text-slate-400' : 'border-white/5 text-white/30'
+                  }`}>
+                    Desk Actions
+                  </div>
+
+                  <button 
+                    onClick={() => {
+                      handleRefresh();
+                      setIsMobileSettingsOpen(false);
+                    }}
+                    disabled={isRefreshing}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold font-sans uppercase tracking-wider text-left transition-colors cursor-pointer ${
+                      studioTheme === 'light' ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-white/80'
+                    }`}
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-neon-purple' : ''}`} />
+                    <span>{isRefreshing ? 'Refreshing...' : 'Refresh Inbox'}</span>
+                  </button>
+
+                  <button 
+                    onClick={() => {
+                      toggleStudioTheme();
+                      setIsMobileSettingsOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold font-sans uppercase tracking-wider text-left transition-colors cursor-pointer ${
+                      studioTheme === 'light' ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-white/80'
+                    }`}
+                  >
+                    {studioTheme === 'light' ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
+                    <span>Theme: {studioTheme === 'light' ? 'Light' : 'Dark'}</span>
+                  </button>
+
+                  <button 
+                    onClick={() => {
+                      toggleSound();
+                      setIsMobileSettingsOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold font-sans uppercase tracking-wider text-left transition-colors cursor-pointer ${
+                      studioTheme === 'light' ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-white/80'
+                    }`}
+                  >
+                    {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-purple-500" /> : <VolumeX className="w-3.5 h-3.5 text-slate-500" />}
+                    <span>Sound: {soundEnabled ? 'Enabled' : 'Muted'}</span>
+                  </button>
+
+                  <a 
+                    href="/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    onClick={() => setIsMobileSettingsOpen(false)}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold font-sans uppercase tracking-wider text-left transition-colors ${
+                      studioTheme === 'light' ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-white/80'
+                    }`}
+                  >
+                    <Globe className="w-3.5 h-3.5 text-blue-500" />
+                    <span>Open Main Site</span>
+                  </a>
+
+                  <div className={`border-t my-1.5 ${
+                    studioTheme === 'light' ? 'border-slate-100' : 'border-white/5'
+                  }`} />
+
+                  <button 
+                    onClick={() => {
+                      onLogout();
+                      setIsMobileSettingsOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold font-sans uppercase tracking-wider text-left text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Logout Desk</span>
+                  </button>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </div>
       </header>
 
@@ -3525,7 +3737,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         <aside className={`w-full md:w-80 lg:w-96 border-r flex flex-col shrink-0 transition-all ${
           isStudioLight ? 'border-slate-200 bg-white' : 'border-white/5 bg-[#0A0C16]'
         } ${selectedUser ? 'hidden md:flex' : 'flex'}`}>
-          <div className={`p-4 border-b space-y-3 ${
+          <div className={`p-4 border-b space-y-3 shrink-0 ${
             isStudioLight ? 'border-slate-200 bg-slate-50/70' : 'border-white/5 bg-[#080911]/40'
           }`}>
             <div className="flex items-center gap-2">
@@ -3563,10 +3775,74 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                         ? 'bg-white hover:bg-slate-100 border-slate-200 text-slate-600 hover:text-slate-900' 
                         : 'bg-white/[0.03] hover:bg-white/[0.08] border-white/10 text-white/60 hover:text-white')
                 }`}
+                style={selectedThreads.length > 0 && !isStudioLight ? { boxShadow: `0 0 10px ${primaryColor}40` } : undefined}
                 title={selectedThreads.length > 0 ? "Clear selection" : "Toggle bulk selection"}
               >
                 <CheckSquare className="w-4 h-4" />
               </button>
+            </div>
+
+            {/* Premium Inbox Filter Tabs Row */}
+            <div 
+              ref={filterScrollRef}
+              onMouseDown={handleFilterMouseDown}
+              onMouseMove={handleFilterMouseMove}
+              onMouseUp={handleFilterMouseUpOrLeave}
+              onMouseLeave={handleFilterMouseUpOrLeave}
+              onWheel={handleFilterWheel}
+              className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none shrink-0 select-none cursor-grab active:cursor-grabbing [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            >
+              {(() => {
+                const filterTabs = [
+                  { id: 'all', label: 'All', count: Object.keys(threads).length },
+                  { id: 'unread', label: 'Unread', count: Object.values(threads).filter((t: any) => t.unreadCount > 0).length },
+                  { id: 'pinned', label: 'Pinned', count: Object.values(threads).filter((t: any) => pinnedThreads.includes(t.user.toLowerCase())).length },
+                  { id: 'chat', label: 'Chat Room', count: Object.values(threads).filter((t: any) => getThreadSource(t) === 'public_chat').length },
+                  { id: 'shoutout', label: 'Shoutouts', count: Object.values(threads).filter((t: any) => getThreadSource(t) === 'shoutout').length },
+                  { id: 'twitch', label: 'Twitch', count: Object.values(threads).filter((t: any) => getThreadSource(t) === 'twitch').length },
+                  { id: 'whatsapp', label: 'WhatsApp', count: Object.values(threads).filter((t: any) => getThreadSource(t) === 'whatsapp').length },
+                  { id: 'instagram', label: 'Instagram', count: Object.values(threads).filter((t: any) => getThreadSource(t) === 'instagram').length },
+                  { id: 'facebook', label: 'Facebook', count: Object.values(threads).filter((t: any) => getThreadSource(t) === 'facebook').length },
+                  { id: 'tiktok', label: 'TikTok', count: Object.values(threads).filter((t: any) => getThreadSource(t) === 'tiktok').length },
+                ];
+ 
+                return filterTabs.map(tab => {
+                  const isActive = sidebarFilter === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={(e) => {
+                        if (dragStartRef.current.hasMoved) {
+                          e.preventDefault();
+                          return;
+                        }
+                        setSidebarFilter(tab.id);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider font-sans transition-all duration-200 shrink-0 border flex items-center gap-1.5 cursor-pointer ${
+                        isActive
+                          ? (isStudioLight 
+                              ? 'bg-neon-purple/15 text-neon-purple border-neon-purple/20 shadow-xs' 
+                              : 'bg-neon-purple/20 text-neon-purple border-neon-purple/30 shadow-[0_0_8px_rgba(176,38,255,0.15)]')
+                          : (isStudioLight
+                              ? 'bg-transparent text-slate-500 border-transparent hover:text-slate-800 hover:bg-slate-100'
+                              : 'bg-transparent text-white/40 border-transparent hover:text-white hover:bg-white/[0.04]')
+                      }`}
+                      style={isActive && !isStudioLight ? { boxShadow: `0 0 8px ${primaryColor}40`, borderColor: `${primaryColor}40`, color: primaryColor } : undefined}
+                    >
+                      <span>{tab.label}</span>
+                      {tab.count > 0 && (
+                        <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-bold font-sans leading-none ${
+                          isActive
+                            ? (isStudioLight ? 'bg-neon-purple/20 text-neon-purple' : 'bg-neon-purple/30 text-white')
+                            : (isStudioLight ? 'bg-slate-100 text-slate-600' : 'bg-white/5 text-white/40')
+                        }`}>
+                          {tab.count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                });
+              })()}
             </div>
 
             {/* Bulk actions bar (collapsible with Framer Motion) */}
@@ -3665,178 +3941,195 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
               )}
             </AnimatePresence>
           </div>
-          <div className={`flex-1 overflow-y-auto divide-y pb-36 md:pb-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full ${
+          <div className={`flex-1 overflow-y-auto px-2 py-3 space-y-1 pb-28 md:pb-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full ${
             isStudioLight 
-              ? 'divide-slate-100 [&::-webkit-scrollbar-thumb]:bg-slate-200 hover:[&::-webkit-scrollbar-thumb]:bg-slate-300' 
-              : 'divide-white/[0.02] [&::-webkit-scrollbar-thumb]:bg-white/5 hover:[&::-webkit-scrollbar-thumb]:bg-white/10'
+              ? '[&::-webkit-scrollbar-thumb]:bg-slate-200 hover:[&::-webkit-scrollbar-thumb]:bg-slate-300' 
+              : '[&::-webkit-scrollbar-thumb]:bg-white/5 hover:[&::-webkit-scrollbar-thumb]:bg-white/10'
           }`}>
-            {sortedThreads.map(thread => {
-              const isSelected = selectedUser?.toLowerCase() === thread.user.toLowerCase();
-              const isPinned = pinnedThreads.includes(thread.user.toLowerCase());
-              const isThreadChecked = selectedThreads.includes(thread.user.toLowerCase());
-              return (
-                <div
-                  key={thread.user}
-                  className={`w-full text-left flex items-center gap-2 p-4 transition-all relative group/item ${
-                    isSelected 
-                      ? (isStudioLight 
-                          ? 'bg-purple-50/80 border-l-2 border-y-0 border-r-0 border-purple-600' 
-                          : 'bg-white/[0.04] border-l-2 border-y-0 border-r-0 border-neon-purple shadow-[inset_4px_0_15px_rgba(255,255,255,0.01)]')
-                      : (isStudioLight 
-                          ? 'hover:bg-slate-50/80' 
-                          : 'hover:bg-white/[0.02]')
-                  }`}
-                >
-                  {/* Bulk selection checkbox */}
-                  <div className={`transition-all duration-200 flex items-center shrink-0 ${
-                    selectedThreads.length > 0 
-                      ? 'w-5 opacity-100 mr-1' 
-                      : 'w-0 opacity-0 group-hover/item:w-5 group-hover/item:opacity-100 group-hover/item:mr-1 overflow-hidden'
-                  }`}>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleThreadSelection(thread.user.toLowerCase());
-                      }}
-                      className={`w-4 h-4 rounded border flex items-center justify-center transition-all cursor-pointer ${
-                        isThreadChecked
-                          ? (isStudioLight 
-                              ? 'bg-purple-600 border-purple-600 text-white shadow-xs' 
-                              : 'bg-neon-purple border-neon-purple text-white shadow-[0_0_8px_rgba(176,38,255,0.3)]')
-                          : (isStudioLight 
-                              ? 'border-slate-300 hover:border-slate-400 bg-white text-transparent' 
-                              : 'border-white/20 hover:border-white/45 bg-black/40 text-transparent')
+            {sortedThreads.length === 0 ? (
+              <div className={`text-center py-12 px-4 text-xs ${isStudioLight ? 'text-slate-400' : 'text-white/30'}`}>
+                <Inbox className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>No conversations found</p>
+              </div>
+            ) : (
+              sortedThreads.map(thread => {
+                const isSelected = selectedUser?.toLowerCase() === thread.user.toLowerCase();
+                const isPinned = pinnedThreads.includes(thread.user.toLowerCase());
+                const isThreadChecked = selectedThreads.includes(thread.user.toLowerCase());
+                return (
+                  <div
+                    key={thread.user}
+                    onClick={() => handleSelectUser(thread.user)}
+                    className={`group/item relative flex items-center gap-3.5 p-3.5 mx-1.5 rounded-xl transition-all duration-250 cursor-pointer border ${
+                      isSelected 
+                        ? (isStudioLight 
+                            ? 'bg-purple-600/5 border-purple-500/20 text-slate-900 shadow-2xs' 
+                            : 'bg-white/[0.03] border-neon-purple/20 text-white shadow-[inset_1px_1px_0_rgba(255,255,255,0.05),0_4px_12px_rgba(0,0,0,0.1)]')
+                        : (isStudioLight 
+                            ? 'bg-transparent border-transparent hover:bg-slate-100/60 hover:border-slate-200/50' 
+                            : 'bg-transparent border-transparent hover:bg-white/[0.015] hover:border-white/5')
+                    }`}
+                    style={isSelected && !isStudioLight ? { borderLeft: `3px solid ${primaryColor}` } : isSelected && isStudioLight ? { borderLeft: `3px solid #7c3aed` } : undefined}
+                  >
+                    {/* Bulk selection checkbox */}
+                    <div 
+                      onClick={(e) => e.stopPropagation()}
+                      className={`transition-all duration-200 flex items-center shrink-0 ${
+                        selectedThreads.length > 0 
+                          ? 'w-5 opacity-100 mr-0.5' 
+                          : 'w-0 opacity-0 group-hover/item:w-5 group-hover/item:opacity-100 group-hover/item:mr-0.5 overflow-hidden'
                       }`}
                     >
-                      {isThreadChecked && (
-                        <Check className="w-2.5 h-2.5 stroke-[3px]" />
-                      )}
-                    </button>
-                  </div>
-
-                  <div onClick={() => handleSelectUser(thread.user)} className="flex-1 flex items-center gap-3.5 overflow-hidden cursor-pointer">
-                    <div className="relative shrink-0">
-                      <img src={thread.avatar} alt={thread.user} className={`w-10 h-10 rounded-xl object-cover border ${
-                        isStudioLight ? 'bg-slate-100 border-slate-200' : 'bg-white/5 border-white/5'
-                      }`} />
-                      <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span className={`relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border-2 ${
-                          isStudioLight ? 'border-white' : 'border-[#0A0C16]'
-                        }`}></span>
-                      </span>
+                      <button
+                        onClick={() => toggleThreadSelection(thread.user.toLowerCase())}
+                        className={`w-4 h-4 rounded border flex items-center justify-center transition-all cursor-pointer ${
+                          isThreadChecked
+                            ? (isStudioLight 
+                                ? 'bg-purple-600 border-purple-600 text-white shadow-xs' 
+                                : 'bg-neon-purple border-neon-purple text-white shadow-[0_0_8px_rgba(176,38,255,0.3)]')
+                            : (isStudioLight 
+                                ? 'border-slate-300 hover:border-slate-400 bg-white text-transparent' 
+                                : 'border-white/20 hover:border-white/45 bg-black/40 text-transparent')
+                        }`}
+                        style={isThreadChecked && !isStudioLight ? { backgroundColor: primaryColor, borderColor: primaryColor } : undefined}
+                      >
+                        {isThreadChecked && (
+                          <Check className="w-2.5 h-2.5 stroke-[3px]" />
+                        )}
+                      </button>
                     </div>
-                    <div className="flex-1 overflow-hidden space-y-0.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 min-w-0">
+
+                    <div className="flex-1 flex items-center gap-3 overflow-hidden">
+                      <div className="relative shrink-0">
+                        <img 
+                          src={thread.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${thread.user}`} 
+                          alt={thread.user} 
+                          className={`w-10 h-10 rounded-xl object-cover border ${
+                            isStudioLight ? 'bg-slate-100 border-slate-200/80 shadow-2xs' : 'bg-white/5 border-white/5'
+                          }`} 
+                        />
+                        {thread.unreadCount > 0 ? (
+                          <span className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className={`relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border-2 ${
+                              isStudioLight ? 'border-white' : 'border-[#0A0C16]'
+                            }`}></span>
+                          </span>
+                        ) : (
+                          <span className={`absolute -bottom-0.5 -right-0.5 inline-flex rounded-full h-2 w-2 bg-emerald-500/80 border ${
+                             isStudioLight ? 'border-white' : 'border-[#0A0C16]'
+                          }`} />
+                        )}
+                      </div>
+                      <div className="flex-1 overflow-hidden space-y-0.5">
+                        <div className="flex items-center justify-between gap-1">
                           <h4 className={`font-bold text-xs truncate ${
-                            isStudioLight ? 'text-slate-900' : 'text-white/90'
+                            isStudioLight ? 'text-slate-900 font-extrabold' : 'text-slate-100 font-extrabold'
                           }`}>{thread.user}</h4>
                         </div>
-                      </div>
-                      <p className={`text-[11px] truncate pr-2 ${
-                        isStudioLight ? 'text-slate-500' : 'text-white/40'
-                      }`}>
-                        {thread.messages.slice(-1)[0] ? replaceTextEmojis(thread.messages.slice(-1)[0].text) : 'No messages'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Action badges or hover quick-actions */}
-                  <div className="relative shrink-0 flex items-center justify-end w-20 h-10">
-                    {/* Default state: visible when NOT hovered */}
-                    <div className="absolute right-0 flex flex-col items-end gap-1.5 transition-all duration-200 group-hover/item:opacity-0 group-hover/item:pointer-events-none">
-                      <span className={`text-[9px] font-mono ${
-                        isStudioLight ? 'text-slate-400' : 'text-white/40'
-                      }`}>
-                        {thread.messages.length > 0 ? new Date(thread.lastMessageTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                      </span>
-                      <PlatformBadge platform={thread.platform} thread={thread} />
-                      <div className="flex items-center gap-1">
-                        {isPinned && (
-                          <Pin className="w-3 h-3 text-amber-500 fill-current" />
-                        )}
-                        {thread.unreadCount > 0 && (
-                          <div 
-                            className="px-1.5 py-0.5 text-[9px] font-mono font-black leading-none text-white rounded-full border border-black/30 shadow-xs"
-                            style={{ background: 'linear-gradient(135deg, #7C3AED, #2563EB)' }}
-                          >
-                            {thread.unreadCount}
-                          </div>
-                        )}
+                        <p className={`text-[11px] truncate pr-2 ${
+                          isStudioLight ? 'text-slate-500' : 'text-slate-400/80'
+                        } ${thread.unreadCount > 0 ? (isStudioLight ? 'text-slate-950 font-semibold' : 'text-white font-semibold') : ''}`}>
+                          {thread.messages.slice(-1)[0] ? replaceTextEmojis(thread.messages.slice(-1)[0].text) : 'No messages'}
+                        </p>
                       </div>
                     </div>
 
-                    {/* Hover actions: visible only when hovered */}
-                    <div className="absolute right-0 flex items-center gap-1 opacity-0 pointer-events-none group-hover/item:opacity-100 group-hover/item:pointer-events-auto transition-all duration-200">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (isPinned) {
-                            handleUnpin(thread.user.toLowerCase());
-                          } else {
-                            setPinnedThreads(prev => Array.from(new Set([...prev, thread.user.toLowerCase()])));
-                            toast.success(`Pinned ${thread.user}'s conversation.`);
-                          }
-                        }}
-                        title={isPinned ? "Unpin conversation" : "Pin conversation"}
-                        className={`p-1.5 rounded-lg transition-colors ${
-                          isPinned 
-                            ? 'text-amber-500 hover:bg-amber-500/10' 
-                            : (isStudioLight ? 'text-slate-400 hover:text-slate-800 hover:bg-slate-100' : 'text-white/40 hover:text-white hover:bg-white/5')
-                        }`}
-                      >
-                        <Pin className={`w-3.5 h-3.5 ${isPinned ? 'fill-current' : ''}`} />
-                      </button>
+                    {/* Action badges or hover quick-actions */}
+                    <div className="relative shrink-0 flex items-center justify-end w-20 h-10" onClick={(e) => e.stopPropagation()}>
+                      {/* Default state: visible when NOT hovered */}
+                      <div className="absolute right-0 flex flex-col items-end gap-1.5 transition-all duration-250 group-hover/item:opacity-0 group-hover/item:pointer-events-none">
+                        <span className={`text-[9px] font-mono ${
+                          isStudioLight ? 'text-slate-400 font-medium' : 'text-white/30 font-medium'
+                        }`}>
+                          {thread.messages.length > 0 ? new Date(thread.lastMessageTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                        </span>
+                        <PlatformBadge platform={thread.platform} thread={thread} />
+                        <div className="flex items-center gap-1">
+                          {isPinned && (
+                            <Pin className="w-3 h-3 text-amber-500 fill-current" />
+                          )}
+                          {thread.unreadCount > 0 && (
+                            <div 
+                              className={`px-1.5 py-0.5 text-[9px] font-sans font-bold leading-none rounded-full border shadow-xs ${
+                                isStudioLight 
+                                  ? 'bg-purple-100 text-purple-700 border-purple-200/50' 
+                                  : 'text-white force-text-white border-black/30'
+                              }`}
+                              style={isStudioLight ? undefined : { background: 'linear-gradient(135deg, #7C3AED, #2563EB)' }}
+                            >
+                              {thread.unreadCount}
+                            </div>
+                          )}
+                        </div>
+                      </div>
 
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const isRead = thread.unreadCount === 0;
-                          const userKey = thread.user.toLowerCase();
-                          setThreads(prev => {
-                            const newThreads = { ...prev };
-                            if (newThreads[userKey]) {
-                              newThreads[userKey].unreadCount = isRead ? 1 : 0;
+                      {/* Hover actions: visible only when hovered */}
+                      <div className="absolute right-0 flex items-center gap-1 opacity-0 pointer-events-none group-hover/item:opacity-100 group-hover/item:pointer-events-auto transition-all duration-200 bg-transparent py-1">
+                        <button
+                          onClick={() => {
+                            if (isPinned) {
+                              handleUnpin(thread.user.toLowerCase());
+                            } else {
+                              setPinnedThreads(prev => Array.from(new Set([...prev, thread.user.toLowerCase()])));
+                              toast.success(`Pinned ${thread.user}'s conversation.`);
                             }
-                            return newThreads;
-                          });
-                          setLastReadTimestamps(prev => {
-                            const updated = { ...prev, [userKey]: isRead ? Date.now() : 0 };
-                            localStorage.setItem('dejavu_studio_last_read', JSON.stringify(updated));
-                            return updated;
-                          });
-                          toast.success(`Conversation marked as ${isRead ? 'unread' : 'read'}.`);
-                        }}
-                        title={thread.unreadCount > 0 ? "Mark as Read" : "Mark as Unread"}
-                        className={`p-1.5 rounded-lg transition-colors ${
-                          isStudioLight 
-                            ? 'text-slate-400 hover:text-slate-800 hover:bg-slate-100' 
-                            : 'text-white/40 hover:text-white hover:bg-white/5'
-                        }`}
-                      >
-                        {thread.unreadCount > 0 ? <MailOpen className="w-3.5 h-3.5" /> : <Mail className="w-3.5 h-3.5" />}
-                      </button>
+                          }}
+                          title={isPinned ? "Unpin conversation" : "Pin conversation"}
+                          className={`p-1.5 rounded-lg transition-colors cursor-pointer hover:scale-105 active:scale-95 duration-150 ${
+                            isPinned 
+                              ? 'text-amber-500 hover:bg-amber-500/10' 
+                              : (isStudioLight ? 'text-slate-400 hover:text-slate-800 hover:bg-slate-200/50' : 'text-white/40 hover:text-white hover:bg-white/10')
+                          }`}
+                        >
+                          <Pin className={`w-3.5 h-3.5 ${isPinned ? 'fill-current' : ''}`} />
+                        </button>
 
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleClearConversation(thread.user);
-                        }}
-                        title="Delete conversation"
-                        className={`p-1.5 rounded-lg transition-colors ${
-                          isStudioLight 
-                            ? 'text-red-500/80 hover:text-red-600 hover:bg-red-50' 
-                            : 'text-red-400/60 hover:text-red-400 hover:bg-red-500/10'
-                        }`}
-                      >
-                        <Trash className="w-3.5 h-3.5" />
-                      </button>
+                        <button
+                          onClick={() => {
+                            const isRead = thread.unreadCount === 0;
+                            const userKey = thread.user.toLowerCase();
+                            setThreads(prev => {
+                              const newThreads = { ...prev };
+                              if (newThreads[userKey]) {
+                                newThreads[userKey].unreadCount = isRead ? 1 : 0;
+                              }
+                              return newThreads;
+                            });
+                            setLastReadTimestamps(prev => {
+                              const updated = { ...prev, [userKey]: isRead ? Date.now() : 0 };
+                              localStorage.setItem('dejavu_studio_last_read', JSON.stringify(updated));
+                              return updated;
+                            });
+                            toast.success(`Conversation marked as ${isRead ? 'unread' : 'read'}.`);
+                          }}
+                          title={thread.unreadCount > 0 ? "Mark as Read" : "Mark as Unread"}
+                          className={`p-1.5 rounded-lg transition-colors cursor-pointer hover:scale-105 active:scale-95 duration-150 ${
+                            isStudioLight 
+                              ? 'text-slate-400 hover:text-slate-800 hover:bg-slate-200/50' 
+                              : 'text-white/40 hover:text-white hover:bg-white/10'
+                          }`}
+                        >
+                          {thread.unreadCount > 0 ? <MailOpen className="w-3.5 h-3.5" /> : <Mail className="w-3.5 h-3.5" />}
+                        </button>
+
+                        <button
+                          onClick={() => handleClearConversation(thread.user)}
+                          title="Delete conversation"
+                          className={`p-1.5 rounded-lg transition-colors cursor-pointer hover:scale-105 active:scale-95 duration-150 ${
+                            isStudioLight 
+                              ? 'text-red-500/80 hover:text-red-600 hover:bg-red-50/50' 
+                              : 'text-red-400/60 hover:text-red-400 hover:bg-red-500/10'
+                          }`}
+                        >
+                          <Trash className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </aside>
 
@@ -3846,62 +4139,77 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         } ${selectedUser ? 'flex' : 'hidden md:flex'}`}>
           {currentThread ? (
             <>
-              <header className={`flex items-center justify-between gap-4 p-4 sm:px-6 border-b shrink-0 ${
-                isStudioLight ? 'bg-white border-slate-200 shadow-2xs' : 'bg-[#090B15] border-white/5'
+              <header className={`flex items-center justify-between gap-4 p-5 sm:px-8 border-b shrink-0 transition-colors ${
+                isStudioLight 
+                  ? 'bg-white border-slate-200/80 shadow-2xs' 
+                  : 'bg-[#090B15] border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.15)]'
               }`}>
-                <div className="flex items-center gap-3 min-w-0">
-                  <button onClick={() => setSelectedUser(null)} className={`md:hidden p-2 -ml-2 rounded-xl transition-all shrink-0 ${
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <button onClick={() => setSelectedUser(null)} className={`md:hidden p-2 -ml-2 rounded-xl transition-all shrink-0 cursor-pointer ${
                     isStudioLight ? 'text-slate-500 hover:text-slate-800 hover:bg-slate-100' : 'text-white/50 hover:text-white hover:bg-white/5'
                   }`}>
                     <ArrowLeft className="w-5 h-5" />
                   </button>
                   <div className="relative shrink-0">
-                    <img src={currentThread.avatar} alt={currentThread.user} className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl object-cover border ${
-                      isStudioLight ? 'bg-slate-100 border-slate-200' : 'bg-white/5 border-white/5'
-                    }`} />
-                    <span className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5">
+                    <img 
+                      src={currentThread.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${currentThread.user}`} 
+                      alt={currentThread.user} 
+                      className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl object-cover border ${
+                        isStudioLight ? 'bg-slate-100 border-slate-200/80' : 'bg-white/5 border-white/5'
+                      }`} 
+                    />
+                    <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                      <span className={`relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border-2 ${
+                        isStudioLight ? 'border-white' : 'border-[#090B15]'
+                      }`}></span>
                     </span>
                   </div>
-                  <div className="min-w-0 flex flex-col gap-1">
+                  <div className="min-w-0 flex flex-col gap-0.5">
                     <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                      <h3 className={`font-bold text-sm sm:text-base truncate tracking-tight ${
-                        isStudioLight ? 'text-slate-900' : 'text-white/90'
+                      <h3 className={`font-extrabold text-sm sm:text-base truncate tracking-tight ${
+                        isStudioLight ? 'text-slate-900' : 'text-slate-100'
                       }`}>{currentThread.user}</h3>
                       <div className="shrink-0">
                         <PlatformBadge platform={currentThread.platform} thread={currentThread} />
                       </div>
                     </div>
+                    <div className="flex items-center gap-1.5 text-[10px] font-mono font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className={`${isStudioLight ? 'text-slate-400' : 'text-white/30'} truncate`}>
+                        <span className="inline sm:hidden">Live Session</span>
+                        <span className="hidden sm:inline">Connection initialized • Live Session Active</span>
+                      </span>
+                    </div>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                   {isAdmin && currentThread.user !== adminUsername && (
                     <>
                       <button
                         onClick={() => handleClearConversation(currentThread.user)}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all duration-200 border shadow-2xs ${
+                        className={`flex items-center gap-1.5 px-2.5 py-2 sm:px-3 sm:py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider font-mono transition-all duration-200 border cursor-pointer ${
                           isStudioLight 
-                            ? 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200' 
-                            : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border-amber-500/20'
+                            ? 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200/60 shadow-2xs' 
+                            : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border-amber-500/10 hover:border-amber-500/25'
                         }`}
                         title={`Clear all messages from ${currentThread.user}`}
                       >
                         <Eraser className="w-3.5 h-3.5" />
-                        <span className="hidden xs:inline sm:inline">Clear</span>
+                        <span className="hidden sm:inline">Clear</span>
                       </button>
                       <button
                         onClick={() => handleBanUser(currentThread.user)}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all duration-200 border shadow-2xs ${
+                        className={`flex items-center gap-1.5 px-2.5 py-2 sm:px-3 sm:py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider font-mono transition-all duration-200 border cursor-pointer ${
                           isStudioLight 
-                            ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200' 
-                            : 'bg-red-500/10 hover:bg-red-500/20 text-red-500 border-red-500/20'
+                            ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200/60 shadow-2xs' 
+                            : 'bg-red-500/10 hover:bg-red-500/20 text-red-500 border-red-500/10 hover:border-red-500/25'
                         }`}
                         title={`Permanently ban ${currentThread.user}`}
                       >
                         <Ban className="w-3.5 h-3.5" />
-                        <span className="hidden xs:inline sm:inline">Ban User</span>
+                        <span className="hidden sm:inline">Ban</span>
                       </button>
                     </>
                   )}
@@ -3930,12 +4238,12 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                 {visibleMessages.map(msg => {
                   const isAdminReply = isSenderAdminMsg(msg.user);
                   return (
-                    <div key={msg.id} className={`flex items-start gap-3 group/msg ${isAdminReply ? 'flex-row-reverse' : ''}`}>
+                    <div key={msg.id} className={`flex items-start gap-3 px-1 group/msg ${isAdminReply ? 'flex-row-reverse' : ''}`}>
                       {isAdminReply && (
                         <img 
                           src={msg.avatar || studioImage || '/icon.svg'} 
                           alt={msg.user} 
-                          className={`w-8 h-8 rounded-lg mt-0.5 object-cover border shadow-sm ${
+                          className={`w-9 h-9 rounded-xl mt-0.5 object-cover border shadow-sm shrink-0 ${
                             isStudioLight ? 'bg-purple-100 border-purple-300' : 'bg-white/5 border-neon-purple/50 shadow-[0_0_10px_rgba(124,58,237,0.3)]'
                           }`} 
                         />
@@ -3944,7 +4252,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                         <img 
                           src={msg.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${msg.user}`} 
                           alt={msg.user} 
-                          className={`w-8 h-8 rounded-lg mt-0.5 object-cover border ${
+                          className={`w-9 h-9 rounded-xl mt-0.5 object-cover border shrink-0 ${
                             isStudioLight ? 'bg-white border-slate-200 shadow-2xs' : 'bg-white/5 border-white/5'
                           }`} 
                         />
@@ -3953,7 +4261,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                         <div className={`flex items-center gap-2 text-[10px] ${
                           isStudioLight ? 'text-slate-400' : 'text-white/40'
                         } ${isAdminReply ? 'justify-end' : ''}`}>
-                          <span className={`font-bold ${
+                          <span className={`font-bold uppercase tracking-wider ${
                             isAdminReply 
                               ? (isStudioLight ? 'text-purple-700' : 'text-neon-purple')
                               : (msg.type === 'shoutout' ? 'text-amber-500' : (isStudioLight ? 'text-blue-600' : 'text-neon-blue'))
@@ -3961,7 +4269,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                             {msg.type === 'shoutout' ? '🔥 Shoutout' : msg.user}
                           </span>
                           {isAdminReply && (
-                            <span className={`text-[8px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-md border shrink-0 ${
+                            <span className={`text-[8px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded-md border shrink-0 ${
                               isStudioLight 
                                 ? 'bg-purple-100 text-purple-700 border-purple-200' 
                                 : 'bg-neon-purple/20 text-neon-purple border-neon-purple/30'
@@ -3969,74 +4277,82 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                               Representative
                             </span>
                           )}
-                          <span>•</span>
-                          <span className="font-mono">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                          <span className="opacity-50">•</span>
+                          <span className="font-mono opacity-80">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
                         </div>
                         
-                        <div className={`p-4 rounded-2xl border text-sm leading-relaxed transition-all ${
-                          isAdminReply 
-                            ? 'bg-gradient-to-br from-purple-600 to-indigo-700 border-purple-500/20 text-white rounded-tr-none text-left shadow-md' 
-                            : (isStudioLight 
-                                ? 'bg-white hover:bg-slate-50/90 border-slate-200 text-slate-900 rounded-tl-none shadow-xs' 
-                                : 'bg-white/[0.02] hover:bg-white/[0.04] border-white/5 text-white/90 rounded-tl-none')
-                        }`}>
-                          {msg.text && <p className="whitespace-pre-wrap">{parseEmojisAndEmotes(msg.text)}</p>}
-                          
-                          {msg.imageUrl && (
-                            <div className={`mt-2 rounded-xl overflow-hidden border max-w-sm ${
-                              isStudioLight ? 'bg-slate-100 border-slate-200' : 'border-white/5 bg-black/40'
-                            }`}>
-                              <img src={msg.imageUrl} className="w-full h-auto max-h-60 object-contain hover:scale-102 transition-transform duration-300" alt="Attachment" />
-                            </div>
-                          )}
-                          
-                          {msg.audioUrl && (
-                            <div className={`mt-2 p-2 rounded-xl border max-w-sm ${
-                              isStudioLight ? 'bg-slate-100 border-slate-200' : 'border-white/5 bg-black/30'
-                            }`}>
-                              <audio src={msg.audioUrl} controls className="w-full h-10" />
-                            </div>
-                          )}
-                          
-                          {msg.videoUrl && (
-                            <div className={`mt-2 rounded-xl overflow-hidden border max-w-sm ${
-                              isStudioLight ? 'bg-slate-100 border-slate-200' : 'border-white/5 bg-black/40'
-                            }`}>
-                              <video src={msg.videoUrl} controls className="w-full h-auto max-h-60" />
-                            </div>
-                          )}
+                        <div className={`flex items-center gap-2 w-full ${isAdminReply ? 'flex-row-reverse' : ''}`}>
+                          <div 
+                            className={`p-3.5 px-4 rounded-2xl border text-xs leading-relaxed transition-all shadow-2xs max-w-[85%] ${
+                              isAdminReply 
+                                ? 'bg-gradient-to-br from-purple-600 to-indigo-700 border-purple-500/20 text-white rounded-tr-none text-left' 
+                                : (isStudioLight 
+                                    ? 'bg-white hover:bg-slate-50/90 border-slate-200/80 text-slate-800 rounded-tl-none' 
+                                    : 'bg-white/[0.02] hover:bg-white/[0.04] border-white/5 text-white/95 rounded-tl-none')
+                            }`}
+                            style={isAdminReply ? { background: `linear-gradient(135deg, ${primaryColor || '#7C3AED'}, ${secondaryColor || '#4F46E5'})` } : undefined}
+                          >
+                            {msg.text && <p className="whitespace-pre-wrap select-text">{parseEmojisAndEmotes(msg.text)}</p>}
+                            
+                            {msg.imageUrl && (
+                              <div className={`mt-2.5 rounded-xl overflow-hidden border max-w-sm ${
+                                isStudioLight ? 'bg-slate-100 border-slate-200/80 shadow-3xs' : 'border-white/5 bg-black/40 shadow-xl'
+                              }`}>
+                                <img src={msg.imageUrl} referrerPolicy="no-referrer" className="w-full h-auto max-h-60 object-contain hover:scale-102 transition-transform duration-300" alt="Attachment" />
+                              </div>
+                            )}
+                            
+                            {msg.audioUrl && (
+                              <div className={`mt-2.5 p-2 rounded-xl border max-w-sm ${
+                                isStudioLight ? 'bg-slate-100 border-slate-200/80' : 'border-white/5 bg-black/30'
+                              }`}>
+                                <audio src={msg.audioUrl} controls className="w-full h-10" />
+                              </div>
+                            )}
+                            
+                            {msg.videoUrl && (
+                              <div className={`mt-2.5 rounded-xl overflow-hidden border max-w-sm ${
+                                isStudioLight ? 'bg-slate-100 border-slate-200/80' : 'border-white/5 bg-black/40 shadow-xl'
+                              }`}>
+                                <video src={msg.videoUrl} controls className="w-full h-auto max-h-60" />
+                              </div>
+                            )}
+                          </div>
 
+                          {/* Elegant, Non-Overlapping Action Buttons Sitting Outside the Bubble */}
                           {isAdmin && (
-                            <div className={`pt-2 mt-2 border-t flex items-center gap-2 ${
-                              isStudioLight ? 'border-slate-200/60' : 'border-white/5'
-                            } ${isAdminReply ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`flex items-center gap-1 shrink-0 transition-all duration-300 ${
+                              isAdminReply 
+                                ? 'flex-row-reverse mr-1' 
+                                : 'ml-1'
+                            } opacity-100 scale-100 sm:opacity-0 sm:scale-95 sm:group-hover/msg:opacity-100 sm:group-hover/msg:scale-100`}>
                               {msg.text && (
                                 <button
                                   onClick={() => {
                                     const cleanText = msg.text.replace(/^@\w+\s/, "");
                                     setReplyText(cleanText);
-                                    toast.success("Loaded into reply input");
+                                    toast.success("Loaded message into reply input");
                                   }}
-                                  className={`flex items-center justify-center p-1 rounded-md border transition-all ${
+                                  className={`flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-200 cursor-pointer hover:scale-110 active:scale-95 border ${
                                     isStudioLight 
-                                      ? 'bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-blue-600 border-slate-200' 
-                                      : 'bg-white/[0.03] hover:bg-white/[0.08] text-white/40 hover:text-neon-blue border-white/5'
+                                      ? 'bg-white border-slate-200/80 text-slate-500 hover:text-purple-600 hover:bg-purple-50 hover:border-purple-200/80 shadow-3xs' 
+                                      : 'bg-[#121424] border-white/5 text-white/50 hover:text-purple-400 hover:bg-purple-500/10 hover:border-purple-500/20 shadow-md'
                                   }`}
-                                  title="Load message to resend"
+                                  title="Load into Reply"
                                 >
-                                  <RefreshCw className="w-3 h-3" />
+                                  <RefreshCw className="w-3.5 h-3.5 transition-transform duration-500 hover:rotate-180" />
                                 </button>
                               )}
                               <button
                                 onClick={() => handleDeleteMessage(msg)}
-                                className={`flex items-center justify-center p-1 rounded-md border transition-all ${
+                                className={`flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-200 cursor-pointer hover:scale-110 active:scale-95 border ${
                                   isStudioLight 
-                                    ? 'bg-red-50 hover:bg-red-100 text-red-600 border-red-200' 
-                                    : 'bg-red-500/5 hover:bg-red-500/15 text-red-500 border border-red-500/10'
+                                    ? 'bg-white border-slate-200/80 text-slate-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200/80 shadow-3xs' 
+                                    : 'bg-[#121424] border-white/5 text-white/40 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 shadow-md'
                                 }`}
                                 title="Delete Message"
                               >
-                                <Trash2 className="w-3 h-3" />
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           )}
@@ -4047,7 +4363,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                 })}
               </div>
 
-              <footer className={`p-4 border-t shrink-0 space-y-3 pb-36 md:pb-4 ${
+              <footer className={`p-4 border-t shrink-0 space-y-3 pb-24 md:pb-4 ${
                 isStudioLight 
                   ? 'border-slate-200 bg-white shadow-2xs' 
                   : 'border-white/5 bg-[#0A0C16] shadow-[0_-4px_30px_rgba(0,0,0,0.3)]'
@@ -4145,30 +4461,96 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                   <button 
                     onClick={handleSendReply} 
                     disabled={isSending} 
-                    className="w-10 h-10 bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 rounded-xl flex items-center justify-center text-white hover:brightness-110 active:scale-95 transition-all shadow-md disabled:opacity-50 shrink-0"
+                    className={`w-11 h-11 rounded-xl flex items-center justify-center text-white transition-all duration-200 shadow-md hover:scale-102 active:scale-98 disabled:opacity-40 shrink-0 cursor-pointer ${
+                      isStudioLight 
+                        ? 'bg-purple-600 hover:bg-purple-700 border border-purple-700/10 shadow-3xs' 
+                        : 'bg-[#b026ff] hover:bg-[#a016ef] border border-white/5 shadow-[0_4px_16px_rgba(176,38,255,0.25)]'
+                    }`}
                   >
-                    {isSending ? <div className="w-4 h-4 border-2 border-white rounded-full border-t-transparent animate-spin" /> : <Send className="w-4 h-4" />}
+                    {isSending ? <div className="w-4 h-4 border-2 border-white rounded-full border-t-transparent animate-spin" /> : <Send className="w-4.5 h-4.5" />}
                   </button>
                 </div>
               </footer>
             </>
           ) : (
-            <div className={`flex-1 flex items-center justify-center text-center p-8 ${
-              isStudioLight ? 'bg-slate-50 text-slate-500' : 'bg-[#080911] text-white/40'
+            <div className={`flex-1 flex flex-col items-center justify-center p-8 md:p-12 ${
+              isStudioLight ? 'bg-slate-50 text-slate-600' : 'bg-gradient-to-b from-[#080911] to-[#04050a] text-white/40'
             }`}>
-              <div className="space-y-4 max-w-xs">
-                <div className={`w-16 h-16 rounded-2xl border flex items-center justify-center mx-auto ${
-                  isStudioLight ? 'border-slate-200 bg-white text-slate-400 shadow-xs' : 'border-white/10 bg-white/[0.03] text-white/40 animate-pulse'
-                }`}>
-                  <MessageSquare className="w-8 h-8" />
+              <div className="max-w-md w-full space-y-8 text-center">
+                <div className="relative inline-block">
+                  <div className={`w-20 h-20 rounded-2xl border flex items-center justify-center mx-auto transition-transform hover:scale-105 duration-300 ${
+                    isStudioLight 
+                      ? 'border-purple-200 bg-white text-purple-600 shadow-[0_8px_30px_rgb(0,0,0,0.04)]' 
+                      : 'border-neon-purple/20 bg-white/[0.02] text-neon-purple shadow-[0_0_50px_rgba(176,38,255,0.1)]'
+                  }`}>
+                    <MessageSquare className="w-10 h-10 animate-pulse" />
+                  </div>
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-4 w-4 bg-cyan-500 border-2 border-slate-950"></span>
+                  </span>
                 </div>
-                <div className="space-y-1">
-                  <h3 className={`text-sm font-bold ${
-                    isStudioLight ? 'text-slate-800' : 'text-white/80'
-                  }`}>Stream Desk Control</h3>
-                  <p className={`text-xs leading-relaxed ${
+                
+                <div className="space-y-2">
+                  <h3 className={`text-base font-black uppercase tracking-wider font-display ${
+                    isStudioLight ? 'text-slate-900' : 'text-white'
+                  }`}>
+                    Live Stream Command Desk
+                  </h3>
+                  <p className={`text-xs max-w-sm mx-auto leading-relaxed ${
                     isStudioLight ? 'text-slate-500' : 'text-white/40'
-                  }`}>Select a user thread from the left pane to handle real-time listener feedback and studio private direct messages.</p>
+                  }`}>
+                    This is your centralized hub for listener interaction and stream telemetry. Select an active thread from the left pane to initialize a high-fidelity connection pipeline.
+                  </p>
+                </div>
+
+                {/* Highly structured, clean system telemetry grid */}
+                <div className={`p-4 rounded-xl border text-left space-y-3.5 ${
+                  isStudioLight ? 'bg-white border-slate-200/80 shadow-2xs' : 'bg-[#0A0C16]/50 border-white/5'
+                }`}>
+                  <div className="flex items-center justify-between border-b border-dashed pb-2 border-white/10">
+                    <span className={`text-[10px] font-bold uppercase tracking-wider font-mono ${isStudioLight ? 'text-slate-500' : 'text-white/40'}`}>
+                      Telemetry Feed
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest font-mono bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                      <span className="w-1 h-1 rounded-full bg-emerald-400 animate-ping" />
+                      Live Ready
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-xs font-mono">
+                    <div className="space-y-1">
+                      <span className={`block text-[9px] uppercase tracking-wider ${isStudioLight ? 'text-slate-400' : 'text-white/30'}`}>Active Pipelines</span>
+                      <span className={`font-bold ${isStudioLight ? 'text-slate-800' : 'text-white/90'}`}>
+                        {Object.values(connectedPlatforms).filter(Boolean).length} Platform Channels
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className={`block text-[9px] uppercase tracking-wider ${isStudioLight ? 'text-slate-400' : 'text-white/30'}`}>Total Queue</span>
+                      <span className={`font-bold ${isStudioLight ? 'text-slate-800' : 'text-white/90'}`}>
+                        {Object.keys(threads).length} Active Threads
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className={`block text-[9px] uppercase tracking-wider ${isStudioLight ? 'text-slate-400' : 'text-white/30'}`}>Action Required</span>
+                      <span className={`font-bold ${
+                        Object.values(threads).filter((t: any) => t.unreadCount > 0).length > 0 
+                          ? 'text-amber-500' 
+                          : (isStudioLight ? 'text-slate-800' : 'text-white/90')
+                      }`}>
+                        {Object.values(threads).filter((t: any) => t.unreadCount > 0).length} Unread Messages
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className={`block text-[9px] uppercase tracking-wider ${isStudioLight ? 'text-slate-400' : 'text-white/30'}`}>Automated Purge</span>
+                      <span className={`font-bold ${isStudioLight ? 'text-slate-800' : 'text-white/90'}`}>
+                        {autoDeleteEnabled ? `Every ${autoDeleteHours}h` : 'Disabled'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -4250,7 +4632,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           <motion.button
             onClick={() => navigateToTab('chats')}
             whileTap={{ scale: 0.92 }}
-            className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 ${
+            className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 !overflow-visible ${
               activeTab === 'chats' 
                 ? (isStudioLight ? 'text-purple-700' : 'text-neon-purple') 
                 : (isStudioLight ? 'text-slate-400 hover:text-slate-700' : 'text-white/40 hover:text-white/80')
@@ -4272,8 +4654,12 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                 <MessageSquare className="w-6 h-6" />
                 {totalUnreadCount > 0 && (
                   <span 
-                    className="absolute -top-1.5 -right-1.5 flex h-4.5 min-w-[18px] items-center justify-center rounded-full px-1 text-[9px] font-black font-mono leading-none text-white border border-white/40 shadow-xs"
-                    style={{ background: 'linear-gradient(135deg, #7C3AED, #2563EB)' }}
+                    className={`absolute -top-1.5 -right-1.5 flex h-4.5 min-w-[18px] items-center justify-center rounded-full px-1 text-[9px] font-bold font-sans leading-none border shadow-xs ${
+                      isStudioLight
+                        ? 'bg-purple-100 text-purple-700 border-purple-200'
+                        : 'text-white force-text-white border-white/40'
+                    }`}
+                    style={isStudioLight ? undefined : { background: 'linear-gradient(135deg, #7C3AED, #2563EB)' }}
                   >
                     {totalUnreadCount}
                   </span>
@@ -4285,7 +4671,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           <motion.button
             onClick={() => navigateToTab('connections')}
             whileTap={{ scale: 0.92 }}
-            className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 ${
+            className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 !overflow-visible ${
               activeTab === 'connections' 
                 ? (isStudioLight ? 'text-cyan-700' : 'text-neon-blue') 
                 : (isStudioLight ? 'text-slate-400 hover:text-slate-700' : 'text-white/40 hover:text-white/80')
@@ -4315,7 +4701,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           <motion.button
             onClick={() => navigateToTab('broadcast')}
             whileTap={{ scale: 0.92 }}
-            className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 ${
+            className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 !overflow-visible ${
               activeTab === 'broadcast' 
                 ? (isStudioLight ? 'text-blue-700' : 'text-neon-blue') 
                 : (isStudioLight ? 'text-slate-400 hover:text-slate-700' : 'text-white/40 hover:text-white/80')
@@ -4340,7 +4726,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           <motion.button
             onClick={() => navigateToTab('profile')}
             whileTap={{ scale: 0.92 }}
-            className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 ${
+            className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 !overflow-visible ${
               activeTab === 'profile' 
                 ? (isStudioLight ? 'text-purple-700' : 'text-neon-purple') 
                 : (isStudioLight ? 'text-slate-400 hover:text-slate-700' : 'text-white/40 hover:text-white/80')
@@ -4365,7 +4751,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           <motion.button
             onClick={() => navigateToTab('settings')}
             whileTap={{ scale: 0.92 }}
-            className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 ${
+            className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 !overflow-visible ${
               activeTab === 'settings' 
                 ? (isStudioLight ? 'text-amber-700' : 'text-amber-400') 
                 : (isStudioLight ? 'text-slate-400 hover:text-slate-700' : 'text-white/40 hover:text-white/80')

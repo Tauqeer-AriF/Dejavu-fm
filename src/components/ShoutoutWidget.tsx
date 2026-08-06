@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Send, Heart, Flame, X, User, Sparkles, Mic2, Radio, MessageSquare, Paperclip } from 'lucide-react';
 import { toast } from 'sonner';
+import { useLogo } from '../hooks/useLogo';
 
 const safeLocalStorage = {
   getItem: (key: string): string | null => {
@@ -46,6 +47,7 @@ const authenticatedFetch = (input: RequestInfo | URL, init?: RequestInit): Promi
 };
 
 export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean }) {
+  const { isLightMode } = useLogo();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userEmail, setUserEmail] = useState('');
@@ -368,12 +370,18 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
             exit={{ opacity: 0, x: 20, scale: 0.5 }}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            className={`flex flex-col bg-black/60 backdrop-blur-2xl border-y border-r border-white/10 rounded-2xl shadow-2xl pointer-events-auto max-w-[280px] sm:max-w-[320px] transition-all duration-300 overflow-hidden ${s.isReply ? 'border-l-4 border-l-neon-blue ring-1 ring-neon-blue/20' : 'border-l-4 border-l-neon-purple'}`}
+            className={`flex flex-col backdrop-blur-2xl border-y border-r rounded-2xl shadow-2xl pointer-events-auto max-w-[280px] sm:max-w-[320px] transition-all duration-300 overflow-hidden ${
+              isLightMode 
+                ? 'bg-white/95 border-slate-200/80 shadow-[0_10px_30px_rgba(0,0,0,0.08)]' 
+                : 'bg-black/60 border-white/10 shadow-[0_10px_45px_rgba(0,0,0,0.5)]'
+            } ${s.isReply ? 'border-l-4 border-l-neon-blue ring-1 ring-neon-blue/20' : 'border-l-4 border-l-neon-purple'}`}
             style={s.isReply ? { zIndex: 10025 } : {}}
           >
              {/* Rich Media at the top */}
              {(s.imageUrl || s.videoUrl) && (
-               <div className="w-full relative overflow-hidden bg-black/40 border-b border-white/5 group/media">
+               <div className={`w-full relative overflow-hidden border-b group/media ${
+                 isLightMode ? 'bg-slate-50 border-slate-200/60' : 'bg-black/40 border-white/5'
+               }`}>
                  {s.imageUrl && (
                    <img 
                      src={s.imageUrl} 
@@ -399,25 +407,39 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
              )}
 
              <div className="flex items-start space-x-4 px-5 py-4">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border mt-1 ${s.isReply ? 'bg-neon-blue/10 border-neon-blue/20' : 'bg-neon-purple/10 border-neon-purple/20'}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border mt-1 ${
+                   s.isReply 
+                     ? (isLightMode ? 'bg-blue-50 border-blue-100' : 'bg-neon-blue/10 border-neon-blue/20') 
+                     : (isLightMode ? 'bg-purple-50 border-purple-100' : 'bg-neon-purple/10 border-neon-purple/20')
+                 }`}>
                    {s.isReply ? (
-                     <MessageSquare className="w-5 h-5 text-neon-blue" />
+                     <MessageSquare className={`w-5 h-5 ${isLightMode ? 'text-blue-600' : 'text-neon-blue'}`} />
                    ) : (
-                     <Radio className="w-5 h-5 text-neon-purple" />
+                     <Radio className={`w-5 h-5 ${isLightMode ? 'text-purple-600' : 'text-neon-purple'}`} />
                    )}
                 </div>
                 <div className="min-w-0 flex-1">
-                   <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] mb-0.5">
+                                       <p className={`text-[9px] font-black uppercase tracking-[0.2em] mb-0.5 ${
+                      isLightMode ? 'text-slate-400' : 'text-white/40'
+                    }`}>
                      {s.isReply ? 'Reply from DJ' : 'Broadcast Alert'}
                    </p>
-                   <p className={`text-[11px] font-bold truncate tracking-tight mb-1 ${s.isReply ? 'text-neon-blue' : 'text-neon-purple'}`}>
+                                       <p className={`text-[11px] font-bold truncate tracking-tight mb-1 ${
+                      s.isReply 
+                        ? (isLightMode ? 'text-blue-600' : 'text-neon-blue') 
+                        : (isLightMode ? 'text-purple-600' : 'text-neon-purple')
+                    }`}>
                      {s.listener_name}
                    </p>
-                   <p className="text-xs text-white/90 line-clamp-3 font-medium leading-relaxed italic mb-2">"{s.message}"</p>
+                                       <p className={`text-xs line-clamp-3 font-semibold leading-relaxed italic mb-2 ${
+                      isLightMode ? 'text-slate-700' : 'text-white/90'
+                    }`}>"{s.message}"</p>
                    
                    {/* Audio Content remains below text as it's a control bar */}
                    {s.audioUrl && (
-                     <div className="mt-2 w-full p-1.5 rounded-lg bg-black/30 border border-white/5">
+                                           <div className={`mt-2 w-full p-1.5 rounded-lg border ${
+                        isLightMode ? 'bg-slate-50 border-slate-200/60' : 'bg-black/30 border-white/5'
+                      }`}>
                        <audio 
                          src={s.audioUrl} 
                          controls 
