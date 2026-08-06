@@ -3033,7 +3033,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
               {autoDeleteEnabled && (
                 <div className="space-y-5 animate-fadeIn">
                   <div className="space-y-2.5">
-                    <label className={`text-[10px] font-bold uppercase tracking-wider font-mono block ${
+                    <label className={`text-[10px] font-bold uppercase tracking-wider font-display block ${
                       isStudioLight ? 'text-slate-400' : 'text-white/30'
                     }`}>
                       Retention Interval Frequency
@@ -3053,7 +3053,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                           type="button"
                           onClick={() => handleSaveAutoDelete(true, preset.hours)}
                           disabled={isSavingAutoDelete}
-                          className={`px-3 py-2 rounded-xl text-[11px] font-mono transition-all duration-150 border cursor-pointer ${
+                          className={`px-3 py-2 rounded-xl text-[11px] font-display transition-all duration-150 border cursor-pointer ${
                             autoDeleteHours === preset.hours
                               ? (isStudioLight 
                                   ? 'bg-purple-50 border-purple-200 text-purple-700 font-bold shadow-3xs' 
@@ -3071,17 +3071,13 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
                   {/* Custom Duration Input */}
                   <div className={`pt-4 border-t border-dashed space-y-2.5 ${isStudioLight ? 'border-slate-100' : 'border-white/5'}`}>
-                    <label className={`text-[10px] font-bold uppercase tracking-wider font-mono block ${
+                    <label className={`text-[10px] font-bold uppercase tracking-wider font-display block ${
                       isStudioLight ? 'text-slate-400' : 'text-white/30'
                     }`}>
                       Custom Duration Timeframe
                     </label>
                     <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
-                      <div className={`flex-1 min-w-[140px] flex items-center gap-2 border rounded-xl px-3 py-2 transition-colors ${
-                        isStudioLight 
-                          ? 'bg-slate-50/60 border-slate-200 focus-within:bg-white focus-within:border-purple-500' 
-                          : 'bg-[#04050a]/40 border-white/[0.04] focus-within:border-neon-purple/50'
-                      }`}>
+                      <div className="flex items-center gap-2 flex-1 min-w-[200px]">
                         <input
                           type="number"
                           min="1"
@@ -3089,14 +3085,20 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                           value={customValInput}
                           onChange={(e) => setCustomValInput(e.target.value)}
                           placeholder="e.g. 5"
-                          className={`w-full bg-transparent text-xs font-mono focus:outline-none ${
-                            isStudioLight ? 'text-slate-800 placeholder:text-slate-400' : 'text-slate-200 placeholder:text-white/20'
+                          className={`flex-1 min-w-0 border rounded-xl px-4 py-2.5 text-xs font-sans focus:outline-none transition-colors ${
+                            isStudioLight 
+                              ? 'bg-slate-50/60 border-slate-200 focus:bg-white focus:border-purple-500 text-slate-800 placeholder:text-slate-400' 
+                              : 'bg-[#04050a]/40 border-white/[0.04] focus:border-neon-purple/50 text-slate-200 placeholder:text-white/20'
                           }`}
                         />
                         <select
                           value={customUnitInput}
                           onChange={(e) => setCustomUnitInput(e.target.value as 'hours' | 'days')}
-                          className="bg-transparent text-xs font-bold font-mono focus:outline-none cursor-pointer pr-1 text-purple-500 outline-none"
+                          className={`border rounded-xl px-3 py-2.5 text-xs font-bold font-sans focus:outline-none cursor-pointer outline-none transition-colors ${
+                            isStudioLight
+                              ? 'bg-slate-50/60 border-slate-200 text-purple-700 hover:bg-slate-100'
+                              : 'bg-[#04050a]/40 border-white/[0.04] text-neon-purple hover:bg-[#0d0f1e]'
+                          }`}
                         >
                           <option value="hours" className={isStudioLight ? 'bg-white text-slate-800' : 'bg-[#0D0F1D] text-white'}>Hours</option>
                           <option value="days" className={isStudioLight ? 'bg-white text-slate-800' : 'bg-[#0D0F1D] text-white'}>Days</option>
@@ -3106,7 +3108,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                         type="button"
                         onClick={handleApplyCustomTime}
                         disabled={isSavingAutoDelete}
-                        className={`px-4 py-2.5 rounded-xl text-xs font-bold font-mono transition-all duration-150 shrink-0 border cursor-pointer hover:scale-102 active:scale-98 ${
+                        className={`px-5 py-2.5 rounded-xl text-xs font-bold font-display transition-all duration-150 shrink-0 border cursor-pointer hover:scale-102 active:scale-98 ${
                           isStudioLight 
                             ? 'bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700 shadow-3xs' 
                             : 'bg-[#04050a] hover:bg-white/[0.02] border-white/5 hover:border-white/10 text-white/80'
@@ -3624,7 +3626,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => navigateToTab('chats')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider font-display transition-all duration-200 ${
               activeTab === 'chats'
                 ? (studioTheme === 'light' ? 'bg-neon-purple/15 text-neon-purple border border-neon-purple/20 shadow-sm font-black' : 'bg-neon-purple/20 text-neon-purple border border-neon-purple/30 shadow-[0_0_15px_rgba(var(--color-neon-purple-rgb,176,38,255),0.15)]')
                 : (studioTheme === 'light' ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent' : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05] border border-transparent')
@@ -3639,7 +3641,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             <>
               <button
                 onClick={() => navigateToTab('connections')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider font-display transition-all duration-200 ${
                   activeTab === 'connections'
                     ? (studioTheme === 'light' ? 'bg-neon-blue/15 text-neon-blue border border-neon-blue/20 shadow-sm font-black' : 'bg-neon-blue/20 text-neon-blue border border-neon-blue/30 shadow-[0_0_15px_rgba(var(--color-neon-blue-rgb,0,194,255),0.15)]')
                     : (studioTheme === 'light' ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent' : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05] border border-transparent')
@@ -3655,7 +3657,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
               <button
                 onClick={() => navigateToTab('broadcast')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider font-display transition-all duration-200 ${
                   activeTab === 'broadcast'
                     ? (studioTheme === 'light' ? 'bg-neon-blue/15 text-neon-blue border border-neon-blue/20 shadow-sm font-black' : 'bg-neon-blue/20 text-neon-blue border border-neon-blue/30 shadow-[0_0_15px_rgba(var(--color-neon-blue-rgb,0,194,255),0.15)]')
                     : (studioTheme === 'light' ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent' : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05] border border-transparent')
@@ -3668,7 +3670,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
               <button
                 onClick={() => navigateToTab('profile')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider font-display transition-all duration-200 ${
                   activeTab === 'profile'
                     ? (studioTheme === 'light' ? 'bg-neon-purple/15 text-neon-purple border border-neon-purple/20 shadow-sm font-black' : 'bg-neon-purple/20 text-neon-purple border border-neon-purple/30 shadow-[0_0_15px_rgba(var(--color-neon-purple-rgb,176,38,255),0.15)]')
                     : (studioTheme === 'light' ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent' : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05] border border-transparent')
@@ -3681,7 +3683,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
               <button
                 onClick={() => navigateToTab('settings')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider font-display transition-all duration-200 ${
                   activeTab === 'settings'
                     ? (studioTheme === 'light' ? 'bg-neon-purple/15 text-neon-purple border border-neon-purple/20 shadow-sm font-black' : 'bg-neon-purple/20 text-neon-purple border border-neon-purple/30 shadow-[0_0_15px_rgba(var(--color-neon-purple-rgb,176,38,255),0.15)]')
                     : (studioTheme === 'light' ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent' : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05] border border-transparent')
@@ -3818,7 +3820,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                         }
                         setSidebarFilter(tab.id);
                       }}
-                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider font-sans transition-all duration-200 shrink-0 border flex items-center gap-1.5 cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider font-display transition-all duration-200 shrink-0 border flex items-center gap-1.5 cursor-pointer ${
                         isActive
                           ? (isStudioLight 
                               ? 'bg-neon-purple/15 text-neon-purple border-neon-purple/20 shadow-xs' 
@@ -3831,7 +3833,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                     >
                       <span>{tab.label}</span>
                       {tab.count > 0 && (
-                        <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-bold font-sans leading-none ${
+                        <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-bold font-display leading-none ${
                           isActive
                             ? (isStudioLight ? 'bg-neon-purple/20 text-neon-purple' : 'bg-neon-purple/30 text-white')
                             : (isStudioLight ? 'bg-slate-100 text-slate-600' : 'bg-white/5 text-white/40')
