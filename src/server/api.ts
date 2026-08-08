@@ -530,6 +530,40 @@ apiRouter.get("/public/features/:slug", (req, res) => {
   res.json(feature);
 });
 
+apiRouter.get("/public/features/:slug/comments", (req, res) => {
+  const feature = db.prepare("SELECT id FROM features WHERE slug = ? AND is_published = 1").get(req.params.slug) as { id: string } | undefined;
+  if (!feature) return res.status(404).json({ error: "Feature post not found" });
+
+  const comments = db.prepare(`
+    SELECT id, parent_id, author_name, content, created_at
+    FROM feature_comments
+    WHERE feature_id = ? AND status = 'approved'
+    ORDER BY datetime(created_at) ASC
+  `).all(feature.id);
+
+  res.json(comments);
+});
+
+apiRouter.post("/public/features/:slug/comments", (req, res) => {
+  const { author_name, author_email, content, parent_id } = req.body;
+  if (!author_name || !author_name.trim()) {
+    return res.status(400).json({ error: "Name is required" });
+  }
+  if (!content || !content.trim()) {
+    return res.status(400).json({ error: "Comment text is required" });
+  }
+
+  const feature = db.prepare("SELECT id FROM features WHERE slug = ?").get(req.params.slug) as { id: string } | undefined;
+  if (!feature) return res.status(404).json({ error: "Feature post not found" });
+
+  db.prepare(`
+    INSERT INTO feature_comments (feature_id, parent_id, author_name, author_email, content, status)
+    VALUES (?, ?, ?, ?, ?, 'pending')
+  `).run(feature.id, parent_id || null, author_name.trim(), author_email?.trim() || null, content.trim());
+
+  res.json({ success: true, message: "Your comment has been submitted and is pending admin approval." });
+});
+
 apiRouter.get("/public/ads", (req, res) => {
   const rawPage = String(req.query.page || req.query.route || "all");
   const page = rawPage.trim().toLowerCase();
@@ -2494,6 +2528,52 @@ apiRouter.delete("/admin/features/:id", (req, res) => {
 
   db.prepare("DELETE FROM features WHERE id = ?").run(req.params.id);
   logAction(req, 'DELETE', 'feature', req.params.id);
+  res.json({ success: true });
+});
+
+apiRouter.get("/admin/features/comments", (req, res) => {
+  const comments = db.prepare(`
+    SELECT c.*, f.title as feature_title, f.slug as feature_slug
+    FROM feature_comments c
+    JOIN features f ON c.feature_id = f.id
+    ORDER BY datetime(c.created_at) DESC
+  `).all();
+  res.json(comments);
+});
+
+apiRouter.put("/admin/features/comments/:id/status", (req, res) => {
+  const { status } = req.body;
+  if (!['approved', 'rejected', 'pending'].includes(status)) {
+    return res.status(400).json({ error: "Invalid status value" });
+  }
+
+  const commentId = req.params.id;
+  const result = db.prepare(`
+    UPDATE feature_comments
+    SET status = ?
+    WHERE id = ?
+  `).run(status, commentId);
+
+  if (result.changes === 0) {
+    return res.status(404).json({ error: "Comment not found" });
+  }
+
+  logAction(req, 'UPDATE_STATUS', 'feature_comment', commentId, { status });
+  res.json({ success: true });
+});
+
+apiRouter.delete("/admin/features/comments/:id", (req, res) => {
+  const commentId = req.params.id;
+  const result = db.prepare(`
+    DELETE FROM feature_comments
+    WHERE id = ?
+  `).run(commentId);
+
+  if (result.changes === 0) {
+    return res.status(404).json({ error: "Comment not found" });
+  }
+
+  logAction(req, 'DELETE', 'feature_comment', commentId);
   res.json({ success: true });
 });
 

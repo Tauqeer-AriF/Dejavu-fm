@@ -31,6 +31,7 @@ const AdminPages = lazy(() => import("./admin/AdminPages").then(m => ({ default:
 const AdminStudio = React.lazy(() => import("./admin/AdminStudio").then(m => ({ default: m.AdminStudio })));
 const AdminMetaIntegrations = React.lazy(() => import("./admin/AdminMetaIntegrations").then(m => ({ default: m.AdminMetaIntegrations })));
 const AdminSEO = lazy(() => import("./admin/AdminSEO").then(m => ({ default: m.AdminSEO })));
+const AdminFeatures = lazy(() => import("./admin/AdminFeatures").then(m => ({ default: m.AdminFeatures })));
 import { useLogo } from "../hooks/useLogo";
 import { PremiumRingLoader } from "../components/PremiumRingLoader";
 import { AppLoader } from "../components/AppLoader";
@@ -100,6 +101,7 @@ export default function Admin() {
 
   const getAdminPageLabel = (pathname: string) => {
     // Check specific dashboard route suffixes to map accurate tab names
+    if (pathname.includes('/features')) return 'In Features Manager';
     if (pathname.includes('/studio')) return 'In Studio & Live Chat';
     if (pathname.includes('/live-tools')) return 'In Live Tools';
     if (pathname.includes('/menu')) return 'In Navigation Menu';
@@ -799,6 +801,7 @@ export default function Admin() {
                       <Route path="/live-tools" element={<AdminLiveTools />} />
                       <Route path="/menu" element={userRole === 'admin' ? <AdminMenu /> : <Navigate to={adminBasePath} replace />} />
                       <Route path="/pages" element={userRole === 'admin' ? <AdminPages /> : <Navigate to={adminBasePath} replace />} />
+                      <Route path="/features" element={userRole === 'admin' ? <AdminFeatures /> : <Navigate to={adminBasePath} replace />} />
                       <Route path="/djs" element={userRole === 'admin' ? <AdminDJs /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
                       <Route path="/popup" element={userRole === 'admin' ? <AdminPopup /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
                       <Route path="/ads" element={userRole === 'admin' ? <AdminAds /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />

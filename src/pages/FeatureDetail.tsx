@@ -3,7 +3,7 @@ import { BlogPost } from "../types";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { ArrowLeft, CalendarDays, FileText, ExternalLink } from "lucide-react";
+import { ArrowLeft, CalendarDays, FileText, ExternalLink, MessageSquare, CornerDownRight } from "lucide-react";
 import { useLogo } from "../hooks/useLogo";
 
 
@@ -84,6 +84,126 @@ export default function FeatureDetail() {
   const { slug } = useParams();
   const { isLightMode } = useLogo();
 
+  const [comments, setComments] = React.useState<any[]>([]);
+  const [commentsLoading, setCommentsLoading] = React.useState(true);
+  const [authorName, setAuthorName] = React.useState("");
+  const [authorEmail, setAuthorEmail] = React.useState("");
+  const [contentText, setContentText] = React.useState("");
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [submitSuccess, setSubmitSuccess] = React.useState("");
+  const [submitError, setSubmitError] = React.useState("");
+
+  // Reply state variables
+  const [activeReplyId, setActiveReplyId] = React.useState<number | null>(null);
+  const [replyName, setReplyName] = React.useState("");
+  const [replyEmail, setReplyEmail] = React.useState("");
+  const [replyContent, setReplyContent] = React.useState("");
+  const [isSubmittingReply, setIsSubmittingReply] = React.useState(false);
+  const [replySuccessMessage, setReplySuccessMessage] = React.useState("");
+  const [replyErrorMessage, setReplyErrorMessage] = React.useState("");
+
+  const fetchComments = async () => {
+    if (!slug) return;
+    try {
+      const res = await fetch(`/api/public/features/${slug}/comments`);
+      if (res.ok) {
+        const data = await res.json();
+        setComments(Array.isArray(data) ? data : []);
+      }
+    } catch (e) {
+      console.error("Failed to load comments", e);
+    } finally {
+      setCommentsLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchComments();
+  }, [slug]);
+
+  const handleSubmitComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authorName.trim() || !contentText.trim()) {
+      setSubmitError("Name and Comment text are required.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitSuccess("");
+    setSubmitError("");
+
+    try {
+      const res = await fetch(`/api/public/features/${slug}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          author_name: authorName,
+          author_email: authorEmail || null,
+          content: contentText
+        })
+      });
+
+      if (res.ok) {
+        setSubmitSuccess("Your comment has been submitted and is pending admin approval.");
+        setAuthorName("");
+        setAuthorEmail("");
+        setContentText("");
+      } else {
+        const data = await res.json().catch(() => ({ error: "Failed to submit comment." }));
+        setSubmitError(data.error || "Failed to submit comment.");
+      }
+    } catch (err) {
+      console.error(err);
+      setSubmitError("Failed to submit comment. Please check your connection.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmitReply = async (e: React.FormEvent, parentId: number) => {
+    e.preventDefault();
+    if (!replyName.trim() || !replyContent.trim()) {
+      setReplyErrorMessage("Name and Reply text are required.");
+      return;
+    }
+
+    setIsSubmittingReply(true);
+    setReplySuccessMessage("");
+    setReplyErrorMessage("");
+
+    try {
+      const res = await fetch(`/api/public/features/${slug}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          author_name: replyName,
+          author_email: replyEmail || null,
+          content: replyContent,
+          parent_id: parentId
+        })
+      });
+
+      if (res.ok) {
+        setReplySuccessMessage("Your reply has been submitted and is pending admin approval.");
+        setReplyName("");
+        setReplyEmail("");
+        setReplyContent("");
+        setTimeout(() => {
+          setActiveReplyId(null);
+          setReplySuccessMessage("");
+        }, 5000);
+      } else {
+        const data = await res.json().catch(() => ({ error: "Failed to submit reply." }));
+        setReplyErrorMessage(data.error || "Failed to submit reply.");
+      }
+    } catch (err) {
+      console.error(err);
+      setReplyErrorMessage("Failed to submit reply. Please check your connection.");
+    } finally {
+      setIsSubmittingReply(false);
+    }
+  };
+
   const { data: post, isLoading, isError } = useQuery<BlogPost>({
     queryKey: ["feature", slug],
     queryFn: async () => {
@@ -94,6 +214,9 @@ export default function FeatureDetail() {
     enabled: !!slug,
     staleTime: 1000 * 60 * 5,
   });
+
+  const topLevelComments = comments.filter(c => !c.parent_id);
+  const getRepliesFor = (parentId: number) => comments.filter(c => c.parent_id === parentId);
 
   if (isLoading) {
     return (
@@ -226,6 +349,320 @@ export default function FeatureDetail() {
                 ));
             })}
           </div>
+        </div>
+      </div>
+
+      {/* Comments Board Section */}
+      <div className="max-w-3xl mx-auto px-2 mt-8">
+        <div className={`glass-panel rounded-2xl p-6 md:p-10 transition-colors space-y-8 ${
+          isLightMode ? 'bg-white border-black/10' : 'border-white/5 bg-black/40 animate-fade-in'
+        }`}>
+          <div className="flex items-center gap-2.5 border-b pb-4 transition-colors border-white/5">
+            <MessageSquare className="w-5 h-5 text-neon-purple animate-pulse" />
+            <h3 className={`font-display font-black text-xl uppercase tracking-wider ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
+              Comments Board <span className={`text-xs font-mono ml-2 font-black ${isLightMode ? 'text-slate-400' : 'text-white/40'}`}>({comments.length})</span>
+            </h3>
+          </div>
+
+          {/* List of comments */}
+          {commentsLoading ? (
+            <div className="space-y-4">
+              {[1, 2].map(n => (
+                <div key={n} className={`h-24 rounded-2xl p-5 animate-pulse border ${isLightMode ? 'bg-white border-black/5' : 'bg-white/5 border-white/5'}`} />
+              ))}
+            </div>
+          ) : topLevelComments.length === 0 ? (
+            <div className="text-center py-10 space-y-2">
+              <p className={`text-xs uppercase tracking-widest font-black ${isLightMode ? 'text-slate-400' : 'text-white/30'}`}>
+                No comments yet
+              </p>
+              <p className={`text-[10px] uppercase tracking-wider ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>
+                Be the first to share your thoughts on this feature post!
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {topLevelComments.map((comment, index) => {
+                const replies = getRepliesFor(comment.id);
+                return (
+                  <div key={comment.id || index} className="space-y-4">
+                    <div 
+                      className={`p-5 rounded-2xl border transition-all space-y-3 ${
+                        isLightMode 
+                          ? 'bg-black/[0.01] border-black/5 hover:bg-black/[0.02]' 
+                          : 'bg-white/[0.01] border-white/5 hover:bg-white/[0.02]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black border uppercase ${
+                          isLightMode 
+                            ? 'bg-slate-50 border-black/5 text-slate-700' 
+                            : 'bg-white/5 border-white/10 text-white/80'
+                        }`}>
+                          {comment.author_name.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h5 className={`text-xs font-black uppercase tracking-wider ${isLightMode ? 'text-slate-800' : 'text-white/90'}`}>
+                            {comment.author_name}
+                          </h5>
+                          <span className={`text-[9px] font-mono block ${isLightMode ? 'text-slate-400' : 'text-white/30'}`}>
+                            {new Date(comment.created_at).toLocaleString()}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (activeReplyId === comment.id) {
+                              setActiveReplyId(null);
+                            } else {
+                              setActiveReplyId(comment.id);
+                              setReplyName("");
+                              setReplyEmail("");
+                              setReplyContent("");
+                              setReplyErrorMessage("");
+                              setReplySuccessMessage("");
+                            }
+                          }}
+                          className="px-3 py-1.5 rounded-lg border border-neon-purple/20 text-neon-purple hover:bg-neon-purple hover:text-white transition-all text-[9px] font-black uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+                        >
+                          <CornerDownRight className="w-3 h-3" />
+                          {activeReplyId === comment.id ? "Cancel" : "Reply"}
+                        </button>
+                      </div>
+                      <p className={`text-xs leading-relaxed ${isLightMode ? 'text-slate-600' : 'text-white/70'}`}>
+                        {comment.content}
+                      </p>
+                    </div>
+
+                    {/* Replies list */}
+                    {replies.length > 0 && (
+                      <div className="ml-6 sm:ml-10 space-y-4 border-l-2 border-neon-purple/20 pl-4 sm:pl-6">
+                        {replies.map((reply) => (
+                          <div 
+                            key={reply.id} 
+                            className={`p-4 rounded-xl border transition-all space-y-2 ${
+                              isLightMode 
+                                ? 'bg-black/[0.005] border-black/5 hover:bg-black/[0.01]' 
+                                : 'bg-white/[0.005] border-white/5 hover:bg-white/[0.01]'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black border uppercase ${
+                                isLightMode 
+                                  ? 'bg-slate-50 border-black/5 text-slate-700' 
+                                  : 'bg-white/5 border-white/10 text-white/80'
+                              }`}>
+                                {reply.author_name.charAt(0)}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <h6 className={`text-[11px] font-black uppercase tracking-wider ${isLightMode ? 'text-slate-800' : 'text-white/90'}`}>
+                                    {reply.author_name}
+                                  </h6>
+                                  <span className={`text-[9px] font-mono ${isLightMode ? 'text-slate-400' : 'text-white/30'}`}>
+                                    • {new Date(reply.created_at).toLocaleString()}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <p className={`text-xs leading-relaxed ${isLightMode ? 'text-slate-600' : 'text-white/70'}`}>
+                              {reply.content}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Inline Reply Form */}
+                    {activeReplyId === comment.id && (
+                      <form onSubmit={(e) => handleSubmitReply(e, comment.id)} className="ml-6 sm:ml-10 p-5 rounded-xl border border-neon-purple/20 bg-neon-purple/[0.02] space-y-4">
+                        <div>
+                          <h5 className="text-[10px] font-black uppercase tracking-[0.15em] text-neon-purple">
+                            Replying to {comment.author_name}
+                          </h5>
+                        </div>
+
+                        {replySuccessMessage && (
+                          <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-500 text-[10px] font-black uppercase tracking-wider">
+                            {replySuccessMessage}
+                          </div>
+                        )}
+
+                        {replyErrorMessage && (
+                          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-wider">
+                            {replyErrorMessage}
+                          </div>
+                        )}                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className={`block text-[8px] uppercase tracking-widest font-black mb-1 ${isLightMode ? 'text-slate-500' : 'text-white/30'}`}>
+                              Your Name *
+                            </label>
+                            <input 
+                              required
+                              type="text" 
+                              value={replyName}
+                              onChange={e => setReplyName(e.target.value)}
+                              placeholder="Name"
+                              className={`w-full border rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:border-neon-purple transition-all ${
+                                isLightMode 
+                                  ? 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:text-slate-900 shadow-sm' 
+                                  : 'bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:bg-black/40 focus:text-white'
+                              }`}
+                              style={isLightMode ? { backgroundColor: '#ffffff', color: '#0f172a', colorScheme: 'light' } : undefined}
+                            />
+                          </div>
+                          <div>
+                            <label className={`block text-[8px] uppercase tracking-widest font-black mb-1 ${isLightMode ? 'text-slate-500' : 'text-white/30'}`}>
+                              Email Address (Optional)
+                            </label>
+                            <input 
+                              type="email" 
+                              value={replyEmail}
+                              onChange={e => setReplyEmail(e.target.value)}
+                              placeholder="alex@example.com"
+                              className={`w-full border rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:border-neon-purple transition-all ${
+                                isLightMode 
+                                  ? 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:text-slate-900 shadow-sm' 
+                                  : 'bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:bg-black/40 focus:text-white'
+                              }`}
+                              style={isLightMode ? { backgroundColor: '#ffffff', color: '#0f172a', colorScheme: 'light' } : undefined}
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className={`block text-[8px] uppercase tracking-widest font-black mb-1 ${isLightMode ? 'text-slate-500' : 'text-white/30'}`}>
+                            Your Reply *
+                          </label>
+                          <textarea 
+                            required
+                            rows={3}
+                            value={replyContent}
+                            onChange={e => setReplyContent(e.target.value)}
+                            placeholder="Write your reply..."
+                            className={`w-full border rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:border-neon-purple transition-all resize-none ${
+                              isLightMode 
+                                ? 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:text-slate-900 shadow-sm' 
+                                : 'bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:bg-black/40 focus:text-white'
+                            }`}
+                            style={isLightMode ? { backgroundColor: '#ffffff', color: '#0f172a', colorScheme: 'light' } : undefined}
+                          />
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button 
+                            disabled={isSubmittingReply}
+                            type="submit"
+                            className="px-4 py-2 bg-neon-purple hover:bg-neon-blue text-white disabled:opacity-50 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all cursor-pointer"
+                          >
+                            {isSubmittingReply ? "Submitting..." : "Submit Reply"}
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => setActiveReplyId(null)}
+                            className={`px-4 py-2 border rounded-lg text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer ${
+                              isLightMode ? 'border-black/10 text-slate-700 hover:bg-black/5' : 'border-white/10 text-white/80 hover:bg-white/5'
+                            }`}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Comment Submission Form */}
+          <form onSubmit={handleSubmitComment} className="space-y-5 pt-6 border-t border-white/5">
+            <div>
+              <h4 className={`text-xs font-black uppercase tracking-[0.2em] ${isLightMode ? 'text-slate-600' : 'text-white/50'}`}>
+                Join the conversation
+              </h4>
+              <p className={`text-[10px] uppercase tracking-wider mt-1 ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>
+                Your comment will be reviewed by administrators before being made public.
+              </p>
+            </div>
+
+            {submitSuccess && (
+              <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-500 text-[10px] font-black uppercase tracking-wider">
+                {submitSuccess}
+              </div>
+            )}
+
+            {submitError && (
+              <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-wider">
+                {submitError}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-[9px] uppercase tracking-widest font-black mb-1.5 ${isLightMode ? 'text-slate-500' : 'text-white/30'}`}>
+                  Your Name *
+                </label>
+                <input 
+                  required
+                  type="text" 
+                  value={authorName}
+                  onChange={e => setAuthorName(e.target.value)}
+                  placeholder="e.g., Alex Johnson"
+                  className={`w-full border rounded-xl px-4 py-3 text-xs font-sans focus:outline-none focus:border-neon-purple transition-all ${
+                    isLightMode 
+                      ? 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:text-slate-900 shadow-sm' 
+                      : 'bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:bg-black/40 focus:text-white'
+                  }`}
+                  style={isLightMode ? { backgroundColor: '#ffffff', color: '#0f172a', colorScheme: 'light' } : undefined}
+                />
+              </div>
+              <div>
+                <label className={`block text-[9px] uppercase tracking-widest font-black mb-1.5 ${isLightMode ? 'text-slate-500' : 'text-white/30'}`}>
+                  Email Address (Optional, kept completely private)
+                </label>
+                <input 
+                  type="email" 
+                  value={authorEmail}
+                  onChange={e => setAuthorEmail(e.target.value)}
+                  placeholder="e.g., alex@example.com"
+                  className={`w-full border rounded-xl px-4 py-3 text-xs font-sans focus:outline-none focus:border-neon-purple transition-all ${
+                    isLightMode 
+                      ? 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:text-slate-900 shadow-sm' 
+                      : 'bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:bg-black/40 focus:text-white'
+                  }`}
+                  style={isLightMode ? { backgroundColor: '#ffffff', color: '#0f172a', colorScheme: 'light' } : undefined}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className={`block text-[9px] uppercase tracking-widest font-black mb-1.5 ${isLightMode ? 'text-slate-500' : 'text-white/30'}`}>
+                Comment Content *
+              </label>
+              <textarea 
+                required
+                rows={4}
+                value={contentText}
+                onChange={e => setContentText(e.target.value)}
+                placeholder="Write your comment, suggestions, or ideas..."
+                className={`w-full border rounded-xl px-4 py-3 text-xs font-sans focus:outline-none focus:border-neon-purple transition-all resize-none ${
+                  isLightMode 
+                    ? 'bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:text-slate-900 shadow-sm' 
+                    : 'bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:bg-black/40 focus:text-white'
+                }`}
+                style={isLightMode ? { backgroundColor: '#ffffff', color: '#0f172a', colorScheme: 'light' } : undefined}
+              />
+            </div>
+
+            <button 
+              disabled={isSubmitting}
+              type="submit"
+              className="px-6 py-3 bg-neon-purple hover:bg-neon-blue text-white disabled:opacity-50 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-neon-purple/20 cursor-pointer"
+            >
+              {isSubmitting ? "Submitting Comment..." : "Submit Comment for Review"}
+            </button>
+          </form>
         </div>
       </div>
     </motion.article>

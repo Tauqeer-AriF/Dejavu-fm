@@ -196,6 +196,107 @@ input, button, select, textarea {
   font-family: var(--font-sans);
 }
 
+/* ==========================================================================
+   Light Mode Inputs, Textareas, Selects & Autofill Professional Resilience
+   ========================================================================== */
+:root.light input:not([type="checkbox"]):not([type="radio"]),
+:root.light textarea,
+:root.light select,
+html.light input:not([type="checkbox"]):not([type="radio"]),
+html.light textarea,
+html.light select,
+.light input:not([type="checkbox"]):not([type="radio"]),
+.light textarea,
+.light select,
+html.light input[type="email"],
+html.light input[type="text"],
+html.light input[type="password"],
+html.light input[type="number"],
+html.light input[type="tel"],
+html.light input[type="url"],
+html.light input[type="search"],
+.light input[type="email"],
+.light input[type="text"],
+.light input[type="password"] {
+  color-scheme: light !important;
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  caret-color: #0f172a !important;
+}
+
+:root.light input:not([type="checkbox"]):not([type="radio"]):focus,
+:root.light textarea:focus,
+:root.light select:focus,
+html.light input:not([type="checkbox"]):not([type="radio"]):focus,
+html.light textarea:focus,
+html.light select:focus,
+.light input:not([type="checkbox"]):not([type="radio"]):focus,
+.light textarea:focus,
+.light select:focus,
+html.light input[type="email"]:focus,
+html.light input[type="text"]:focus,
+html.light input[type="password"]:focus,
+.light input[type="email"]:focus,
+.light input[type="text"]:focus {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  caret-color: #0f172a !important;
+}
+
+:root.light input:-webkit-autofill,
+:root.light input:-webkit-autofill:hover, 
+:root.light input:-webkit-autofill:focus, 
+:root.light input:-webkit-autofill:active,
+:root.light input:-internal-autofill-selected,
+:root.light input:-internal-autofill-previewed,
+:root.light input:autofill,
+:root.light textarea:-webkit-autofill,
+:root.light textarea:-webkit-autofill:hover,
+:root.light textarea:-webkit-autofill:focus,
+html.light input:-webkit-autofill,
+html.light input:-webkit-autofill:hover, 
+html.light input:-webkit-autofill:focus, 
+html.light input:-webkit-autofill:active,
+html.light input:-internal-autofill-selected,
+html.light input:-internal-autofill-previewed,
+html.light input:autofill,
+html.light textarea:-webkit-autofill,
+html.light textarea:-webkit-autofill:hover,
+html.light textarea:-webkit-autofill:focus,
+.light input:-webkit-autofill,
+.light input:-webkit-autofill:hover, 
+.light input:-webkit-autofill:focus, 
+.light input:-webkit-autofill:active,
+.light input:-internal-autofill-selected,
+.light input:-internal-autofill-previewed,
+.light input:autofill,
+.light textarea:-webkit-autofill,
+.light textarea:-webkit-autofill:hover,
+.light textarea:-webkit-autofill:focus {
+  -webkit-text-fill-color: #0f172a !important;
+  -webkit-box-shadow: 0 0 0px 1000px #ffffff inset !important;
+  box-shadow: 0 0 0px 1000px #ffffff inset !important;
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  transition: background-color 5000000s ease-in-out 0s;
+  color-scheme: light !important;
+  caret-color: #0f172a !important;
+  color: #0f172a !important;
+}
+
+:root.light input::placeholder,
+:root.light textarea::placeholder,
+html.light input::placeholder,
+html.light textarea::placeholder,
+.light input::placeholder,
+.light textarea::placeholder {
+  color: #94a3b8 !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #94a3b8 !important;
+}
+
 h1, h2, h3, h4, h5, h6, .font-display {
   font-family: var(--font-display);
 }

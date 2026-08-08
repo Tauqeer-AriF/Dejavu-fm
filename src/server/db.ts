@@ -405,7 +405,23 @@ export function initDb() {
     );
     CREATE INDEX IF NOT EXISTS idx_user_blocks_blocker ON user_blocks(blocker);
     CREATE INDEX IF NOT EXISTS idx_user_blocks_blocked ON user_blocks(blocked);
+
+    CREATE TABLE IF NOT EXISTS feature_comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      feature_id TEXT NOT NULL,
+      parent_id INTEGER DEFAULT NULL,
+      author_name TEXT NOT NULL,
+      author_email TEXT,
+      content TEXT NOT NULL,
+      status TEXT DEFAULT 'pending',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_feature_comments_feature ON feature_comments(feature_id);
+    CREATE INDEX IF NOT EXISTS idx_feature_comments_status ON feature_comments(status);
   `);
+
+  try { db.exec(`ALTER TABLE feature_comments ADD COLUMN parent_id INTEGER DEFAULT NULL;`); } catch (e) {}
+  try { db.exec(`CREATE INDEX IF NOT EXISTS idx_feature_comments_parent ON feature_comments(parent_id);`); } catch (e) {}
 
   ['last_login', 'last_seen', 'current_page'].forEach(col => {
     try { db.exec(`ALTER TABLE admins ADD COLUMN ${col} TEXT;`); } catch (e) {}
@@ -554,6 +570,19 @@ export function initDb() {
     );
     CREATE INDEX IF NOT EXISTS idx_custom_form_submissions_page ON custom_form_submissions(page_id);
     CREATE INDEX IF NOT EXISTS idx_custom_form_submissions_created ON custom_form_submissions(created_at);
+  `);
+  runMigration('feature_comments_v1', `
+    CREATE TABLE IF NOT EXISTS feature_comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      feature_id TEXT NOT NULL,
+      author_name TEXT NOT NULL,
+      author_email TEXT,
+      content TEXT NOT NULL,
+      status TEXT DEFAULT 'pending',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_feature_comments_feature ON feature_comments(feature_id);
+    CREATE INDEX IF NOT EXISTS idx_feature_comments_status ON feature_comments(status);
   `);
   try {
     db.prepare(`
