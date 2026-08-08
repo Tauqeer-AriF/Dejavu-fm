@@ -131,8 +131,10 @@ export default function Booth() {
     try {
       const res = await fetch('/api/curated-tracks');
       if (res.ok) {
-        const data = await res.json();
-        setCuratedTracks(data);
+        const data: CuratedTrack[] = await res.json();
+        // Ensure sorted descending by ID so newly added tracks are on top
+        const sorted = [...data].sort((a, b) => Number(b.id) - Number(a.id));
+        setCuratedTracks(sorted);
       }
     } catch (e) {
       console.error("Failed to load curated tracks", e);
@@ -179,11 +181,31 @@ export default function Booth() {
         setRequests([]);
       };
 
+      // Live socket events for curated suggested tracks
+      const handleCuratedAdd = (newTrack: CuratedTrack) => {
+        setCuratedTracks(prev => {
+          if (prev.some(t => t.id === newTrack.id)) return prev;
+          return [newTrack, ...prev];
+        });
+      };
+
+      const handleCuratedUpdate = (updatedTrack: CuratedTrack) => {
+        setCuratedTracks(prev => prev.map(t => t.id === updatedTrack.id ? updatedTrack : t));
+      };
+
+      const handleCuratedDelete = (payload: { id: number }) => {
+        setCuratedTracks(prev => prev.filter(t => t.id !== payload.id));
+      };
+
       socket.on("songRequestAdded", handleAdd);
       socket.on("songRequestUpdated", handleUpdate);
       socket.on("songRequestStatusUpdated", handleStatusUpdate);
       socket.on("songRequestDeleted", handleDelete);
       socket.on("songRequestsCleared", handleClear);
+
+      socket.on("curatedTrackAdded", handleCuratedAdd);
+      socket.on("curatedTrackUpdated", handleCuratedUpdate);
+      socket.on("curatedTrackDeleted", handleCuratedDelete);
 
       return () => {
         socket.off("songRequestAdded", handleAdd);
@@ -191,6 +213,10 @@ export default function Booth() {
         socket.off("songRequestStatusUpdated", handleStatusUpdate);
         socket.off("songRequestDeleted", handleDelete);
         socket.off("songRequestsCleared", handleClear);
+
+        socket.off("curatedTrackAdded", handleCuratedAdd);
+        socket.off("curatedTrackUpdated", handleCuratedUpdate);
+        socket.off("curatedTrackDeleted", handleCuratedDelete);
       };
     }
   }, []);
@@ -403,9 +429,9 @@ export default function Booth() {
                     initial={{ opacity: 0, y: -5 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -5 }}
-                    className={`absolute top-[calc(100%+8px)] left-0 w-full rounded-xl shadow-2xl z-50 overflow-hidden max-h-64 overflow-y-auto divide-y border backdrop-blur-md ${
+                    className={`curated-suggestions-panel absolute top-[calc(100%+8px)] left-0 w-full rounded-xl shadow-2xl z-50 overflow-hidden max-h-64 overflow-y-auto divide-y border backdrop-blur-md ${
                       isLightMode
-                        ? 'bg-white border-slate-200 divide-slate-100 shadow-xl shadow-slate-300/80 text-slate-900'
+                        ? 'bg-white border-slate-300 divide-slate-100 shadow-xl text-slate-900'
                         : 'bg-[#0a0a0f]/95 border-white/10 divide-white/5 shadow-black/80 text-white'
                     }`}
                   >
@@ -418,13 +444,13 @@ export default function Booth() {
                           disabled={isSubmitting}
                           className={`w-full text-left px-4 py-3 flex items-center justify-between transition-colors font-sans ${
                             isLightMode 
-                              ? 'bg-white hover:bg-purple-50/80 active:bg-purple-100 text-slate-900' 
+                              ? 'bg-white hover:bg-purple-50 active:bg-purple-100 text-slate-900' 
                               : 'bg-transparent hover:bg-white/5 text-white'
                           }`}
                         >
                           <div>
-                            <div className={`text-xs font-bold ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{track.title}</div>
-                            <div className={`text-[11px] font-sans mt-0.5 ${isLightMode ? 'text-slate-600 font-medium' : 'text-white/50'}`}>{track.artist}</div>
+                            <div className={`curated-suggestion-title text-xs font-bold ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{track.title}</div>
+                            <div className={`curated-suggestion-artist text-[11px] font-sans mt-0.5 ${isLightMode ? 'text-slate-600 font-medium' : 'text-white/50'}`}>{track.artist}</div>
                           </div>
                           <div className={`p-1.5 rounded-lg border flex items-center justify-center transition-all ${
                             isLightMode 

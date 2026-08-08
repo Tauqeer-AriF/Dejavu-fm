@@ -4782,7 +4782,7 @@ apiRouter.delete("/admin/song-requests", authMiddleware, authorizeRole(['admin',
 // Public: Get all curated tracks
 apiRouter.get("/curated-tracks", (req, res) => {
   try {
-    const tracks = db.prepare("SELECT * FROM curated_tracks ORDER BY title ASC").all();
+    const tracks = db.prepare("SELECT * FROM curated_tracks ORDER BY id DESC").all();
     res.json(tracks);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -4799,6 +4799,7 @@ apiRouter.post("/admin/curated-tracks", authMiddleware, authorizeRole(['admin', 
     const info = db.prepare("INSERT INTO curated_tracks (title, artist) VALUES (?, ?)").run(title.trim(), artist.trim());
     const newTrack = { id: info.lastInsertRowid, title: title.trim(), artist: artist.trim() };
     logAction(req, 'CREATE', 'curated_track', String(info.lastInsertRowid), newTrack);
+    io.emit("curatedTrackAdded", newTrack);
     res.status(201).json(newTrack);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -4819,6 +4820,7 @@ apiRouter.put("/admin/curated-tracks/:id", authMiddleware, authorizeRole(['admin
       return res.status(404).json({ error: "Curated track not found" });
     }
     logAction(req, 'UPDATE', 'curated_track', id, updated);
+    io.emit("curatedTrackUpdated", updated);
     res.json(updated);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -4831,6 +4833,7 @@ apiRouter.delete("/admin/curated-tracks/:id", authMiddleware, authorizeRole(['ad
     const { id } = req.params;
     db.prepare("DELETE FROM curated_tracks WHERE id = ?").run(id);
     logAction(req, 'DELETE', 'curated_track', id);
+    io.emit("curatedTrackDeleted", { id: Number(id) });
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

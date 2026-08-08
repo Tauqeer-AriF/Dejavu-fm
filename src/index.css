@@ -1444,6 +1444,44 @@ html.light .booth-live-alert p,
 }
 
 /* Yours badge & Vote button - Immune to light mode overrides */
+:root.light .curated-suggestions-panel,
+html.light .curated-suggestions-panel,
+.light .curated-suggestions-panel {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+}
+
+:root.light .curated-suggestions-panel button,
+html.light .curated-suggestions-panel button,
+.light .curated-suggestions-panel button {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+:root.light .curated-suggestions-panel button:hover,
+html.light .curated-suggestions-panel button:hover,
+.light .curated-suggestions-panel button:hover {
+  background-color: #faf5ff !important;
+  background: #faf5ff !important;
+  color: #0f172a !important;
+}
+
+:root.light .curated-suggestions-panel .curated-suggestion-title,
+html.light .curated-suggestions-panel .curated-suggestion-title,
+.light .curated-suggestions-panel .curated-suggestion-title {
+  color: #0f172a !important;
+}
+
+:root.light .curated-suggestions-panel .curated-suggestion-artist,
+html.light .curated-suggestions-panel .curated-suggestion-artist,
+.light .curated-suggestions-panel .curated-suggestion-artist {
+  color: #475569 !important;
+}
+
 :root.light .booth-request-card,
 html.light .booth-request-card,
 .light .booth-request-card,
