@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { Radio, Calendar, Podcast, Shield as AdminIcon, Headphones, Menu, X, Video, MessageSquare, Sun, Moon, FileText, ChevronDown, ExternalLink, Info, Instagram, Twitter, Facebook, Youtube, Cloud, Music, Share2, Layers, Globe } from 'lucide-react';
 import { PlayerBar } from './components/PlayerBar';
 import { NotificationManager } from './components/NotificationManager';
+import { GlobalRequestAlerts } from './components/GlobalRequestAlerts';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { AudioProvider, useAudio } from './context/AudioContext';
 import { ModalProvider, useModal } from './context/ModalContext';
@@ -1384,6 +1385,7 @@ function MainLayout() {
       {!isSplitActive && <Navigation onOpenChat={() => setIsChatOpen(true)} featChat={featChat} isStaff={isStaff} />}
       <SitePopup />
       <NotificationManager />
+      <GlobalRequestAlerts />
       {featChat && !isSplitActive && (
         <Suspense fallback={null}>
           <ChatSidebar isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />

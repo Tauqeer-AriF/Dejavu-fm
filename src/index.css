@@ -1200,7 +1200,7 @@ button:not(.absolute) {
   box-shadow: none !important;
 }
 
-:root:not(.in-admin-view).contrast-high-light button:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light button:not(.admin-page-wrapper *):not(.admin-dashboard-container *):not(.vote-btn-elem),
 :root:not(.in-admin-view).contrast-high-light a.button-style:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
 :root:not(.in-admin-view).contrast-high-light input:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
 :root:not(.in-admin-view).contrast-high-light select:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
@@ -1211,7 +1211,7 @@ button:not(.absolute) {
   text-shadow: none !important;
 }
 
-:root:not(.in-admin-view).contrast-high-light button:not(.admin-page-wrapper *):not(.admin-dashboard-container *):hover,
+:root:not(.in-admin-view).contrast-high-light button:not(.admin-page-wrapper *):not(.admin-dashboard-container *):not(.vote-btn-elem):hover,
 :root:not(.in-admin-view).contrast-high-light a.button-style:not(.admin-page-wrapper *):not(.admin-dashboard-container *):hover {
   background-color: #000000 !important;
   color: #ffffff !important;
@@ -1402,6 +1402,151 @@ button:not(.absolute) {
 /* Custom forces and badges */
 .force-text-white {
   color: #ffffff !important;
+}
+
+/* Booth SFX Toggle Button & Realtime Alert Light Mode Guarantee */
+:root.light .booth-sfx-btn,
+html.light .booth-sfx-btn,
+.light .booth-sfx-btn {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+:root.light .booth-sfx-btn:hover,
+html.light .booth-sfx-btn:hover,
+.light .booth-sfx-btn:hover {
+  background-color: #f8fafc !important;
+  border-color: #94a3b8 !important;
+  color: #020617 !important;
+}
+
+:root.light .booth-live-alert,
+html.light .booth-live-alert,
+.light .booth-live-alert {
+  background-color: #ffffff !important;
+  border-color: #d8b4fe !important;
+  color: #0f172a !important;
+  box-shadow: 0 15px 40px rgba(147, 51, 234, 0.18) !important;
+}
+
+:root.light .booth-live-alert h4,
+html.light .booth-live-alert h4,
+.light .booth-live-alert h4 {
+  color: #0f172a !important;
+}
+
+:root.light .booth-live-alert p,
+html.light .booth-live-alert p,
+.light .booth-live-alert p {
+  color: #334155 !important;
+}
+
+/* Yours badge & Vote button - Immune to light mode overrides */
+.yours-badge,
+:root.light .yours-badge,
+html.light .yours-badge,
+.light .yours-badge,
+.admin-light-mode .yours-badge,
+.admin-light-mode .admin-dashboard-container .yours-badge {
+  background-color: var(--color-neon-purple, #9333ea) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  border-color: transparent !important;
+  border-style: none !important;
+}
+
+.vote-btn-elem,
+:root.light .vote-btn-elem,
+html.light .vote-btn-elem,
+.light .vote-btn-elem,
+.admin-light-mode .vote-btn-elem,
+.admin-light-mode .admin-dashboard-container .vote-btn-elem,
+:root:not(.in-admin-view).contrast-high-light .vote-btn-elem {
+  background-color: #0f172a !important;
+  border-color: rgba(51, 65, 85, 0.8) !important;
+  color: #e2e8f0 !important;
+  -webkit-text-fill-color: #e2e8f0 !important;
+  box-shadow: none !important;
+}
+
+.vote-btn-elem svg,
+:root.light .vote-btn-elem svg,
+html.light .vote-btn-elem svg,
+.light .vote-btn-elem svg,
+.admin-light-mode .vote-btn-elem svg,
+:root:not(.in-admin-view).contrast-high-light .vote-btn-elem svg {
+  color: #e2e8f0 !important;
+  fill: none !important;
+}
+
+.vote-btn-elem:hover:not(:disabled),
+:root.light .vote-btn-elem:hover:not(:disabled),
+html.light .vote-btn-elem:hover:not(:disabled),
+.light .vote-btn-elem:hover:not(:disabled),
+.admin-light-mode .vote-btn-elem:hover:not(:disabled),
+:root:not(.in-admin-view).contrast-high-light .vote-btn-elem:hover:not(:disabled) {
+  background-color: rgba(176, 38, 255, 0.2) !important;
+  border-color: rgba(176, 38, 255, 0.5) !important;
+  color: #b026ff !important;
+  -webkit-text-fill-color: #b026ff !important;
+}
+
+.vote-btn-elem:hover:not(:disabled) svg,
+:root.light .vote-btn-elem:hover:not(:disabled) svg,
+html.light .vote-btn-elem:hover:not(:disabled) svg,
+.light .vote-btn-elem:hover:not(:disabled) svg,
+.admin-light-mode .vote-btn-elem:hover:not(:disabled) svg,
+:root:not(.in-admin-view).contrast-high-light .vote-btn-elem:hover:not(:disabled) svg {
+  color: #b026ff !important;
+  fill: none !important;
+}
+
+:root.light .vote-btn-elem.bg-neon-purple,
+html.light .vote-btn-elem.bg-neon-purple,
+.light .vote-btn-elem.bg-neon-purple,
+.admin-light-mode .vote-btn-elem.bg-neon-purple,
+.admin-light-mode .admin-dashboard-container .vote-btn-elem.bg-neon-purple,
+:root:not(.in-admin-view).contrast-high-light .vote-btn-elem.bg-neon-purple,
+.vote-btn-elem.bg-neon-purple {
+  background-color: var(--color-neon-purple, #9333ea) !important;
+  border-color: var(--color-neon-purple, #9333ea) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(147, 51, 234, 0.35) !important;
+}
+
+.vote-btn-elem.bg-neon-purple svg,
+:root.light .vote-btn-elem.bg-neon-purple svg,
+html.light .vote-btn-elem.bg-neon-purple svg,
+.light .vote-btn-elem.bg-neon-purple svg,
+.admin-light-mode .vote-btn-elem.bg-neon-purple svg,
+:root:not(.in-admin-view).contrast-high-light .vote-btn-elem.bg-neon-purple svg {
+  color: #ffffff !important;
+  fill: currentColor !important;
+}
+
+:root.light .vote-btn-elem:disabled:not(.bg-neon-purple),
+html.light .vote-btn-elem:disabled:not(.bg-neon-purple),
+.light .vote-btn-elem:disabled:not(.bg-neon-purple),
+.admin-light-mode .vote-btn-elem:disabled:not(.bg-neon-purple),
+:root:not(.in-admin-view).contrast-high-light .vote-btn-elem:disabled:not(.bg-neon-purple),
+.vote-btn-elem:disabled:not(.bg-neon-purple) {
+  background-color: rgba(15, 23, 42, 0.4) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
+  cursor: not-allowed !important;
+}
+
+.vote-btn-elem:disabled:not(.bg-neon-purple) svg,
+:root.light .vote-btn-elem:disabled:not(.bg-neon-purple) svg,
+html.light .vote-btn-elem:disabled:not(.bg-neon-purple) svg,
+.light .vote-btn-elem:disabled:not(.bg-neon-purple) svg,
+.admin-light-mode .vote-btn-elem:disabled:not(.bg-neon-purple) svg,
+:root:not(.in-admin-view).contrast-high-light .vote-btn-elem:disabled:not(.bg-neon-purple) svg {
+  color: #64748b !important;
 }
 
 

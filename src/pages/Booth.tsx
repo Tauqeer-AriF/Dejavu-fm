@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Plus, ThumbsUp, Music, AlertCircle, Sparkles, Check, Play, User, Loader2 } from 'lucide-react';
+import { Search, Plus, ThumbsUp, Music, AlertCircle, Sparkles, Check, Play, User, Loader2, Volume2, VolumeX } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLogo } from '../hooks/useLogo';
+import { playHighFidelitySound } from '../components/GlobalRequestAlerts';
 
 interface SongRequest {
   id: number;
@@ -27,6 +28,40 @@ export default function Booth() {
   const [searchQuery, setSearchQuery] = useState('');
   const [requesterName, setRequesterName] = useState(() => localStorage.getItem('booth_requester_name') || '');
   const [curatedTracks, setCuratedTracks] = useState<CuratedTrack[]>([]);
+  
+  // Real-time flash notification and synthesized sounds states
+  const [soundsEnabled, setSoundsEnabled] = useState(() => {
+    try {
+      return localStorage.getItem('booth_sounds_enabled') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+
+  const soundsEnabledRef = useRef(soundsEnabled);
+  useEffect(() => {
+    soundsEnabledRef.current = soundsEnabled;
+  }, [soundsEnabled]);
+
+  const toggleSounds = () => {
+    setSoundsEnabled(prev => {
+      const next = !prev;
+      localStorage.setItem('booth_sounds_enabled', String(next));
+      window.dispatchEvent(new CustomEvent('booth_sounds_changed', { detail: next }));
+      toast.success(next ? "Notification SFX enabled! (Chime triggered)" : "Notification SFX muted", { duration: 2500 });
+      if (next) {
+        setTimeout(() => {
+          playHighFidelitySound('approved');
+        }, 100);
+      }
+      return next;
+    });
+
+    if (soundsEnabled) {
+      toast.info("Testing approved chime sound...", { duration: 1500 });
+      playHighFidelitySound('approved');
+    }
+  };
   
   // Custom request entry states
   const [customTitle, setCustomTitle] = useState('');
@@ -128,35 +163,12 @@ export default function Booth() {
       };
 
       const handleStatusUpdate = (payload: { id: number; status: SongRequest['status']; request: SongRequest }) => {
-        const { id, status, request } = payload;
+        const { id, request } = payload;
         
         setRequests(prev => {
           const updated = prev.map(r => r.id === id ? request : r);
           return sortRequests(updated);
         });
-
-        // Trigger custom high-importance sound/visual notification to original requester
-        const savedMyRequests = JSON.parse(localStorage.getItem('booth_my_requests') || '[]');
-        if (savedMyRequests.includes(id)) {
-          if (status === 'approved') {
-            toast.success(`🎉 DJ Approved Your Track!`, {
-              description: `"${request.track_title}" has been approved for the broadcast queue!`,
-              duration: 10000,
-            });
-            playNotifySound();
-          } else if (status === 'on_deck') {
-            toast.info(`🔥 Your Track is ON DECK!`, {
-              description: `"${request.track_title}" is playing next! Tuned in?`,
-              duration: 12000,
-            });
-            playNotifySound();
-          } else if (status === 'played') {
-            toast(`🎧 Now Playing Your Request!`, {
-              description: `Enjoy "${request.track_title}" playing live on air now!`,
-              duration: 10000,
-            });
-          }
-        }
       };
 
       const handleDelete = (payload: { id: number }) => {
@@ -183,22 +195,7 @@ export default function Booth() {
     }
   }, []);
 
-  const playNotifySound = () => {
-    try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5 pitch
-      osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15); // A5 pitch jump
-      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.4);
-    } catch {}
-  };
+
 
   const sortRequests = (list: SongRequest[]) => {
     return [...list].sort((a, b) => {
@@ -297,7 +294,35 @@ export default function Booth() {
   const { isLightMode } = useLogo();
 
   return (
-    <div className={`w-full max-w-5xl mx-auto py-4 px-2 select-none ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
+    <div className={`w-full max-w-5xl mx-auto py-4 px-2 select-none relative ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
+
+
+      {/* Floating Audio SFX Toggle */}
+      <div className="absolute top-4 right-4 z-40">
+        <button
+          type="button"
+          onClick={toggleSounds}
+          className={`booth-sfx-btn flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border shadow-sm ${
+            isLightMode
+              ? 'bg-[#ffffff] border-slate-300 text-slate-900 hover:text-slate-950 hover:bg-slate-100 hover:border-slate-400'
+              : 'bg-white/10 border-white/15 text-white/80 hover:text-white hover:bg-white/15'
+          }`}
+          title={soundsEnabled ? "Mute notification sound effects" : "Enable notification sound effects"}
+        >
+          {soundsEnabled ? (
+            <>
+              <Volume2 className={`w-3.5 h-3.5 ${isLightMode ? 'text-purple-600' : 'text-neon-purple'}`} />
+              <span className={isLightMode ? 'text-slate-900 font-extrabold' : 'text-white/80'}>SFX On</span>
+            </>
+          ) : (
+            <>
+              <VolumeX className={`w-3.5 h-3.5 ${isLightMode ? 'text-red-600' : 'text-red-500'}`} />
+              <span className={isLightMode ? 'text-slate-800 font-extrabold' : 'text-white/60'}>SFX Off</span>
+            </>
+          )}
+        </button>
+      </div>
+
       {/* Decorative Moving Aura */}
       <div className="absolute top-0 left-1/4 w-80 h-80 bg-neon-purple/5 rounded-full blur-[100px] pointer-events-none -z-10 animate-pulse" />
       <div className="absolute bottom-10 right-1/4 w-80 h-80 bg-neon-blue/5 rounded-full blur-[100px] pointer-events-none -z-10" />
@@ -595,7 +620,7 @@ export default function Booth() {
                             {req.track_title}
                           </span>
                           {isMine && (
-                            <span className="px-1.5 py-0.5 rounded text-[8px] font-sans bg-neon-purple text-white uppercase font-black tracking-widest shrink-0">
+                            <span className="yours-badge px-1.5 py-0.5 rounded text-[8px] font-sans uppercase font-black tracking-widest shrink-0 bg-neon-purple text-white border-0">
                               Yours
                             </span>
                           )}
@@ -650,16 +675,16 @@ export default function Booth() {
                         <button
                           onClick={() => handleUpvote(req.id)}
                           disabled={isUpvoted || req.status === 'played' || req.status === 'rejected'}
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-all ${
+                          className={`vote-btn-elem w-10 h-10 rounded-xl flex items-center justify-center border transition-all ${
                             isUpvoted
                               ? 'bg-neon-purple border-neon-purple text-white shadow-lg shadow-neon-purple/30'
                               : req.status === 'played'
-                              ? (isLightMode ? 'border-slate-200 text-slate-300 bg-slate-50 cursor-not-allowed' : 'border-white/5 text-white/10 cursor-not-allowed')
-                              : (isLightMode ? 'border-slate-200 bg-slate-50 text-slate-600 hover:text-neon-purple hover:border-purple-300 hover:bg-purple-50' : 'border-white/10 bg-white/5 text-white/60 hover:text-neon-purple hover:border-neon-purple/50 hover:bg-neon-purple/10')
+                              ? 'border-white/10 bg-slate-900/40 text-slate-500 cursor-not-allowed'
+                              : 'border-slate-700/80 bg-slate-900 text-slate-200 hover:text-neon-purple hover:border-neon-purple/50 hover:bg-neon-purple/20'
                           }`}
                           title="Upvote track proposal"
                         >
-                          <ThumbsUp className={`w-4 h-4 ${isUpvoted ? 'fill-current' : ''}`} />
+                          <ThumbsUp className={`w-4 h-4 ${isUpvoted ? 'fill-current text-white' : ''}`} />
                         </button>
                         <span className={`text-[10px] font-sans font-bold tracking-tight ${isLightMode ? 'text-slate-700' : 'text-white/80'}`}>
                           {req.votes} {req.votes === 1 ? 'vote' : 'votes'}
