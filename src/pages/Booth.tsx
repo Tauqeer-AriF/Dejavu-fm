@@ -602,7 +602,7 @@ export default function Booth() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, x: -50 }}
                       transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                      className={`relative border rounded-2xl p-4 flex items-center justify-between gap-4 transition-all duration-300 font-sans ${
+                      className={`booth-request-card relative border rounded-2xl p-4 flex items-center justify-between gap-4 transition-all duration-300 font-sans ${
                         req.status === 'on_deck'
                           ? (isLightMode ? 'bg-sky-50 border-sky-300 text-slate-900 shadow-sm' : 'bg-neon-blue/10 border-neon-blue shadow-[0_0_20px_rgba(0,243,255,0.1)]')
                           : req.status === 'approved'
@@ -610,8 +610,8 @@ export default function Booth() {
                           : req.status === 'played'
                           ? (isLightMode ? 'bg-slate-100/50 border-slate-200/80 opacity-60' : 'bg-white/[0.02] border-white/5 opacity-50')
                           : isMine
-                          ? (isLightMode ? 'bg-purple-50/50 border-purple-200 text-slate-900 shadow-sm' : 'bg-white/5 border-white/20')
-                          : (isLightMode ? 'bg-white border-slate-200/90 text-slate-900 shadow-sm' : 'bg-white/[0.03] border-white/5')
+                          ? (isLightMode ? 'bg-purple-50/60 border-purple-200 text-slate-900 shadow-sm' : 'bg-white/5 border-white/20')
+                          : (isLightMode ? 'bg-slate-50/90 border-slate-200/90 text-slate-900 shadow-sm' : 'bg-white/[0.03] border-white/5')
                       }`}
                     >
                       <div className="flex-1 min-w-0 pr-2">

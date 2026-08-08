@@ -1444,6 +1444,20 @@ html.light .booth-live-alert p,
 }
 
 /* Yours badge & Vote button - Immune to light mode overrides */
+:root.light .booth-request-card,
+html.light .booth-request-card,
+.light .booth-request-card,
+.admin-light-mode .booth-request-card {
+  color: #0f172a;
+}
+
+:root.light .booth-request-card [class*="text-slate-"],
+html.light .booth-request-card [class*="text-slate-"],
+.light .booth-request-card [class*="text-slate-"],
+.admin-light-mode .booth-request-card [class*="text-slate-"] {
+  color: inherit;
+}
+
 .yours-badge,
 :root.light .yours-badge,
 html.light .yours-badge,

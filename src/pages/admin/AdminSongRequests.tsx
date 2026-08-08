@@ -479,17 +479,19 @@ export function AdminSongRequests() {
                     transition={{ type: "spring", stiffness: 350, damping: 30 }}
                     className={`border rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all duration-300 font-sans ${
                       req.status === 'on_deck'
-                        ? 'bg-neon-blue/10 border-neon-blue shadow-[0_0_20px_rgba(0,243,255,0.08)]'
+                        ? (isLightMode ? 'bg-sky-50 border-sky-300 text-slate-900 shadow-sm' : 'bg-neon-blue/10 border-neon-blue shadow-[0_0_20px_rgba(0,243,255,0.08)]')
                         : req.status === 'approved'
-                        ? 'bg-neon-purple/10 border-neon-purple/40'
+                        ? (isLightMode ? 'bg-purple-50 border-purple-300 text-slate-900 shadow-sm' : 'bg-neon-purple/10 border-neon-purple/40')
                         : req.status === 'played'
                         ? isLightMode
                           ? 'bg-slate-50 border-slate-200 opacity-60'
                           : 'bg-white/[0.01] border-white/5 opacity-50'
                         : req.status === 'rejected'
-                        ? 'bg-red-500/5 border-red-500/20 opacity-65'
+                        ? isLightMode
+                          ? 'bg-red-50 border-red-200 text-slate-900 opacity-75'
+                          : 'bg-red-500/5 border-red-500/20 opacity-65'
                         : isLightMode
-                        ? 'bg-white border-slate-200 shadow-xs'
+                        ? 'bg-white border-slate-200 text-slate-900 shadow-xs'
                         : 'bg-white/[0.03] border-white/5'
                     }`}
                   >
@@ -504,14 +506,14 @@ export function AdminSongRequests() {
                         </span>
                         <span className={`px-2 py-0.5 rounded text-[8px] font-display font-black uppercase tracking-widest ${
                           req.status === 'on_deck'
-                            ? 'bg-neon-blue text-dark-bg'
+                            ? (isLightMode ? 'bg-sky-100 text-sky-800 border border-sky-300' : 'bg-neon-blue text-dark-bg')
                             : req.status === 'approved'
-                            ? 'bg-neon-purple text-white'
+                            ? (isLightMode ? 'bg-purple-100 text-purple-800 border border-purple-300' : 'bg-neon-purple text-white')
                             : req.status === 'played'
-                            ? isLightMode ? 'bg-slate-200 text-slate-600' : 'bg-white/10 text-white/40'
+                            ? (isLightMode ? 'bg-slate-200 text-slate-600' : 'bg-white/10 text-white/40')
                             : req.status === 'rejected'
-                            ? 'bg-red-500/20 text-red-500'
-                            : 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
+                            ? (isLightMode ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-red-500/20 text-red-500')
+                            : (isLightMode ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20')
                         }`}>
                           {req.status.replace('_', ' ')}
                         </span>
