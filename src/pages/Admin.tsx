@@ -32,6 +32,7 @@ const AdminStudio = React.lazy(() => import("./admin/AdminStudio").then(m => ({ 
 const AdminMetaIntegrations = React.lazy(() => import("./admin/AdminMetaIntegrations").then(m => ({ default: m.AdminMetaIntegrations })));
 const AdminSEO = lazy(() => import("./admin/AdminSEO").then(m => ({ default: m.AdminSEO })));
 const AdminFeatures = lazy(() => import("./admin/AdminFeatures").then(m => ({ default: m.AdminFeatures })));
+const AdminSongRequests = lazy(() => import("./admin/AdminSongRequests").then(m => ({ default: m.AdminSongRequests })));
 import { useLogo } from "../hooks/useLogo";
 import { PremiumRingLoader } from "../components/PremiumRingLoader";
 import { AppLoader } from "../components/AppLoader";
@@ -593,8 +594,13 @@ export default function Admin() {
 
   useEffect(() => {
     const verifySession = async () => {
+      const sessionPromise = fetchAdmin("/api/admin/check");
+      const timeoutPromise = new Promise<Response>((_, reject) => 
+        setTimeout(() => reject(new Error("Session check timed out")), 3500)
+      );
+
       try {
-        const res = await fetchAdmin("/api/admin/check");
+        const res = await Promise.race([sessionPromise, timeoutPromise]);
         if (res.ok) {
           const data = await res.json();
           setIsLogged(true);
@@ -602,7 +608,7 @@ export default function Admin() {
           setAdminUsername(data.user?.username || data.username || null);
         }
       } catch (err) {
-        console.warn("[Admin Auth] Session check failed (likely network error or unauthenticated).");
+        console.warn("[Admin Auth] Session check failed or timed out:", err);
       } finally {
         setSessionChecking(false);
       }
@@ -809,6 +815,7 @@ export default function Admin() {
                       <Route path="/bookings" element={userRole === 'admin' ? <AdminBookings /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
                       <Route path="/schedule" element={userRole === 'admin' ? <AdminSchedule /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
                       <Route path="/profile" element={<AdminProfile />} />
+                      <Route path="/song-requests" element={<AdminSongRequests />} />
 
                       <Route path="/settings" element={userRole === 'admin' ? <AdminSettings /> : <Navigate to={adminBasePath} replace />} />
                       <Route path="/advanced" element={userRole === 'admin' ? <AdminAdvanced /> : <Navigate to={adminBasePath} replace />} />

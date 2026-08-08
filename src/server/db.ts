@@ -210,6 +210,16 @@ export function reopenDatabaseConnection() {
 export function initDb() {
   console.log(`[DB] Initializing database at ${dbPath}...`);
   try {
+    try {
+      const hasListenerName = db.pragma("table_info(song_requests)").some((col: any) => col.name === 'listener_name');
+      if (hasListenerName) {
+        console.log("[DB] Outdated song_requests table found with 'listener_name' column. Dropping for a clean recreation...");
+        db.exec("DROP TABLE IF EXISTS song_requests;");
+      }
+    } catch (e) {
+      console.warn("[DB] Note: checked song_requests schema, no drop needed or table does not exist yet.");
+    }
+
     db.exec(`
       CREATE TABLE IF NOT EXISTS migrations (
         id TEXT PRIMARY KEY,
@@ -418,7 +428,29 @@ export function initDb() {
     );
     CREATE INDEX IF NOT EXISTS idx_feature_comments_feature ON feature_comments(feature_id);
     CREATE INDEX IF NOT EXISTS idx_feature_comments_status ON feature_comments(status);
+
+    CREATE TABLE IF NOT EXISTS song_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      track_title TEXT NOT NULL,
+      artist TEXT NOT NULL,
+      requester_name TEXT NOT NULL,
+      votes INTEGER DEFAULT 1,
+      status TEXT DEFAULT 'pending',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      played_at DATETIME
+    );
   `);
+
+  try { db.exec(`ALTER TABLE song_requests ADD COLUMN track_title TEXT NOT NULL DEFAULT '';`); } catch (e) {}
+  try { db.exec(`ALTER TABLE song_requests ADD COLUMN artist TEXT NOT NULL DEFAULT '';`); } catch (e) {}
+  try { db.exec(`ALTER TABLE song_requests ADD COLUMN requester_name TEXT NOT NULL DEFAULT '';`); } catch (e) {}
+  try { db.exec(`ALTER TABLE song_requests ADD COLUMN votes INTEGER DEFAULT 1;`); } catch (e) {}
+  try { db.exec(`ALTER TABLE song_requests ADD COLUMN status TEXT DEFAULT 'pending';`); } catch (e) {}
+  try { db.exec(`ALTER TABLE song_requests ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;`); } catch (e) {}
+  try { db.exec(`ALTER TABLE song_requests ADD COLUMN played_at DATETIME;`); } catch (e) {}
+
+  try { db.exec(`CREATE INDEX IF NOT EXISTS idx_song_requests_status ON song_requests(status);`); } catch (e) {}
+  try { db.exec(`CREATE INDEX IF NOT EXISTS idx_song_requests_votes ON song_requests(votes);`); } catch (e) {}
 
   try { db.exec(`ALTER TABLE feature_comments ADD COLUMN parent_id INTEGER DEFAULT NULL;`); } catch (e) {}
   try { db.exec(`CREATE INDEX IF NOT EXISTS idx_feature_comments_parent ON feature_comments(parent_id);`); } catch (e) {}
@@ -584,6 +616,62 @@ export function initDb() {
     CREATE INDEX IF NOT EXISTS idx_feature_comments_feature ON feature_comments(feature_id);
     CREATE INDEX IF NOT EXISTS idx_feature_comments_status ON feature_comments(status);
   `);
+  runMigration('song_requests_v1', `
+    CREATE TABLE IF NOT EXISTS song_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      track_title TEXT NOT NULL,
+      artist TEXT NOT NULL,
+      requester_name TEXT NOT NULL,
+      votes INTEGER DEFAULT 1,
+      status TEXT DEFAULT 'pending',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      played_at DATETIME
+    );
+    CREATE INDEX IF NOT EXISTS idx_song_requests_status ON song_requests(status);
+    CREATE INDEX IF NOT EXISTS idx_song_requests_votes ON song_requests(votes);
+  `);
+  runMigration('curated_tracks_v1', `
+    CREATE TABLE IF NOT EXISTS curated_tracks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      artist TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+  try {
+    const count = db.prepare("SELECT COUNT(*) as count FROM curated_tracks").get() as { count: number };
+    if (count.count === 0) {
+      console.log("[DB] Pre-seeding curated_tracks with initial collection...");
+      const stmt = db.prepare("INSERT INTO curated_tracks (title, artist) VALUES (?, ?)");
+      const initialTracks = [
+        { title: "Has It Come to This?", artist: "The Streets" },
+        { title: "Sincere", artist: "MJ Cole" },
+        { title: "Bound 4 Da Reload", artist: "Oxide & Neutrino" },
+        { title: "Battle", artist: "Wookie" },
+        { title: "Sweet Like Chocolate", artist: "Shanks & Bigfoot" },
+        { title: "Re-Rewind", artist: "Artful Dodger ft. Craig David" },
+        { title: "Flowers", artist: "Sweet Female Attitude" },
+        { title: "Body Groove", artist: "Architechs" },
+        { title: "Oi!", artist: "More Fire Crew" },
+        { title: "I'll Bring You Flowers", artist: "Tinie Tempah" },
+        { title: "Crazy Love", artist: "MJ Cole" },
+        { title: "21 Seconds", artist: "So Solid Crew" },
+        { title: "Do You Mind", artist: "Kyla" },
+        { title: "Wot U Call It?", artist: "Wiley" },
+        { title: "Original Nuttah", artist: "UK Apachi & Shy FX" },
+        { title: "Incredible", artist: "M-Beat ft. General Levy" },
+        { title: "Talkin the Hardest", artist: "Giggs" },
+        { title: "P's and Q's", artist: "Kano" },
+        { title: "Pow! (Forward)", artist: "Lethal Bizzle" },
+        { title: "That's Not Me", artist: "Skepta ft. Jme" }
+      ];
+      for (const track of initialTracks) {
+        stmt.run(track.title, track.artist);
+      }
+    }
+  } catch (e) {
+    console.error("[DB] Failed to preseed curated_tracks:", e);
+  }
   try {
     db.prepare(`
       UPDATE admins 
@@ -657,6 +745,7 @@ export function initDb() {
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_live_tools', '1');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_stream_quality', '1');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_auto_fullscreen', '0');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_booth', '1');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('advanced_features_enabled', '1');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('backup_frequency_hours', '24');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('backup_enabled', '1');

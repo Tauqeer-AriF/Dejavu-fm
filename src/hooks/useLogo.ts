@@ -129,6 +129,7 @@ export function useLogo() {
       if (settings.font_sans) {
         const sansFallback = ', ui-sans-serif, system-ui, sans-serif';
         document.documentElement.style.setProperty('--font-sans', `"${settings.font_sans}"${sansFallback}`);
+        document.documentElement.style.setProperty('--font-mono', `"${settings.font_sans}"${sansFallback}`);
       }
       if (settings.font_display) {
         let displayFallback = ', sans-serif';

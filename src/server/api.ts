@@ -155,12 +155,15 @@ const ACTUAL_SECRET = JWT_SECRET || "dev_only_secret_123456789";
 // Check Auth Middleware
 function authMiddleware(req: any, res: any, next: any) {
   const authHeader = req.headers.authorization;
-  let token = req.cookies.admin_token || (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null);
-  
-  // Senior Dev: If no admin_token, try the public user_token which might contain admin/dj role
-  if (!token) {
-    token = req.cookies.user_token;
+  let bearerToken: string | null = null;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const raw = authHeader.substring(7).trim();
+    if (raw && raw !== 'null' && raw !== 'undefined') {
+      bearerToken = raw;
+    }
   }
+
+  const token = req.cookies?.admin_token || bearerToken || req.cookies?.user_token;
   
   if (!token) return res.status(401).json({ error: "Unauthorized" });
 
@@ -2839,7 +2842,7 @@ apiRouter.put("/admin/settings", authorizeRole(['admin', 'dj']), (req, res) => {
     "rss_feed_url", "studio_video_url", "app_name", "logo_url", "app_tagline", 
     "app_title", "seo_title", "seo_description", "seo_image", "font_sans", "font_display", "is_on_air", "primary_color", 
     "secondary_color", "feat_chat", "feat_shoutouts", "feat_cinematic", 
-    "feat_pwa", "feat_bookings", "feat_live_tools", "feat_stream_quality", "feat_auto_fullscreen",
+    "feat_pwa", "feat_bookings", "feat_live_tools", "feat_stream_quality", "feat_auto_fullscreen", "feat_booth",
     "logo_dark", "logo_light", "logo_shape", "favicon", "backup_retention_days",
     "backup_frequency_hours", "backup_enabled", "popup_delay", "studio_name", "studio_image",
     "social_instagram", "social_twitter", "social_facebook", "social_youtube", "social_soundcloud", "social_mixcloud", "social_tiktok",
@@ -4610,6 +4613,224 @@ apiRouter.put("/admin/form-submissions/:id/status", authMiddleware, authorizeRol
 apiRouter.delete("/admin/form-submissions/:id", authMiddleware, authorizeRole('admin'), (req: any, res: any) => {
   try {
     db.prepare("DELETE FROM custom_form_submissions WHERE id = ?").run(req.params.id);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// Song Requests & Upvote Queue API
+// ==========================================
+
+// Public: Get all song requests (prioritized by live status, then votes, then date)
+apiRouter.get("/song-requests", (req, res) => {
+  try {
+    const requests = db.prepare(`
+      SELECT * FROM song_requests 
+      ORDER BY 
+        CASE status 
+          WHEN 'on_deck' THEN 1
+          WHEN 'approved' THEN 2
+          WHEN 'pending' THEN 3
+          WHEN 'played' THEN 4
+          ELSE 5 
+        END ASC,
+        votes DESC, 
+        created_at DESC
+    `).all();
+    res.json(requests);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Public: Submit a new song request
+apiRouter.post("/song-requests", (req, res) => {
+  try {
+    const { track_title, artist, requester_name } = req.body;
+    if (!track_title || !artist) {
+      return res.status(400).json({ error: "Track title and artist are required" });
+    }
+
+    const name = requester_name?.trim() || "Anonymous Listener";
+    const info = db.prepare(`
+      INSERT INTO song_requests (track_title, artist, requester_name, votes, status, created_at)
+      VALUES (?, ?, ?, 1, 'pending', datetime('now'))
+    `).run(track_title.trim(), artist.trim(), name);
+
+    const newRequest = {
+      id: info.lastInsertRowid,
+      track_title: track_title.trim(),
+      artist: artist.trim(),
+      requester_name: name,
+      votes: 1,
+      status: 'pending',
+      created_at: new Date().toISOString()
+    };
+
+    // Broadcast live event via socket.io
+    const io = req.app.get('io');
+    if (io) {
+      io.emit("songRequestAdded", newRequest);
+    }
+
+    res.status(201).json(newRequest);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Public: Upvote a song request
+apiRouter.post("/song-requests/:id/upvote", (req, res) => {
+  try {
+    const { id } = req.params;
+    db.prepare("UPDATE song_requests SET votes = votes + 1 WHERE id = ?").run(id);
+    
+    const updated = db.prepare("SELECT * FROM song_requests WHERE id = ?").get(id);
+    if (!updated) {
+      return res.status(404).json({ error: "Song request not found" });
+    }
+
+    // Broadcast live update via socket.io
+    const io = req.app.get('io');
+    if (io) {
+      io.emit("songRequestUpdated", updated);
+    }
+
+    res.json(updated);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Staff (Admin/DJ): Update request status ('pending', 'approved', 'on_deck', 'played', 'rejected')
+apiRouter.put("/admin/song-requests/:id/status", authMiddleware, authorizeRole(['admin', 'dj']), (req: any, res: any) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const allowedStatuses = ['pending', 'approved', 'on_deck', 'played', 'rejected'];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ error: "Invalid status" });
+    }
+
+    db.prepare(`
+      UPDATE song_requests 
+      SET status = ?, played_at = CASE WHEN ? = 'played' THEN datetime('now') ELSE NULL END
+      WHERE id = ?
+    `).run(status, status, id);
+
+    const updated = db.prepare("SELECT * FROM song_requests WHERE id = ?").get(id);
+    if (!updated) {
+      return res.status(404).json({ error: "Song request not found" });
+    }
+
+    // Broadcast live update to trigger client-side notifications
+    const io = req.app.get('io');
+    if (io) {
+      io.emit("songRequestStatusUpdated", { id: parseInt(id, 10), status, request: updated });
+    }
+
+    logAction(req, 'UPDATE', 'song_request_status', id, { status });
+    res.json(updated);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Staff (Admin/DJ): Delete a song request
+apiRouter.delete("/admin/song-requests/:id", authMiddleware, authorizeRole(['admin', 'dj']), (req: any, res: any) => {
+  try {
+    const { id } = req.params;
+    db.prepare("DELETE FROM song_requests WHERE id = ?").run(id);
+
+    // Broadcast live delete to all sockets
+    const io = req.app.get('io');
+    if (io) {
+      io.emit("songRequestDeleted", { id: parseInt(id, 10) });
+    }
+
+    logAction(req, 'DELETE', 'song_request', id);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Staff (Admin/DJ): Clear request queue completely
+apiRouter.delete("/admin/song-requests", authMiddleware, authorizeRole(['admin', 'dj']), (req: any, res: any) => {
+  try {
+    db.prepare("DELETE FROM song_requests").run();
+
+    // Broadcast live clear to all sockets
+    const io = req.app.get('io');
+    if (io) {
+      io.emit("songRequestsCleared");
+    }
+
+    logAction(req, 'DELETE_ALL', 'song_requests');
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// Curated Suggested Tracks CRUD API
+// ==========================================
+
+// Public: Get all curated tracks
+apiRouter.get("/curated-tracks", (req, res) => {
+  try {
+    const tracks = db.prepare("SELECT * FROM curated_tracks ORDER BY title ASC").all();
+    res.json(tracks);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Staff: Add a new track to curated track list
+apiRouter.post("/admin/curated-tracks", authMiddleware, authorizeRole(['admin', 'dj']), (req: any, res: any) => {
+  try {
+    const { title, artist } = req.body;
+    if (!title || !artist) {
+      return res.status(400).json({ error: "Title and artist are required" });
+    }
+    const info = db.prepare("INSERT INTO curated_tracks (title, artist) VALUES (?, ?)").run(title.trim(), artist.trim());
+    const newTrack = { id: info.lastInsertRowid, title: title.trim(), artist: artist.trim() };
+    logAction(req, 'CREATE', 'curated_track', String(info.lastInsertRowid), newTrack);
+    res.status(201).json(newTrack);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Staff: Update an existing curated track
+apiRouter.put("/admin/curated-tracks/:id", authMiddleware, authorizeRole(['admin', 'dj']), (req: any, res: any) => {
+  try {
+    const { id } = req.params;
+    const { title, artist } = req.body;
+    if (!title || !artist) {
+      return res.status(400).json({ error: "Title and artist are required" });
+    }
+    db.prepare("UPDATE curated_tracks SET title = ?, artist = ? WHERE id = ?").run(title.trim(), artist.trim(), id);
+    const updated = db.prepare("SELECT * FROM curated_tracks WHERE id = ?").get(id);
+    if (!updated) {
+      return res.status(404).json({ error: "Curated track not found" });
+    }
+    logAction(req, 'UPDATE', 'curated_track', id, updated);
+    res.json(updated);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Staff: Delete a curated track
+apiRouter.delete("/admin/curated-tracks/:id", authMiddleware, authorizeRole(['admin', 'dj']), (req: any, res: any) => {
+  try {
+    const { id } = req.params;
+    db.prepare("DELETE FROM curated_tracks WHERE id = ?").run(id);
+    logAction(req, 'DELETE', 'curated_track', id);
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

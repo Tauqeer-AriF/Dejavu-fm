@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
-import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles, Database, Video, Key, Facebook, Layers, Mic } from "lucide-react";
+import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles, Database, Video, Key, Facebook, Layers, Mic, Music } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { useModal } from "../../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
@@ -41,6 +41,7 @@ export function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; 
     { name: "Advanced", path: `${adminBasePath}/advanced`, icon: Ghost },
     { name: "Media", path: `${adminBasePath}/media`, icon: Video },
     { name: "My Profile", path: `${adminBasePath}/profile`, icon: User },
+    { name: "Song Requests", path: `${adminBasePath}/song-requests`, icon: Music },
     { name: "Interactions", path: `${adminBasePath}/shoutouts`, icon: MessageSquare },
     { name: "Agency", path: `${adminBasePath}/bookings`, icon: Calendar },
     { name: "Branding", path: `${adminBasePath}/branding`, icon: HomeIcon },
@@ -57,11 +58,12 @@ export function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; 
   ];
 
   if (!isAdminUser) {
-    // DJs/non-admins only see Live Tools, Interactions, and My Profile
+    // DJs/non-admins only see Live Tools, Interactions, My Profile, and Song Requests
     navs = navs.filter(n =>
       n.name === "Live Tools" ||
       n.name === "Interactions" ||
-      n.name === "My Profile"
+      n.name === "My Profile" ||
+      n.name === "Song Requests"
     );
 
     // Apply dynamic feature flags

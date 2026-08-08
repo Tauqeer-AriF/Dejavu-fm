@@ -28,6 +28,7 @@ export function AdminAdvanced() {
     feat_live_tools: true,
     feat_stream_quality: true,
     feat_auto_fullscreen: true,
+    feat_booth: true,
   });
   const { showAlert } = useModal();
 
@@ -42,6 +43,7 @@ export function AdminAdvanced() {
         feat_live_tools: serverSettings.feat_live_tools !== '0',
         feat_stream_quality: serverSettings.feat_stream_quality !== '0',
         feat_auto_fullscreen: serverSettings.feat_auto_fullscreen !== '0',
+        feat_booth: serverSettings.feat_booth !== '0',
       });
     }
   }, [serverSettings]);
@@ -79,6 +81,7 @@ export function AdminAdvanced() {
     { id: 'feat_pwa', title: 'PWA Install Prompt', description: 'Prompt users to install the web app to their home screen.' },
     { id: 'feat_bookings', title: 'DJ Bookings (Agency)', description: 'Enable the DJ inquiry and booking system.' },
     { id: 'feat_live_tools', title: 'Live Tools / Studio Cam', description: 'Enable the studio camera watch live tools.' },
+    { id: 'feat_booth', title: 'Virtual DJ Booth', description: 'Enable or disable the whole DJ Booth feature, request queue, and navigation link.' },
     { id: 'feat_stream_quality', title: 'Stream Quality Toggle', description: 'Show or hide the stream quality selector in the playbar.' },
   ];
 
@@ -196,6 +199,7 @@ export function AdminBranding() {
     if (fontSans) {
       const sansFallback = ', ui-sans-serif, system-ui, sans-serif';
       document.documentElement.style.setProperty('--font-sans', `"${fontSans}"${sansFallback}`);
+      document.documentElement.style.setProperty('--font-mono', `"${fontSans}"${sansFallback}`);
     }
   }, [fontSans]);
 

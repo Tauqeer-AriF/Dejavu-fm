@@ -263,7 +263,16 @@ export default function DJs() {
                   window.scrollTo({ top: 300, behavior: 'smooth' });
                 }}
                 disabled={currentPage === 1}
-                className="w-12 h-12 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/20 hover:bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition-all disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:border-white/5"
+                aria-label="Previous Page"
+                className={`dj-pagination-btn w-12 h-12 rounded-2xl flex items-center justify-center transition-all border ${
+                  currentPage === 1
+                    ? isLightMode
+                      ? 'border-slate-200 bg-slate-100/70 text-slate-300 cursor-not-allowed'
+                      : 'border-white/5 bg-white/5 text-white/20 cursor-not-allowed'
+                    : isLightMode
+                    ? 'border-slate-300 bg-white hover:bg-slate-100 text-slate-800 shadow-xs hover:border-slate-400'
+                    : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10 text-white/60 hover:text-white'
+                }`}
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
@@ -279,10 +288,12 @@ export default function DJs() {
                         setCurrentPage(pageNum);
                         window.scrollTo({ top: 300, behavior: 'smooth' });
                       }}
-                      className={`w-12 h-12 rounded-2xl text-xs font-black transition-all flex items-center justify-center ${
+                      className={`dj-pagination-btn w-12 h-12 rounded-2xl text-xs font-black transition-all flex items-center justify-center border ${
                         isActive
-                          ? "bg-neon-purple text-white border border-neon-purple/30 glow-box shadow-lg shadow-neon-purple/10"
-                          : "bg-white/[0.02] text-white/40 border border-white/5 hover:bg-white/5 hover:text-white"
+                          ? "active-page-btn bg-neon-purple text-white border-neon-purple/40 glow-box shadow-lg shadow-neon-purple/20"
+                          : isLightMode
+                          ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-100 hover:text-slate-950 hover:border-slate-300 shadow-xs"
+                          : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white hover:border-white/20"
                       }`}
                     >
                       {pageNum}
@@ -297,7 +308,16 @@ export default function DJs() {
                   window.scrollTo({ top: 300, behavior: 'smooth' });
                 }}
                 disabled={currentPage === totalPages}
-                className="w-12 h-12 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/20 hover:bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition-all disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:border-white/5"
+                aria-label="Next Page"
+                className={`dj-pagination-btn w-12 h-12 rounded-2xl flex items-center justify-center transition-all border ${
+                  currentPage === totalPages
+                    ? isLightMode
+                      ? 'border-slate-200 bg-slate-100/70 text-slate-300 cursor-not-allowed'
+                      : 'border-white/5 bg-white/5 text-white/20 cursor-not-allowed'
+                    : isLightMode
+                    ? 'border-slate-300 bg-white hover:bg-slate-100 text-slate-800 shadow-xs hover:border-slate-400'
+                    : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10 text-white/60 hover:text-white'
+                }`}
               >
                 <ChevronRight className="w-5 h-5" />
               </button>

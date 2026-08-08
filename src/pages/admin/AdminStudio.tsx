@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
-import { LogOut, Send, Paperclip, X, Maximize, Mic, MessageSquare, Search, ArrowLeft, Image as ImageIcon, Music, Video, Volume2, VolumeX, Ban, Trash2, Eraser, ShieldAlert, MailX, PlusCircle, Square, Pin, CheckSquare, MailOpen, Mail, Trash, Eye, EyeOff, Settings, Link2, Globe, RefreshCw, Download, Phone, Facebook, Instagram, Twitch, Activity, CheckCircle, AlertTriangle, Camera, Check, Sun, Moon, Megaphone, Share2, Radio, Clock, Timer, Inbox, MoreVertical, Menu } from "lucide-react";
+import { LogOut, Send, Paperclip, X, Maximize, Mic, MessageSquare, Search, ArrowLeft, Image as ImageIcon, Music, Video, Volume2, VolumeX, Ban, Trash2, Eraser, ShieldAlert, MailX, PlusCircle, Square, Pin, CheckSquare, MailOpen, Mail, Trash, Eye, EyeOff, Settings, Link2, Globe, RefreshCw, Download, Phone, Facebook, Instagram, Twitch, Activity, CheckCircle, AlertTriangle, Camera, Check, Sun, Moon, Megaphone, Share2, Radio, Clock, Timer, Inbox, MoreVertical, Menu, Type } from "lucide-react";
 import { toast } from "sonner";
 import { fetchAdmin } from "./adminApi";
 import { useModal } from "../../context/ModalContext";
@@ -409,6 +409,23 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     }
   });
   const isStudioLight = studioTheme === 'light';
+
+  const applyFontToDocument = (sans: string, display: string) => {
+    const sansFallback = ', ui-sans-serif, system-ui, sans-serif';
+    document.documentElement.style.setProperty('--font-sans', `"${sans}"${sansFallback}`);
+    document.documentElement.style.setProperty('--font-mono', `"${sans}"${sansFallback}`);
+
+    let displayFallback = ', sans-serif';
+    if (display === 'Playfair Display') displayFallback = ', serif';
+    if (display === 'JetBrains Mono') displayFallback = ', monospace';
+    document.documentElement.style.setProperty('--font-display', `"${display}"${displayFallback}`);
+  };
+
+  useEffect(() => {
+    if (settings) {
+      applyFontToDocument(settings.font_sans || 'Inter', settings.font_display || 'Outfit');
+    }
+  }, [settings]);
 
   useEffect(() => {
     document.documentElement.classList.remove('light'); // Crucial: prevent dark-text contamination from frontend light theme

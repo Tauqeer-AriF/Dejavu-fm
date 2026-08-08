@@ -47,10 +47,17 @@ export function AdminShoutouts({ isAdminUser }: { isAdminUser?: boolean }) {
   }, [scheduleData]);
 
   const load = () => {
-    fetchAdmin("/api/admin/shoutouts").then(r => r.json()).then(data => {
-      setShoutouts(Array.isArray(data) ? data : []);
-      setLoading(false);
-    });
+    fetchAdmin("/api/admin/shoutouts")
+      .then(r => r.json())
+      .then(data => {
+        setShoutouts(Array.isArray(data) ? data : []);
+      })
+      .catch(err => {
+        console.error("Failed to load shoutouts:", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   };
 
   useEffect(() => {

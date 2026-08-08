@@ -23,3 +23,7 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 );
+
+if (typeof window !== 'undefined' && (window as any).dismissSplash) {
+  (window as any).dismissSplash();
+}

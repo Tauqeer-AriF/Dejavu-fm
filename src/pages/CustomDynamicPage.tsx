@@ -204,7 +204,10 @@ export function CustomDynamicPage() {
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    if (!slug) return;
+    if (!slug) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     setNotFound(false);

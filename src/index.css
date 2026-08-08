@@ -14,6 +14,7 @@
   /* Fallbacks - will be overridden by App.tsx */
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Outfit", sans-serif;
+  --font-mono: var(--font-sans);
 }
 
 .light-mode-modal-panel {
@@ -302,7 +303,7 @@ h1, h2, h3, h4, h5, h6, .font-display {
 }
 
 .font-mono, code, pre {
-  font-family: var(--font-mono), monospace !important;
+  font-family: var(--font-mono), var(--font-sans), monospace;
 }
 
 .app-shimmer-overlay {
@@ -455,15 +456,31 @@ button:not(.absolute)::after {
   color: var(--color-neon-blue, var(--color-neon-purple, #00d2ff)) !important;
 }
 
-/* Feature pagination light mode overrides */
-.feature-pagination-btn {
+/* Feature, DJ, Podcast, and Booth pagination light mode overrides */
+.feature-pagination-btn,
+.booth-pagination-btn,
+.dj-pagination-btn,
+.podcast-pagination-btn,
+.app-pagination-btn {
   position: relative;
   overflow: hidden;
 }
 
 :root.light .feature-pagination-btn:not(.active-page-btn):not(:disabled),
 .light .feature-pagination-btn:not(.active-page-btn):not(:disabled),
-.admin-light-mode .feature-pagination-btn:not(.active-page-btn):not(:disabled) {
+.admin-light-mode .feature-pagination-btn:not(.active-page-btn):not(:disabled),
+:root.light .booth-pagination-btn:not(.active-page-btn):not(:disabled),
+.light .booth-pagination-btn:not(.active-page-btn):not(:disabled),
+.admin-light-mode .booth-pagination-btn:not(.active-page-btn):not(:disabled),
+:root.light .dj-pagination-btn:not(.active-page-btn):not(:disabled),
+.light .dj-pagination-btn:not(.active-page-btn):not(:disabled),
+.admin-light-mode .dj-pagination-btn:not(.active-page-btn):not(:disabled),
+:root.light .podcast-pagination-btn:not(.active-page-btn):not(:disabled),
+.light .podcast-pagination-btn:not(.active-page-btn):not(:disabled),
+.admin-light-mode .podcast-pagination-btn:not(.active-page-btn):not(:disabled),
+:root.light .app-pagination-btn:not(.active-page-btn):not(:disabled),
+.light .app-pagination-btn:not(.active-page-btn):not(:disabled),
+.admin-light-mode .app-pagination-btn:not(.active-page-btn):not(:disabled) {
   background-color: #ffffff !important;
   border-color: #cbd5e1 !important;
   color: #1e293b !important;
@@ -472,7 +489,19 @@ button:not(.absolute)::after {
 
 :root.light .feature-pagination-btn:not(.active-page-btn):not(:disabled):hover,
 .light .feature-pagination-btn:not(.active-page-btn):not(:disabled):hover,
-.admin-light-mode .feature-pagination-btn:not(.active-page-btn):not(:disabled):hover {
+.admin-light-mode .feature-pagination-btn:not(.active-page-btn):not(:disabled):hover,
+:root.light .booth-pagination-btn:not(.active-page-btn):not(:disabled):hover,
+.light .booth-pagination-btn:not(.active-page-btn):not(:disabled):hover,
+.admin-light-mode .booth-pagination-btn:not(.active-page-btn):not(:disabled):hover,
+:root.light .dj-pagination-btn:not(.active-page-btn):not(:disabled):hover,
+.light .dj-pagination-btn:not(.active-page-btn):not(:disabled):hover,
+.admin-light-mode .dj-pagination-btn:not(.active-page-btn):not(:disabled):hover,
+:root.light .podcast-pagination-btn:not(.active-page-btn):not(:disabled):hover,
+.light .podcast-pagination-btn:not(.active-page-btn):not(:disabled):hover,
+.admin-light-mode .podcast-pagination-btn:not(.active-page-btn):not(:disabled):hover,
+:root.light .app-pagination-btn:not(.active-page-btn):not(:disabled):hover,
+.light .app-pagination-btn:not(.active-page-btn):not(:disabled):hover,
+.admin-light-mode .app-pagination-btn:not(.active-page-btn):not(:disabled):hover {
   background-color: #f1f5f9 !important;
   border-color: #94a3b8 !important;
   color: #0f172a !important;
@@ -480,8 +509,20 @@ button:not(.absolute)::after {
 
 :root.light .feature-pagination-btn:disabled,
 .light .feature-pagination-btn:disabled,
-.admin-light-mode .feature-pagination-btn:disabled {
-  background-color: #f1f5f9 !important;
+.admin-light-mode .feature-pagination-btn:disabled,
+:root.light .booth-pagination-btn:disabled,
+.light .booth-pagination-btn:disabled,
+.admin-light-mode .booth-pagination-btn:disabled,
+:root.light .dj-pagination-btn:disabled,
+.light .dj-pagination-btn:disabled,
+.admin-light-mode .dj-pagination-btn:disabled,
+:root.light .podcast-pagination-btn:disabled,
+.light .podcast-pagination-btn:disabled,
+.admin-light-mode .podcast-pagination-btn:disabled,
+:root.light .app-pagination-btn:disabled,
+.light .app-pagination-btn:disabled,
+.admin-light-mode .app-pagination-btn:disabled {
+  background-color: #f8fafc !important;
   border-color: #e2e8f0 !important;
   color: #94a3b8 !important;
   opacity: 0.6 !important;
@@ -490,7 +531,19 @@ button:not(.absolute)::after {
 
 :root.light .feature-pagination-btn.active-page-btn,
 .light .feature-pagination-btn.active-page-btn,
-.admin-light-mode .feature-pagination-btn.active-page-btn {
+.admin-light-mode .feature-pagination-btn.active-page-btn,
+:root.light .booth-pagination-btn.active-page-btn,
+.light .booth-pagination-btn.active-page-btn,
+.admin-light-mode .booth-pagination-btn.active-page-btn,
+:root.light .dj-pagination-btn.active-page-btn,
+.light .dj-pagination-btn.active-page-btn,
+.admin-light-mode .dj-pagination-btn.active-page-btn,
+:root.light .podcast-pagination-btn.active-page-btn,
+.light .podcast-pagination-btn.active-page-btn,
+.admin-light-mode .podcast-pagination-btn.active-page-btn,
+:root.light .app-pagination-btn.active-page-btn,
+.light .app-pagination-btn.active-page-btn,
+.admin-light-mode .app-pagination-btn.active-page-btn {
   background-color: var(--color-neon-purple, #9333ea) !important;
   border-color: var(--color-neon-purple, #9333ea) !important;
   color: #ffffff !important;
@@ -1254,26 +1307,57 @@ button:not(.absolute) {
 }
 
 /* 5. Dyslexic-Friendly Font Override */
-:root:not(.in-admin-view).accessibility-dyslexic body *:not(.admin-page-wrapper *):not(.admin-dashboard-container *) {
+:root.accessibility-dyslexic,
+:root.accessibility-dyslexic body *,
+:root.accessibility-dyslexic .admin-page-wrapper,
+:root.accessibility-dyslexic .admin-page-wrapper *,
+:root.accessibility-dyslexic .admin-dashboard-container,
+:root.accessibility-dyslexic .admin-dashboard-container * {
   font-family: 'OpenDyslexic', 'Lexend', 'Comic Neue', 'Comic Sans MS', 'Comic Sans', sans-serif !important;
-  font-style: normal !important;
-  letter-spacing: 0.06em !important;
-  word-spacing: 0.12em !important;
-  line-height: 1.65 !important;
+  letter-spacing: 0.04em !important;
+  word-spacing: 0.08em !important;
 }
 
-/* Strict Isolation Protection for Admin Dashboard & Studio Inbox */
+/* Strict Isolation & Dynamic Font Protection for Admin Dashboard & Studio Inbox */
 .admin-page-wrapper,
 .admin-dashboard-container,
 .in-admin-view {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif !important;
   font-size: 16px !important;
 }
 
 .admin-page-wrapper *,
 .admin-dashboard-container * {
-  font-family: inherit;
   letter-spacing: normal;
   word-spacing: normal;
+}
+
+/* Form elements inheritance for admin/studio view */
+.admin-page-wrapper input,
+.admin-page-wrapper button,
+.admin-page-wrapper select,
+.admin-page-wrapper textarea,
+.admin-dashboard-container input,
+.admin-dashboard-container button,
+.admin-dashboard-container select,
+.admin-dashboard-container textarea {
+  font-family: inherit;
+}
+
+/* Explicit font utility class overrides inside admin/studio view */
+.admin-page-wrapper .font-sans,
+.admin-dashboard-container .font-sans {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif !important;
+}
+
+.admin-page-wrapper .font-display,
+.admin-dashboard-container .font-display {
+  font-family: var(--font-display), "Outfit", sans-serif !important;
+}
+
+.admin-page-wrapper .font-mono,
+.admin-dashboard-container .font-mono {
+  font-family: var(--font-mono), monospace !important;
 }
 
 @keyframes shine {

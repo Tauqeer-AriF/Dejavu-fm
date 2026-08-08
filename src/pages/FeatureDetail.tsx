@@ -103,7 +103,10 @@ export default function FeatureDetail() {
   const [replyErrorMessage, setReplyErrorMessage] = React.useState("");
 
   const fetchComments = async () => {
-    if (!slug) return;
+    if (!slug) {
+      setCommentsLoading(false);
+      return;
+    }
     try {
       const res = await fetch(`/api/public/features/${slug}/comments`);
       if (res.ok) {

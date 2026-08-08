@@ -48,8 +48,13 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
   }, []);
 
   const fetchStats = async (selectedRange: string) => {
+    const statsPromise = fetchAdmin(`/api/admin/analytics?range=${selectedRange}`);
+    const timeoutPromise = new Promise<Response>((_, reject) => 
+      setTimeout(() => reject(new Error("Analytics fetch timed out")), 3500)
+    );
+
     try {
-      const res = await fetchAdmin(`/api/admin/analytics?range=${selectedRange}`);
+      const res = await Promise.race([statsPromise, timeoutPromise]);
       if (res.ok) {
         const data = await res.json();
         setStats(data);
@@ -59,8 +64,8 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
         setError(errData.error || "Failed to fetch analytics data");
       }
     } catch (err) {
-      console.warn("Failed to fetch analytics (likely network error or blocked by ad-blocker).");
-      setError("Network error: Could not reach the server");
+      console.warn("Failed to fetch analytics (likely network error, timeout, or blocked by ad-blocker).");
+      setError("Network or server timeout: Could not reach the server. Please try again.");
     } finally {
       setLoading(false);
     }

@@ -266,19 +266,43 @@ export default function PodcastsPage() {
           {totalPages > 1 && (
             <div className="flex justify-center items-center mt-12 space-x-4">
               <button 
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                onClick={() => {
+                  setCurrentPage(prev => Math.max(prev - 1, 1));
+                  window.scrollTo({ top: 300, behavior: 'smooth' });
+                }}
                 disabled={currentPage === 1}
-                className="px-6 py-3 rounded-full border border-white/10 bg-dark-bg hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-semibold uppercase tracking-wider"
+                aria-label="Previous Page"
+                className={`podcast-pagination-btn px-6 py-3 rounded-full border transition-all text-sm font-semibold uppercase tracking-wider ${
+                  currentPage === 1
+                    ? isLightMode
+                      ? 'border-slate-200 bg-slate-100/70 text-slate-300 cursor-not-allowed'
+                      : 'border-white/5 bg-white/5 text-white/20 cursor-not-allowed'
+                    : isLightMode
+                    ? 'border-slate-300 bg-white hover:bg-slate-100 text-slate-800 shadow-sm hover:border-slate-400'
+                    : 'border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 text-white'
+                }`}
               >
                 Previous
               </button>
-              <div className="text-white/50 text-sm font-medium">
-                Page <span className="text-white">{currentPage}</span> of <span className="text-white">{totalPages}</span>
+              <div className={`text-sm font-medium ${isLightMode ? 'text-slate-600' : 'text-white/50'}`}>
+                Page <span className={isLightMode ? 'text-slate-900 font-bold' : 'text-white font-bold'}>{currentPage}</span> of <span className={isLightMode ? 'text-slate-900 font-bold' : 'text-white font-bold'}>{totalPages}</span>
               </div>
               <button 
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                onClick={() => {
+                  setCurrentPage(prev => Math.min(prev + 1, totalPages));
+                  window.scrollTo({ top: 300, behavior: 'smooth' });
+                }}
                 disabled={currentPage === totalPages}
-                className="px-6 py-3 rounded-full border border-white/10 bg-dark-bg hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-semibold uppercase tracking-wider"
+                aria-label="Next Page"
+                className={`podcast-pagination-btn px-6 py-3 rounded-full border transition-all text-sm font-semibold uppercase tracking-wider ${
+                  currentPage === totalPages
+                    ? isLightMode
+                      ? 'border-slate-200 bg-slate-100/70 text-slate-300 cursor-not-allowed'
+                      : 'border-white/5 bg-white/5 text-white/20 cursor-not-allowed'
+                    : isLightMode
+                    ? 'border-slate-300 bg-white hover:bg-slate-100 text-slate-800 shadow-sm hover:border-slate-400'
+                    : 'border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 text-white'
+                }`}
               >
                 Next
               </button>

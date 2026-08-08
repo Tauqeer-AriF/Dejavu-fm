@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { NavLink } from 'react-router-dom';
 import { Radio, Calendar, Podcast, Shield as AdminIcon, Headphones, Menu, X, Video, MessageSquare, Sun, Moon, FileText, ChevronDown, ExternalLink, Info, Instagram, Twitter, Facebook, Youtube, Cloud, Music, Share2, Layers, Globe } from 'lucide-react';
 import { PlayerBar } from './components/PlayerBar';
@@ -61,6 +61,7 @@ const NotFound = lazy(() => import('./pages/NotFound'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const Maintenance = lazy(() => import('./pages/Maintenance'));
 const CustomDynamicPage = lazy(() => import('./pages/CustomDynamicPage').then(m => ({ default: m.CustomDynamicPage })));
+const Booth = lazy(() => import('./pages/Booth'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -183,6 +184,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
   const isOnAir = settings?.is_on_air === '1';
 
   const featLiveTools = settings?.feat_live_tools !== '0';
+  const featBooth = settings?.feat_booth !== '0';
   // Removed internal featChat definition since it's now a prop
 
   // Custom navigation parsing from the master Menu tab settings
@@ -207,9 +209,12 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
     } catch {}
   }
 
-  let customOrder: string[] = ['arch421', 'listen', 'watch', 'schedule', 'djs', 'podcasts', 'features'];
+  let customOrder: string[] = ['arch421', 'listen', 'watch', 'schedule', 'djs', 'podcasts', 'features', 'booth'];
   if (settings?.menu_order) {
     customOrder = settings.menu_order.split(',').map((k: string) => k.trim());
+    if (!customOrder.includes('booth')) {
+      customOrder.push('booth');
+    }
   }
 
   let customSubItems: Record<string, { label: string; path: string; isExternal?: boolean }[]> = {};
@@ -236,7 +241,8 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
     { key: 'schedule', path: '/schedule', defaultLabel: 'Schedule' },
     { key: 'djs', path: '/djs', defaultLabel: 'DJs and Hosts' },
     { key: 'podcasts', path: '/podcasts', defaultLabel: 'Podcasts' },
-    { key: 'features', path: '/features', defaultLabel: 'Features' }
+    { key: 'features', path: '/features', defaultLabel: 'Features' },
+    { key: 'booth', path: '/booth', defaultLabel: 'DJ Booth' }
   ];
 
   const renderedMenuItems = customOrder
@@ -394,6 +400,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
       if (!item) return false;
       if (customVisibility[item.key] === false) return false;
       if (item.key === 'watch' && featLiveTools === false) return false;
+      if (item.key === 'booth' && featBooth === false) return false;
       return true;
     })
     .map(item => {
@@ -471,6 +478,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
       if (!item) return false;
       if (customVisibility[item.key] === false) return false;
       if (item.key === 'watch' && featLiveTools === false) return false;
+      if (item.key === 'booth' && featBooth === false) return false;
       return true;
     })
     .map(item => ({
@@ -499,6 +507,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
       if (settings.font_sans) {
         const sansFallback = ', ui-sans-serif, system-ui, sans-serif';
         document.documentElement.style.setProperty('--font-sans', `"${settings.font_sans}"${sansFallback}`);
+        document.documentElement.style.setProperty('--font-mono', `"${settings.font_sans}"${sansFallback}`);
       }
       if (settings.font_display) {
         let displayFallback = ', sans-serif';
@@ -797,7 +806,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
   );
 }
 
-function MobileBottomBar({ featLiveTools }: { featLiveTools: boolean }) {
+function MobileBottomBar({ featLiveTools, featBooth }: { featLiveTools: boolean; featBooth: boolean }) {
   const { isLightMode } = useLogo();
   const location = useLocation();
   const isOnPodcasts = location.pathname.startsWith('/podcasts/');
@@ -845,6 +854,7 @@ function MobileBottomBar({ featLiveTools }: { featLiveTools: boolean }) {
             { to: "/", icon: Radio, active: location.pathname === "/" },
             ...(featLiveTools ? [{ to: "/watch", icon: Video, active: location.pathname === "/watch" }] : []),
             { to: "/schedule", icon: Calendar, active: location.pathname === "/schedule" },
+            ...(featBooth ? [{ to: "/booth", icon: Music, active: location.pathname === "/booth" }] : []),
             { to: "/djs", icon: Headphones, active: location.pathname === "/djs" || isOnDJs },
             { to: "/podcasts", icon: Podcast, active: location.pathname === "/podcasts" || isOnPodcasts },
           ].map((item) => (
@@ -889,6 +899,12 @@ function AnimatedRoutes({ adminPath = '/admin' }: { adminPath?: string }) {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin') || (adminPath !== '/admin' && location.pathname.startsWith(adminPath));
 
+  const { data: settings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: () => fetch("/api/public/settings").then(res => res.json()),
+  });
+  const featBooth = settings?.feat_booth !== '0';
+
   return (
     <AnimatePresence mode="wait">
       <motion.div 
@@ -913,6 +929,7 @@ function AnimatedRoutes({ adminPath = '/admin' }: { adminPath?: string }) {
             <Route path="/podcasts/:id" element={<PodcastDetail />} />
             <Route path="/features" element={<Features />} />
             <Route path="/features/:slug" element={<FeatureDetail />} />
+            <Route path="/booth" element={featBooth ? <Booth /> : <Navigate to="/" replace />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/arch421" element={<Arch421 />} />
@@ -1213,6 +1230,7 @@ function MainLayout() {
       if (settings.font_sans) {
         const sansFallback = ', ui-sans-serif, system-ui, sans-serif';
         document.documentElement.style.setProperty('--font-sans', `"${settings.font_sans}"${sansFallback}`);
+        document.documentElement.style.setProperty('--font-mono', `"${settings.font_sans}"${sansFallback}`);
       }
       if (settings.font_display) {
         let displayFallback = ', sans-serif';
@@ -1342,6 +1360,7 @@ function MainLayout() {
   const featPWA = settings?.feat_pwa !== '0';
   const featBookings = settings?.feat_bookings !== '0';
   const featLiveTools = settings?.feat_live_tools !== '0';
+  const featBooth = settings?.feat_booth !== '0';
 
   if (settings?.maintenance_mode === '1' && !isAdmin) {
     return (
@@ -1538,7 +1557,7 @@ function MainLayout() {
         </footer>
       )}
       
-      {!location.pathname.startsWith('/admin') && !isSplitActive && <MobileBottomBar featLiveTools={featLiveTools} />}
+      {!location.pathname.startsWith('/admin') && !isSplitActive && <MobileBottomBar featLiveTools={featLiveTools} featBooth={featBooth} />}
       {!isSplitActive && <PlayerBar />}
       {featCinematic && (
         <Suspense fallback={null}>
