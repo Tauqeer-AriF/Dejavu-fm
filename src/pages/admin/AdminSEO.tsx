@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { 
   Search, Globe, FileCode, Code, Trash2, Edit2, Plus, 
   RefreshCw, ExternalLink, Copy, Check, Activity, Database, 
-  AlertTriangle, TrendingUp, X 
+  AlertTriangle, TrendingUp, X, Palette
 } from 'lucide-react';
 import { useLogo } from '../../hooks/useLogo';
 import { useModal } from '../../context/ModalContext';
@@ -13,7 +13,7 @@ import {
   Tooltip, CartesianGrid 
 } from 'recharts';
 
-type TabType = 'overview' | 'global' | 'overrides' | 'injector' | 'robots';
+type TabType = 'overview' | 'global' | 'overrides' | 'injector' | 'css' | 'robots';
 
 interface SeoOverride {
   id: number;
@@ -52,6 +52,7 @@ export function AdminSEO() {
   const [seoImage, setSeoImage] = useState('');
   const [customHeaderInject, setCustomHeaderInject] = useState('');
   const [robotsTxt, setRobotsTxt] = useState('');
+  const [customCss, setCustomCss] = useState('');
   const [isSavingGlobal, setIsSavingGlobal] = useState(false);
 
   // SEO Overrides State
@@ -90,6 +91,7 @@ export function AdminSEO() {
       setSeoImage(settingsData.seo_image || settingsData.logo_url || settingsData.favicon || '/icon.svg');
       setCustomHeaderInject(settingsData.custom_header_inject || '');
       setRobotsTxt(settingsData.robots_txt || '');
+      setCustomCss(settingsData.custom_css || '');
 
       // 2. Fetch Metrics & Overrides
       await Promise.all([fetchMetrics(), fetchOverrides()]);
@@ -190,6 +192,25 @@ export function AdminSEO() {
       });
       if (!res.ok) throw new Error('Failed to update robots.txt');
       showAlert({ title: 'Success', message: 'robots.txt rules updated successfully.', style: 'success' });
+    } catch (err: any) {
+      showAlert({ title: 'Error', message: err.message || 'Save failed.', style: 'danger' });
+    } finally {
+      setIsSavingGlobal(false);
+    }
+  };
+
+  // Save Custom CSS
+  const handleSaveCustomCss = async () => {
+    setIsSavingGlobal(true);
+    try {
+      const res = await fetchAdmin('/api/admin/settings', {
+        method: 'PUT',
+        body: {
+          custom_css: customCss,
+        },
+      });
+      if (!res.ok) throw new Error('Failed to update Custom CSS');
+      showAlert({ title: 'Success', message: 'Custom CSS updated successfully.', style: 'success' });
     } catch (err: any) {
       showAlert({ title: 'Error', message: err.message || 'Save failed.', style: 'danger' });
     } finally {
@@ -325,65 +346,79 @@ export function AdminSEO() {
       </div>
 
       {/* Modern Horizontal Navigation Tabs */}
-      <div className={`flex flex-nowrap overflow-x-auto select-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b gap-1 p-1 rounded-2xl ${isLightMode ? 'bg-slate-100 border-slate-200' : 'bg-black/20 border-white/5'}`}>
+      <div 
+        className={`flex flex-nowrap overflow-x-auto no-scrollbar touch-pan-x gap-1 p-1 rounded-2xl w-full ${isLightMode ? 'bg-slate-100/80 border border-black/5 shadow-inner' : 'bg-black/20 border border-white/5'}`}
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
         <button
           onClick={() => setActiveTab('overview')}
-          className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-black uppercase tracking-wider rounded-xl transition-all shrink-0 ${
+          className={`flex items-center justify-center gap-1.5 px-2.5 md:px-3.5 py-2 md:py-2.5 text-[10px] md:text-xs font-black uppercase tracking-wider rounded-xl transition-all shrink-0 grow ${
             activeTab === 'overview'
               ? (isLightMode ? 'bg-white text-neon-purple shadow-sm' : 'bg-neon-purple text-white shadow-lg shadow-neon-purple/20')
               : (isLightMode ? 'text-slate-600 hover:bg-white/50' : 'text-white/50 hover:bg-white/[0.02] hover:text-white')
           }`}
         >
-          <Activity className="w-4 h-4" />
+          <Activity className="w-3.5 h-3.5" />
           Analytics & Indexing
         </button>
         <button
           onClick={() => setActiveTab('global')}
-          className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-black uppercase tracking-wider rounded-xl transition-all shrink-0 ${
+          className={`flex items-center justify-center gap-1.5 px-2.5 md:px-3.5 py-2 md:py-2.5 text-[10px] md:text-xs font-black uppercase tracking-wider rounded-xl transition-all shrink-0 grow ${
             activeTab === 'global'
               ? (isLightMode ? 'bg-white text-neon-purple shadow-sm' : 'bg-neon-purple text-white shadow-lg shadow-neon-purple/20')
               : (isLightMode ? 'text-slate-600 hover:bg-white/50' : 'text-white/50 hover:bg-white/[0.02] hover:text-white')
           }`}
         >
-          <Globe className="w-4 h-4" />
+          <Globe className="w-3.5 h-3.5" />
           Global Config
         </button>
         <button
           onClick={() => setActiveTab('overrides')}
-          className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-black uppercase tracking-wider rounded-xl transition-all shrink-0 ${
+          className={`flex items-center justify-center gap-1.5 px-2.5 md:px-3.5 py-2 md:py-2.5 text-[10px] md:text-xs font-black uppercase tracking-wider rounded-xl transition-all shrink-0 grow ${
             activeTab === 'overrides'
               ? (isLightMode ? 'bg-white text-neon-purple shadow-sm' : 'bg-neon-purple text-white shadow-lg shadow-neon-purple/20')
               : (isLightMode ? 'text-slate-600 hover:bg-white/50' : 'text-white/50 hover:bg-white/[0.02] hover:text-white')
           }`}
         >
-          <Database className="w-4 h-4" />
+          <Database className="w-3.5 h-3.5" />
           Page Overrides
           {overrides.length > 0 && (
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${isLightMode ? 'bg-black/10 text-black' : 'bg-white/20 text-white'}`}>
+            <span className={`text-[9px] px-1 py-0.5 rounded-full font-black leading-none ${isLightMode ? 'bg-black/10 text-black' : 'bg-white/20 text-white'}`}>
               {overrides.length}
             </span>
           )}
         </button>
         <button
           onClick={() => setActiveTab('injector')}
-          className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-black uppercase tracking-wider rounded-xl transition-all shrink-0 ${
+          className={`flex items-center justify-center gap-1.5 px-2.5 md:px-3.5 py-2 md:py-2.5 text-[10px] md:text-xs font-black uppercase tracking-wider rounded-xl transition-all shrink-0 grow ${
             activeTab === 'injector'
               ? (isLightMode ? 'bg-white text-neon-purple shadow-sm' : 'bg-neon-purple text-white shadow-lg shadow-neon-purple/20')
               : (isLightMode ? 'text-slate-600 hover:bg-white/50' : 'text-white/50 hover:bg-white/[0.02] hover:text-white')
           }`}
         >
-          <Code className="w-4 h-4" />
+          <Code className="w-3.5 h-3.5" />
           Script Injector
         </button>
         <button
+          onClick={() => setActiveTab('css')}
+          className={`flex items-center justify-center gap-1.5 px-2.5 md:px-3.5 py-2 md:py-2.5 text-[10px] md:text-xs font-black uppercase tracking-wider rounded-xl transition-all shrink-0 grow ${
+            activeTab === 'css'
+              ? (isLightMode ? 'bg-white text-neon-purple shadow-sm' : 'bg-neon-purple text-white shadow-lg shadow-neon-purple/20')
+              : (isLightMode ? 'text-slate-600 hover:bg-white/50' : 'text-white/50 hover:bg-white/[0.02] hover:text-white')
+          }`}
+        >
+          <Palette className="w-3.5 h-3.5" />
+          Custom CSS
+        </button>
+        <button
           onClick={() => setActiveTab('robots')}
-          className={`flex items-center gap-2 px-4 py-3 text-xs sm:text-sm font-black uppercase tracking-wider rounded-xl transition-all shrink-0 ${
+          className={`flex items-center justify-center gap-1.5 px-2.5 md:px-3.5 py-2 md:py-2.5 text-[10px] md:text-xs font-black uppercase tracking-wider rounded-xl transition-all shrink-0 grow ${
             activeTab === 'robots'
               ? (isLightMode ? 'bg-white text-neon-purple shadow-sm' : 'bg-neon-purple text-white shadow-lg shadow-neon-purple/20')
               : (isLightMode ? 'text-slate-600 hover:bg-white/50' : 'text-white/50 hover:bg-white/[0.02] hover:text-white')
           }`}
         >
-          <FileCode className="w-4 h-4" />
+          <FileCode className="w-3.5 h-3.5" />
           Sitemap & Robots
         </button>
       </div>
@@ -934,7 +969,7 @@ export function AdminSEO() {
                   </p>
                   <p className="font-bold">Prohibited Tags:</p>
                   <p>
-                    Do not inject custom stylesheet <code className="font-mono text-neon-purple">&lt;style&gt;</code> overrides here. Those should be managed under native Tailwind configuration.
+                    Do not inject custom stylesheet <code className="font-mono text-neon-purple">&lt;style&gt;</code> overrides here. Please use the dedicated <strong className="text-neon-purple">Custom CSS</strong> tab instead!
                   </p>
                 </div>
               </div>
@@ -956,6 +991,105 @@ export function AdminSEO() {
                     <code className="block p-1 bg-black/40 text-white text-[9px] rounded font-mono overflow-x-auto whitespace-nowrap">
                       &lt;script async src="https://www.googletag..."&gt;&lt;/script&gt;
                     </code>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4.5: CUSTOM CSS PANEL */}
+      {activeTab === 'css' && (
+        <div className="space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 className={`text-lg font-display font-black uppercase tracking-tight ${isLightMode ? 'text-black' : 'text-white'}`}>Custom CSS Styling</h3>
+              <p className={`text-xs ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Inject custom style rules to personalize the appearance and override colors, fonts, or layouts of the radio application.</p>
+            </div>
+            <button
+              onClick={handleSaveCustomCss}
+              disabled={isSavingGlobal}
+              className="bg-neon-purple hover:bg-neon-blue text-white font-black uppercase tracking-widest text-xs py-3.5 px-8 rounded-xl transition-all shadow-md flex items-center gap-2 self-start md:self-center animate-pulse"
+            >
+              {isSavingGlobal ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Palette className="w-4 h-4" />}
+              {isSavingGlobal ? 'Saving Changes...' : 'Save CSS Rules'}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(320px,360px)] gap-6">
+            <div className="space-y-4">
+              <div className={`border rounded-3xl p-5 sm:p-6 transition-colors ${isLightMode ? 'bg-white border-black/10 shadow-sm' : 'bg-dark-bg/50 border-white/10'}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <label className={`block text-[10px] uppercase tracking-[0.2em] font-bold ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>
+                    Active CSS Ruleset Editor
+                  </label>
+                  <span className="text-[10px] font-mono font-bold text-neon-purple bg-neon-purple/5 px-2 py-0.5 rounded">
+                    &lt;style&gt; tag injection
+                  </span>
+                </div>
+
+                <textarea
+                  value={customCss}
+                  onChange={(e) => setCustomCss(e.target.value)}
+                  placeholder="/* Customize the radio application styling below */&#10;.custom-header {&#10;  background: linear-gradient(135deg, #a855f7 0%, #3b82f6 100%);&#10;}&#10;&#10;/* Override brand text color */&#10;.brand-title {&#10;  color: #a855f7 !important;&#10;}"
+                  className={`w-full min-h-[400px] rounded-2xl px-4 py-4 text-xs font-mono outline-none transition-all border ${
+                    isLightMode 
+                      ? 'bg-black/[0.03] border-black/10 text-black placeholder:text-black/30 focus:border-neon-purple' 
+                      : 'bg-black/60 border-white/10 text-white placeholder:text-white/20 focus:border-neon-purple'
+                  }`}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {/* Warnings & Security Guard */}
+              <div className={`border rounded-3xl p-6 space-y-4 transition-all ${
+                isLightMode ? 'bg-amber-50/40 border-amber-200 text-slate-700' : 'bg-amber-500/5 border-amber-500/10 text-white/80'
+              }`}>
+                <div className="flex items-center gap-2.5 text-amber-500">
+                  <AlertTriangle className="w-5 h-5 shrink-0" />
+                  <span className="text-xs font-black uppercase tracking-wider">Style Override Notice</span>
+                </div>
+                <div className="text-xs leading-relaxed space-y-2">
+                  <p>
+                    These CSS rules will be injected directly into the document head and will apply globally across all pages of the app.
+                  </p>
+                  <p>
+                    To target specific elements, inspect their classes using browser DevTools or use unique IDs if available. Use the <code className="font-mono text-neon-purple">!important</code> flag if your styles are being overridden by default Tailwind styles.
+                  </p>
+                </div>
+              </div>
+
+              {/* Sample codes helper */}
+              <div className={`border rounded-3xl p-6 space-y-3 transition-colors ${isLightMode ? 'bg-white border-black/10 shadow-sm' : 'bg-dark-bg/50 border-white/10'}`}>
+                <p className={`text-[10px] uppercase tracking-[0.2em] font-bold ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>
+                  CSS Inspiration Snippets
+                </p>
+                <div className="space-y-3 text-xs leading-relaxed">
+                  <div className="p-3 rounded-xl border border-dashed border-neon-purple/10 bg-neon-purple/[0.02]">
+                    <p className="font-bold mb-1">Make scrollbars neon purple:</p>
+                    <pre className="block p-2 bg-black/40 text-white text-[9px] rounded font-mono overflow-x-auto whitespace-pre">
+{`::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #a855f7;
+  border-radius: 4px;
+}`}
+                    </pre>
+                  </div>
+                  <div className="p-3 rounded-xl border border-dashed border-neon-purple/10 bg-neon-purple/[0.02]">
+                    <p className="font-bold mb-1">Custom Background Pulse Effect:</p>
+                    <pre className="block p-2 bg-black/40 text-white text-[9px] rounded font-mono overflow-x-auto whitespace-pre">
+{`@keyframes breathe {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}
+.app-shimmer-overlay {
+  animation: breathe 8s infinite;
+}`}
+                    </pre>
                   </div>
                 </div>
               </div>

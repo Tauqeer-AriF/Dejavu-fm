@@ -1418,6 +1418,9 @@ function MainLayout() {
   if (settings?.maintenance_mode === '1' && !isAdmin) {
     return (
       <Suspense fallback={<div className="min-h-screen w-full bg-[#080809] flex items-center justify-center text-white/40">Loading Transmission...</div>}>
+        {settings?.custom_css && (
+          <style id="custom-injected-css">{settings.custom_css}</style>
+        )}
         <Maintenance settings={settings} />
       </Suspense>
     );
@@ -1425,6 +1428,9 @@ function MainLayout() {
 
   return (
     <>
+      {settings?.custom_css && !isAdmin && (
+        <style id="custom-injected-css">{settings.custom_css}</style>
+      )}
       <div className={`min-h-screen ${isAdmin || isSplitActive ? '' : 'pb-40 md:pb-32'} flex flex-col relative overflow-x-clip bg-dark-bg selection:bg-neon-purple selection:text-white`}>
       {/* Premium Moving Mesh Background */}
       <div className="fixed inset-0 z-0 pointer-events-none opacity-40">

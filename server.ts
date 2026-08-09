@@ -329,9 +329,10 @@ async function startServer() {
 
     // Load admin SEO settings from database if available
     let customHeaderInject = "";
+    let customCss = "";
     let appName = "DejavuFM";
     try {
-      const settingsRows = db.prepare("SELECT key, value FROM settings WHERE key IN ('seo_title','seo_description','seo_image','app_title','app_name','favicon','custom_header_inject')").all() as { key: string; value: string }[];
+      const settingsRows = db.prepare("SELECT key, value FROM settings WHERE key IN ('seo_title','seo_description','seo_image','app_title','app_name','favicon','custom_header_inject','custom_css','admin_custom_path')").all() as { key: string; value: string }[];
       const settingsData = settingsRows.reduce<Record<string, string>>((acc, row) => {
         acc[row.key] = row.value;
         return acc;
@@ -365,6 +366,13 @@ async function startServer() {
 
       if (settingsData.custom_header_inject) {
         customHeaderInject = settingsData.custom_header_inject;
+      }
+      if (settingsData.custom_css) {
+        const adminPath = (settingsData.admin_custom_path || '/admin').trim().replace(/\/+$/, '') || '/admin';
+        const isServerAdmin = reqPath.startsWith('/admin') || (adminPath !== '/admin' && reqPath.startsWith(adminPath));
+        if (!isServerAdmin) {
+          customCss = settingsData.custom_css;
+        }
       }
     } catch (err) {
       console.warn('[getDynamicHtml] Failed to load SEO settings from DB:', err);
@@ -596,6 +604,7 @@ async function startServer() {
       <meta name="twitter:url" content="${currentUrl}" />
       ${schemaMarkup}
       ${customHeaderInject}
+      ${customCss ? `<style id="custom-injected-css">${customCss}</style>` : ''}
     `;
 
     // Replace the default title or insert before </head>

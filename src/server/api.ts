@@ -2850,7 +2850,7 @@ apiRouter.put("/admin/settings", authorizeRole(['admin', 'dj']), (req, res) => {
     "features_slider_enabled", "features_slider_pages", "admin_custom_path",
     "menu_order", "menu_item_labels", "menu_item_visibility", "menu_item_paths", "menu_sub_items", "menu_item_page_titles",
     "maintenance_mode", "maintenance_title", "maintenance_text", "maintenance_end_time", "maintenance_show_player",
-    "custom_header_inject", "robots_txt", "seo_last_ping_time", "seo_last_ping_status", "seo_last_ping_details"
+    "custom_header_inject", "robots_txt", "seo_last_ping_time", "seo_last_ping_status", "seo_last_ping_details", "custom_css"
   ];
   
   for (const key of allowedKeys) {
