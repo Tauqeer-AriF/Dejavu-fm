@@ -638,6 +638,23 @@ export function initDb() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  runMigration('seo_overrides_table_v2', `
+    CREATE TABLE IF NOT EXISTS seo_overrides (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      route_path TEXT UNIQUE NOT NULL,
+      seo_title TEXT,
+      seo_description TEXT,
+      seo_image TEXT,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  runMigration('seo_custom_header_inject_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('custom_header_inject', '');");
+  runMigration('seo_robots_txt_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('robots_txt', '');");
+  runMigration('seo_last_ping_time_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('seo_last_ping_time', '');");
+  runMigration('seo_last_ping_status_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('seo_last_ping_status', '');");
+  runMigration('seo_last_ping_details_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('seo_last_ping_details', '');");
   try {
     const count = db.prepare("SELECT COUNT(*) as count FROM curated_tracks").get() as { count: number };
     if (count.count === 0) {

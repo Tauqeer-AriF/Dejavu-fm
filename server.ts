@@ -108,13 +108,20 @@ async function startServer() {
   // Dynamic SEO robots.txt to guide search spiders and link the sitemap
   app.get("/robots.txt", (req, res) => {
     const origin = `${req.protocol}://${req.get('host')}`;
-    res.type("text/plain");
-    res.send(`User-agent: *
-Allow: /
-Disallow: /admin
-Disallow: /api
+    let robotsContent = "";
+    try {
+      const row = db.prepare("SELECT value FROM settings WHERE key = 'robots_txt'").get() as { value: string } | undefined;
+      if (row && row.value) {
+        robotsContent = row.value;
+      }
+    } catch (err) {}
 
-Sitemap: ${origin}/sitemap.xml`);
+    if (!robotsContent) {
+      robotsContent = `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api\n\nSitemap: ${origin}/sitemap.xml`;
+    }
+
+    res.type("text/plain");
+    res.send(robotsContent);
   });
 
   // Dynamic SEO sitemap.xml to enable discovery of all static and dynamic site content
@@ -173,7 +180,18 @@ Sitemap: ${origin}/sitemap.xml`);
       console.error("[Sitemap Engine] Failed to parse podcast catchup feed:", err);
     }
 
-    const allPaths = [...staticPaths, ...djPaths, ...featurePaths, ...podcastPaths];
+    // 5. Query Custom Dynamic Pages
+    let customPagePaths: string[] = [];
+    try {
+      if (db.open) {
+        const pages = db.prepare("SELECT slug FROM custom_pages WHERE is_published = 1").all() as { slug: string }[];
+        customPagePaths = pages.map(p => `/${p.slug}`);
+      }
+    } catch (err) {
+      console.error("[Sitemap Engine] Failed to query custom_pages table:", err);
+    }
+
+    const allPaths = [...staticPaths, ...djPaths, ...featurePaths, ...podcastPaths, ...customPagePaths];
 
     // Construct highly valid, beautiful XML Sitemap conforming to schemas
     const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -310,12 +328,22 @@ Sitemap: ${origin}/sitemap.xml`);
     let image = "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=1200";
 
     // Load admin SEO settings from database if available
+    let customHeaderInject = "";
+    let appName = "DejavuFM";
     try {
-      const settingsRows = db.prepare("SELECT key, value FROM settings WHERE key IN ('seo_title','seo_description','seo_image','app_title','app_name','favicon')").all() as { key: string; value: string }[];
+      const settingsRows = db.prepare("SELECT key, value FROM settings WHERE key IN ('seo_title','seo_description','seo_image','app_title','app_name','favicon','custom_header_inject')").all() as { key: string; value: string }[];
       const settingsData = settingsRows.reduce<Record<string, string>>((acc, row) => {
         acc[row.key] = row.value;
         return acc;
       }, {});
+
+      if (settingsData.app_name) {
+        appName = settingsData.app_name;
+      } else if (settingsData.app_title) {
+        appName = settingsData.app_title;
+      } else if (settingsData.seo_title) {
+        appName = settingsData.seo_title;
+      }
 
       if (settingsData.seo_title) {
         title = settingsData.seo_title;
@@ -334,6 +362,10 @@ Sitemap: ${origin}/sitemap.xml`);
       } else if (settingsData.favicon) {
         image = makeAbsoluteUrl(settingsData.favicon);
       }
+
+      if (settingsData.custom_header_inject) {
+        customHeaderInject = settingsData.custom_header_inject;
+      }
     } catch (err) {
       console.warn('[getDynamicHtml] Failed to load SEO settings from DB:', err);
     }
@@ -350,7 +382,7 @@ Sitemap: ${origin}/sitemap.xml`);
       });
 
       if (podcast) {
-        title = `${podcast.title} | DejavuFM Catch Up`;
+        title = `${podcast.title} | ${appName}`;
         description = (podcast.contentSnippet || podcast.content || description).substring(0, 160).replace(/<[^>]*>/g, '') + "...";
         image = podcast.itunes?.image || image;
       }
@@ -407,10 +439,146 @@ Sitemap: ${origin}/sitemap.xml`);
       title = "Contact Us & Request Studio Line | DejavuFM";
       description = "Get in touch with the team at DejavuFM. Drop a line for inquiries, partnerships, resident bookings, or general suggestions.";
     }
+    // Custom Dynamic Pages (CMS-managed)
+    else {
+      const slug = reqPath.replace(/^\/+/, '');
+      if (slug && db.open) {
+        try {
+          const page = db.prepare("SELECT title, content, seo_title, seo_description, seo_image FROM custom_pages WHERE slug = ? AND is_published = 1").get(slug) as any;
+          if (page) {
+            title = page.seo_title || page.title || title;
+            description = page.seo_description || page.content?.substring(0, 160).replace(/<[^>]*>/g, '') || description;
+            if (page.seo_image) {
+              image = makeAbsoluteUrl(page.seo_image);
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    // Path-specific SEO explicit overrides (highest priority administrator overrides)
+    try {
+      if (db.open) {
+        const override = db.prepare("SELECT seo_title, seo_description, seo_image FROM seo_overrides WHERE route_path = ?").get(reqPath) as any;
+        if (override) {
+          if (override.seo_title) title = override.seo_title;
+          if (override.seo_description) description = override.seo_description;
+          if (override.seo_image) image = makeAbsoluteUrl(override.seo_image);
+        }
+      }
+    } catch (err) {
+      console.warn('[getDynamicHtml] Failed to query path-specific SEO override:', err);
+    }
 
     image = makeAbsoluteUrl(image);
 
     const currentUrl = `${requestOrigin}${req.originalUrl}`;
+
+    // Structured JSON-LD Schema generation based on path
+    let schemaJson: any = null;
+    
+    if (reqPath === "/" || reqPath === "") {
+      schemaJson = {
+        "@context": "https://schema.org",
+        "@type": "RadioStation",
+        "name": "DejavuFM",
+        "url": requestOrigin,
+        "image": image,
+        "description": description,
+        "sameAs": [
+          "https://instagram.com/dejavufm",
+          "https://twitter.com/dejavufm",
+          "https://facebook.com/dejavufm"
+        ]
+      };
+    } else if (reqPath.startsWith("/djs/")) {
+      const djId = reqPath.split("/").pop();
+      try {
+        if (db.open) {
+          const dj = db.prepare("SELECT * FROM djs WHERE id = ?").get(djId) as any;
+          if (dj) {
+            schemaJson = {
+              "@context": "https://schema.org",
+              "@type": "Person",
+              "name": dj.name,
+              "description": dj.bio || `${dj.name} is a Resident DJ at DejavuFM`,
+              "image": makeAbsoluteUrl(dj.image_url || image),
+              "jobTitle": "Radio DJ / Host",
+              "worksFor": {
+                "@type": "RadioStation",
+                "name": "DejavuFM",
+                "url": requestOrigin
+              }
+            };
+          }
+        }
+      } catch (e) {}
+    } else if (reqPath.startsWith("/podcasts/")) {
+      const podcastId = reqPath.split("/").pop();
+      try {
+        const feed = await getPodcastFeed();
+        const podcast = feed?.items?.find((i: any) => {
+          try {
+            const idStr = i.guid || i.link || "";
+            return btoa(idStr).replace(/=/g, '') === podcastId;
+          } catch (e) { return false; }
+        });
+        if (podcast) {
+          schemaJson = {
+            "@context": "https://schema.org",
+            "@type": "PodcastEpisode",
+            "name": podcast.title,
+            "description": (podcast.contentSnippet || podcast.content || description).substring(0, 250).replace(/<[^>]*>/g, ''),
+            "url": `${requestOrigin}${reqPath}`,
+            "associatedMedia": {
+              "@type": "MediaObject",
+              "contentUrl": podcast.enclosure?.url
+            },
+            "partOfSeries": {
+              "@type": "PodcastSeries",
+              "name": "DejavuFM Catch Up",
+              "url": `${requestOrigin}/podcasts`
+            }
+          };
+        }
+      } catch (e) {}
+    } else if (reqPath.startsWith("/features/")) {
+      const slug = reqPath.split("/").pop();
+      try {
+        if (db.open) {
+          const feature = db.prepare("SELECT * FROM features WHERE slug = ?").get(slug) as any;
+          if (feature) {
+            schemaJson = {
+              "@context": "https://schema.org",
+              "@type": "BlogPosting",
+              "headline": feature.title,
+              "description": (feature.excerpt || feature.content || description).substring(0, 160).replace(/<[^>]*>/g, ''),
+              "image": makeAbsoluteUrl(feature.image_url || image),
+              "datePublished": feature.created_at,
+              "publisher": {
+                "@type": "RadioStation",
+                "name": "DejavuFM",
+                "url": requestOrigin
+              }
+            };
+          }
+        }
+      } catch (e) {}
+    } else {
+      schemaJson = {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": title,
+        "description": description,
+        "url": `${requestOrigin}${reqPath}`
+      };
+    }
+
+    let schemaMarkup = "";
+    if (schemaJson) {
+      schemaMarkup = `\n<script type="application/ld+json">\n${JSON.stringify(schemaJson, null, 2)}\n</script>\n`;
+    }
+
     const metaTags = `
       <title>${title}</title>
       <link rel="canonical" href="${currentUrl}" />
@@ -426,6 +594,8 @@ Sitemap: ${origin}/sitemap.xml`);
       <meta name="twitter:description" content="${description}" />
       <meta name="twitter:image" content="${image}" />
       <meta name="twitter:url" content="${currentUrl}" />
+      ${schemaMarkup}
+      ${customHeaderInject}
     `;
 
     // Replace the default title or insert before </head>
