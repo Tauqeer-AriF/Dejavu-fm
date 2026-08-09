@@ -979,6 +979,24 @@ function MainLayout() {
     refetchInterval: 10000,
   });
 
+  const { data: podcastsFeed } = useQuery({
+    queryKey: ['podcasts'],
+    queryFn: () => fetch("/api/public/podcasts").then(res => res.json()),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const { data: djsData } = useQuery({
+    queryKey: ['djs'],
+    queryFn: () => fetch("/api/public/djs").then(res => res.json()),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const { data: featuresData } = useQuery({
+    queryKey: ['features'],
+    queryFn: () => fetch("/api/public/features").then(res => res.json()),
+    staleTime: 1000 * 60 * 5,
+  });
+
   const isStaff = authData?.loggedIn && (authData?.isAdmin || authData?.role);
 
   // Monitor Online/Offline Connection Status
@@ -1300,7 +1318,41 @@ function MainLayout() {
     let title = appTitle;
     let desc = baseDesc;
 
-    if (location.pathname === "/arch421") {
+    if (location.pathname.startsWith("/podcasts/")) {
+      const id = location.pathname.split("/").filter(Boolean).pop();
+      const podcast = podcastsFeed?.items?.find((i: any) => {
+        try {
+          const idStr = i.guid || i.link || "";
+          return btoa(idStr).replace(/=/g, '') === id;
+        } catch (e) {
+          return false;
+        }
+      });
+      if (podcast) {
+        title = `${podcast.title} | ${appTitle}`;
+        desc = (podcast.contentSnippet || podcast.content || desc).substring(0, 160).replace(/<[^>]*>/g, '') + "...";
+      } else {
+        title = `Podcast | ${appTitle}`;
+      }
+    } else if (location.pathname.startsWith("/djs/")) {
+      const id = location.pathname.split("/").filter(Boolean).pop();
+      const dj = djsData?.find((d: any) => String(d.id) === id);
+      if (dj) {
+        title = `${dj.name} | ${appTitle} Resident`;
+        desc = (dj.bio || desc).substring(0, 160);
+      } else {
+        title = `Resident DJ | ${appTitle}`;
+      }
+    } else if (location.pathname.startsWith("/features/")) {
+      const slug = location.pathname.split("/").filter(Boolean).pop();
+      const feature = featuresData?.find((f: any) => f.slug === slug);
+      if (feature) {
+        title = `${feature.title} | ${appTitle} Features`;
+        desc = (feature.excerpt || feature.content || desc).substring(0, 160).replace(/<[^>]*>/g, '') + "...";
+      } else {
+        title = `Feature Highlight | ${appTitle}`;
+      }
+    } else if (location.pathname === "/arch421") {
       const pageTitle = customPageTitles['arch421'] || "ARCH 421: THE UNMUTED ARCHIVES. OPENING SOON.";
       title = `${pageTitle} | ${appTitle}`;
       desc = "Unlock the exclusive archives of ARCH 421. Opening soon on DejavuFM. Be ready for the unmuted sound experience.";
@@ -1343,7 +1395,7 @@ function MainLayout() {
     updateMetaTag('property', 'og:description', desc);
     updateMetaTag('name', 'twitter:title', title);
     updateMetaTag('name', 'twitter:description', desc);
-  }, [location.pathname, settings]);
+  }, [location.pathname, settings, podcastsFeed, djsData, featuresData]);
 
   useEffect(() => {
     const handleSplitChange = (e: CustomEvent<{ active: boolean }>) => {
