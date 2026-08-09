@@ -83,19 +83,19 @@ export function AdvertisementSliders({ position = "bottom" }: { position?: "top"
   }));
 
   return (
-    <div className={`w-full space-y-12 px-4 md:px-8 max-w-7xl mx-auto ad-sliders-container ${position === 'top' ? 'pt-2 pb-8' : 'py-12'}`}>
+    <div className={`front-ad-sliders-container w-full space-y-12 px-4 md:px-8 max-w-7xl mx-auto ad-sliders-container ${position === 'top' ? 'pt-2 pb-8' : 'py-12'}`}>
       {sliderGroups.map(({ sliderType, layout, title, ads: groupAds }) => (
         <motion.div 
           key={sliderType}
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="relative group"
+          className="front-ad-slider-group relative group"
         >
-          <div className="mb-4 flex items-center justify-between">
+          <div className="front-ad-slider-header mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-neon-purple animate-pulse" />
-              <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 group-hover:text-white transition-colors">{title}</h3>
+              <h3 className="front-ad-slider-title text-[10px] font-black uppercase tracking-[0.4em] text-white/40 group-hover:text-white transition-colors">{title}</h3>
             </div>
             <div className="h-px flex-1 bg-white/5 mx-4" />
           </div>

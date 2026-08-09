@@ -214,20 +214,20 @@ export function PlayerBar() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          className="hidden sm:block fixed bottom-[104px] sm:bottom-[112px] xl:bottom-8 left-0 right-0 z-50 px-3 sm:px-6 pointer-events-none"
+          className="front-player-bar hidden sm:block fixed bottom-[104px] sm:bottom-[112px] xl:bottom-8 left-0 right-0 z-50 px-3 sm:px-6 pointer-events-none"
         >
-          <div className={`max-w-6xl mx-auto backdrop-blur-3xl rounded-2xl md:rounded-3xl h-20 md:h-28 flex items-center px-4 md:px-10 border relative group pointer-events-auto ${isLightMode ? "bg-[#ffffff]/95 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-black/10" : "bg-dark-bg/95 shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-white/10"}`}>
+          <div className={`front-player-bar-card max-w-6xl mx-auto backdrop-blur-3xl rounded-2xl md:rounded-3xl h-20 md:h-28 flex items-center px-4 md:px-10 border relative group pointer-events-auto ${isLightMode ? "bg-[#ffffff]/95 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-black/10" : "bg-dark-bg/95 shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-white/10"}`}>
             {/* Close/Minimize Button */}
             <button 
               onClick={() => setIsMinimized(true)}
-              className={`absolute top-2 right-2 md:top-4 md:right-4 p-2 rounded-full transition-all ${isLightMode ? "text-black/30 hover:text-black hover:bg-black/10" : "text-white/30 hover:text-white hover:bg-white/10"}`}
+              className={`front-player-minimize-btn absolute top-2 right-2 md:top-4 md:right-4 p-2 rounded-full transition-all ${isLightMode ? "text-black/30 hover:text-black hover:bg-black/10" : "text-white/30 hover:text-white hover:bg-white/10"}`}
               title="Minimize Player"
             >
               <Minimize2 className="w-4 h-4" />
             </button>
 
-            <div className="flex-1 flex items-center space-x-3 md:space-x-6 overflow-hidden">
-              <div className="relative shrink-0">
+            <div className="front-player-left flex-1 flex items-center space-x-3 md:space-x-6 overflow-hidden">
+              <div className="front-player-artwork relative shrink-0">
                 <div className={`w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl text-dark-bg flex items-center justify-center overflow-hidden transition-all duration-500 ${isPlaying ? 'scale-100' : 'scale-95 grayscale'} ${
                   activeType === 'radio' && resolveDjImage(onAirInfo?.djPhoto) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-black' : 'bg-transparent') : ''
                 }`}>
@@ -246,7 +246,7 @@ export function PlayerBar() {
                 )}
               </div>
               
-              <div className="flex-1 min-w-0 pr-2">
+              <div className="front-player-info flex-1 min-w-0 pr-2">
                 <div className="flex items-center space-x-2 md:space-x-3 mb-1 flex-wrap gap-y-1">
                   <p className={`text-[8px] md:text-xs uppercase tracking-[0.2em] font-black flex items-center shrink-0 ${isLightMode ? "text-black/60" : "text-white/60"}`}>
                     <span className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full mr-2 glow-box shrink-0 ${isBuffering && isPlaying ? 'bg-amber-500 animate-pulse' : isPlaying ? 'bg-neon-blue animate-pulse' : isLightMode ? 'bg-black/20' : 'bg-white/20'}`}></span>
@@ -256,7 +256,7 @@ export function PlayerBar() {
                   </p>
                 </div>
                 
-                <h4 className={`font-display font-bold text-sm md:text-2xl truncate tracking-tight leading-tight mb-1 ${isLightMode ? "text-black" : "text-white"}`}>
+                <h4 className={`front-player-title font-display font-bold text-sm md:text-2xl truncate tracking-tight leading-tight mb-1 ${isLightMode ? "text-black" : "text-white"}`}>
                   {activeType === 'podcast' && podcastTrack ? (
                     <div className="flex items-center truncate">
                       <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue font-black uppercase italic tracking-tighter mr-2 pr-2 shrink-0">EPISODE</span>
@@ -277,10 +277,10 @@ export function PlayerBar() {
               </div>
             </div>
 
-            <div className="flex items-center justify-center shrink-0 mx-2 md:mx-6 relative">
+            <div className="front-player-center flex items-center justify-center shrink-0 mx-2 md:mx-6 relative">
               <button 
                 onClick={togglePlay}
-                className={`w-12 h-12 md:w-20 md:h-20 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all relative group/play z-10 ${isLightMode ? "bg-black text-[#ffffff] shadow-[0_0_40px_rgba(0,0,0,0.2)]" : "bg-white text-dark-bg shadow-[0_0_40px_rgba(255,255,255,0.3)]"}`}
+                className={`front-player-play-btn w-12 h-12 md:w-20 md:h-20 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all relative group/play z-10 ${isLightMode ? "bg-black text-[#ffffff] shadow-[0_0_40px_rgba(0,0,0,0.2)]" : "bg-white text-dark-bg shadow-[0_0_40px_rgba(255,255,255,0.3)]"}`}
               >
                 {isBuffering && isPlaying ? (
                   <div className={`w-6 h-6 md:w-10 md:h-10 rounded-full border-4 border-t-neon-blue animate-spin ${isLightMode ? "border-[#ffffff]" : "border-dark-bg"}`} />
@@ -300,10 +300,10 @@ export function PlayerBar() {
               )}
             </div>
 
-            <div className="flex-1 flex justify-end items-center space-x-6 hidden lg:flex">
+            <div className="front-player-right flex-1 flex justify-end items-center space-x-6 hidden lg:flex">
               <div className="flex flex-col items-end space-y-2">
                 <QualitySelector />
-                <div className={`flex items-center space-x-3 px-4 py-2 rounded-xl border ${isLightMode ? "bg-black/5 border-black/5" : "bg-white/5 border-white/5"}`}>
+                <div className={`front-player-volume flex items-center space-x-3 px-4 py-2 rounded-xl border ${isLightMode ? "bg-black/5 border-black/5" : "bg-white/5 border-white/5"}`}>
                   <Volume2 className={`w-4 h-4 ${isLightMode ? "text-black/40" : "text-white/40"}`} />
                   <input 
                     type="range" 
@@ -318,7 +318,7 @@ export function PlayerBar() {
               </div>
               <button 
                 onClick={() => toggleCinematic()}
-                className="relative group transition-opacity hover:opacity-80"
+                className="front-player-visualizer-btn relative group transition-opacity hover:opacity-80"
                 title="Open Cinematic Visualizer"
               >
                 <Visualizer isPlaying={isPlaying} volume={volume} isLightMode={isLightMode} />
@@ -335,7 +335,7 @@ export function PlayerBar() {
           initial={{ scale: 0, opacity: 0, x: 50 }}
           animate={{ scale: 1, opacity: 1, x: 0 }}
           exit={{ scale: 0, opacity: 0, x: 50 }}
-          className="hidden sm:flex fixed bottom-[104px] sm:bottom-[112px] xl:bottom-8 right-4 sm:right-8 z-50 flex items-center space-x-3 cursor-grab active:cursor-grabbing touch-none select-none"
+          className="front-player-bar-minimized hidden sm:flex fixed bottom-[104px] sm:bottom-[112px] xl:bottom-8 right-4 sm:right-8 z-50 flex items-center space-x-3 cursor-grab active:cursor-grabbing touch-none select-none"
           drag
           dragConstraints={dragConstraints}
           dragElastic={0.1}

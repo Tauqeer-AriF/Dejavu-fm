@@ -61,7 +61,7 @@ export default function PrivacyPolicy() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="max-w-6xl mx-auto space-y-16 pb-20 py-12 px-4"
+      className="front-page-privacy-policy max-w-6xl mx-auto space-y-16 pb-20 py-12 px-4"
     >
       {/* Visual Display Header */}
       <div className="relative text-center space-y-6 max-w-4xl mx-auto mb-16">

@@ -19,7 +19,7 @@ export default function Contact() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="max-w-4xl mx-auto space-y-16 pb-20 py-12"
+      className="front-page-contact max-w-4xl mx-auto space-y-16 pb-20 py-12"
     >
       <div className="relative text-center space-y-6 max-w-4xl mx-auto px-4 mb-20">
         <motion.div

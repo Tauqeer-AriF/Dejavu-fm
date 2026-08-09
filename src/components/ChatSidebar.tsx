@@ -1757,7 +1757,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={onClose}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10100]"
+              className="front-chat-overlay fixed inset-0 bg-black/60 backdrop-blur-sm z-[10100]"
             />
           )}
           <motion.div
@@ -1775,8 +1775,8 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             className={embedded 
-              ? `flex-1 h-full w-full flex flex-col min-h-0 ${isLightMode ? 'bg-[#ffffff]/95 text-zinc-900' : 'bg-dark-bg/95 text-white'} backdrop-blur-2xl` 
-              : `fixed top-0 right-0 h-full w-full max-w-md ${isLightMode ? 'bg-[#ffffff]/95 text-zinc-900 border-black/10' : 'bg-dark-bg/95 text-white border-white/10'} backdrop-blur-2xl border-l z-[10101] shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col touch-pan-y`
+              ? `front-chat-sidebar flex-1 h-full w-full flex flex-col min-h-0 ${isLightMode ? 'bg-[#ffffff]/95 text-zinc-900' : 'bg-dark-bg/95 text-white'} backdrop-blur-2xl` 
+              : `front-chat-sidebar fixed top-0 right-0 h-full w-full max-w-md ${isLightMode ? 'bg-[#ffffff]/95 text-zinc-900 border-black/10' : 'bg-dark-bg/95 text-white border-white/10'} backdrop-blur-2xl border-l z-[10101] shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col touch-pan-y`
             }
           >
             {/* Drag & Drop Media Overlay */}

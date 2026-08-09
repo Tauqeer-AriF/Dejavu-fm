@@ -89,7 +89,7 @@ export default function Features() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="space-y-16 py-12"
+      className="front-page-features space-y-16 py-12"
     >
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 px-4 mb-16">
         <div className="relative max-w-3xl">

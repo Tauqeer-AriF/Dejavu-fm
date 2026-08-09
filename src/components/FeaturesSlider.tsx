@@ -73,17 +73,17 @@ export function FeaturesSlider() {
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      className="w-full pt-[90px] pb-12 px-4 md:px-8 relative z-20 overflow-hidden"
+      className="front-features-slider w-full pt-[90px] pb-12 px-4 md:px-8 relative z-20 overflow-hidden"
     >
-      <div className="max-w-[1400px] mx-auto space-y-8">
+      <div className="front-features-container max-w-[1400px] mx-auto space-y-8">
         {/* Slider Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+        <div className="front-features-header flex flex-col sm:flex-row sm:items-end justify-between gap-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-neon-purple">
               <span className="w-1.5 h-1.5 rounded-full bg-neon-purple animate-ping" />
               <span className="text-[10px] font-black uppercase tracking-[0.25em]">Trending Now</span>
             </div>
-            <h2 className={`text-3xl md:text-5xl font-display font-black uppercase tracking-tighter ${isLightMode ? "text-black" : "text-white"}`}>
+            <h2 className={`front-features-title text-3xl md:text-5xl font-display font-black uppercase tracking-tighter ${isLightMode ? "text-black" : "text-white"}`}>
               Features
             </h2>
           </div>
@@ -92,7 +92,7 @@ export function FeaturesSlider() {
             {/* View All Link */}
             <Link
               to="/features"
-              className="group/btn inline-flex items-center gap-2 px-4 py-2.5 bg-white/5 border border-white/10 hover:border-neon-purple/50 rounded-xl text-[10px] font-black uppercase tracking-widest text-white/70 hover:text-white hover:bg-white/10 transition-all cursor-pointer mr-2"
+              className="front-features-view-all group/btn inline-flex items-center gap-2 px-4 py-2.5 bg-white/5 border border-white/10 hover:border-neon-purple/50 rounded-xl text-[10px] font-black uppercase tracking-widest text-white/70 hover:text-white hover:bg-white/10 transition-all cursor-pointer mr-2"
             >
               View All
               <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-1 transition-transform" />
@@ -100,7 +100,7 @@ export function FeaturesSlider() {
 
             {/* Carousel Navigation Buttons */}
             {posts.length > 1 && (
-              <div className="flex items-center gap-2">
+              <div className="front-features-nav-btns flex items-center gap-2">
                 <button
                   onClick={() => swiperRef.current?.slidePrev()}
                   className="p-3 rounded-full border bg-white/5 border-white/10 hover:border-neon-purple/50 text-white hover:bg-white/10 active:scale-95 transition-all cursor-pointer select-none"

@@ -196,7 +196,7 @@ export default function DJs() {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="space-y-16 py-12"
+      className="front-page-djs space-y-16 py-12"
     >
       <div className="relative text-center space-y-6 max-w-4xl mx-auto px-4 mb-20">
         <motion.div

@@ -105,7 +105,7 @@ export default function PodcastsPage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="space-y-16 pb-20 mt-8"
+      className="front-page-podcasts space-y-16 pb-20 mt-8"
     >
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-20 relative px-4">
         <div className="text-center md:text-left relative z-10 w-full">

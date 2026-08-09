@@ -524,15 +524,15 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
   return (
     <>
       {/* Top Announcement Bar */}
-      <div className="w-full bg-[#f75c1e] text-[#ffffff] py-2.5 px-4 shadow-md relative z-[1001] border-b border-black/10">
-        <div className="max-w-[100rem] mx-auto flex items-center justify-between gap-3 text-left">
-          <div className="flex items-center gap-2.5 font-display font-black tracking-tight text-xs sm:text-sm md:text-base uppercase text-[#ffffff] min-w-0">
-            <span className="bg-black/20 border border-white/20 px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-mono tracking-widest text-[#ffffff] shrink-0 hidden xs:inline-block">ANNOUNCEMENT</span>
+      <div className="front-announcement-bar w-full bg-[#f75c1e] text-[#ffffff] py-2.5 px-4 shadow-md relative z-[1001] border-b border-black/10">
+        <div className="front-announcement-container max-w-[100rem] mx-auto flex items-center justify-between gap-3 text-left">
+          <div className="front-announcement-text flex items-center gap-2.5 font-display font-black tracking-tight text-xs sm:text-sm md:text-base uppercase text-[#ffffff] min-w-0">
+            <span className="front-announcement-badge bg-black/20 border border-white/20 px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-mono tracking-widest text-[#ffffff] shrink-0 hidden xs:inline-block">ANNOUNCEMENT</span>
             <span className="truncate text-[#ffffff]">ARCH 421: THE UNMUTED ARCHIVES. OPENING SOON.</span>
           </div>
           <Link 
             to="/arch421"
-            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 sm:px-5 sm:py-2 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all shadow-md hover:scale-[1.03] active:scale-[0.98] shrink-0 ${
+            className={`front-announcement-link inline-flex items-center gap-1.5 px-3.5 py-1.5 sm:px-5 sm:py-2 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all shadow-md hover:scale-[1.03] active:scale-[0.98] shrink-0 ${
               isLightMode 
                 ? 'bg-[#ffffff] text-[#0f172a] hover:bg-slate-100 border border-white/40 font-black' 
                 : 'bg-[#000000] hover:bg-neutral-900 text-[#ffffff] border border-white/10 font-black'
@@ -543,14 +543,14 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
         </div>
       </div>
 
-      <nav className="flex items-center justify-between p-4 md:p-8 max-w-[100rem] mx-auto w-full relative z-[1000] gap-4">
+      <nav className="front-navbar flex items-center justify-between p-4 md:p-8 max-w-[100rem] mx-auto w-full relative z-[1000] gap-4">
         <Link 
           to="/" 
-          className="flex items-center space-x-3 md:space-x-4 z-40 shrink-0 group transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]" 
+          className="front-nav-logo flex items-center space-x-3 md:space-x-4 z-40 shrink-0 group transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]" 
           onClick={() => setIsMobileMenuOpen(false)}
         >
           {logoUrl && (
-            <div className="relative rounded-xl md:rounded-2xl shrink-0 transition-all duration-300">
+            <div className="front-logo-wrapper relative rounded-xl md:rounded-2xl shrink-0 transition-all duration-300">
               {/* Outer soft glowing ambient accent layer */}
               <div className="absolute inset-0 bg-gradient-to-tr from-neon-purple/20 to-neon-blue/20 opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500 pointer-events-none" />
               
@@ -570,13 +570,13 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                 <img 
                   src={logoUrl} 
                   alt={appName || "Logo"} 
-                  className="w-full h-full object-contain relative z-10 transition-transform duration-500 group-hover:scale-[1.03]" 
+                  className="front-logo-img w-full h-full object-contain relative z-10 transition-transform duration-500 group-hover:scale-[1.03]" 
                 />
               </div>
             </div>
           )}
           {appName && appName.trim() !== "" && !logoUrl && (
-            <div className="flex flex-col relative">
+            <div className="front-app-title flex flex-col relative">
               <div className="flex items-center space-x-2">
                 <span className="text-xl sm:text-2xl md:text-4xl font-display font-black tracking-tighter uppercase leading-none select-none transition-all duration-300">
                   <span className={`${
@@ -594,7 +594,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                   <motion.div 
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="px-2 py-0.5 bg-red-500 rounded-full flex items-center space-x-1 shadow-[0_0_15px_rgba(239,68,68,0.55)] border border-red-400/20"
+                    className="front-live-badge px-2 py-0.5 bg-red-500 rounded-full flex items-center space-x-1 shadow-[0_0_15px_rgba(239,68,68,0.55)] border border-red-400/20"
                   >
                     <span className="relative flex h-1.5 w-1.5">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
@@ -608,16 +608,16 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
           )}
         </Link>
         
-        <div className="hidden xl:flex items-center bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2rem] px-2 py-2 shadow-2xl">
+        <div className="front-nav-menu hidden xl:flex items-center bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2rem] px-2 py-2 shadow-2xl">
           {renderedMenuItems}
         </div>
 
-        <div className="flex items-center space-x-2 md:space-x-4 xl:space-x-6 z-40">
+        <div className="front-nav-actions flex items-center space-x-2 md:space-x-4 xl:space-x-6 z-40">
            {featChat !== false && (
              <motion.button 
               onClick={onOpenChat}
               whileHover="hover"
-              className="flex items-center space-x-2 xl:space-x-3 px-4 xl:px-6 py-3 rounded-2xl bg-white/5 hover:bg-neon-purple/20 border border-white/10 hover:border-neon-purple/50 transition-all group whitespace-nowrap shrink-0 relative overflow-hidden"
+              className="front-chat-btn flex items-center space-x-2 xl:space-x-3 px-4 xl:px-6 py-3 rounded-2xl bg-white/5 hover:bg-neon-purple/20 border border-white/10 hover:border-neon-purple/50 transition-all group whitespace-nowrap shrink-0 relative overflow-hidden"
             >
               <motion.div
                 className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 z-0"
@@ -633,7 +633,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
           <ThemeAccessibilityDropdown />
           
           <button 
-            className="xl:hidden text-white w-12 h-12 flex flex-shrink-0 items-center justify-center bg-white/5 rounded-2xl border border-white/5"
+            className="front-mobile-menu-toggle xl:hidden text-white w-12 h-12 flex flex-shrink-0 items-center justify-center bg-white/5 rounded-2xl border border-white/5"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
             {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -642,7 +642,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
       </nav>
 
       {location.pathname === '/' && settings?.under_header_text && settings.under_header_text.trim() !== "" && (
-        <div className={`w-full bg-transparent transition-colors select-none ${
+        <div className={`front-under-header w-full bg-transparent transition-colors select-none ${
           isLightMode 
             ? 'text-black/70' 
             : 'text-white/70'
@@ -666,7 +666,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
             animate={{ opacity: 1, backdropFilter: 'blur(24px)' }}
             exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed inset-0 z-[950] bg-dark-bg/95 xl:hidden pt-36 sm:pt-40 pb-12 overflow-y-auto"
+            className="front-mobile-menu-drawer fixed inset-0 z-[950] bg-dark-bg/95 xl:hidden pt-36 sm:pt-40 pb-12 overflow-y-auto"
           >
             <div className="flex flex-col min-h-full px-8 pb-32 max-w-md mx-auto">
               <div className="flex flex-col space-y-2.5 mt-2 mb-auto">
@@ -844,7 +844,7 @@ function MobileBottomBar({ featLiveTools, featBooth }: { featLiveTools: boolean;
         opacity: isVisible ? 1 : 0
       }}
       transition={{ duration: 0.3, ease: "easeInOut" }}
-      className="xl:hidden fixed bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-[440px] sm:max-w-[540px] select-none transform-gpu pointer-events-auto touch-manipulation" 
+      className="front-mobile-bottom-bar xl:hidden fixed bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-[440px] sm:max-w-[540px] select-none transform-gpu pointer-events-auto touch-manipulation" 
       onClick={(e) => e.stopPropagation()}
       onTouchStart={(e) => e.stopPropagation()}
     >
@@ -1431,9 +1431,9 @@ function MainLayout() {
       {settings?.custom_css && !isAdmin && (
         <style id="custom-injected-css">{settings.custom_css}</style>
       )}
-      <div className={`min-h-screen ${isAdmin || isSplitActive ? '' : 'pb-40 md:pb-32'} flex flex-col relative overflow-x-clip bg-dark-bg selection:bg-neon-purple selection:text-white`}>
+      <div className={`front-wrapper min-h-screen ${isAdmin || isSplitActive ? '' : 'pb-40 md:pb-32'} flex flex-col relative overflow-x-clip bg-dark-bg selection:bg-neon-purple selection:text-white`}>
       {/* Premium Moving Mesh Background */}
-      <div className="fixed inset-0 z-0 pointer-events-none opacity-40">
+      <div className="front-mesh-bg fixed inset-0 z-0 pointer-events-none opacity-40">
         <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-neon-purple/20 rounded-full blur-[120px] animate-[pulse_10s_ease-in-out_infinite]"></div>
         <div className="absolute bottom-[20%] right-[-10%] w-[50%] h-[50%] bg-neon-blue/20 rounded-full blur-[120px] animate-[pulse_12s_ease-in-out_infinite_2s]"></div>
         <div className="absolute top-[40%] right-[20%] w-[30%] h-[30%] bg-white/5 rounded-full blur-[100px] animate-[pulse_15s_ease-in-out_infinite_4s]"></div>
@@ -1455,7 +1455,7 @@ function MainLayout() {
         </Suspense>
       )}
       
-      <main className={location.pathname.includes('/studio') || isSplitActive ? "flex-1 w-full relative" : "flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 relative"}>
+      <main className={`front-main-container ${location.pathname.includes('/studio') || isSplitActive ? "flex-1 w-full relative" : "flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 relative"}`}>
         {!isAdmin && !isSplitActive && <AdvertisementSliders position="top" />}
         <ErrorBoundary key={isAdmin ? 'admin' : location.pathname}>
           <AnimatedRoutes adminPath={adminPath} />
@@ -1465,12 +1465,12 @@ function MainLayout() {
       </main>
 
       {!isAdmin && !isSplitActive && (
-        <footer className={`w-full max-w-7xl mx-auto p-4 md:p-8 pt-24 border-t relative flex flex-col gap-10 text-sm mb-40 md:mb-32 ${isLightMode ? 'border-black/10 text-black/60' : 'border-white/5 text-white/40'}`}>
+        <footer className={`front-footer w-full max-w-7xl mx-auto p-4 md:p-8 pt-24 border-t relative flex flex-col gap-10 text-sm mb-40 md:mb-32 ${isLightMode ? 'border-black/10 text-black/60' : 'border-white/5 text-white/40'}`}>
           <div className="flex flex-col md:flex-row items-center justify-between gap-10 w-full">
             <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-4 w-full md:w-auto">
               <button 
                 onClick={handleShare} 
-                className={`flex items-center justify-center gap-2.5 px-6 py-3 md:p-0 md:w-10 md:h-10 rounded-full transition-all shadow-md hover:shadow-xl cursor-pointer order-first md:order-last w-full max-w-[240px] md:max-w-none md:w-10 mb-[10px] md:mb-0 border ${
+                className={`front-footer-share-btn flex items-center justify-center gap-2.5 px-6 py-3 md:p-0 md:w-10 md:h-10 rounded-full transition-all shadow-md hover:shadow-xl cursor-pointer order-first md:order-last w-full max-w-[240px] md:max-w-none md:w-10 mb-[10px] md:mb-0 border ${
                   isLightMode 
                     ? 'bg-black/[0.03] border-black/10 text-black/70 hover:text-neon-purple hover:border-neon-purple/50 hover:bg-neon-purple/5' 
                     : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-neon-purple/50 hover:bg-neon-purple/10'
@@ -1481,7 +1481,7 @@ function MainLayout() {
                 <span className="md:hidden text-[10px] font-black uppercase tracking-[0.2em] text-neon-purple">Share Station</span>
               </button>
 
-              <div className="flex flex-wrap justify-center items-center gap-4">
+              <div className="front-footer-socials flex flex-wrap justify-center items-center gap-4">
                 {settings?.social_instagram && (
                   <a 
                     href={settings.social_instagram} 
@@ -1593,15 +1593,15 @@ function MainLayout() {
               </div>
             </div>
             <div className="flex flex-col items-center md:items-end space-y-2 text-center md:text-right">
-              <p className={`font-black tracking-[0.2em] text-[10px] ${isLightMode ? 'text-black/70' : 'text-white/60'}`}>© {new Date().getFullYear()} dejavufm.com. All rights reserved.</p>
-              <p className="text-[10px] uppercase tracking-[0.3em] font-bold italic text-center md:text-right text-[#7a7878]">
+              <p className={`front-footer-copyright font-black tracking-[0.2em] text-[10px] ${isLightMode ? 'text-black/70' : 'text-white/60'}`}>© {new Date().getFullYear()} dejavufm.com. All rights reserved.</p>
+              <p className="front-footer-tagline text-[10px] uppercase tracking-[0.3em] font-bold italic text-center md:text-right text-[#7a7878]">
                 {appTagline}
               </p>
-              <Link to="/privacy-policy" className="text-[10px] font-black uppercase tracking-[0.2em] text-neon-purple hover:text-neon-blue hover:underline transition-all mt-1">Privacy Policy</Link>
+              <Link to="/privacy-policy" className="front-footer-privacy-link text-[10px] font-black uppercase tracking-[0.2em] text-neon-purple hover:text-neon-blue hover:underline transition-all mt-1">Privacy Policy</Link>
             </div>
           </div>
 
-          <div className={`w-[500px] max-w-full mx-auto border-t pt-6 flex justify-center ${isLightMode ? 'border-black/10' : 'border-white/[0.05]'}`}>
+          <div className={`front-footer-credits w-[500px] max-w-full mx-auto border-t pt-6 flex justify-center ${isLightMode ? 'border-black/10' : 'border-white/[0.05]'}`}>
             <p className={`text-[9px] md:text-[10px] uppercase tracking-[0.25em] text-center ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>
               Developed by{" "}
               <a 
