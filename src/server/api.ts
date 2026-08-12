@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from "express";
-import Database from 'better-sqlite3';
+import Database from './sqlite.js';
 import { db, dbPath, backupDir, pruneBackups, backupDatabase, reopenDatabaseConnection, getUploadsDir, pruneHistoricalData } from "./db.js";
 import { request as httpRequest } from "http";
 import { request as httpsRequest } from "https";
@@ -39,6 +39,7 @@ async function processImage(file: any): Promise<string> {
     
     if (sharpLib) {
       await sharpLib(file.path)
+        .rotate()
         .resize(1920, 1920, { fit: 'inside', withoutEnlargement: true })
         .webp({ quality: 80 })
         .toFile(outputPath);
@@ -1028,27 +1029,52 @@ apiRouter.put("/public/user/profile", (req: any, res: any) => {
   }
 });
 
-apiRouter.post("/public/user/upload-avatar", upload.single("avatar"), async (req: any, res: any) => {
-  const token = req.cookies.user_token;
-  if (!token) return res.status(401).json({ error: "Unauthorized" });
-
-  try {
-    const decoded = jwt.verify(token, ACTUAL_SECRET) as any;
-    if (decoded && decoded.username) {
-      const userCheck = db.prepare("SELECT is_banned FROM users WHERE LOWER(username) = ?").get(decoded.username.toLowerCase()) as any;
-      if (userCheck && userCheck.is_banned) {
-        return res.status(403).json({ error: "You are banned. Please contact the admin." });
+apiRouter.post("/public/user/upload-avatar", (req: any, res: any, next: any) => {
+  upload.single("avatar")(req, res, async (err: any) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: "File is too large. Max size is 5MB" });
       }
+      return res.status(400).json({ error: err.message || "Failed to upload avatar" });
     }
-    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-    const processedFilename = await processImage(req.file);
-    const avatarUrl = `/uploads/${processedFilename}`;
-    db.prepare("UPDATE users SET avatar_url = ? WHERE username = ?").run(avatarUrl, decoded.username);
-    res.json({ success: true, avatar_url: avatarUrl });
-  } catch (err) {
-    res.status(401).json({ error: "Unauthorized" });
-  }
+    const token = req.cookies.user_token;
+    if (!token) {
+      if (req.file) {
+        try { fs.unlinkSync(req.file.path); } catch (e) {}
+      }
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    try {
+      const decoded = jwt.verify(token, ACTUAL_SECRET) as any;
+      if (decoded && decoded.username) {
+        const userCheck = db.prepare("SELECT is_banned FROM users WHERE LOWER(username) = ?").get(decoded.username.toLowerCase()) as any;
+        if (userCheck && userCheck.is_banned) {
+          if (req.file) {
+            try { fs.unlinkSync(req.file.path); } catch (e) {}
+          }
+          return res.status(403).json({ error: "You are banned. Please contact the admin." });
+        }
+      }
+      if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+      if (req.file.size > 5 * 1024 * 1024) {
+        try { fs.unlinkSync(req.file.path); } catch (e) {}
+        return res.status(400).json({ error: "File is too large. Max size is 5MB" });
+      }
+
+      const processedFilename = await processImage(req.file);
+      const avatarUrl = `/uploads/${processedFilename}`;
+      db.prepare("UPDATE users SET avatar_url = ? WHERE username = ?").run(avatarUrl, decoded.username);
+      res.json({ success: true, avatar_url: avatarUrl });
+    } catch (err) {
+      if (req.file) {
+        try { fs.unlinkSync(req.file.path); } catch (e) {}
+      }
+      res.status(401).json({ error: "Unauthorized" });
+    }
+  });
 });
 
 apiRouter.post("/public/chat/upload", (req: any, res: any) => {
