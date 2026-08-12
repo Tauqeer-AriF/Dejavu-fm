@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Instagram, Facebook, Search, X, UserX, ChevronLeft, ChevronRight, Globe } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useLogo } from '../hooks/useLogo';
@@ -129,8 +129,16 @@ function DjCard({ dj, index, resolveDjImage, logoUrl, settings }: { dj: DJ, inde
 }
 
 export default function DJs() {
-  const [query, setQuery] = useState("");
+  const [searchParams] = useSearchParams();
+  const [query, setQuery] = useState(() => searchParams.get('search') || searchParams.get('s') || "");
   const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    const q = searchParams.get('search') || searchParams.get('s') || "";
+    if (q !== query) {
+      setQuery(q);
+    }
+  }, [searchParams]);
 
   const { data: settings } = useQuery({
     queryKey: ['settings'],

@@ -228,6 +228,22 @@ export default function Home() {
     refetchInterval: 10000,
   });
 
+  const { data: djs } = useQuery<any[]>({
+    queryKey: ['djs'],
+    queryFn: () => fetch('/api/public/djs').then(res => res.json()),
+  });
+
+  const matchedDj = useMemo(() => {
+    if (!djs || !onAirInfo?.djName) return null;
+    const currentDjNameLower = onAirInfo.djName.toLowerCase().trim();
+    return djs.find(dj => {
+      const djNameLower = dj.name.toLowerCase().trim();
+      return djNameLower === currentDjNameLower || 
+             djNameLower.includes(currentDjNameLower) ||
+             currentDjNameLower.includes(djNameLower);
+    });
+  }, [djs, onAirInfo?.djName]);
+
   const { logoUrl, isLightMode, settings, resolveDjImage } = useLogo();
 
 
@@ -329,13 +345,16 @@ export default function Home() {
               className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl leading-[0.95] md:leading-[0.9] font-black font-display uppercase tracking-tight md:tracking-[-0.05em] flex flex-col items-center lg:items-start w-full"
             >
               {onAirInfo ? (
-                <>
+                <Link
+                  to={matchedDj ? `/djs/${matchedDj.id}` : `/djs?search=${encodeURIComponent(onAirInfo.djName)}`}
+                  className="group w-full flex flex-col items-center lg:items-start cursor-pointer hover:opacity-90 transition-opacity"
+                >
                   <span className="text-white drop-shadow-2xl">{onAirInfo.djName.split(' ')[0]}</span>
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple via-neon-blue to-neon-purple bg-[length:200%_auto] animate-[gradient_4s_linear_infinite] italic tracking-tighter -mt-1 md:-mt-2 lg:-mt-4 relative pr-6 pb-1">
                     {onAirInfo.djName.split(' ').slice(1).join(' ') || 'LIVE'}
                     <div className="absolute inset-0 bg-gradient-to-r from-neon-purple/20 via-neon-blue/20 to-neon-purple/20 blur-2xl -z-10"></div>
                   </span>
-                </>
+                </Link>
               ) : (
                 <>
                   <span className="text-white drop-shadow-2xl">{settings?.app_name?.split(' ')[0] || "DEJAVU"}</span>
