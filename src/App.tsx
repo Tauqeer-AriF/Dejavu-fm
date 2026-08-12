@@ -416,7 +416,8 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
     { key: 'schedule', path: '/schedule', defaultLabel: 'Schedule' },
     { key: 'djs', path: '/djs', defaultLabel: 'DJs and Hosts' },
     { key: 'podcasts', path: '/podcasts', defaultLabel: 'Podcasts', matchPrefix: true },
-    { key: 'features', path: '/features', defaultLabel: 'Features' }
+    { key: 'features', path: '/features', defaultLabel: 'Features' },
+    { key: 'booth', path: '/booth', defaultLabel: 'DJ Booth' }
   ];
 
   const renderedMobileItems = customOrder
@@ -854,7 +855,7 @@ function MobileBottomBar({ featLiveTools, featBooth }: { featLiveTools: boolean;
           {[
             { to: "/", icon: Radio, active: location.pathname === "/" },
             ...(featLiveTools ? [{ to: "/watch", icon: Video, active: location.pathname === "/watch" }] : []),
-            { to: "/schedule", icon: Calendar, active: location.pathname === "/schedule" },
+            ...(!featBooth ? [{ to: "/schedule", icon: Calendar, active: location.pathname === "/schedule" }] : []),
             ...(featBooth ? [{ to: "/booth", icon: Music, active: location.pathname === "/booth" }] : []),
             { to: "/djs", icon: Headphones, active: location.pathname === "/djs" || isOnDJs },
             { to: "/podcasts", icon: Podcast, active: location.pathname === "/podcasts" || isOnPodcasts },
