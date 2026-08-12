@@ -544,7 +544,13 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
         </div>
       </div>
 
-      <nav className="front-navbar flex items-center justify-between p-4 md:p-8 max-w-[100rem] mx-auto w-full relative z-[1000] gap-4">
+      <nav className={`front-navbar flex items-center justify-between p-4 md:p-8 max-w-[100rem] mx-auto w-full relative z-[1000] gap-4 transition-colors duration-300 ${
+        isMobileMenuOpen 
+          ? isLightMode 
+            ? 'bg-[#ffffff] border-b border-black/10' 
+            : 'bg-[#080809] border-b border-white/5'
+          : 'bg-transparent'
+      }`}>
         <Link 
           to="/" 
           className="front-nav-logo flex items-center space-x-3 md:space-x-4 z-40 shrink-0 group transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]" 
