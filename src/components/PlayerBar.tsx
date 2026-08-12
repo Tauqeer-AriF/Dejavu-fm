@@ -4,6 +4,7 @@ import { useAudio, AudioQuality } from '../context/AudioContext';
 import { useLogo } from '../hooks/useLogo';
 import { motion, AnimatePresence } from 'motion/react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 
 function Visualizer({ isPlaying, volume, isLightMode }: { isPlaying: boolean; volume: number; isLightMode: boolean }) {
   const numBars = 16;
@@ -187,6 +188,19 @@ export function PlayerBar() {
   const { isPlaying, isBuffering, togglePlay, volume, setVolume, onAirInfo, toggleCinematic, activeType, podcastTrack } = useAudio();
   const { logoUrl, isLightMode, settings, resolveDjImage } = useLogo();
   
+  const { data: djs } = useQuery<any[]>({
+    queryKey: ['djs'],
+    queryFn: () => fetch('/api/public/djs').then(res => res.json()),
+  });
+
+  const matchedDj = djs?.find(dj => {
+    const djNameLower = dj.name.toLowerCase().trim();
+    const currentDjNameLower = onAirInfo?.djName?.toLowerCase().trim() || '';
+    return djNameLower === currentDjNameLower || 
+           (currentDjNameLower && djNameLower.includes(currentDjNameLower)) ||
+           (currentDjNameLower && currentDjNameLower.includes(djNameLower));
+  });
+  
   const [isMinimized, setIsMinimized] = useState(true);
 
   const [dragConstraints, setDragConstraints] = useState({ left: -800, right: 50, top: -600, bottom: 50 });
@@ -264,7 +278,12 @@ export function PlayerBar() {
                     </div>
                   ) : onAirInfo ? (
                     <div className="flex items-center truncate">
-                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue font-black uppercase italic tracking-tighter mr-2 pr-2 shrink-0">{onAirInfo.djName}</span>
+                      <Link 
+                        to={matchedDj ? `/djs/${matchedDj.id}` : `/djs?search=${encodeURIComponent(onAirInfo.djName)}`}
+                        className="hover:opacity-85 transition-opacity shrink-0 cursor-pointer"
+                      >
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue font-black uppercase italic tracking-tighter mr-2 pr-2 shrink-0">{onAirInfo.djName}</span>
+                      </Link>
                       <span className={`opacity-80 font-medium truncate ${isLightMode ? "text-black" : "text-white"}`}>{onAirInfo.showName}</span>
                     </div>
                   ) : (
