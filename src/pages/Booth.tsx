@@ -474,7 +474,7 @@ export default function Booth() {
                       ))
                     ) : (
                       <div className={`p-4 text-center text-xs font-sans ${isLightMode ? 'bg-white text-slate-600' : 'text-white/40'}`}>
-                        No matches found in curated tracks. You can submit a custom track below!
+                        No matches found in curated tracks.
                       </div>
                     )}
                   </motion.div>
@@ -587,76 +587,7 @@ export default function Booth() {
                   </div>
                 </div>
               )}
-
-            {/* Custom Request Trigger Link */}
-            <div className={`mt-6 flex items-center justify-between text-[10px] border-t pt-4 font-sans ${isLightMode ? 'border-slate-200/80' : 'border-white/5'}`}>
-              <span className={`font-medium ${isLightMode ? 'text-slate-600' : 'text-white/50'}`}>Not in curated suggestions?</span>
-              <button 
-                onClick={() => setShowCustomForm(!showCustomForm)}
-                className="text-neon-purple font-black uppercase tracking-wider hover:underline flex items-center gap-1 font-sans"
-              >
-                {showCustomForm ? "Cancel" : "Submit Custom Track"}
-              </button>
             </div>
-
-            {/* Custom Manual Entry Form */}
-            <AnimatePresence>
-              {showCustomForm && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className={`overflow-hidden mt-4 pt-4 border-t border-dashed space-y-4 ${isLightMode ? 'border-slate-200' : 'border-white/5'}`}
-                >
-                  <div className="space-y-1.5">
-                    <label className={`block text-[9px] font-sans font-bold uppercase tracking-wider ${isLightMode ? 'text-slate-700' : 'text-white/40'}`}>Track Title</label>
-                    <input 
-                      type="text" 
-                      value={customTitle}
-                      onChange={(e) => setCustomTitle(e.target.value)}
-                      placeholder="e.g. 21 Seconds"
-                      className={`w-full rounded-xl py-2.5 px-4 text-xs font-semibold focus:outline-none focus:border-neon-purple/80 font-sans border ${
-                        isLightMode 
-                          ? 'bg-slate-100/90 border-slate-200 text-slate-900 placeholder:text-slate-500 focus:bg-white focus:ring-2 focus:ring-neon-purple/20' 
-                          : 'bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:bg-white/10'
-                      }`}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className={`block text-[9px] font-sans font-bold uppercase tracking-wider ${isLightMode ? 'text-slate-700' : 'text-white/40'}`}>Artist / Creator</label>
-                    <input 
-                      type="text" 
-                      value={customArtist}
-                      onChange={(e) => setCustomArtist(e.target.value)}
-                      placeholder="e.g. So Solid Crew"
-                      className={`w-full rounded-xl py-2.5 px-4 text-xs font-semibold focus:outline-none focus:border-neon-purple/80 font-sans border ${
-                        isLightMode 
-                          ? 'bg-slate-100/90 border-slate-200 text-slate-900 placeholder:text-slate-500 focus:bg-white focus:ring-2 focus:ring-neon-purple/20' 
-                          : 'bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:bg-white/10'
-                      }`}
-                    />
-                  </div>
-
-                  <button
-                    onClick={() => handleRequestSubmit(customTitle, customArtist)}
-                    disabled={isSubmitting || !customTitle.trim() || !customArtist.trim()}
-                    className="w-full py-3 bg-neon-purple hover:bg-neon-purple/80 text-white font-display font-bold uppercase text-xs tracking-widest rounded-xl transition-all shadow-lg hover:shadow-neon-purple/20 flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" /> Submitting...
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="w-4 h-4" /> Submit Request
-                      </>
-                    )}
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
 
           {/* Guidelines Box */}
           <div className={`hidden lg:block border rounded-2xl p-5 text-xs space-y-2 font-sans ${
