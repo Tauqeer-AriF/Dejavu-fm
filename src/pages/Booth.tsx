@@ -324,7 +324,7 @@ export default function Booth() {
 
 
       {/* Floating Audio SFX Toggle */}
-      <div className="absolute top-4 right-4 z-40">
+      <div className="relative sm:absolute top-0 sm:top-4 right-0 sm:right-4 flex sm:block justify-center mb-4 sm:mb-0 z-40">
         <button
           type="button"
           onClick={toggleSounds}
