@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Plus, ThumbsUp, Music, AlertCircle, Sparkles, Check, Play, User, Loader2, Volume2, VolumeX } from 'lucide-react';
+import { Search, Plus, ThumbsUp, Music, AlertCircle, Sparkles, Check, Play, User, Loader2, Volume2, VolumeX, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLogo } from '../hooks/useLogo';
 import { playHighFidelitySound } from '../components/GlobalRequestAlerts';
@@ -68,6 +68,7 @@ export default function Booth() {
   const [customArtist, setCustomArtist] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCustomForm, setShowCustomForm] = useState(false);
+  const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false);
 
   // Persistence to restrict duplicate upvoting and recognize own requests
   const [upvotedIds, setUpvotedIds] = useState<number[]>(() => {
@@ -320,15 +321,21 @@ export default function Booth() {
   const { isLightMode } = useLogo();
 
   return (
-    <div className={`w-full max-w-5xl mx-auto py-4 px-2 select-none relative ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
+    <div 
+      className={`w-full max-w-5xl mx-auto py-2 sm:py-4 px-3 sm:px-4 select-none relative pb-32 lg:pb-12 ${isLightMode ? 'text-slate-900' : 'text-white'}`}
+      style={{ paddingTop: '2px' }}
+    >
 
+      {/* Decorative Moving Aura */}
+      <div className="absolute top-0 left-1/4 w-80 h-80 bg-neon-purple/5 rounded-full blur-[100px] pointer-events-none -z-10 animate-pulse" />
+      <div className="absolute bottom-10 right-1/4 w-80 h-80 bg-neon-blue/5 rounded-full blur-[100px] pointer-events-none -z-10" />
 
       {/* Floating Audio SFX Toggle */}
-      <div className="relative sm:absolute top-0 sm:top-4 right-0 sm:right-4 flex sm:block justify-center mb-4 sm:mb-0 z-40">
+      <div className="absolute top-2 right-3 sm:top-4 sm:right-4 z-[200]">
         <button
           type="button"
           onClick={toggleSounds}
-          className={`booth-sfx-btn flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border shadow-sm ${
+          className={`booth-sfx-btn shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border shadow-xs ${
             isLightMode
               ? 'bg-[#ffffff] border-slate-300 text-slate-900 hover:text-slate-950 hover:bg-slate-100 hover:border-slate-400'
               : 'bg-white/10 border-white/15 text-white/80 hover:text-white hover:bg-white/15'
@@ -349,80 +356,84 @@ export default function Booth() {
         </button>
       </div>
 
-      {/* Decorative Moving Aura */}
-      <div className="absolute top-0 left-1/4 w-80 h-80 bg-neon-purple/5 rounded-full blur-[100px] pointer-events-none -z-10 animate-pulse" />
-      <div className="absolute bottom-10 right-1/4 w-80 h-80 bg-neon-blue/5 rounded-full blur-[100px] pointer-events-none -z-10" />
-
       {/* Hero Header Block */}
-      <div className="mb-10 text-center relative py-6">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.25em] bg-neon-purple/10 text-neon-purple mb-4 border border-neon-purple/20">
-          <Sparkles className="w-3 h-3 animate-spin-slow" /> Virtual DJ Booth
-        </span>
-        <h2 className={`text-4xl md:text-5xl font-display font-black tracking-tight uppercase leading-none ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
-          REQUEST THE <span className="text-neon-purple">TRACKS</span>
-        </h2>
-        <p className={`mt-4 text-xs md:text-sm font-sans uppercase tracking-[0.2em] max-w-xl mx-auto font-medium ${isLightMode ? 'text-slate-600' : 'text-white/50'}`}>
+      <div className="mb-6 lg:mb-[50px] relative pt-2 pb-4 lg:text-center lg:flex lg:flex-col lg:items-center">
+        <div className="lg:flex lg:flex-col lg:items-center">
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] bg-neon-purple/10 text-neon-purple mb-3 border border-neon-purple/20">
+            <Sparkles className="w-2.5 h-2.5 animate-spin-slow" /> Virtual DJ Booth
+          </span>
+          <h2 className={`text-2xl sm:text-3xl md:text-5xl font-display font-black tracking-tight uppercase leading-none ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
+            REQUEST THE <span className="text-neon-purple">TRACKS</span>
+          </h2>
+        </div>
+
+        <p className={`hidden sm:block mt-4 text-xs md:text-sm font-sans uppercase tracking-[0.15em] font-medium lg:max-w-2xl lg:mx-auto ${isLightMode ? 'text-slate-600' : 'text-white/50'}`}>
           Request tracks, upvote favorites, and interact live with the broadcasting host.
         </p>
       </div>
 
       {/* Grid Layout: Left is requesting engine, Right is live queue */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-start">
         
         {/* Request Side Box */}
-        <div className="lg:col-span-5 space-y-6">
-          <div className={`glass-panel border rounded-2xl p-6 relative backdrop-blur-md ${
+        <div className="lg:col-span-5 space-y-4 lg:space-y-6 relative z-[100]">
+          <div className={`glass-panel border rounded-2xl p-3.5 sm:p-5 relative backdrop-blur-md ${
             isLightMode 
-              ? 'bg-white/80 border-slate-200/80 shadow-xl shadow-slate-200/50' 
-              : 'bg-black/30 border-white/5'
+              ? 'bg-white/90 border-slate-200/90 shadow-lg shadow-slate-200/40' 
+              : 'bg-black/40 border-white/10'
           }`}>
             <div className="absolute inset-0 bg-gradient-to-br from-neon-purple/5 to-transparent pointer-events-none rounded-2xl" />
             
-            <h3 className={`text-sm font-display font-bold uppercase tracking-[0.2em] flex items-center gap-2 mb-6 ${isLightMode ? 'text-slate-900' : 'text-white/80'}`}>
-              <Music className="w-4 h-4 text-neon-purple" /> Request a Track
+            <h3 className={`text-xs font-display font-bold uppercase tracking-[0.2em] flex items-center gap-2 mb-3 ${isLightMode ? 'text-slate-900' : 'text-white/80'}`}>
+              <Music className="w-3.5 h-3.5 text-neon-purple" /> Request a Track
             </h3>
 
-            {/* Requester Profile Name Setting */}
-            <div className="mb-6 space-y-2">
-              <label className={`block text-[10px] font-sans font-bold uppercase tracking-wider ${isLightMode ? 'text-slate-600' : 'text-white/50'}`}>Your Listener Alias</label>
-              <div className="relative">
-                <User className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 ${isLightMode ? 'text-slate-400' : 'text-white/30'}`} />
-                <input 
-                  type="text" 
-                  value={requesterName}
-                  onChange={(e) => {
-                    setRequesterName(e.target.value);
-                    localStorage.setItem('booth_requester_name', e.target.value);
-                  }}
-                  placeholder="Anonymous Listener"
-                  className={`w-full rounded-xl py-3 pl-11 pr-4 text-xs font-semibold focus:outline-none focus:border-neon-purple/80 transition-all font-sans border ${
-                    isLightMode 
-                      ? 'bg-slate-100/80 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white' 
-                      : 'bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:bg-white/10'
-                  }`}
-                />
+            <div className="space-y-3 mb-3">
+              {/* Requester Profile Name Setting & Track Search inline on sm+ */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2.5">
+                <div className="space-y-1">
+                  <label className={`block text-[9px] font-sans font-bold uppercase tracking-wider ${isLightMode ? 'text-slate-600' : 'text-white/50'}`}>Your Listener Alias</label>
+                  <div className="relative">
+                    <User className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${isLightMode ? 'text-slate-400' : 'text-white/30'}`} />
+                    <input 
+                      type="text" 
+                      value={requesterName}
+                      onChange={(e) => {
+                        setRequesterName(e.target.value);
+                        localStorage.setItem('booth_requester_name', e.target.value);
+                      }}
+                      placeholder="Anonymous Listener"
+                      className={`w-full rounded-xl py-2 pl-9 pr-3 text-xs font-semibold focus:outline-none focus:border-neon-purple/80 transition-all font-sans border ${
+                        isLightMode 
+                          ? 'bg-slate-100/80 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white' 
+                          : 'bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:bg-white/10'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                {/* Track Search Box */}
+                <div className="space-y-1 relative z-30">
+                  <label className={`block text-[9px] font-sans font-bold uppercase tracking-wider ${isLightMode ? 'text-slate-700' : 'text-white/50'}`}>Search Curated Track List</label>
+                  <div className="relative">
+                    <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${isLightMode ? 'text-slate-500' : 'text-white/30'}`} />
+                    <input 
+                      type="text" 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Enter track or artist..."
+                      className={`w-full rounded-xl py-2 pl-9 pr-3 text-xs font-semibold focus:outline-none focus:border-neon-purple/80 transition-all font-sans border ${
+                        isLightMode 
+                          ? 'bg-slate-100/90 border-slate-200 text-slate-900 placeholder:text-slate-500 focus:bg-white focus:ring-2 focus:ring-neon-purple/20' 
+                          : 'bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:bg-white/10'
+                      }`}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Track Search Box */}
-            <div className="space-y-2 relative z-30">
-              <label className={`block text-[10px] font-sans font-bold uppercase tracking-wider ${isLightMode ? 'text-slate-700' : 'text-white/50'}`}>Search CURATED Track list</label>
-              <div className="relative">
-                <Search className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 ${isLightMode ? 'text-slate-500' : 'text-white/30'}`} />
-                <input 
-                  type="text" 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Enter track or artist name..."
-                  className={`w-full rounded-xl py-3 pl-11 pr-4 text-xs font-semibold focus:outline-none focus:border-neon-purple/80 transition-all font-sans border ${
-                    isLightMode 
-                      ? 'bg-slate-100/90 border-slate-200 text-slate-900 placeholder:text-slate-500 focus:bg-white focus:ring-2 focus:ring-neon-purple/20' 
-                      : 'bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:bg-white/10'
-                  }`}
-                />
-              </div>
-
-              {/* Suggestions Panel */}
+            {/* Suggestions Panel */}
               <AnimatePresence>
                 {searchQuery.trim() && (
                   <motion.div 
@@ -476,13 +487,85 @@ export default function Booth() {
                   <div className={`text-[10px] font-sans font-bold uppercase tracking-wider mb-2 flex items-center justify-between ${
                     isLightMode ? 'text-slate-700' : 'text-white/50'
                   }`}>
-                    <span className="flex items-center gap-1.5">
+                    <span className="flex items-center gap-1.5 mb-[10px] lg:mb-0">
                       <Sparkles className="w-3 h-3 text-neon-purple" />
                       Suggested Tracks
                     </span>
                     <span className={`text-[9px] font-medium ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>Quick Pick</span>
                   </div>
-                  <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+
+                  {/* Dropdown for Mobile Screens */}
+                  <div className="block lg:hidden relative z-[150] mb-2">
+                    <button
+                      type="button"
+                      onClick={() => setMobileDropdownOpen(!mobileDropdownOpen)}
+                      style={{
+                        backgroundColor: isLightMode ? '#ffffff' : 'rgba(255, 255, 255, 0.05)',
+                        color: isLightMode ? '#0f172a' : '#ffffff',
+                        borderColor: isLightMode ? '#cbd5e1' : 'rgba(255, 255, 255, 0.1)'
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold border transition-all ${
+                        isLightMode
+                          ? 'hover:bg-slate-50 shadow-sm'
+                          : 'hover:bg-white/10'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Sparkles className="w-3.5 h-3.5 text-neon-purple" />
+                        Choose from Curated Suggestions...
+                      </span>
+                      <ChevronDown className={`w-4 h-4 text-neon-purple transition-transform duration-200 ${mobileDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    <AnimatePresence>
+                      {mobileDropdownOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -4 }}
+                          style={{
+                            backgroundColor: isLightMode ? '#ffffff' : '#12121a',
+                            borderColor: isLightMode ? '#e2e8f0' : 'rgba(255, 255, 255, 0.1)'
+                          }}
+                          className={`absolute top-[105%] left-0 w-full rounded-xl border shadow-2xl z-[200] max-h-56 overflow-y-auto divide-y ${
+                            isLightMode
+                              ? 'divide-slate-100 text-slate-900'
+                              : 'divide-white/5 text-white'
+                          }`}
+                        >
+                          {curatedTracks.slice(0, 10).map((t) => (
+                            <button
+                              key={t.id}
+                              type="button"
+                              onClick={() => {
+                                handleRequestSubmit(t.title, t.artist);
+                                setMobileDropdownOpen(false);
+                              }}
+                              disabled={isSubmitting}
+                              style={{
+                                backgroundColor: isLightMode ? '#ffffff' : 'transparent',
+                                color: isLightMode ? '#1e293b' : 'rgba(255, 255, 255, 0.8)'
+                              }}
+                              className={`w-full text-left px-4 py-3 text-xs transition-colors flex items-center justify-between ${
+                                isLightMode
+                                  ? 'hover:bg-purple-50 hover:text-purple-900'
+                                  : 'hover:bg-white/5 hover:text-white'
+                              }`}
+                            >
+                              <div className="truncate pr-4">
+                                <span className="font-bold">{t.title}</span>
+                                <span className={`text-[10px] ml-1.5 ${isLightMode ? 'text-slate-500' : 'text-white/40'}`}>by {t.artist}</span>
+                              </div>
+                              <Plus className={`w-3.5 h-3.5 shrink-0 ${isLightMode ? 'text-neon-purple' : 'text-neon-purple/70'}`} />
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Traditional Chips for Large Screens */}
+                  <div className="hidden lg:flex flex-wrap gap-1.5 max-h-28 sm:max-h-36 overflow-y-auto pr-1 pb-1">
                     {curatedTracks.slice(0, 10).map((t) => (
                       <button
                         key={t.id}
@@ -504,7 +587,6 @@ export default function Booth() {
                   </div>
                 </div>
               )}
-            </div>
 
             {/* Custom Request Trigger Link */}
             <div className={`mt-6 flex items-center justify-between text-[10px] border-t pt-4 font-sans ${isLightMode ? 'border-slate-200/80' : 'border-white/5'}`}>
@@ -608,7 +690,7 @@ export default function Booth() {
 
 
 
-          <div className="space-y-3 pr-1">
+          <div className="space-y-2.5 sm:space-y-3 pr-1">
             {loading ? (
               <div className={`flex flex-col items-center justify-center py-20 gap-3 ${isLightMode ? 'text-slate-400' : 'text-white/40'}`}>
                 <Loader2 className="w-8 h-8 animate-spin text-neon-purple" />
@@ -628,7 +710,7 @@ export default function Booth() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, x: -50 }}
                       transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                      className={`booth-request-card relative border rounded-2xl p-4 flex items-center justify-between gap-4 transition-all duration-300 font-sans ${
+                      className={`booth-request-card relative border rounded-2xl p-3 sm:p-4 flex items-center justify-between gap-3 sm:gap-4 transition-all duration-300 font-sans ${
                         req.status === 'on_deck'
                           ? (isLightMode ? 'bg-sky-50 border-sky-300 text-slate-900 shadow-sm' : 'bg-neon-blue/10 border-neon-blue shadow-[0_0_20px_rgba(0,243,255,0.1)]')
                           : req.status === 'approved'
