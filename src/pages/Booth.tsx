@@ -359,10 +359,10 @@ export default function Booth() {
           <Sparkles className="w-3 h-3 animate-spin-slow" /> Virtual DJ Booth
         </span>
         <h2 className={`text-4xl md:text-5xl font-display font-black tracking-tight uppercase leading-none ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
-          SHAPE THE <span className="text-neon-purple">SOUNDS</span>
+          REQUEST THE <span className="text-neon-purple">TRACKS</span>
         </h2>
         <p className={`mt-4 text-xs md:text-sm font-sans uppercase tracking-[0.2em] max-w-xl mx-auto font-medium ${isLightMode ? 'text-slate-600' : 'text-white/50'}`}>
-          Request hot tracks, upvote favorites, and interact live with the broadcasting host.
+          Request tracks, upvote favorites, and interact live with the broadcasting host.
         </p>
       </div>
 
@@ -577,7 +577,7 @@ export default function Booth() {
           </div>
 
           {/* Guidelines Box */}
-          <div className={`border rounded-2xl p-5 text-xs space-y-2 font-sans ${
+          <div className={`hidden lg:block border rounded-2xl p-5 text-xs space-y-2 font-sans ${
             isLightMode 
               ? 'bg-slate-100/70 border-slate-200/90 text-slate-600' 
               : 'bg-white/5 border-white/10 text-white/60'
@@ -793,6 +793,20 @@ export default function Booth() {
                 </button>
               </div>
             )}
+          </div>
+
+          {/* Guidelines Box - Mobile Only */}
+          <div className={`block lg:hidden border rounded-2xl p-5 text-xs space-y-2 font-sans mt-6 ${
+            isLightMode 
+              ? 'bg-slate-100/70 border-slate-200/90 text-slate-600' 
+              : 'bg-white/5 border-white/10 text-white/60'
+          }`}>
+            <h4 className={`font-display font-bold text-[10px] uppercase tracking-wider flex items-center gap-1.5 ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
+              <AlertCircle className="w-4 h-4 text-neon-blue" /> DJ Request Code
+            </h4>
+            <p>1. Ensure requested tracks fit the DejavuFM station format (Grime, Garage, Dubstep, Bass, House, Underground).</p>
+            <p>2. Keep it civilized. Spamming or offensive submissions will result in instant IP bans.</p>
+            <p>3. Support other listeners! Check out their track proposals and upvote those you wish to hear.</p>
           </div>
         </div>
 
