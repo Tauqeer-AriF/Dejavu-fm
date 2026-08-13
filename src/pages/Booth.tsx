@@ -198,6 +198,20 @@ export default function Booth() {
         setCuratedTracks(prev => prev.filter(t => t.id !== payload.id));
       };
 
+      const handleCuratedBulkDelete = (payload: { ids: number[] }) => {
+        if (payload?.ids) {
+          setCuratedTracks(prev => prev.filter(t => !payload.ids.includes(t.id)));
+        }
+      };
+
+      const handleCuratedBulkAdd = () => {
+        fetchCuratedTracks();
+      };
+
+      const handleCuratedCleared = () => {
+        setCuratedTracks([]);
+      };
+
       socket.on("songRequestAdded", handleAdd);
       socket.on("songRequestUpdated", handleUpdate);
       socket.on("songRequestStatusUpdated", handleStatusUpdate);
@@ -207,6 +221,9 @@ export default function Booth() {
       socket.on("curatedTrackAdded", handleCuratedAdd);
       socket.on("curatedTrackUpdated", handleCuratedUpdate);
       socket.on("curatedTrackDeleted", handleCuratedDelete);
+      socket.on("curatedTracksBulkDeleted", handleCuratedBulkDelete);
+      socket.on("curatedTracksBulkAdded", handleCuratedBulkAdd);
+      socket.on("curatedTracksCleared", handleCuratedCleared);
 
       return () => {
         socket.off("songRequestAdded", handleAdd);
@@ -218,6 +235,9 @@ export default function Booth() {
         socket.off("curatedTrackAdded", handleCuratedAdd);
         socket.off("curatedTrackUpdated", handleCuratedUpdate);
         socket.off("curatedTrackDeleted", handleCuratedDelete);
+        socket.off("curatedTracksBulkDeleted", handleCuratedBulkDelete);
+        socket.off("curatedTracksBulkAdded", handleCuratedBulkAdd);
+        socket.off("curatedTracksCleared", handleCuratedCleared);
       };
     }
   }, []);

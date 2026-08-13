@@ -5064,6 +5064,68 @@ apiRouter.put("/admin/curated-tracks/:id", authMiddleware, authorizeRole(['admin
   }
 });
 
+// Staff: Clear all curated tracks
+apiRouter.delete("/admin/curated-tracks/clear-all", authMiddleware, authorizeRole(['admin', 'dj']), (req: any, res: any) => {
+  try {
+    const info = db.prepare("DELETE FROM curated_tracks").run();
+    logAction(req, 'DELETE', 'curated_tracks_clear_all', 'all');
+    const io = req.app.get('io');
+    if (io) {
+      io.emit("curatedTracksCleared");
+    }
+    res.json({ success: true, count: info.changes });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Staff: Bulk delete curated tracks
+apiRouter.post("/admin/curated-tracks/bulk-delete", authMiddleware, authorizeRole(['admin', 'dj']), (req: any, res: any) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: "No track IDs provided for deletion" });
+    }
+    const placeholders = ids.map(() => '?').join(',');
+    const stmt = db.prepare(`DELETE FROM curated_tracks WHERE id IN (${placeholders})`);
+    const info = stmt.run(...ids);
+    logAction(req, 'DELETE', 'curated_tracks_bulk', ids.join(','), { count: info.changes });
+    const io = req.app.get('io');
+    if (io) {
+      io.emit("curatedTracksBulkDeleted", { ids });
+    }
+    res.json({ success: true, count: info.changes });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Staff: Bulk import/add curated tracks
+apiRouter.post("/admin/curated-tracks/bulk-import", authMiddleware, authorizeRole(['admin', 'dj']), (req: any, res: any) => {
+  try {
+    const { tracks } = req.body;
+    if (!Array.isArray(tracks) || tracks.length === 0) {
+      return res.status(400).json({ error: "No tracks provided for import" });
+    }
+    const insertStmt = db.prepare("INSERT INTO curated_tracks (title, artist) VALUES (?, ?)");
+    let insertedCount = 0;
+    for (const t of tracks) {
+      if (t.title && t.artist) {
+        insertStmt.run(t.title.trim(), t.artist.trim());
+        insertedCount++;
+      }
+    }
+    logAction(req, 'CREATE', 'curated_tracks_bulk_import', '', { count: insertedCount });
+    const io = req.app.get('io');
+    if (io) {
+      io.emit("curatedTracksBulkAdded", { count: insertedCount });
+    }
+    res.status(201).json({ success: true, count: insertedCount });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Staff: Delete a curated track
 apiRouter.delete("/admin/curated-tracks/:id", authMiddleware, authorizeRole(['admin', 'dj']), (req: any, res: any) => {
   try {
