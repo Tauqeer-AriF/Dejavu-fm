@@ -1257,8 +1257,8 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
       toast.error("Please upload an image file");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("File is too large. Max size is 5MB");
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File is too large. Max size is 10MB");
       return;
     }
 
@@ -3157,7 +3157,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                         <p className={`text-xs font-bold uppercase tracking-wider transition-colors ${isLightMode ? 'text-black/60 group-hover:text-black' : 'text-white/70 group-hover:text-white'}`}>
                           {isUploadingAvatar ? 'Uploading avatar...' : 'Drag & drop image or click'}
                         </p>
-                        <p className={`text-[9px] uppercase tracking-widest font-black mt-1 ${isLightMode ? 'text-black/30' : 'text-white/30'}`}>PNG, JPG, GIF up to 5MB</p>
+                        <p className={`text-[9px] uppercase tracking-widest font-black mt-1 ${isLightMode ? 'text-black/30' : 'text-white/30'}`}>PNG, JPG, GIF up to 10MB</p>
                       </div>
                     </div>
 

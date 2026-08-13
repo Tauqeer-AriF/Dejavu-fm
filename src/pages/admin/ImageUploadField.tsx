@@ -4,6 +4,7 @@ import { UploadCloud, X, Image, Link, Loader2, Library } from "lucide-react";
 import { MediaPickerModal } from "./MediaPickerModal";
 import { AnimatePresence } from "motion/react";
 import { useLogo } from "../../hooks/useLogo";
+import { toast } from "sonner";
 
 interface ImageUploadFieldProps {
   label?: string;
@@ -37,8 +38,10 @@ export function ImageUploadField({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      setError("File is too large. Max size is 5MB");
+    if (file.size > 10 * 1024 * 1024) {
+      const errMsg = "File is too large. Max size is 10MB";
+      setError(errMsg);
+      toast.error(errMsg);
       return;
     }
 
@@ -89,8 +92,10 @@ export function ImageUploadField({
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
     if (file && file.type.startsWith("image/")) {
-      if (file.size > 5 * 1024 * 1024) {
-        setError("File is too large. Max size is 5MB");
+      if (file.size > 10 * 1024 * 1024) {
+        const errMsg = "File is too large. Max size is 10MB";
+        setError(errMsg);
+        toast.error(errMsg);
         return;
       }
       await uploadFile(file);
@@ -169,7 +174,7 @@ export function ImageUploadField({
                     </p>
                     <p className={`text-[10px] truncate transition-colors duration-300 ${
                       isLightMode ? 'text-slate-400 group-hover/zone:text-slate-500' : 'text-white/30 group-hover/zone:text-white/40'
-                    }`}>PNG, JPG, WEBP, GIF up to 5MB</p>
+                    }`}>PNG, JPG, WEBP, GIF up to 10MB</p>
                   </div>
                 </div>
               )}

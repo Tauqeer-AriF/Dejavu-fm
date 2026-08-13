@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import Database from './sqlite.js';
 import bcrypt from 'bcryptjs';
 import path from 'path';
 import fs from 'fs';

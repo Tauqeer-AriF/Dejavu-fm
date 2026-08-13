@@ -1033,7 +1033,7 @@ apiRouter.post("/public/user/upload-avatar", (req: any, res: any, next: any) => 
   upload.single("avatar")(req, res, async (err: any) => {
     if (err) {
       if (err.code === 'LIMIT_FILE_SIZE') {
-        return res.status(400).json({ error: "File is too large. Max size is 5MB" });
+        return res.status(400).json({ error: "File is too large. Max size is 10MB" });
       }
       return res.status(400).json({ error: err.message || "Failed to upload avatar" });
     }
@@ -1059,9 +1059,9 @@ apiRouter.post("/public/user/upload-avatar", (req: any, res: any, next: any) => 
       }
       if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-      if (req.file.size > 5 * 1024 * 1024) {
+      if (req.file.size > 10 * 1024 * 1024) {
         try { fs.unlinkSync(req.file.path); } catch (e) {}
-        return res.status(400).json({ error: "File is too large. Max size is 5MB" });
+        return res.status(400).json({ error: "File is too large. Max size is 10MB" });
       }
 
       const processedFilename = await processImage(req.file);
