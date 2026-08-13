@@ -2471,10 +2471,11 @@ apiRouter.get("/admin/popups", (req, res) => {
 });
 
 apiRouter.post("/admin/popups", (req, res) => {
-  const { heading, text, btn_text, btn_link, type, is_active } = req.body;
+  const { heading, text, btn_text, btn_link, btn_target, type, is_active } = req.body;
+  const target = btn_target === '_self' ? '_self' : '_blank';
   const id = crypto.randomUUID();
-  db.prepare("INSERT INTO popups (id, heading, text, btn_text, btn_link, type, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)")
-    .run(id, heading, text, btn_text, btn_link, type, is_active ? 1 : 0);
+  db.prepare("INSERT INTO popups (id, heading, text, btn_text, btn_link, btn_target, type, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+    .run(id, heading, text, btn_text, btn_link, target, type, is_active ? 1 : 0);
   logAction(req, 'CREATE', 'popup', id, { heading });
   res.json({ success: true, id });
 });
@@ -2486,10 +2487,11 @@ apiRouter.delete("/admin/popups/:id", (req, res) => {
 });
 
 apiRouter.post("/admin/push-popup", authorizeRole('admin'), (req, res) => {
-  const { heading, text, btnText, btnLink } = req.body;
+  const { heading, text, btnText, btnLink, btnTarget } = req.body;
+  const target = (btnTarget || req.body.btn_target) === '_self' ? '_self' : '_blank';
   const io = req.app.get('io');
   if (io) {
-    io.emit('show_popup', { heading, text, btnText, btnLink });
+    io.emit('show_popup', { heading, text, btnText, btnLink, btnTarget: target });
   }
   logAction(req, 'PUSH_POPUP', 'popup', null, { heading });
   res.json({ success: true });

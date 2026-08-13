@@ -87,6 +87,7 @@ export function SitePopup() {
   const popup = popups[currentIndex];
   const btnText = popup?.btn_text || popup?.btnText;
   const btnLink = popup?.btn_link || popup?.btnLink;
+  const btnTarget = (popup?.btn_target || popup?.btnTarget) === '_self' ? '_self' : '_blank';
 
   return (
     <AnimatePresence>
@@ -102,7 +103,17 @@ export function SitePopup() {
               {popup.text && <p className="text-white/60 text-lg leading-relaxed font-light">{popup.text}</p>}
               {btnText && (
                 <div className="pt-4">
-                  <a href={btnLink || "#"} className="inline-flex items-center justify-center px-10 py-4 bg-neon-purple text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-neon-blue transition-all shadow-lg shadow-neon-purple/20" target="_blank" rel="noopener noreferrer">
+                  <a
+                    href={btnLink || "#"}
+                    target={btnTarget}
+                    rel={btnTarget === "_blank" ? "noopener noreferrer" : undefined}
+                    onClick={() => {
+                      if (btnTarget === '_self') {
+                        handleClose();
+                      }
+                    }}
+                    className="inline-flex items-center justify-center px-10 py-4 bg-neon-purple text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-neon-blue transition-all shadow-lg shadow-neon-purple/20"
+                  >
                     {btnText}
                   </a>
                 </div>

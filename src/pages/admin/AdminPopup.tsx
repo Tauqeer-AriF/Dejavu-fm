@@ -17,6 +17,7 @@ export function AdminPopup() {
   const [text, setText] = useState("");
   const [btnText, setBtnText] = useState("");
   const [btnLink, setBtnLink] = useState("");
+  const [btnTarget, setBtnTarget] = useState<"_blank" | "_self">("_blank");
   const [isPermanent, setIsPermanent] = useState(true);
   const [isActive, setIsActive] = useState(true);
   const [popupDelay, setPopupDelay] = useState(10000);
@@ -75,13 +76,14 @@ export function AdminPopup() {
           text,
           btn_text: btnText,
           btn_link: btnLink,
+          btn_target: btnTarget,
           type: isPermanent ? 'permanent' : 'immediate',
           is_active: isActive
         })
       });
       if (res.ok) {
         showAlert({ title: "Success", message: "Pop-up created!", style: "success" });
-        setHeading(""); setText(""); setBtnText(""); setBtnLink("");
+        setHeading(""); setText(""); setBtnText(""); setBtnLink(""); setBtnTarget("_blank");
         loadPopups();
       } else {
         showAlert({ title: "Error", message: "Failed to create pop-up.", style: "danger" });
@@ -100,7 +102,8 @@ export function AdminPopup() {
             heading: popup.heading, 
             text: popup.text, 
             btnText: popup.btn_text, 
-            btnLink: popup.btn_link 
+            btnLink: popup.btn_link,
+            btnTarget: popup.btn_target || popup.btnTarget || "_blank"
           })
        });
        if (res.ok) {
@@ -238,6 +241,36 @@ export function AdminPopup() {
                 />
               </div>
             </div>
+
+            <div>
+              <label className={`block text-[10px] uppercase font-black tracking-widest mb-2 ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>
+                Button Link Open Behavior
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setBtnTarget("_self")}
+                  className={`p-3.5 rounded-xl border text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                    btnTarget === "_self"
+                      ? 'bg-neon-purple text-white border-neon-purple shadow-lg shadow-neon-purple/20'
+                      : (isLightMode ? 'bg-black/[0.03] border-black/10 text-black/60 hover:bg-black/5' : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10')
+                  }`}
+                >
+                  Current Tab (_self)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBtnTarget("_blank")}
+                  className={`p-3.5 rounded-xl border text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                    btnTarget === "_blank"
+                      ? 'bg-neon-purple text-white border-neon-purple shadow-lg shadow-neon-purple/20'
+                      : (isLightMode ? 'bg-black/[0.03] border-black/10 text-black/60 hover:bg-black/5' : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10')
+                  }`}
+                >
+                  New Tab (_blank)
+                </button>
+              </div>
+            </div>
           </div>
           <button type="submit" className="w-full bg-neon-purple text-white font-black py-5 rounded-[1.25rem] hover:bg-neon-blue transition-all uppercase tracking-[0.2em] text-xs shadow-xl shadow-neon-purple/20">Initialise Pop-up</button>
         </form>
@@ -254,13 +287,18 @@ export function AdminPopup() {
               isLightMode ? 'bg-white border-black/10 shadow-sm' : 'bg-white/5 border-white/10'
             }`}>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-2.5">
+                <div className="flex items-center gap-3 mb-2.5 flex-wrap">
                   <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
                     p.type === 'permanent' 
                       ? (isLightMode ? 'bg-neon-purple/10 text-neon-purple' : 'bg-neon-purple/20 text-neon-purple') 
                       : (isLightMode ? 'bg-neon-blue/10 text-neon-blue' : 'bg-neon-blue/20 text-neon-blue')
                   }`}>
                     {p.type}
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
+                    isLightMode ? 'bg-black/5 border-black/10 text-black/70' : 'bg-white/5 border-white/10 text-white/70'
+                  }`}>
+                    {p.btn_target === '_self' ? 'Current Tab' : 'New Tab'}
                   </span>
                   {p.type === 'permanent' && (
                     <span className={`text-[9px] uppercase font-black tracking-widest flex items-center gap-1.5 ${p.is_active ? 'text-green-500' : (isLightMode ? 'text-black/20' : 'text-white/20')}`}>
