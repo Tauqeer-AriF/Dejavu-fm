@@ -356,10 +356,10 @@ export default function Booth() {
         </button>
       </div>
 
-      {/* Hero Header Block */}
-      <div className="mb-6 lg:mb-[50px] relative pt-2 pb-4 lg:text-center lg:flex lg:flex-col lg:items-center">
+      {/* Hero Header Block - Enhanced Spacing between Badge, Heading, and Subheading on Desktop */}
+      <div className="mb-6 lg:mb-12 relative pt-2 pb-4 lg:text-center lg:flex lg:flex-col lg:items-center">
         <div className="lg:flex lg:flex-col lg:items-center">
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] bg-neon-purple/10 text-neon-purple mb-3 border border-neon-purple/20">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[8px] sm:text-[9px] lg:text-[10px] font-black uppercase tracking-[0.2em] bg-neon-purple/10 text-neon-purple mb-3 lg:mb-8 border border-neon-purple/20">
             <Sparkles className="w-2.5 h-2.5 animate-spin-slow" /> Virtual DJ Booth
           </span>
           <h2 className={`text-2xl sm:text-3xl md:text-5xl font-display font-black tracking-tight uppercase leading-none ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
@@ -367,8 +367,8 @@ export default function Booth() {
           </h2>
         </div>
 
-        <p className={`hidden sm:block mt-4 text-xs md:text-sm font-sans uppercase tracking-[0.15em] font-medium lg:max-w-2xl lg:mx-auto ${isLightMode ? 'text-slate-600' : 'text-white/50'}`}>
-          Request tracks, upvote favorites, and interact live with the broadcasting host.
+        <p className={`hidden sm:block mt-4 lg:mt-8 text-xs md:text-sm font-sans uppercase tracking-[0.15em] font-medium lg:max-w-2xl lg:mx-auto ${isLightMode ? 'text-slate-600' : 'text-white/50'}`}>
+          Request tracks, upvote favourites, and interact live with the broadcasting host.
         </p>
       </div>
 
@@ -599,7 +599,7 @@ export default function Booth() {
               <AlertCircle className="w-4 h-4 text-neon-blue" /> DJ Request Code
             </h4>
             <p>1. Ensure requested tracks fit the DejavuFM station format (Grime, Garage, Dubstep, Bass, House, Underground).</p>
-            <p>2. Keep it civilized. Spamming or offensive submissions will result in instant IP bans.</p>
+            <p>2. Keep it civilised. Spamming or offensive submissions will result in instant IP bans.</p>
             <p>3. Support other listeners! Check out their track proposals and upvote those you wish to hear.</p>
           </div>
         </div>
@@ -618,8 +618,6 @@ export default function Booth() {
               {requests.length} Proposals {totalPages > 1 && `(Page ${currentPage} of ${totalPages})`}
             </span>
           </div>
-
-
 
           <div className="space-y-2.5 sm:space-y-3 pr-1">
             {loading ? (
@@ -818,7 +816,7 @@ export default function Booth() {
               <AlertCircle className="w-4 h-4 text-neon-blue" /> DJ Request Code
             </h4>
             <p>1. Ensure requested tracks fit the DejavuFM station format (Grime, Garage, Dubstep, Bass, House, Underground).</p>
-            <p>2. Keep it civilized. Spamming or offensive submissions will result in instant IP bans.</p>
+            <p>2. Keep it civilised. Spamming or offensive submissions will result in instant IP bans.</p>
             <p>3. Support other listeners! Check out their track proposals and upvote those you wish to hear.</p>
           </div>
         </div>
