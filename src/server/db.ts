@@ -1,4 +1,4 @@
-import Database from './sqlite.js';
+import Database from './sqlite.ts';
 import bcrypt from 'bcryptjs';
 import path from 'path';
 import fs from 'fs';

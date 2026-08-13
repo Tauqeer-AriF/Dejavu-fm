@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
 import crypto from 'crypto';
-import { db } from '../db.js';
-import { WhatsappService, StandardMessage } from './whatsapp.service.js';
-import { InstagramService } from './instagram.service.js';
-import { MessengerService } from './messenger.service.js';
+import { db } from '../db.ts';
+import { WhatsappService, StandardMessage } from './whatsapp.service.ts';
+import { InstagramService } from './instagram.service.ts';
+import { MessengerService } from './messenger.service.ts';
 
 export class WebhookController {
   /**

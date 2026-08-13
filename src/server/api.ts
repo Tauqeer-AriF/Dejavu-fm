@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
-import Database from './sqlite.js';
-import { db, dbPath, backupDir, pruneBackups, backupDatabase, reopenDatabaseConnection, getUploadsDir, pruneHistoricalData } from "./db.js";
+import Database from './sqlite.ts';
+import { db, dbPath, backupDir, pruneBackups, backupDatabase, reopenDatabaseConnection, getUploadsDir, pruneHistoricalData } from "./db.ts";
 import { request as httpRequest } from "http";
 import { request as httpsRequest } from "https";
 import { URL } from "url";
@@ -389,7 +389,7 @@ apiRouter.get("/public/schedule", (req, res) => {
   }
 });
 
-import { getPodcastFeed, clearPodcastCache } from "./utils.js";
+import { getPodcastFeed, clearPodcastCache } from "./utils.ts";
 
 apiRouter.get("/public/podcasts", asyncHandler(async (req: Request, res: Response) => {
   const forceRefresh = req.query.refresh === 'true';

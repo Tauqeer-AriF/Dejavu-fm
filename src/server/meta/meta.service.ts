@@ -1,7 +1,7 @@
-import { db } from '../db.js';
-import { WhatsappService } from './whatsapp.service.js';
-import { InstagramService } from './instagram.service.js';
-import { MessengerService } from './messenger.service.js';
+import { db } from '../db.ts';
+import { WhatsappService } from './whatsapp.service.ts';
+import { InstagramService } from './instagram.service.ts';
+import { MessengerService } from './messenger.service.ts';
 
 export class MetaService {
   /**

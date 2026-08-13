@@ -1,6 +1,6 @@
 import WebSocket from 'ws';
 import crypto from 'crypto';
-import { db } from './db.js';
+import { db } from './db.ts';
 
 export class TwitchService {
   private static ws: WebSocket | null = null;

@@ -1,4 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
+import fs from 'fs';
+import path from 'path';
 
 export interface RunResult {
   changes: number;
@@ -33,6 +35,22 @@ export default class Database {
       this.db.close();
       this.open = false;
     }
+  }
+
+  async backup(destinationPath: string): Promise<void> {
+    const dir = path.dirname(destinationPath);
+    if (dir && !fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    if (fs.existsSync(destinationPath)) {
+      try {
+        fs.unlinkSync(destinationPath);
+      } catch (e) {
+        // ignore
+      }
+    }
+    const escapedPath = destinationPath.replace(/'/g, "''");
+    this.db.exec(`VACUUM INTO '${escapedPath}'`);
   }
 
   exec(sql: string): void {
