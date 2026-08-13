@@ -658,35 +658,39 @@ export function initDb() {
   runMigration('seo_last_ping_status_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('seo_last_ping_status', '');");
   runMigration('seo_last_ping_details_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('seo_last_ping_details', '');");
   try {
-    const count = db.prepare("SELECT COUNT(*) as count FROM curated_tracks").get() as { count: number };
-    if (count.count === 0) {
-      console.log("[DB] Pre-seeding curated_tracks with initial collection...");
-      const stmt = db.prepare("INSERT INTO curated_tracks (title, artist) VALUES (?, ?)");
-      const initialTracks = [
-        { title: "Has It Come to This?", artist: "The Streets" },
-        { title: "Sincere", artist: "MJ Cole" },
-        { title: "Bound 4 Da Reload", artist: "Oxide & Neutrino" },
-        { title: "Battle", artist: "Wookie" },
-        { title: "Sweet Like Chocolate", artist: "Shanks & Bigfoot" },
-        { title: "Re-Rewind", artist: "Artful Dodger ft. Craig David" },
-        { title: "Flowers", artist: "Sweet Female Attitude" },
-        { title: "Body Groove", artist: "Architechs" },
-        { title: "Oi!", artist: "More Fire Crew" },
-        { title: "I'll Bring You Flowers", artist: "Tinie Tempah" },
-        { title: "Crazy Love", artist: "MJ Cole" },
-        { title: "21 Seconds", artist: "So Solid Crew" },
-        { title: "Do You Mind", artist: "Kyla" },
-        { title: "Wot U Call It?", artist: "Wiley" },
-        { title: "Original Nuttah", artist: "UK Apachi & Shy FX" },
-        { title: "Incredible", artist: "M-Beat ft. General Levy" },
-        { title: "Talkin the Hardest", artist: "Giggs" },
-        { title: "P's and Q's", artist: "Kano" },
-        { title: "Pow! (Forward)", artist: "Lethal Bizzle" },
-        { title: "That's Not Me", artist: "Skepta ft. Jme" }
-      ];
-      for (const track of initialTracks) {
-        stmt.run(track.title, track.artist);
+    const seedMigrationRan = db.prepare("SELECT 1 FROM migrations WHERE id = 'curated_tracks_seed_once'").get();
+    if (!seedMigrationRan) {
+      const count = db.prepare("SELECT COUNT(*) as count FROM curated_tracks").get() as { count: number };
+      if (count.count === 0) {
+        console.log("[DB] Pre-seeding curated_tracks with initial collection...");
+        const stmt = db.prepare("INSERT INTO curated_tracks (title, artist) VALUES (?, ?)");
+        const initialTracks = [
+          { title: "Has It Come to This?", artist: "The Streets" },
+          { title: "Sincere", artist: "MJ Cole" },
+          { title: "Bound 4 Da Reload", artist: "Oxide & Neutrino" },
+          { title: "Battle", artist: "Wookie" },
+          { title: "Sweet Like Chocolate", artist: "Shanks & Bigfoot" },
+          { title: "Re-Rewind", artist: "Artful Dodger ft. Craig David" },
+          { title: "Flowers", artist: "Sweet Female Attitude" },
+          { title: "Body Groove", artist: "Architechs" },
+          { title: "Oi!", artist: "More Fire Crew" },
+          { title: "I'll Bring You Flowers", artist: "Tinie Tempah" },
+          { title: "Crazy Love", artist: "MJ Cole" },
+          { title: "21 Seconds", artist: "So Solid Crew" },
+          { title: "Do You Mind", artist: "Kyla" },
+          { title: "Wot U Call It?", artist: "Wiley" },
+          { title: "Original Nuttah", artist: "UK Apachi & Shy FX" },
+          { title: "Incredible", artist: "M-Beat ft. General Levy" },
+          { title: "Talkin the Hardest", artist: "Giggs" },
+          { title: "P's and Q's", artist: "Kano" },
+          { title: "Pow! (Forward)", artist: "Lethal Bizzle" },
+          { title: "That's Not Me", artist: "Skepta ft. Jme" }
+        ];
+        for (const track of initialTracks) {
+          stmt.run(track.title, track.artist);
+        }
       }
+      db.prepare("INSERT INTO migrations (id) VALUES (?)").run('curated_tracks_seed_once');
     }
   } catch (e) {
     console.error("[DB] Failed to preseed curated_tracks:", e);
