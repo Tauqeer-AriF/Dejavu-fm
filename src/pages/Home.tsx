@@ -435,7 +435,17 @@ export default function Home() {
                 {onAirInfo?.showName || "DEJAVU AUTO-MIX"}
               </div>
               <div className={`text-center md:text-left text-[9px] md:text-xs text-neon-purple font-black tracking-[0.25em] uppercase drop-shadow-[0_0_8px_rgba(176,38,255,0.4)]`}>
-                {onAirInfo?.djName || "STREAMS ACTIVE"}
+                {onAirInfo?.djName ? (
+                  <Link
+                    to={matchedDj ? `/djs/${matchedDj.id}` : `/djs?search=${encodeURIComponent(onAirInfo.djName)}`}
+                    className="hover:underline hover:text-neon-blue transition-colors cursor-pointer inline-block"
+                    title={`View ${onAirInfo.djName}'s Profile`}
+                  >
+                    {onAirInfo.djName}
+                  </Link>
+                ) : (
+                  "STREAMS ACTIVE"
+                )}
               </div>
             </div>
           </div>
