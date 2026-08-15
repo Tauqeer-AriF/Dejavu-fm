@@ -160,7 +160,8 @@ export function AdminBackup() {
       if (
         e?.code === 'auth/popup-closed-by-user' ||
         e?.code === 'auth/cancelled-popup-request' ||
-        e?.code === 'auth/popup-blocked'
+        e?.code === 'auth/popup-blocked' ||
+        e?.message?.includes('closed')
       ) {
         toast.info('Sign-in cancelled.');
       } else {
@@ -955,7 +956,7 @@ export function AdminBackup() {
                 </div>
               )}
 
-              <div>
+              <div className="flex flex-wrap items-center gap-2">
                 {googleUser && googleToken ? (
                   <button
                     onClick={handleUnlinkGoogleDrive}

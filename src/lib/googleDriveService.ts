@@ -1,74 +1,193 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+declare const google: any;
 
-const provider = new GoogleAuthProvider();
-provider.addScope('https://www.googleapis.com/auth/drive.file');
-provider.addScope('https://www.googleapis.com/auth/drive');
+const CLIENT_ID = (firebaseConfig as any).oAuthClientId || (firebaseConfig as any).clientId || '835508675554-sunhji3fn09g9u51u26f5ps328ndtdfl.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 
 // In-memory cache for auth state and access token as required by guidelines
 let cachedAccessToken: string | null = null;
-let cachedUser: User | null = null;
-let authListenerInitialized = false;
+let cachedUser: any = null;
+const listeners: Array<(user: any | null, accessToken: string | null) => void> = [];
 
-export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
-  try {
-    const result = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (!credential?.accessToken) {
-      throw new Error('Failed to get access token from Google Auth');
+const notifyListeners = () => {
+  listeners.forEach((listener) => {
+    try {
+      listener(cachedUser, cachedAccessToken);
+    } catch (e) {
+      console.error(e);
     }
-    cachedAccessToken = credential.accessToken;
-    cachedUser = result.user;
-    return { user: result.user, accessToken: cachedAccessToken };
-  } catch (error: any) {
-    if (
-      error?.code === 'auth/popup-closed-by-user' ||
-      error?.code === 'auth/cancelled-popup-request' ||
-      error?.code === 'auth/popup-blocked'
-    ) {
-      console.log('Google Sign-In popup closed or cancelled by user.');
-      return null;
-    }
-    console.error('Google Sign-In Error:', error);
-    throw error;
-  }
+  });
 };
 
+/**
+ * Ensures Google Identity Services (GSI) script is loaded and available.
+ */
+export const ensureGsiLoaded = (): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    if (typeof google !== 'undefined' && google.accounts?.oauth2) {
+      return resolve();
+    }
+    let script = document.querySelector('script[src="https://accounts.google.com/gsi/client"]') as HTMLScriptElement | null;
+    if (!script) {
+      script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+    let count = 0;
+    const interval = setInterval(() => {
+      count++;
+      if (typeof google !== 'undefined' && google.accounts?.oauth2) {
+        clearInterval(interval);
+        resolve();
+      } else if (count > 50) {
+        clearInterval(interval);
+        reject(new Error('Google Identity Services script failed to initialize. Please check your network or ad blocker.'));
+      }
+    }, 100);
+  });
+};
+
+/**
+ * Initiates Google OAuth token acquisition using Google Identity Services (GSI).
+ */
+export const googleSignIn = async (): Promise<{ user: any; accessToken: string } | null> => {
+  await ensureGsiLoaded();
+
+  return new Promise((resolve, reject) => {
+    try {
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: async (response: any) => {
+          if (response.error) {
+            if (response.error === 'access_denied' || response.error === 'popup_closed_by_user') {
+              resolve(null);
+            } else {
+              reject(new Error(response.error_description || response.error));
+            }
+            return;
+          }
+
+          if (!response.access_token) {
+            reject(new Error('No access token received from Google'));
+            return;
+          }
+
+          const accessToken = response.access_token;
+          cachedAccessToken = accessToken;
+
+          try {
+            // Fetch user profile from Google OAuth userinfo endpoint
+            const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            });
+            if (userRes.ok) {
+              const info = await userRes.json();
+              cachedUser = {
+                displayName: info.name || info.email,
+                email: info.email,
+                photoURL: info.picture,
+                uid: info.sub,
+              };
+            } else {
+              cachedUser = {
+                displayName: 'Google Account',
+                email: 'Connected',
+                photoURL: null,
+                uid: 'google-user',
+              };
+            }
+
+            try {
+              localStorage.setItem('gdrive_user_cache', JSON.stringify(cachedUser));
+            } catch (e) {}
+
+            notifyListeners();
+            resolve({ user: cachedUser, accessToken });
+          } catch (e) {
+            console.error('Failed to fetch userinfo:', e);
+            cachedUser = {
+              displayName: 'Google Account',
+              email: 'Connected',
+              photoURL: null,
+              uid: 'google-user',
+            };
+            notifyListeners();
+            resolve({ user: cachedUser, accessToken });
+          }
+        },
+        error_callback: (err: any) => {
+          if (err?.type === 'popup_closed') {
+            resolve(null);
+          } else {
+            reject(new Error(err?.message || 'Google Sign-in failed.'));
+          }
+        },
+      });
+
+      client.requestAccessToken();
+    } catch (err) {
+      reject(err);
+    }
+  });
+};
+
+/**
+ * Signs out and clears cached tokens and user profile.
+ */
 export const googleSignOut = async (): Promise<void> => {
-  await signOut(auth);
+  if (cachedAccessToken && typeof google !== 'undefined' && google.accounts?.oauth2?.revoke) {
+    try {
+      google.accounts.oauth2.revoke(cachedAccessToken, () => {});
+    } catch (e) {}
+  }
   cachedAccessToken = null;
   cachedUser = null;
+  try {
+    localStorage.removeItem('gdrive_user_cache');
+  } catch (e) {}
+  notifyListeners();
 };
 
+/**
+ * Returns current cached access token.
+ */
 export const getCachedToken = (): string | null => {
   return cachedAccessToken;
 };
 
-export const getCachedUser = (): User | null => {
+/**
+ * Returns current cached user profile.
+ */
+export const getCachedUser = (): any | null => {
   return cachedUser;
 };
 
+/**
+ * Registers an auth listener for Google Drive connection state changes.
+ */
 export const initAuthListener = (
-  onStateChanged: (user: User | null, accessToken: string | null) => void
+  onStateChanged: (user: any | null, accessToken: string | null) => void
 ) => {
-  return onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      cachedAccessToken = null;
-      cachedUser = null;
-      onStateChanged(null, null);
-    } else {
-      cachedUser = user;
-      // Note: cachedAccessToken is only set via the popup sign-in, as Firebase Client SDK
-      // doesn't persist the Google third-party Provider Access Token on reload natively.
-      // So if page reloads, they will need to click "Sign In" again to obtain a fresh Google Access Token.
-      onStateChanged(user, cachedAccessToken);
+  try {
+    const raw = localStorage.getItem('gdrive_user_cache');
+    if (raw && !cachedUser) {
+      cachedUser = JSON.parse(raw);
     }
-  });
+  } catch (e) {}
+
+  listeners.push(onStateChanged);
+  onStateChanged(cachedUser, cachedAccessToken);
+
+  return () => {
+    const idx = listeners.indexOf(onStateChanged);
+    if (idx !== -1) {
+      listeners.splice(idx, 1);
+    }
+  };
 };
 
 /**
@@ -129,8 +248,8 @@ export const uploadBackupToDrive = async (
  * Lists backups stored in Google Drive.
  */
 export const listBackupsInDrive = async (accessToken: string): Promise<any[]> => {
-  // Find files with bundle extension and matching the backup filename structures
-  const q = "name contains 'backup-' and name contains '.bundle' and trashed = false";
+  // Find backup files created for DejavuFM (.bundle and .db)
+  const q = "(name contains 'backup-' or name contains 'manual-backup-') and trashed = false";
   const res = await fetch(
     `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,size,createdTime,webViewLink)&orderBy=createdTime+desc`,
     {
