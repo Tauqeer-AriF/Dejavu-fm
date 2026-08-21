@@ -1,11 +1,32 @@
-import { GoogleGenAI } from "@google/genai";
 import { db } from "../db.ts";
 import { DetectedHighlight, ReelCategory } from "./types.ts";
 
 let lastUsedApiKey: string | null = null;
-let genAIClient: GoogleGenAI | null = null;
+let genAIClient: any = null;
+let GoogleGenAIClass: any = null;
 
-function getGeminiClient(): GoogleGenAI | null {
+async function loadGoogleGenAI() {
+  if (GoogleGenAIClass) return GoogleGenAIClass;
+  try {
+    const mod = await import("@google/genai");
+    GoogleGenAIClass = mod.GoogleGenAI;
+    return GoogleGenAIClass;
+  } catch {
+    try {
+      const req = typeof require !== "undefined" ? require : null;
+      if (req) {
+        const mod = req("@google/genai");
+        GoogleGenAIClass = mod.GoogleGenAI || mod;
+        return GoogleGenAIClass;
+      }
+    } catch (reqErr) {
+      console.warn("[AI Studio] Note: @google/genai package is not loaded, AI features will use intelligent acoustic heuristics fallback.");
+    }
+    return null;
+  }
+}
+
+async function getGeminiClient(): Promise<any | null> {
   const settings = getAIStudioSettingsFromDb();
   const manualApiKey = settings.ai_custom_gemini_api_key?.trim();
   const apiKey = manualApiKey || process.env.GEMINI_API_KEY;
@@ -14,16 +35,26 @@ function getGeminiClient(): GoogleGenAI | null {
     return null;
   }
 
+  const SDKClass = await loadGoogleGenAI();
+  if (!SDKClass) {
+    return null;
+  }
+
   if (!genAIClient || lastUsedApiKey !== apiKey) {
     lastUsedApiKey = apiKey;
-    genAIClient = new GoogleGenAI({
-      apiKey,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
+    try {
+      genAIClient = new SDKClass({
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
         }
-      }
-    });
+      });
+    } catch (e) {
+      console.warn("[AI Studio] Failed to instantiate GoogleGenAI client:", e);
+      return null;
+    }
   }
   return genAIClient;
 }
@@ -138,7 +169,7 @@ export interface AnalyzeShowParams {
  */
 export async function analyzeShowWithGemini(params: AnalyzeShowParams): Promise<DetectedHighlight[]> {
   const settings = getAIStudioSettingsFromDb();
-  const client = getGeminiClient();
+  const client = await getGeminiClient();
   const count = params.targetReelsCount || 3;
   const targetDuration = settings.ai_default_reel_duration || 30;
 
