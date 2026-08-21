@@ -170,9 +170,15 @@ export const JobsPipelineMonitor: React.FC<Props> = ({ jobs, onRefresh, onViewRe
             </div>
 
             <div className={`text-xs font-mono px-3 py-1.5 rounded-xl border ${
-              isLight ? "bg-white/80 border-purple-200 text-purple-900" : "bg-black/40 border-purple-500/30 text-purple-200"
+              onAirStatus.autoProcessEnabled
+                ? (isLight ? "bg-white/80 border-purple-200 text-purple-900" : "bg-black/40 border-purple-500/30 text-purple-200")
+                : (isLight ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-amber-950/40 border-amber-500/30 text-amber-300")
             }`}>
-              ⚡ Auto-Reels pipeline will automatically trigger when this show concludes at <strong>{onAirStatus.endTime}</strong> ({onAirStatus.remainingMins} mins remaining)
+              {onAirStatus.autoProcessEnabled ? (
+                <>⚡ Auto-Reels pipeline will automatically trigger when this show concludes at <strong>{onAirStatus.endTime}</strong> ({onAirStatus.remainingMins} mins remaining)</>
+              ) : (
+                <>⏸️ Auto-Process is OFF — Pipeline will not trigger automatically when show concludes (Enable in Settings)</>
+              )}
             </div>
           </div>
 
@@ -190,13 +196,26 @@ export const JobsPipelineMonitor: React.FC<Props> = ({ jobs, onRefresh, onViewRe
         </div>
       ) : (
         <div className={`p-4 rounded-2xl border flex items-center justify-between gap-3 text-xs font-mono ${
-          isLight ? "bg-slate-50 border-slate-200 text-slate-600" : "bg-black/30 border-white/10 text-white/60"
+          onAirStatus?.autoProcessEnabled
+            ? (isLight ? "bg-slate-50 border-slate-200 text-slate-600" : "bg-black/30 border-white/10 text-white/60")
+            : (isLight ? "bg-amber-50/70 border-amber-200/80 text-amber-800" : "bg-amber-950/20 border-amber-500/20 text-amber-300/80")
         }`}>
           <div className="flex items-center gap-2">
-            <Radio className="w-4 h-4 text-emerald-400" />
-            <span>📻 Schedule Monitor Active — No show currently broadcast on air</span>
+            {onAirStatus?.autoProcessEnabled ? (
+              <>
+                <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />
+                <span>📻 Schedule Monitor Active — No show currently broadcast on air</span>
+              </>
+            ) : (
+              <>
+                <Radio className="w-4 h-4 text-amber-500" />
+                <span>⏸️ Schedule Monitor Off — Auto-Process Completed DJ Shows is disabled in Settings</span>
+              </>
+            )}
           </div>
-          <span className="text-[11px] opacity-75">Checking live timetable every 60s</span>
+          <span className="text-[11px] opacity-75">
+            {onAirStatus?.autoProcessEnabled ? "Checking live timetable every 60s" : "Auto-processing paused"}
+          </span>
         </div>
       )}
 
