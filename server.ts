@@ -9,6 +9,10 @@ import { webhookRouter } from "./src/server/meta/webhook.routes.ts";
 import { MetaService } from "./src/server/meta/meta.service.ts";
 import { TwitchService } from "./src/server/twitch.service.ts";
 import { initDb, db, backupDatabase, getUploadsDir, pruneHistoricalData } from "./src/server/db.ts";
+import { awardXP, calculateLevelProgression } from "./src/server/gamification.service.ts";
+import { getReactionsForMessagesBulk, toggleMessageReaction, deleteMessageReactions, clearAllMessageReactions } from "./src/server/reactions.service.ts";
+import { setSocketIOInstance } from "./src/server/ai-studio/job-queue.service.ts";
+import { initScheduleListenerWorker } from "./src/server/ai-studio/schedule-listener.service.ts";
 import http from "http";
 import { Server as SocketIOServer } from "socket.io";
 import crypto from "crypto";
@@ -43,6 +47,9 @@ console.log(`[SERVER] Instance ID: ${serverId}`);
 async function startServer() {
   // Initialize DB immediately
   initDb();
+  
+  // Start AI Studio automated schedule listener background service
+  initScheduleListenerWorker();
 
   const app = express();
   
@@ -292,6 +299,7 @@ async function startServer() {
     }
   });
   app.set('io', io);
+  setSocketIOInstance(io);
   await TwitchService.initialize(io);
 
   // Helper for meta tag injection
@@ -623,8 +631,12 @@ async function startServer() {
   try {
     if (db.open) {
       const history = db.prepare("SELECT * FROM public_messages ORDER BY timestamp DESC LIMIT ?").all(MAX_CHAT_HISTORY) as any[];
+      const msgIds = history.map(m => m.id);
+      const bulkReactions = getReactionsForMessagesBulk(msgIds);
       chatHistory = history.reverse().map(m => {
         let avatar_url = null;
+        let level = undefined;
+        let levelTitle = undefined;
         try {
           const senderAdmin = db.prepare("SELECT photo_url FROM admins WHERE LOWER(username) = ?").get(m.sender.toLowerCase()) as any;
           if (senderAdmin && senderAdmin.photo_url) {
@@ -634,9 +646,22 @@ async function startServer() {
             if (u) avatar_url = u.avatar_url;
           }
         } catch {}
+
+        try {
+          const gamRow = db.prepare("SELECT total_xp FROM user_gamification WHERE LOWER(username) = ?").get(m.sender.toLowerCase()) as any;
+          if (gamRow && gamRow.total_xp !== undefined) {
+            const prog = calculateLevelProgression(gamRow.total_xp || 0);
+            level = prog.currentLevel;
+            levelTitle = prog.levelTitle;
+          }
+        } catch {}
+
         return {
           ...m,
           user: m.sender,
+          level,
+          levelTitle,
+          reactions: bulkReactions.get(m.id) || {},
           avatar_url: avatar_url || m.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${m.sender}`
         };
       });
@@ -745,6 +770,7 @@ async function startServer() {
     const publicInfo = db.prepare("DELETE FROM public_messages").run();
     const privateInfo = db.prepare("DELETE FROM private_messages").run();
     const shoutoutInfo = db.prepare("DELETE FROM shoutouts").run();
+    clearAllMessageReactions();
     chatHistory = [];
 
     const clearedAt = new Date().toISOString();
@@ -772,6 +798,9 @@ async function startServer() {
     const io = app.get('io');
 
     let avatar_url = null;
+    let level = msg.level;
+    let levelTitle = msg.levelTitle;
+
     try {
       const senderAdmin = db.prepare("SELECT photo_url FROM admins WHERE LOWER(username) = ?").get(msg.user.toLowerCase()) as any;
       if (senderAdmin && senderAdmin.photo_url) {
@@ -784,10 +813,24 @@ async function startServer() {
       console.error("Failed to query user avatar for chat:", err);
     }
 
+    if (!level && msg.user && db.open) {
+      try {
+        const gamRow = db.prepare("SELECT total_xp FROM user_gamification WHERE LOWER(username) = ?").get(msg.user.toLowerCase()) as any;
+        if (gamRow && gamRow.total_xp !== undefined) {
+          const prog = calculateLevelProgression(gamRow.total_xp || 0);
+          level = prog.currentLevel;
+          levelTitle = prog.levelTitle;
+        }
+      } catch {}
+    }
+
     const newMsg = { 
       ...msg, 
+      level,
+      levelTitle,
       id: crypto.randomUUID(),
       timestamp: Date.now(),
+      reactions: {},
       avatar_url: msg.avatar_url || avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${msg.user}`
     };
 
@@ -809,6 +852,18 @@ async function startServer() {
     
     // Broadcast to all clients
     io.emit('chatMessage', newMsg);
+
+    // Award chat participation XP (with anti-spam limits & cooldowns)
+    if (newMsg.user && newMsg.user !== 'Anonymous' && newMsg.user !== 'dejavufm studio') {
+      try {
+        const xpResult = awardXP(newMsg.user, 'chat_message', 'Participated in live chat', { message_id: newMsg.id });
+        if (xpResult.success && xpResult.xp_awarded > 0) {
+          io.to(`user:${newMsg.user.toLowerCase()}`).emit('gamificationReward', xpResult);
+        }
+      } catch (gamErr) {
+        console.error('[Gamification] Error awarding chat XP:', gamErr);
+      }
+    }
   };
   app.set('processAndBroadcastChatMessage', processAndBroadcastChatMessage);
 
@@ -817,7 +872,7 @@ async function startServer() {
     if (!webhookUrl) return;
 
     try {
-      const baseUrl = process.env.PUBLIC_BASE_URL || "https://dejavu-fm-production-402f.up.railway.app";
+      const baseUrl = process.env.PUBLIC_BASE_URL || process.env.APP_URL || "https://dejavu-fm-production-402f.up.railway.app";
       const makeAbsolute = (url: string | null) => {
         if (!url) return null;
         if (url.startsWith('http')) return url;
@@ -866,6 +921,33 @@ async function startServer() {
     return ips.size || io.sockets.sockets.size || 0;
   };
   app.set('getUniqueConnectionCount', getUniqueConnectionCount);
+
+  // High-concurrency presence update debouncer to smooth traffic spikes
+  let presenceDebounceTimer: NodeJS.Timeout | null = null;
+  let lastPresenceBroadcastTime = 0;
+  const PRESENCE_DEBOUNCE_DELAY_MS = 250;
+  const PRESENCE_MAX_DELAY_MS = 1000;
+
+  const broadcastPresenceDebounced = (immediate = false) => {
+    const now = Date.now();
+    if (immediate || (now - lastPresenceBroadcastTime >= PRESENCE_MAX_DELAY_MS)) {
+      if (presenceDebounceTimer) {
+        clearTimeout(presenceDebounceTimer);
+        presenceDebounceTimer = null;
+      }
+      lastPresenceBroadcastTime = now;
+      io.emit('presence_update', getActivePresenceList(io));
+      return;
+    }
+
+    if (!presenceDebounceTimer) {
+      presenceDebounceTimer = setTimeout(() => {
+        presenceDebounceTimer = null;
+        lastPresenceBroadcastTime = Date.now();
+        io.emit('presence_update', getActivePresenceList(io));
+      }, PRESENCE_DEBOUNCE_DELAY_MS);
+    }
+  };
 
   io.on('connection', (socket) => {
     const auth = socket.handshake.auth || {};
@@ -919,6 +1001,7 @@ async function startServer() {
           // Update memory cache for public messages
           chatHistory = chatHistory.filter(m => m.id !== payload.id);
         }
+        deleteMessageReactions(payload.id);
         
         // Notify all clients to remove the message from their UI
         io.emit('messageDeleted', { id: payload.id, isPrivate: payload.isPrivate });
@@ -1062,8 +1145,8 @@ async function startServer() {
       // Small delay on disconnect helps avoid flickering when refreshing
       setTimeout(() => {
         emitCounts();
-        io.emit('presence_update', getActivePresenceList(io));
-      }, 1000);
+        broadcastPresenceDebounced();
+      }, 500);
     });
 
     socket.on('updatePresence', (data: any) => {
@@ -1092,7 +1175,7 @@ async function startServer() {
         } catch (e) {}
       }
 
-      io.emit('presence_update', getActivePresenceList(io));
+      broadcastPresenceDebounced();
     });
 
     // Send history on connect
@@ -1169,6 +1252,7 @@ async function startServer() {
       else if (pageData && (pageData.page || pageData.location)) pageLocation = pageData.page || pageData.location;
       else if (typeof username === 'object' && (username.page || username.location)) pageLocation = username.page || username.location;
       (socket as any).currentPage = pageLocation;
+      socket.join(`user:${rawUser.toLowerCase()}`);
 
       if (typeof username === 'object') {
         if (username.tabId) (socket as any).tabId = username.tabId;
@@ -1186,7 +1270,7 @@ async function startServer() {
         } catch (e) {}
       }
 
-      io.emit('presence_update', getActivePresenceList(io));
+      broadcastPresenceDebounced();
       if (!db.open) return;
       try {
         const userCheck = db.prepare("SELECT is_banned FROM users WHERE LOWER(username) = ?").get(username.toLowerCase()) as any;
@@ -1206,6 +1290,8 @@ async function startServer() {
           privateHistory = db.prepare("SELECT * FROM private_messages WHERE sender = ? OR recipient = ? ORDER BY timestamp ASC").all(username, username) as any[];
         }
 
+        const privIds = privateHistory.map(m => m.id);
+        const privReactions = getReactionsForMessagesBulk(privIds);
         const enrichedHistory = privateHistory.map(m => {
           let avatar_url = null;
           try {
@@ -1220,6 +1306,7 @@ async function startServer() {
           return {
             ...m,
             user: m.sender,
+            reactions: privReactions.get(m.id) || {},
             avatar_url: avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${m.sender}`
           };
         });
@@ -1273,7 +1360,19 @@ async function startServer() {
            console.error("[PM Block Check Error]", blockErr);
          }
 
-         const newMsg = { ...msg, id: crypto.randomUUID(), timestamp: Date.now() }; // Simplified for PM
+         let pmLevel = msg.level;
+         let pmLevelTitle = msg.levelTitle;
+         if (!pmLevel && msg.user && db.open) {
+           try {
+             const gamRow = db.prepare("SELECT total_xp FROM user_gamification WHERE LOWER(username) = ?").get(msg.user.toLowerCase()) as any;
+             if (gamRow && gamRow.total_xp !== undefined) {
+               const prog = calculateLevelProgression(gamRow.total_xp || 0);
+               pmLevel = prog.currentLevel;
+               pmLevelTitle = prog.levelTitle;
+             }
+           } catch {}
+         }
+         const newMsg = { ...msg, level: pmLevel, levelTitle: pmLevelTitle, id: crypto.randomUUID(), timestamp: Date.now(), reactions: {} };
          if (msg.platform === 'twitch') {
            TwitchService.sendChatMessage(msg.text).then(() => {
              console.log(`[Twitch Reply Dispatcher] Dispatched Twitch reply to ${msg.recipient} successfully`);
@@ -1315,6 +1414,81 @@ async function startServer() {
          // Public messages are now handled by the centralized function
          processAndBroadcastChatMessage(msg);
        }
+    });
+
+    socket.on('messageReaction', (payload: { messageId: string; emoji: string; user?: string; isPrivate?: boolean }) => {
+      if (!payload || !payload.messageId || !payload.emoji) return;
+      const username = (payload.user || (socket as any).username || 'Anonymous').trim();
+      
+      try {
+        const result = toggleMessageReaction(payload.messageId, payload.emoji, username);
+        
+        // Update in-memory chatHistory if public message
+        const targetMsg = chatHistory.find(m => m.id === payload.messageId);
+        if (targetMsg) {
+          targetMsg.reactions = result.reactions;
+        }
+
+        // Award reaction engagement XP if added
+        if (result.action === 'added' && username && username !== 'Anonymous' && username.toLowerCase() !== 'dejavufm studio') {
+          try {
+            const xpResult = awardXP(username, 'chat_reaction', 'Reacted to a chat message', { message_id: payload.messageId, emoji: payload.emoji });
+            if (xpResult && xpResult.success && xpResult.xp_awarded > 0) {
+              io.to(`user:${username.toLowerCase()}`).emit('gamificationReward', xpResult);
+            }
+          } catch (e) {
+            console.error('[Gamification] Error awarding reaction XP:', e);
+          }
+        }
+
+        // Broadcast reaction update
+        if (payload.isPrivate) {
+          let privMsg: any = null;
+          try {
+            privMsg = db.prepare("SELECT sender, recipient FROM private_messages WHERE id = ?").get(payload.messageId);
+          } catch {}
+
+          if (privMsg) {
+            for (const [_, s] of io.sockets.sockets) {
+              const socketUser = (s as any).username;
+              if (socketUser) {
+                const isPart = socketUser.toLowerCase() === privMsg.sender.toLowerCase() || socketUser.toLowerCase() === privMsg.recipient.toLowerCase();
+                let isAdm = false;
+                try {
+                  if (db.prepare("SELECT 1 FROM admins WHERE LOWER(username) = ?").get(socketUser.toLowerCase())) isAdm = true;
+                } catch {}
+                if (isPart || isAdm) {
+                  s.emit('messageReactionUpdated', {
+                    messageId: payload.messageId,
+                    reactions: result.reactions,
+                    action: result.action,
+                    emoji: result.emoji,
+                    user: result.user
+                  });
+                }
+              }
+            }
+          } else {
+            io.emit('messageReactionUpdated', {
+              messageId: payload.messageId,
+              reactions: result.reactions,
+              action: result.action,
+              emoji: result.emoji,
+              user: result.user
+            });
+          }
+        } else {
+          io.emit('messageReactionUpdated', {
+            messageId: payload.messageId,
+            reactions: result.reactions,
+            action: result.action,
+            emoji: result.emoji,
+            user: result.user
+          });
+        }
+      } catch (err) {
+        console.error("[Reactions] Failed to handle message reaction:", err);
+      }
     });
 
      /**
@@ -1539,6 +1713,44 @@ async function startServer() {
       db: "open", 
       serverId: currentId,
       timestamp: new Date().toISOString() 
+    });
+  });
+
+  // Kubernetes / Cloud Run / Service Liveness Probe
+  app.get("/api/health/live", (req, res) => {
+    res.status(200).json({ status: "alive", uptime: process.uptime(), timestamp: Date.now() });
+  });
+
+  // Kubernetes / Cloud Run / Service Readiness Probe
+  app.get("/api/health/ready", (req, res) => {
+    const dbReady = !!(db && db.open);
+    const socketReady = !!(io && io.sockets);
+    if (dbReady && socketReady) {
+      return res.status(200).json({ status: "ready", db: "connected", realtime: "active" });
+    }
+    return res.status(503).json({ status: "not_ready", db: dbReady ? "connected" : "unavailable", realtime: socketReady ? "active" : "unavailable" });
+  });
+
+  // System & Application Performance Metrics Probe
+  app.get("/api/health/metrics", (req, res) => {
+    const mem = process.memoryUsage();
+    const activeSockets = io?.sockets?.sockets?.size || 0;
+    const uniqueIps = typeof getUniqueConnectionCount === 'function' ? getUniqueConnectionCount() : 0;
+    res.json({
+      uptimeSeconds: Math.floor(process.uptime()),
+      memory: {
+        rssMb: Math.round(mem.rss / 1024 / 1024),
+        heapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
+        heapTotalMb: Math.round(mem.heapTotal / 1024 / 1024),
+      },
+      realtime: {
+        activeSockets,
+        uniqueListeners: uniqueIps
+      },
+      db: {
+        open: !!(db && db.open)
+      },
+      timestamp: new Date().toISOString()
     });
   });
 
