@@ -251,6 +251,12 @@ export function logAction(req: any, action: string, resource: string, resource_i
     }
     const username = req.user?.username || 'unknown';
     const role = req.user?.role || 'unknown';
+    
+    // Owner actions will not show in audits
+    if (role === 'owner' || username.toLowerCase() === 'owner') {
+      return;
+    }
+
     const detailsStr = details ? JSON.stringify(details) : null;
     
     db.prepare(`
@@ -4601,12 +4607,7 @@ apiRouter.delete("/admin/chat_users/:id", authorizeRole('admin'), (req, res) => 
 });
 
 apiRouter.get("/admin/audit-logs", authMiddleware, authorizeRole(['admin', 'owner']), (req, res) => {
-  let logs: any[];
-  if ((req as any).user?.role === 'owner') {
-    logs = db.prepare("SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 200").all();
-  } else {
-    logs = db.prepare("SELECT * FROM audit_logs WHERE role != 'owner' AND LOWER(username) != 'owner' ORDER BY timestamp DESC LIMIT 200").all();
-  }
+  const logs = db.prepare("SELECT * FROM audit_logs WHERE role != 'owner' AND LOWER(username) != 'owner' ORDER BY timestamp DESC LIMIT 200").all();
   res.json(logs);
 });
 

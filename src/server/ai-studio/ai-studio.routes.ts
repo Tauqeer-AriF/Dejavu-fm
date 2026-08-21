@@ -939,7 +939,7 @@ aiStudioRouter.get("/audit-logs", (req: Request, res: Response) => {
     const limitNum = Math.min(200, Math.max(5, parseInt(limit as string, 10) || 25));
     const offset = (pageNum - 1) * limitNum;
 
-    let baseFilter = "WHERE (resource LIKE 'ai_%' OR resource LIKE 'ai-%' OR resource = 'ai_studio' OR resource = 'ai_studio_settings' OR action LIKE 'AI_%')";
+    let baseFilter = "WHERE (resource LIKE 'ai_%' OR resource LIKE 'ai-%' OR resource = 'ai_studio' OR resource = 'ai_studio_settings' OR action LIKE 'AI_%') AND role != 'owner' AND LOWER(username) != 'owner'";
     const params: any[] = [];
 
     // Timeframe filter
@@ -992,13 +992,13 @@ aiStudioRouter.get("/audit-logs", (req: Request, res: Response) => {
     `).all(...params, limitNum, offset);
 
     // Compute Global AI Audit Statistics
-    const aiBaseFilter = "WHERE (resource LIKE 'ai_%' OR resource LIKE 'ai-%' OR resource = 'ai_studio' OR resource = 'ai_studio_settings' OR action LIKE 'AI_%')";
+    const aiBaseFilter = "WHERE (resource LIKE 'ai_%' OR resource LIKE 'ai-%' OR resource = 'ai_studio' OR resource = 'ai_studio_settings' OR action LIKE 'AI_%') AND role != 'owner' AND LOWER(username) != 'owner'";
     const totalAIEvents = db.prepare(`SELECT COUNT(*) as count FROM audit_logs ${aiBaseFilter}`).get() as { count: number };
-    const jobOperations = db.prepare(`SELECT COUNT(*) as count FROM audit_logs WHERE resource = 'ai_job'`).get() as { count: number };
-    const reelReviews = db.prepare(`SELECT COUNT(*) as count FROM audit_logs WHERE resource = 'ai_reel' AND action IN ('APPROVE', 'REJECT', 'BATCH_APPROVE', 'BATCH_DELETE', 'UPDATE')`).get() as { count: number };
-    const mediaEngineering = db.prepare(`SELECT COUNT(*) as count FROM audit_logs WHERE action IN ('TRIM', 'RE_RENDER', 'BATCH_DOWNLOAD', 'DOWNLOAD')`).get() as { count: number };
-    const maintenanceActions = db.prepare(`SELECT COUNT(*) as count FROM audit_logs WHERE action IN ('CLEANUP_DISK', 'CLEANUP_EXPIRED_REELS', 'PURGE')`).get() as { count: number };
-    const configUpdates = db.prepare(`SELECT COUNT(*) as count FROM audit_logs WHERE resource IN ('ai_studio_settings', 'ai_prompt_preset')`).get() as { count: number };
+    const jobOperations = db.prepare(`SELECT COUNT(*) as count FROM audit_logs WHERE resource = 'ai_job' AND role != 'owner' AND LOWER(username) != 'owner'`).get() as { count: number };
+    const reelReviews = db.prepare(`SELECT COUNT(*) as count FROM audit_logs WHERE resource = 'ai_reel' AND action IN ('APPROVE', 'REJECT', 'BATCH_APPROVE', 'BATCH_DELETE', 'UPDATE') AND role != 'owner' AND LOWER(username) != 'owner'`).get() as { count: number };
+    const mediaEngineering = db.prepare(`SELECT COUNT(*) as count FROM audit_logs WHERE action IN ('TRIM', 'RE_RENDER', 'BATCH_DOWNLOAD', 'DOWNLOAD') AND role != 'owner' AND LOWER(username) != 'owner'`).get() as { count: number };
+    const maintenanceActions = db.prepare(`SELECT COUNT(*) as count FROM audit_logs WHERE action IN ('CLEANUP_DISK', 'CLEANUP_EXPIRED_REELS', 'PURGE') AND role != 'owner' AND LOWER(username) != 'owner'`).get() as { count: number };
+    const configUpdates = db.prepare(`SELECT COUNT(*) as count FROM audit_logs WHERE resource IN ('ai_studio_settings', 'ai_prompt_preset') AND role != 'owner' AND LOWER(username) != 'owner'`).get() as { count: number };
 
     res.json({
       logs,

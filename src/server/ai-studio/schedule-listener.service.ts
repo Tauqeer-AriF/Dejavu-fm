@@ -48,12 +48,14 @@ export function getLondonTimeComponents() {
  */
 export function getLiveOnAirShowStatus() {
   try {
+    const settings = getAIStudioSettingsFromDb();
+    const autoProcessEnabled = Boolean(settings.ai_studio_enabled && settings.ai_auto_process_on_show_end);
     const { dateStr, timeStr, minutesToday, dayOfWeek } = getLondonTimeComponents();
     const slots = db.prepare(`
       SELECT * FROM schedule WHERE day_of_week = ? ORDER BY start_time ASC
     `).all(dayOfWeek) as any[];
 
-    if (!slots || slots.length === 0) return { isOnAir: false };
+    if (!slots || slots.length === 0) return { isOnAir: false, autoProcessEnabled, aiStudioEnabled: settings.ai_studio_enabled };
 
     const djs = db.prepare('SELECT id, name FROM djs').all() as any[];
     const djMap = new Map<string, string>(djs.map(d => [String(d.id), d.name]));
@@ -90,6 +92,8 @@ export function getLiveOnAirShowStatus() {
 
         return {
           isOnAir: true,
+          autoProcessEnabled,
+          aiStudioEnabled: settings.ai_studio_enabled,
           slot,
           showName: slot.show_name,
           djName,
@@ -107,7 +111,8 @@ export function getLiveOnAirShowStatus() {
     console.warn("[AI Schedule Listener] Error reading on-air status:", e);
   }
 
-  return { isOnAir: false };
+  const settings = getAIStudioSettingsFromDb();
+  return { isOnAir: false, autoProcessEnabled: Boolean(settings.ai_studio_enabled && settings.ai_auto_process_on_show_end), aiStudioEnabled: settings.ai_studio_enabled };
 }
 
 /**
