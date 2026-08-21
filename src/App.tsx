@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { NavLink } from 'react-router-dom';
-import { Radio, Calendar, Podcast, Shield as AdminIcon, Headphones, Menu, X, Video, MessageSquare, Sun, Moon, FileText, ChevronDown, ExternalLink, Info, Instagram, Twitter, Facebook, Youtube, Cloud, Music, Share2, Layers, Globe, ShieldAlert, Power, Sparkles } from 'lucide-react';
+import { Radio, Calendar, Podcast, Shield as AdminIcon, Headphones, Menu, X, Video, MessageSquare, Sun, Moon, FileText, ChevronDown, ExternalLink, Info, Instagram, Twitter, Facebook, Youtube, Cloud, Music, Share2, Layers, Globe, ShieldAlert, Power, Sparkles, Ticket } from 'lucide-react';
 import { PlayerBar } from './components/PlayerBar';
 import { NotificationManager } from './components/NotificationManager';
 import { GlobalRequestAlerts } from './components/GlobalRequestAlerts';
@@ -466,19 +466,20 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
 
   const defaultMobileItems = [
     { key: 'arch421', path: '/arch421', defaultLabel: 'Arch421', icon: <Layers className="w-5 h-5" />, color: 'text-[#f75c1e]' },
-    { key: 'listen', path: '/', defaultLabel: 'Listen', exact: true },
-    { key: 'watch', path: '/watch', defaultLabel: 'Watch', icon: <Radio className="w-5 h-5" />, color: 'text-neon-purple', conditional: featLiveTools },
-    { key: 'events', path: '/events', defaultLabel: 'Events', icon: <Sparkles className="w-5 h-5" />, color: 'text-neon-purple' },
-    { key: 'schedule', path: '/schedule', defaultLabel: 'Schedule' },
-    { key: 'djs', path: '/djs', defaultLabel: 'DJs and Hosts' },
-    { key: 'podcasts', path: '/podcasts', defaultLabel: 'Podcasts', matchPrefix: true },
-    { key: 'features', path: '/features', defaultLabel: 'Features' },
-    { key: 'booth', path: '/booth', defaultLabel: 'DJ Booth' }
+    { key: 'listen', path: '/', defaultLabel: 'Listen', icon: <Radio className="w-5 h-5" />, color: 'text-neon-purple', exact: true },
+    { key: 'watch', path: '/watch', defaultLabel: 'Watch', icon: <Video className="w-5 h-5" />, color: 'text-neon-purple', conditional: featLiveTools },
+    { key: 'events', path: '/events', defaultLabel: 'Events', icon: <Ticket className="w-5 h-5" />, color: 'text-neon-purple' },
+    { key: 'schedule', path: '/schedule', defaultLabel: 'Schedule', icon: <Calendar className="w-5 h-5" />, color: 'text-neon-purple' },
+    { key: 'djs', path: '/djs', defaultLabel: 'DJs and Hosts', icon: <Headphones className="w-5 h-5" />, color: 'text-neon-purple' },
+    { key: 'podcasts', path: '/podcasts', defaultLabel: 'Podcasts', icon: <Podcast className="w-5 h-5" />, color: 'text-neon-purple', matchPrefix: true },
+    { key: 'features', path: '/features', defaultLabel: 'Features', icon: <FileText className="w-5 h-5" />, color: 'text-neon-purple' },
+    { key: 'booth', path: '/booth', defaultLabel: 'DJ Booth', icon: <Music className="w-5 h-5" />, color: 'text-neon-purple' }
   ];
 
   const renderedMobileItems = customOrder
     .map(key => {
       const isCustom = key.startsWith('custom_');
+      const defaultItem = !isCustom ? defaultMobileItems.find(item => item.key === key) : undefined;
       let path = '/';
       let label = key;
       let isExternal = false;
@@ -490,7 +491,6 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
         label = customLabels[key] || 'Custom Link';
         isExternal = path.startsWith('http://') || path.startsWith('https://');
       } else {
-        const defaultItem = defaultMobileItems.find(item => item.key === key);
         if (!defaultItem) return null;
         path = defaultItem.path || '/';
         label = customLabels[key] || defaultItem.defaultLabel;
@@ -521,6 +521,23 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
       }
 
       // Regular item
+      const itemIcon = defaultItem?.icon || (
+        key === 'arch421' ? <Layers className="w-5 h-5" /> :
+        key === 'listen' ? <Radio className="w-5 h-5" /> :
+        key === 'watch' ? <Video className="w-5 h-5" /> :
+        key === 'events' ? <Ticket className="w-5 h-5" /> :
+        key === 'schedule' ? <Calendar className="w-5 h-5" /> :
+        key === 'djs' ? <Headphones className="w-5 h-5" /> :
+        key === 'podcasts' ? <Podcast className="w-5 h-5" /> :
+        key === 'features' ? <FileText className="w-5 h-5" /> :
+        key === 'booth' ? <Music className="w-5 h-5" /> :
+        <Globe className="w-5 h-5" />
+      );
+
+      const itemColor = defaultItem?.color || (
+        key === 'arch421' ? 'text-[#f75c1e]' : 'text-neon-purple'
+      );
+
       return {
         key,
         path,
@@ -528,8 +545,8 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
         isExternal,
         exact,
         matchPrefix,
-        icon: key === 'arch421' ? <Layers className="w-5 h-5" /> : (key === 'watch' ? <Radio className="w-5 h-5" /> : (key === 'events' ? <Sparkles className="w-5 h-5" /> : <Globe className="w-5 h-5" />)),
-        color: key === 'arch421' ? 'text-[#f75c1e]' : (key === 'watch' ? 'text-neon-purple' : (key === 'events' ? 'text-neon-purple' : 'text-neon-blue'))
+        icon: itemIcon,
+        color: itemColor
       };
     })
     .filter((item): item is NonNullable<typeof item> => {
