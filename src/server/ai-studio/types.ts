@@ -84,6 +84,8 @@ export interface AIStudioSettings {
   ai_auto_delete_reels_hours: number;
   ai_auto_delete_unapproved_only: boolean;
   ai_system_prompt: string;
+  ai_stream_recording_mode?: 'full_show' | 'snippet';
+  ai_full_stream_capture_mins?: number;
   stream_url?: string;
   studio_video_url?: string;
 }

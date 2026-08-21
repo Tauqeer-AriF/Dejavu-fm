@@ -155,19 +155,37 @@ async function runJobPipeline(jobId: string) {
     updateJobProgress(jobId, 'CAPTURING', 15, 'Capturing & preparing show audio source...');
 
     let sourceAudioPath = '';
-    // Cap live stream recording snippet to max 120 seconds for fast analysis
     const isLiveSource = job.source_type === 'live_stream' || job.source_type === 'stream_url' || job.source_type === 'schedule_slot';
-    const captureDuration = isLiveSource
-      ? Math.min(120, Math.max(45, config.duration_seconds || 90))
-      : (config.duration_seconds || 90);
+    const recordingMode = settings.ai_stream_recording_mode || 'full_show';
+    const maxStreamMins = settings.ai_full_stream_capture_mins || 60;
+
+    let captureDuration = 120;
+    if (isLiveSource) {
+      if (recordingMode === 'snippet') {
+        captureDuration = Math.min(180, Math.max(45, config.duration_seconds || 120));
+      } else {
+        // Full broadcast stream recording mode (e.g. up to 60-120 mins)
+        const showSecs = config.duration_seconds && config.duration_seconds > 0 ? config.duration_seconds : (maxStreamMins * 60);
+        captureDuration = Math.min(maxStreamMins * 60, Math.max(120, showSecs));
+      }
+    } else {
+      captureDuration = config.duration_seconds || 90;
+    }
+
+    const formatSecsDisplay = (totalSecs: number) => {
+      const m = Math.floor(totalSecs / 60);
+      const s = Math.floor(totalSecs % 60);
+      return m > 0 ? `${m}m ${s}s` : `${s}s`;
+    };
 
     const onCaptureProgress = (elapsedSecs: number) => {
       const progressVal = 15 + Math.min(15, Math.round((elapsedSecs / captureDuration) * 15));
+      const modeLabel = recordingMode === 'full_show' ? 'Full Broadcast' : 'Snippet';
       updateJobProgress(
         jobId,
         'CAPTURING',
         progressVal,
-        `Recording live audio stream snippet (${Math.round(elapsedSecs)}s / ${captureDuration}s)...`
+        `Recording ${modeLabel} live stream [${formatSecsDisplay(elapsedSecs)} / ${formatSecsDisplay(captureDuration)}]...`
       );
     };
 
@@ -176,9 +194,9 @@ async function runJobPipeline(jobId: string) {
       if (!streamUrl || streamUrl.includes('somafm')) {
         streamUrl = 'https://dejavufm.radioca.st/;';
       }
-      console.log(`[AI Studio Queue] Job #${jobId}: Recording live radio broadcast stream from ${streamUrl} (${captureDuration}s snippet)...`);
+      console.log(`[AI Studio Queue] Job #${jobId}: Recording live radio broadcast stream from ${streamUrl} (${formatSecsDisplay(captureDuration)}, mode: ${recordingMode})...`);
       const targetFile = path.join(storageDir, `${jobId}_source.mp3`);
-      updateJobProgress(jobId, 'CAPTURING', 15, `Recording live stream [${streamUrl.replace(/^https?:\/\//, '')}] (${captureDuration}s)...`);
+      updateJobProgress(jobId, 'CAPTURING', 15, `Recording live stream (${formatSecsDisplay(captureDuration)})...`);
       await captureStreamSnippet(streamUrl, captureDuration, targetFile, onCaptureProgress);
       sourceAudioPath = targetFile;
     } else if (job.source_type === 'upload' && job.source_url) {

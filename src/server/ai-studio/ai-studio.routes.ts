@@ -851,6 +851,8 @@ aiStudioRouter.post("/settings", (req: any, res: Response) => {
       ai_brand_handle,
       ai_brand_hashtag,
       ai_auto_process_on_show_end,
+      ai_stream_recording_mode,
+      ai_full_stream_capture_mins,
       ai_auto_delete_reels_enabled,
       ai_auto_delete_reels_hours,
       ai_auto_delete_unapproved_only,
@@ -873,6 +875,8 @@ aiStudioRouter.post("/settings", (req: any, res: Response) => {
     if (ai_brand_handle !== undefined) upsertStmt.run('ai_brand_handle', String(ai_brand_handle));
     if (ai_brand_hashtag !== undefined) upsertStmt.run('ai_brand_hashtag', String(ai_brand_hashtag));
     if (ai_auto_process_on_show_end !== undefined) upsertStmt.run('ai_auto_process_on_show_end', ai_auto_process_on_show_end ? '1' : '0');
+    if (ai_stream_recording_mode !== undefined) upsertStmt.run('ai_stream_recording_mode', String(ai_stream_recording_mode));
+    if (ai_full_stream_capture_mins !== undefined) upsertStmt.run('ai_full_stream_capture_mins', String(ai_full_stream_capture_mins));
     if (ai_auto_delete_reels_enabled !== undefined) upsertStmt.run('ai_auto_delete_reels_enabled', ai_auto_delete_reels_enabled ? '1' : '0');
     if (ai_auto_delete_reels_hours !== undefined) upsertStmt.run('ai_auto_delete_reels_hours', String(ai_auto_delete_reels_hours));
     if (ai_auto_delete_unapproved_only !== undefined) upsertStmt.run('ai_auto_delete_unapproved_only', ai_auto_delete_unapproved_only ? '1' : '0');
