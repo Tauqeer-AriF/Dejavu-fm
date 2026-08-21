@@ -1,4 +1,5 @@
 import { db } from "../db.ts";
+import { logAction } from "../api.ts";
 import { getAIStudioSettingsFromDb } from "./gemini.service.ts";
 import { createAndStartAIJob, autoDeleteExpiredReels } from "./job-queue.service.ts";
 import { pruneAIStudioDiskAssets } from "./ffmpeg.service.ts";
@@ -112,7 +113,7 @@ export function getLiveOnAirShowStatus() {
 /**
  * Check schedule slots and trigger automated reel creation ONLY for concluded shows
  */
-export async function checkAndTriggerCompletedShowReels(): Promise<{ triggeredCount: number; messages: string[]; onAirInfo?: any }> {
+export async function checkAndTriggerCompletedShowReels(options?: { force?: boolean }): Promise<{ triggeredCount: number; messages: string[]; onAirInfo?: any }> {
   if (isChecking) return { triggeredCount: 0, messages: ["Check already in progress"] };
   isChecking = true;
 
@@ -125,6 +126,11 @@ export async function checkAndTriggerCompletedShowReels(): Promise<{ triggeredCo
     if (!settings.ai_studio_enabled) {
       isChecking = false;
       return { triggeredCount: 0, messages: ["AI Studio is disabled in settings"] };
+    }
+
+    if (!options?.force && !settings.ai_auto_process_on_show_end) {
+      isChecking = false;
+      return { triggeredCount: 0, messages: ["Auto-processing on show end is disabled in settings (Turn on 'Auto-Process Completed DJ Shows' in Settings to auto-trigger reels)"] };
     }
 
     const { dateStr, timeStr, minutesToday, dayOfWeek } = getLondonTimeComponents();
@@ -182,7 +188,7 @@ export async function checkAndTriggerCompletedShowReels(): Promise<{ triggeredCo
 
             console.log(`[AI Schedule Listener] 📻 Show concluded: "${slot.show_name}" (DJ: ${djName}). Triggering auto-reels generation...`);
 
-            await createAndStartAIJob({
+            const job = await createAndStartAIJob({
               show_name: slot.show_name,
               dj_name: djName,
               dj_id: slot.dj_id ? String(slot.dj_id) : undefined,
@@ -192,6 +198,19 @@ export async function checkAndTriggerCompletedShowReels(): Promise<{ triggeredCo
               custom_prompt: `Automatically generated social reels for completed scheduled show "${slot.show_name}". Produce 3 to 5 viral highlight reels covering high energy drops, vocal shoutouts, and mic talkovers across the broadcast.`,
               created_by: "AUTO_SCHEDULE_LISTENER"
             });
+
+            logAction(
+              { user: { username: "Schedule AI Daemon", role: "ai_scheduler" } },
+              'AUTO_TRIGGER',
+              'ai_job',
+              job.id,
+              {
+                show_name: slot.show_name,
+                dj_name: djName,
+                duration_mins: Math.round(showDurationSecs / 60),
+                target_reels: 4
+              }
+            );
 
             triggeredCount++;
             const msg = `Triggered 4 auto-reels for show "${slot.show_name}" (DJ: ${djName}, duration: ${Math.round(showDurationSecs/60)} mins)`;
@@ -230,15 +249,19 @@ export function initScheduleListenerWorker() {
 
   console.log("[AI Schedule Listener] 🟢 Starting background schedule listener service (interval: 60s)...");
 
-  // Initial check after server start delay
+  // Initial check after server start delay (only if auto-process on show end is explicitly enabled)
   setTimeout(() => {
-    checkAndTriggerCompletedShowReels().catch(err => {
-      console.error("[AI Schedule Listener] Initial check failed:", err);
-    });
+    const settings = getAIStudioSettingsFromDb();
+    if (settings.ai_studio_enabled && settings.ai_auto_process_on_show_end) {
+      checkAndTriggerCompletedShowReels().catch(err => {
+        console.error("[AI Schedule Listener] Initial check failed:", err);
+      });
+    } else {
+      console.log("[AI Schedule Listener] Auto-process on show end is OFF. Skipping initial background auto-trigger.");
+    }
     // Run initial disk & reel prune check
     try {
       pruneAIStudioDiskAssets(48);
-      const settings = getAIStudioSettingsFromDb();
       if (settings.ai_auto_delete_reels_enabled) {
         autoDeleteExpiredReels(settings.ai_auto_delete_reels_hours, settings.ai_auto_delete_unapproved_only);
       }

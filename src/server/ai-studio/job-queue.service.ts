@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import { Server as SocketIOServer } from "socket.io";
 import { db, getUploadsDir } from "../db.ts";
+import { logAction } from "../api.ts";
 import { AIJob, AIReel, SourceType } from "./types.ts";
 import { analyzeShowWithGemini, getAIStudioSettingsFromDb } from "./gemini.service.ts";
 import {
@@ -337,11 +338,39 @@ async function runJobPipeline(jobId: string) {
     updateJobProgress(jobId, 'COMPLETED', 100, `Successfully generated ${highlights.length} social reels ready for review!`);
     const completedJob = db.prepare('SELECT * FROM ai_jobs WHERE id = ?').get(jobId) as AIJob;
     emitJobUpdate('ai_job_completed', completedJob);
+
+    // Record system audit log
+    logAction(
+      { user: { username: completedJob?.created_by || 'System AI', role: 'ai_pipeline' } },
+      'JOB_COMPLETED',
+      'ai_job',
+      jobId,
+      {
+        show_name: completedJob?.show_name,
+        dj_name: completedJob?.dj_name,
+        reels_generated: highlights.length,
+        template: selectedTemplate,
+        aspect_ratio: selectedAspect
+      }
+    );
   } catch (err: any) {
     console.error(`[AI Job Queue] Pipeline error for job ${jobId}:`, err);
     updateJobProgress(jobId, 'FAILED', 0, `Processing failed: ${err.message}`, err.message);
     const failedJob = db.prepare('SELECT * FROM ai_jobs WHERE id = ?').get(jobId) as AIJob;
     emitJobUpdate('ai_job_failed', failedJob);
+
+    // Record failure audit log
+    logAction(
+      { user: { username: failedJob?.created_by || 'System AI', role: 'ai_pipeline' } },
+      'JOB_FAILED',
+      'ai_job',
+      jobId,
+      {
+        show_name: failedJob?.show_name,
+        dj_name: failedJob?.dj_name,
+        error: err.message
+      }
+    );
   }
 }
 

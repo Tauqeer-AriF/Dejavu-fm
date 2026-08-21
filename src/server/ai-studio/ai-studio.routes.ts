@@ -372,7 +372,8 @@ aiStudioRouter.patch("/reels/:id", (req: any, res: Response) => {
     }
 
     const updated = db.prepare("SELECT * FROM ai_reels WHERE id = ?").get(req.params.id);
-    logAction(req, 'UPDATE', 'ai_reel', req.params.id, { changes: parsed });
+    const actionName = parsed.status === 'APPROVED' ? 'APPROVE' : parsed.status === 'REJECTED' ? 'REJECT' : 'UPDATE';
+    logAction(req, actionName, 'ai_reel', req.params.id, { title: reel.title, changes: parsed });
     res.json({ success: true, reel: updated });
   } catch (err: any) {
     console.error("[AI Studio] Error updating reel:", err);
@@ -667,6 +668,7 @@ aiStudioRouter.post("/reels/batch-download", async (req: any, res: Response) => 
       archive.append(metaContent, { name: `${i + 1}_${safeTitle}_captions.txt` });
     }
 
+    logAction(req, 'BATCH_DOWNLOAD', 'ai_reel', null, { count: reels.length, reelIds });
     await archive.finalize();
   } catch (err: any) {
     console.error("[AI Studio] Batch download error:", err);
@@ -743,6 +745,7 @@ aiStudioRouter.get("/reels/:id/download", (req: any, res: Response) => {
     const downloadName = `DejavuFM_${reel.category || 'Reel'}_${reel.id}.mp4`
       .replace(/[^a-zA-Z0-9_\-\.]/g, '_');
 
+    logAction(req, 'DOWNLOAD', 'ai_reel', req.params.id, { title: reel.title, show: reel.show_name, dj: reel.dj_name });
     res.setHeader('Content-Disposition', `attachment; filename="${downloadName}"`);
     res.setHeader('Content-Type', 'video/mp4');
     res.sendFile(filePath);
@@ -887,7 +890,7 @@ aiStudioRouter.post("/settings", (req: any, res: Response) => {
 
 aiStudioRouter.post("/check-schedule-now", async (req: Request, res: Response) => {
   try {
-    const result = await checkAndTriggerCompletedShowReels();
+    const result = await checkAndTriggerCompletedShowReels({ force: true });
     res.json({ success: true, ...result });
   } catch (err: any) {
     console.error("[AI Studio] Error checking schedule now:", err);
@@ -923,5 +926,117 @@ aiStudioRouter.post("/upload-source", uploadSource.single("file"), (req: any, re
   } catch (err: any) {
     console.error("[AI Studio] Upload error:", err);
     res.status(500).json({ error: "File upload failed" });
+  }
+});
+
+// ----------------------------------------------------
+// 7. AI STUDIO PROFESSIONAL AUDIT LOGS
+// ----------------------------------------------------
+aiStudioRouter.get("/audit-logs", (req: Request, res: Response) => {
+  try {
+    const { action, category, search, timeframe, page = "1", limit = "25" } = req.query;
+    const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
+    const limitNum = Math.min(200, Math.max(5, parseInt(limit as string, 10) || 25));
+    const offset = (pageNum - 1) * limitNum;
+
+    let baseFilter = "WHERE (resource LIKE 'ai_%' OR resource LIKE 'ai-%' OR resource = 'ai_studio' OR resource = 'ai_studio_settings' OR action LIKE 'AI_%')";
+    const params: any[] = [];
+
+    // Timeframe filter
+    if (timeframe === "24h") {
+      baseFilter += " AND timestamp >= DATETIME('now', '-24 hours')";
+    } else if (timeframe === "7d") {
+      baseFilter += " AND timestamp >= DATETIME('now', '-7 days')";
+    } else if (timeframe === "30d") {
+      baseFilter += " AND timestamp >= DATETIME('now', '-30 days')";
+    }
+
+    // Action filter
+    if (action && action !== "ALL") {
+      baseFilter += " AND action = ?";
+      params.push(action);
+    }
+
+    // Category filter
+    if (category && category !== "ALL") {
+      if (category === "jobs") {
+        baseFilter += " AND resource = 'ai_job'";
+      } else if (category === "editorial") {
+        baseFilter += " AND resource = 'ai_reel' AND action IN ('APPROVE', 'REJECT', 'BATCH_APPROVE', 'BATCH_DELETE', 'UPDATE')";
+      } else if (category === "media") {
+        baseFilter += " AND action IN ('TRIM', 'RE_RENDER', 'BATCH_DOWNLOAD', 'DOWNLOAD')";
+      } else if (category === "maintenance") {
+        baseFilter += " AND action IN ('CLEANUP_DISK', 'CLEANUP_EXPIRED_REELS', 'PURGE')";
+      } else if (category === "config") {
+        baseFilter += " AND resource IN ('ai_studio_settings', 'ai_prompt_preset')";
+      }
+    }
+
+    // Search filter
+    if (search && typeof search === "string" && search.trim().length > 0) {
+      const term = `%${search.trim()}%`;
+      baseFilter += " AND (username LIKE ? OR action LIKE ? OR resource LIKE ? OR resource_id LIKE ? OR details LIKE ?)";
+      params.push(term, term, term, term, term);
+    }
+
+    // Get Total Count
+    const totalRow = db.prepare(`SELECT COUNT(*) as count FROM audit_logs ${baseFilter}`).get(...params) as { count: number };
+    const total = totalRow?.count || 0;
+
+    // Get Paginated Logs
+    const logs = db.prepare(`
+      SELECT * FROM audit_logs 
+      ${baseFilter} 
+      ORDER BY timestamp DESC 
+      LIMIT ? OFFSET ?
+    `).all(...params, limitNum, offset);
+
+    // Compute Global AI Audit Statistics
+    const aiBaseFilter = "WHERE (resource LIKE 'ai_%' OR resource LIKE 'ai-%' OR resource = 'ai_studio' OR resource = 'ai_studio_settings' OR action LIKE 'AI_%')";
+    const totalAIEvents = db.prepare(`SELECT COUNT(*) as count FROM audit_logs ${aiBaseFilter}`).get() as { count: number };
+    const jobOperations = db.prepare(`SELECT COUNT(*) as count FROM audit_logs WHERE resource = 'ai_job'`).get() as { count: number };
+    const reelReviews = db.prepare(`SELECT COUNT(*) as count FROM audit_logs WHERE resource = 'ai_reel' AND action IN ('APPROVE', 'REJECT', 'BATCH_APPROVE', 'BATCH_DELETE', 'UPDATE')`).get() as { count: number };
+    const mediaEngineering = db.prepare(`SELECT COUNT(*) as count FROM audit_logs WHERE action IN ('TRIM', 'RE_RENDER', 'BATCH_DOWNLOAD', 'DOWNLOAD')`).get() as { count: number };
+    const maintenanceActions = db.prepare(`SELECT COUNT(*) as count FROM audit_logs WHERE action IN ('CLEANUP_DISK', 'CLEANUP_EXPIRED_REELS', 'PURGE')`).get() as { count: number };
+    const configUpdates = db.prepare(`SELECT COUNT(*) as count FROM audit_logs WHERE resource IN ('ai_studio_settings', 'ai_prompt_preset')`).get() as { count: number };
+
+    res.json({
+      logs,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum) || 1,
+      stats: {
+        totalAIEvents: totalAIEvents?.count || 0,
+        jobOperations: jobOperations?.count || 0,
+        reelReviews: reelReviews?.count || 0,
+        mediaEngineering: mediaEngineering?.count || 0,
+        maintenanceActions: maintenanceActions?.count || 0,
+        configUpdates: configUpdates?.count || 0
+      }
+    });
+  } catch (err: any) {
+    console.error("[AI Studio] Error fetching audit logs:", err);
+    res.status(500).json({ error: "Failed to fetch AI Studio audit logs" });
+  }
+});
+
+aiStudioRouter.delete("/audit-logs", (req: any, res: Response) => {
+  try {
+    const result = db.prepare(`
+      DELETE FROM audit_logs 
+      WHERE (resource LIKE 'ai_%' OR resource LIKE 'ai-%' OR resource = 'ai_studio' OR resource = 'ai_studio_settings' OR action LIKE 'AI_%')
+    `).run();
+
+    logAction(req, 'PURGE', 'ai_studio_audit_logs', null, { deletedRecords: result.changes });
+
+    res.json({
+      success: true,
+      message: `Cleared ${result.changes} AI Studio audit log records.`,
+      deletedCount: result.changes
+    });
+  } catch (err: any) {
+    console.error("[AI Studio] Error purging audit logs:", err);
+    res.status(500).json({ error: "Failed to clear AI Studio audit logs" });
   }
 });
