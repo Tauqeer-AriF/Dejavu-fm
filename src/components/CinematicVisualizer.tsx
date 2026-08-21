@@ -255,3 +255,5 @@ export function CinematicVisualizer({ isOpen, onClose }: { isOpen: boolean, onCl
     </AnimatePresence>
   );
 }
+
+export default CinematicVisualizer;

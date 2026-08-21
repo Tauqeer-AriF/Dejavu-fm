@@ -16,6 +16,7 @@ const DEFAULT_MENU_ITEMS: MenuItem[] = [
   { key: 'arch421', defaultLabel: 'Arch421', path: '/arch421' },
   { key: 'listen', defaultLabel: 'Listen', path: '/' },
   { key: 'watch', defaultLabel: 'Watch', path: '/watch' },
+  { key: 'events', defaultLabel: 'Events', path: '/events' },
   { key: 'schedule', defaultLabel: 'Schedule', path: '/schedule' },
   { key: 'djs', defaultLabel: 'DJs and Hosts', path: '/djs' },
   { key: 'podcasts', defaultLabel: 'Podcasts', path: '/podcasts' },

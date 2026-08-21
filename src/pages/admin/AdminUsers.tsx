@@ -7,7 +7,7 @@ import { useLogo } from "../../hooks/useLogo";
 interface AdminUser {
   username: string;
   email?: string;
-  role: "admin" | "dj";
+  role: "admin" | "dj" | "owner";
   dj_profile_id?: string;
   photo_url?: string;
   is_online?: boolean;
@@ -49,7 +49,7 @@ interface DJProfile {
   name: string;
 }
 
-export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
+export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdminUser: boolean; userRole?: string | null; currentUsername?: string | null }) {
   const { isLightMode } = useLogo();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [djs, setDjs] = useState<DJProfile[]>([]);
@@ -147,7 +147,10 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
   }, [users, roleFilter, searchQuery]);
 
   const handleBulkDelete = async () => {
-    const deletable = selectedUsernames.filter(username => username.toLowerCase() !== "admin");
+    const deletable = selectedUsernames.filter(un => {
+      const u = users.find(x => x.username === un);
+      return u && u.username.toLowerCase() !== "admin" && u.role !== "owner";
+    });
     if (deletable.length === 0) {
       showAlert({ title: "Operation Denied", message: "No deletable staff members selected.", style: "danger" });
       return;
@@ -477,8 +480,9 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
   };
 
   const handleDeleteUser = async (username: string) => {
-    if (username === "admin") {
-      showAlert({ title: "Operation Denied", message: "Cannot delete the primary admin account.", style: "danger" });
+    const targetUser = users.find(u => u.username === username);
+    if (username === "admin" || (targetUser && targetUser.role === "owner")) {
+      showAlert({ title: "Operation Denied", message: "Cannot delete the primary admin or an owner account.", style: "danger" });
       return;
     }
 
@@ -848,7 +852,7 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
                 </label>
                 <select
                   value={newRole}
-                  onChange={(e) => setNewRole(e.target.value as "admin" | "dj")}
+                  onChange={(e) => setNewRole(e.target.value as "admin" | "dj" | "owner")}
                   className={`w-full border rounded-xl px-4 py-3 focus:border-neon-purple focus:outline-none transition-all ${isLightMode ? 'bg-black/5 border-black/15 text-slate-900' : 'bg-black/40 border-white/10 text-white'}`}
                 >
                   <option value="dj" className={isLightMode ? "bg-white text-slate-900" : "bg-[#121212] text-white"}>DJ / Presenter</option>
@@ -1141,7 +1145,7 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
                       {/* Email Field */}
                       <div>
                         <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>
-                          Email Address
+                          Email Address {userRole !== 'owner' && currentUsername !== user.username && "(Locked)"}
                         </label>
                         <div className="relative">
                           <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${isLightMode ? 'text-black/40' : 'text-white/30'}`} />
@@ -1149,7 +1153,8 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
                             type="email"
                             value={editStaffEmail}
                             onChange={(e) => setEditStaffEmail(e.target.value)}
-                            className={`w-full text-xs border rounded-xl pl-9 pr-3 py-2.5 focus:border-neon-purple focus:outline-none transition-all ${isLightMode ? 'bg-black/5 border-black/15 text-slate-900 placeholder-black/40' : 'bg-black/40 border-white/10 text-white placeholder-white/30'}`}
+                            disabled={userRole !== 'owner' && currentUsername !== user.username}
+                            className={`w-full text-xs border rounded-xl pl-9 pr-3 py-2.5 focus:border-neon-purple focus:outline-none transition-all disabled:opacity-50 ${isLightMode ? 'bg-black/5 border-black/15 text-slate-900 placeholder-black/40' : 'bg-black/40 border-white/10 text-white placeholder-white/30'}`}
                             placeholder="Email Address"
                           />
                         </div>
@@ -1162,8 +1167,8 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
                         </label>
                         <select
                           value={editStaffRole}
-                          onChange={(e) => setEditStaffRole(e.target.value as "admin" | "dj")}
-                          disabled={user.username === "admin"}
+                          onChange={(e) => setEditStaffRole(e.target.value as "admin" | "dj" | "owner")}
+                          disabled={user.username === "admin" || user.role === "owner" || userRole !== "owner"}
                           className={`w-full text-xs border rounded-xl px-3 py-2.5 focus:border-neon-purple focus:outline-none transition-all disabled:opacity-50 ${isLightMode ? 'bg-black/5 border-black/15 text-slate-900' : 'bg-black/40 border-white/10 text-white'}`}
                         >
                           <option value="dj" className={isLightMode ? "bg-white text-slate-900" : "bg-[#121212] text-white"}>DJ / Presenter</option>
@@ -1193,7 +1198,7 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
                       {/* Password Field */}
                       <div>
                         <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>
-                          New Password (Optional)
+                          New Password {userRole !== 'owner' && currentUsername !== user.username ? "(Locked)" : "(Optional)"}
                         </label>
                         <div className="relative">
                           <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${isLightMode ? 'text-black/40' : 'text-white/30'}`} />
@@ -1201,8 +1206,9 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
                             type={showEditStaffPass ? "text" : "password"}
                             value={editStaffPass}
                             onChange={(e) => setEditStaffPass(e.target.value)}
-                            placeholder="Leave blank to keep current"
-                            className={`w-full text-xs border rounded-xl pl-9 pr-8 py-2.5 focus:border-neon-purple focus:outline-none transition-all ${isLightMode ? 'bg-black/5 border-black/15 text-slate-900 placeholder-black/40' : 'bg-black/40 border-white/10 text-white placeholder-white/30'}`}
+                            disabled={userRole !== 'owner' && currentUsername !== user.username}
+                            placeholder={userRole !== 'owner' && currentUsername !== user.username ? "Insufficient authority" : "Leave blank to keep current"}
+                            className={`w-full text-xs border rounded-xl pl-9 pr-8 py-2.5 focus:border-neon-purple focus:outline-none transition-all disabled:opacity-50 ${isLightMode ? 'bg-black/5 border-black/15 text-slate-900 placeholder-black/40' : 'bg-black/40 border-white/10 text-white placeholder-white/30'}`}
                           />
                           <button
                             type="button"
@@ -1408,15 +1414,17 @@ export function AdminUsers({ isAdminUser }: { isAdminUser: boolean }) {
                           </button>
                         </div>
                       ) : (
-                        <button
-                          onClick={() => setEditingUsername(user.username)}
-                          className={`inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all ${isLightMode ? 'bg-black/5 hover:bg-black/10 text-slate-800' : 'bg-white/5 hover:bg-white/10 text-white'}`}
-                        >
-                          <Key className={`w-3.5 h-3.5 ${isLightMode ? 'text-black/40' : 'text-white/40'}`} /> Reset Password
-                        </button>
+                        (userRole === "owner" || currentUsername === user.username) && (
+                          <button
+                            onClick={() => setEditingUsername(user.username)}
+                            className={`inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all ${isLightMode ? 'bg-black/5 hover:bg-black/10 text-slate-800' : 'bg-white/5 hover:bg-white/10 text-white'}`}
+                          >
+                            <Key className={`w-3.5 h-3.5 ${isLightMode ? 'text-black/40' : 'text-white/40'}`} /> Reset Password
+                          </button>
+                        )
                       )}
 
-                      {user.username !== "admin" && (
+                      {user.username !== "admin" && user.role !== "owner" && (
                         <button
                           onClick={() => handleDeleteUser(user.username)}
                           className="p-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl transition-all"

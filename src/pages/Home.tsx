@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAudio } from "../context/AudioContext";
 import { useLogo } from "../hooks/useLogo";
+import { safeFetchJson } from "../utils/safeFetch";
 import { Play, Pause, Mic2, Tv, Clock, X, MessageSquare, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { io } from "socket.io-client";
@@ -224,13 +225,13 @@ export default function Home() {
 
   const { data: scheduleData, isLoading } = useQuery({
     queryKey: ['schedule'],
-    queryFn: () => fetch("/api/public/schedule").then(res => res.json()),
+    queryFn: () => safeFetchJson("/api/public/schedule"),
     refetchInterval: 10000,
   });
 
   const { data: djs } = useQuery<any[]>({
     queryKey: ['djs'],
-    queryFn: () => fetch('/api/public/djs').then(res => res.json()),
+    queryFn: () => safeFetchJson('/api/public/djs'),
   });
 
   const matchedDj = useMemo(() => {

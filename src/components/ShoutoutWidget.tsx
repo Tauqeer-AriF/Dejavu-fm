@@ -675,3 +675,5 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
     </div>
   );
 }
+
+export default ShoutoutWidget;

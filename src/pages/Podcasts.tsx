@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Play, Search, X, RefreshCw } from "lucide-react";
+import { Play, Pause, Search, X, RefreshCw, Volume2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useLogo } from "../hooks/useLogo";
+import { useAudio } from "../context/AudioContext";
+import { safeFetchJson, getPodcastId } from "../utils/safeFetch";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -22,6 +24,7 @@ import { SkeletonPodcast } from "../components/Skeleton";
 
 export default function PodcastsPage() {
   const { isLightMode, getPageTitle } = useLogo();
+  const { isPlaying, activeType, podcastTrack, playPodcast, togglePlay } = useAudio();
 
   const rawTitle = getPageTitle('podcasts', 'The Podcasts');
   const words = rawTitle.split(' ');
@@ -36,7 +39,7 @@ export default function PodcastsPage() {
 
   const { data: feed, isLoading: loading } = useQuery({
     queryKey: ['podcasts'],
-    queryFn: () => fetch("/api/public/podcasts").then(res => res.json()),
+    queryFn: () => safeFetchJson("/api/public/podcasts"),
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
@@ -206,9 +209,32 @@ export default function PodcastsPage() {
             initial="hidden"
             animate="show"
           >
-            {paginatedItems.map((item: any) => {
-              const podcastId = btoa(item.guid || item.link).replace(/=/g, '');
-              const imageUrl = item.itunes?.image || "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=600";
+            {paginatedItems.map((item: any, idx: number) => {
+              const podcastId = getPodcastId(item) || String(idx);
+              const imageUrl = item.imageUrl || item.itunes?.image || "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=600";
+              const audioUrl = item.enclosure?.url || 
+                               item.enclosure?.link || 
+                               item.audioUrl || 
+                               (typeof item.link === 'string' && item.link.includes('.mp3') ? item.link : '');
+              
+              const isThisPlaying = activeType === 'podcast' && (podcastTrack?.id === podcastId || (podcastTrack?.audioUrl && podcastTrack.audioUrl === audioUrl)) && isPlaying;
+              const isThisActive = activeType === 'podcast' && (podcastTrack?.id === podcastId || (podcastTrack?.audioUrl && podcastTrack.audioUrl === audioUrl));
+
+              const handleDirectPlay = (e: React.MouseEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (isThisActive) {
+                  togglePlay();
+                } else {
+                  playPodcast({
+                    id: podcastId,
+                    title: item.title,
+                    audioUrl: audioUrl,
+                    imageUrl: imageUrl
+                  });
+                }
+              };
+
               return (
                 <motion.div 
                   key={podcastId} 
@@ -225,27 +251,44 @@ export default function PodcastsPage() {
                   <Link to={`/podcasts/${podcastId}`} className="block h-full">
                     <div className={`glass-panel h-full rounded-2xl flex flex-col hover:bg-white/5 transition-all duration-300 relative border hover:border-white/20 ${
                       isLightMode ? 'bg-white border-black/10' : 'border-white/10'
-                    }`}>
+                    } ${isThisActive ? 'ring-2 ring-neon-purple/50' : ''}`}>
                       <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-[50px] transition-colors pointer-events-none z-0 ${
-                        isLightMode ? 'bg-neon-purple/[0.03]' : 'bg-neon-purple/5 group-hover:bg-neon-blue/10'
+                        isThisPlaying ? 'bg-neon-purple/20' : isLightMode ? 'bg-neon-purple/[0.03]' : 'bg-neon-purple/5 group-hover:bg-neon-blue/10'
                       }`}></div>
                       
                       <div className={`aspect-square overflow-hidden relative border-b ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
                         <img src={imageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
                         <div className={`absolute inset-0 bg-gradient-to-t ${isLightMode ? 'from-white/90 via-white/20' : 'from-dark-bg/90 via-dark-bg/20'} to-transparent`}></div>
                         <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
-                          <span className="px-3 py-1 bg-black/60 backdrop-blur-md rounded-full text-[9px] font-black text-neon-blue uppercase tracking-widest border border-white/10">Archive</span>
-                          <div className={`w-12 h-12 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500 shadow-2xl ${
-                            isLightMode ? 'bg-neon-purple text-white' : 'bg-white text-dark-bg'
+                          <span className={`px-3 py-1 backdrop-blur-md rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${
+                            isThisPlaying ? 'bg-neon-purple text-white border-neon-purple shadow-[0_0_12px_rgba(176,38,255,0.6)] animate-pulse' : 'bg-black/60 text-neon-blue border-white/10'
                           }`}>
-                            <Play className="w-5 h-5 ml-1 fill-current" />
-                          </div>
+                            {isThisPlaying ? 'Now Playing' : 'Archive'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleDirectPlay}
+                            aria-label={isThisPlaying ? "Pause episode" : "Play episode"}
+                            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl z-20 ${
+                              isThisPlaying 
+                                ? 'opacity-100 bg-neon-purple text-white ring-4 ring-neon-purple/30 scale-105' 
+                                : isLightMode 
+                                  ? 'opacity-90 sm:opacity-0 group-hover:opacity-100 bg-neon-purple text-white hover:scale-110' 
+                                  : 'opacity-90 sm:opacity-0 group-hover:opacity-100 bg-white text-dark-bg hover:scale-110'
+                            }`}
+                          >
+                            {isThisPlaying ? (
+                              <Pause className="w-5 h-5 fill-current" />
+                            ) : (
+                              <Play className="w-5 h-5 ml-1 fill-current" />
+                            )}
+                          </button>
                         </div>
                       </div>
                       
                       <div className={`p-6 flex-1 flex flex-col relative z-10 bg-gradient-to-b from-transparent ${isLightMode ? 'to-black/[0.02]' : 'to-black/20'}`}>
                         <p className={`text-[10px] uppercase mt-1 mb-3 font-bold tracking-[0.2em] flex items-center ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>
-                          <span className="w-1 h-4 bg-neon-purple mr-3 rounded-full"></span>
+                          <span className={`w-1 h-4 mr-3 rounded-full ${isThisPlaying ? 'bg-neon-purple animate-pulse' : 'bg-neon-purple'}`}></span>
                           {(item.pubDate || item.isoDate) ? new Date(item.pubDate || item.isoDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'Recent'}
                         </p>
                         <h3 className={`text-lg font-display font-bold group-hover:text-neon-blue transition-colors leading-snug line-clamp-2 mb-3 ${isLightMode ? 'text-black' : 'text-white'}`}>

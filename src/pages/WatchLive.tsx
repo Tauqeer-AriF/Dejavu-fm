@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { useAudio } from '../context/AudioContext';
 import { useLogo } from '../hooks/useLogo';
+import { safeFetchJson } from '../utils/safeFetch';
 import { convertToLocalTime } from '../lib/timeUtils';
 import { ChatSidebar } from '../components/ChatSidebar';
 
@@ -120,11 +121,11 @@ export default function WatchLive() {
   // Use react-query for settings to keep it automatically in sync
   const { data: settings } = useQuery({
     queryKey: ['settings'],
-    queryFn: () => fetch('/api/public/settings').then(res => res.json()),
+    queryFn: () => safeFetchJson('/api/public/settings'),
     refetchInterval: 3000,
   });
 
-  const { onAirInfo, isPlaying, togglePlay } = useAudio();
+  const { onAirInfo, isPlaying, togglePlay, stopAudio } = useAudio();
 
   const studioVideoUrl = settings?.studio_video_url || studioVideoUrlState;
   const featChat = settings?.feat_chat !== '0';
@@ -232,12 +233,13 @@ export default function WatchLive() {
   }, [isSplitActive]);
 
   useEffect(() => {
-    // Pause background radio if it's playing so the video audio can be heard
-    if (isPlaying) {
-      togglePlay();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // Automatically stop background radio stream on Watch pages so video audio can be heard cleanly without overlap
+    stopAudio();
+    const timer = setTimeout(() => {
+      stopAudio();
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [stopAudio]);
 
   useEffect(() => {
     const socket = (window as any).socket;
@@ -264,7 +266,7 @@ export default function WatchLive() {
 
   const { data: scheduleData } = useQuery({
     queryKey: ['schedule'],
-    queryFn: () => fetch('/api/public/schedule').then(res => res.json())
+    queryFn: () => safeFetchJson('/api/public/schedule')
   });
 
   return (

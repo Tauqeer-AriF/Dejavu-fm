@@ -1,38 +1,97 @@
 import React, { useState, useEffect, Suspense, lazy } from "react";
 import { useNavigate, Routes, Route, useLocation, Navigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { Sun, Moon, Radio, LogOut, Home as HomeIcon } from "lucide-react";
+import { Sun, Moon, Radio, LogOut, Home as HomeIcon, Sparkles } from "lucide-react";
 import { fetchAdmin } from "./admin/adminApi";
 import { LoadingFallback } from "./admin/LoadingFallback";
 import { AdminSecretGate } from "./admin/AdminAuth";
 import { AdminSidebar } from "./admin/AdminSidebar";
 
+import { ErrorBoundary } from "../components/ErrorBoundary";
+
+// Resilient Lazy Import Helper with automatic chunk retry and cache invalidation
+function lazyWithRetry<T extends React.ComponentType<any>>(
+  componentImport: () => Promise<{ default: T } | any>
+) {
+  return lazy(async () => {
+    try {
+      const module = await componentImport();
+      sessionStorage.removeItem('admin_chunk_retry');
+      return module.default ? module : { default: module };
+    } catch (error) {
+      console.warn('[Admin LazyRetry] Module import failed, retrying...', error);
+      try {
+        await new Promise(r => setTimeout(r, 100));
+        const module = await componentImport();
+        sessionStorage.removeItem('admin_chunk_retry');
+        return module.default ? module : { default: module };
+      } catch (retryError) {
+        const pageHasBeenRefreshed = sessionStorage.getItem('admin_chunk_retry');
+        if (!pageHasBeenRefreshed) {
+          sessionStorage.setItem('admin_chunk_retry', 'true');
+          window.location.reload();
+        }
+        throw retryError;
+      }
+    }
+  });
+}
+
+const formatMediaUrl = (url?: string): string | undefined => {
+  if (!url) return undefined;
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('/')) {
+    return url;
+  }
+  return '/' + url;
+};
+
+const extractAudioUrl = (item: any): string | undefined => {
+  if (!item) return undefined;
+  const raw = item.audioUrl || item.audio_url || item.audio || item.audioName || item.replyAudioUrl || item.reply_audio_url || (item.mediaType === 'audio' ? item.mediaUrl : undefined);
+  return formatMediaUrl(raw);
+};
+
+const extractImageUrl = (item: any): string | undefined => {
+  if (!item) return undefined;
+  const raw = item.imageUrl || item.image_url || item.image || item.imageName || item.replyImageUrl || item.reply_image_url || (item.mediaType === 'image' ? item.mediaUrl : undefined);
+  return formatMediaUrl(raw);
+};
+
+const extractVideoUrl = (item: any): string | undefined => {
+  if (!item) return undefined;
+  const raw = item.videoUrl || item.video_url || item.video || item.videoName || item.replyVideoUrl || item.reply_video_url || (item.mediaType === 'video' ? item.mediaUrl : undefined);
+  return formatMediaUrl(raw);
+};
+
 // Lazy-loaded administrative sub-pages for optimal bundle size and minimal mount overhead
-const AdminAnalytics = lazy(() => import("./admin/AdminAnalytics").then(m => ({ default: m.AdminAnalytics })));
-const AdminLiveTools = lazy(() => import("./admin/AdminLiveTools").then(m => ({ default: m.AdminLiveTools })));
-const AdminDJs = lazy(() => import("./admin/AdminDJs").then(m => ({ default: m.AdminDJs })));
-const AdminPopup = lazy(() => import("./admin/AdminPopup").then(m => ({ default: m.AdminPopup })));
-const AdminShoutouts = lazy(() => import("./admin/AdminShoutouts").then(m => ({ default: m.AdminShoutouts })));
-const AdminBookings = lazy(() => import("./admin/AdminBookings").then(m => ({ default: m.AdminBookings })));
-const AdminSchedule = lazy(() => import("./admin/AdminSchedule").then(m => ({ default: m.AdminSchedule })));
-const AdminProfile = lazy(() => import("./admin/AdminProfile").then(m => ({ default: m.AdminProfile })));
-const AdminBranding = lazy(() => import("./admin/AdminSystem").then(m => ({ default: m.AdminBranding })));
-const AdminSettings = lazy(() => import("./admin/AdminSystem").then(m => ({ default: m.AdminSettings })));
-const AdminAdvanced = lazy(() => import("./admin/AdminSystem").then(m => ({ default: m.AdminAdvanced })));
-const AdminUsers = lazy(() => import("./admin/AdminUsers").then(m => ({ default: m.AdminUsers })));
-const AdminChatUsers = lazy(() => import("./admin/AdminChatUsers").then(m => ({ default: m.AdminChatUsers })));
-const AdminChatRoomSettings = lazy(() => import("./admin/AdminChatRoomSettings").then(m => ({ default: m.AdminChatRoomSettings })));
-const AdminAuditLogs = lazy(() => import("./admin/AdminAuditLogs").then(m => ({ default: m.AdminAuditLogs })));
-const AdminBackup = lazy(() => import("./admin/AdminBackup").then(m => ({ default: m.AdminBackup })));
-const AdminAds = lazy(() => import("./admin/AdminAds").then(m => ({ default: m.AdminAds })));
-const AdminMedia = lazy(() => import("./admin/AdminMedia").then(m => ({ default: m.AdminMedia })));
-const AdminMenu = lazy(() => import("./admin/AdminMenu").then(m => ({ default: m.AdminMenu })));
-const AdminPages = lazy(() => import("./admin/AdminPages").then(m => ({ default: m.AdminPages })));
-const AdminStudio = React.lazy(() => import("./admin/AdminStudio").then(m => ({ default: m.AdminStudio })));
-const AdminMetaIntegrations = React.lazy(() => import("./admin/AdminMetaIntegrations").then(m => ({ default: m.AdminMetaIntegrations })));
-const AdminSEO = lazy(() => import("./admin/AdminSEO").then(m => ({ default: m.AdminSEO })));
-const AdminFeatures = lazy(() => import("./admin/AdminFeatures").then(m => ({ default: m.AdminFeatures })));
-const AdminSongRequests = lazy(() => import("./admin/AdminSongRequests").then(m => ({ default: m.AdminSongRequests })));
+const AdminAnalytics = lazyWithRetry(() => import("./admin/AdminAnalytics").then(m => ({ default: m.AdminAnalytics })));
+const AdminLiveTools = lazyWithRetry(() => import("./admin/AdminLiveTools").then(m => ({ default: m.AdminLiveTools })));
+const AdminDJs = lazyWithRetry(() => import("./admin/AdminDJs").then(m => ({ default: m.AdminDJs })));
+const AdminPopup = lazyWithRetry(() => import("./admin/AdminPopup").then(m => ({ default: m.AdminPopup })));
+const AdminShoutouts = lazyWithRetry(() => import("./admin/AdminShoutouts").then(m => ({ default: m.AdminShoutouts })));
+const AdminBookings = lazyWithRetry(() => import("./admin/AdminBookings").then(m => ({ default: m.AdminBookings })));
+const AdminSchedule = lazyWithRetry(() => import("./admin/AdminSchedule").then(m => ({ default: m.AdminSchedule })));
+const AdminProfile = lazyWithRetry(() => import("./admin/AdminProfile").then(m => ({ default: m.AdminProfile })));
+const AdminBranding = lazyWithRetry(() => import("./admin/AdminSystem").then(m => ({ default: m.AdminBranding })));
+const AdminSettings = lazyWithRetry(() => import("./admin/AdminSystem").then(m => ({ default: m.AdminSettings })));
+const AdminAdvanced = lazyWithRetry(() => import("./admin/AdminSystem").then(m => ({ default: m.AdminAdvanced })));
+const AdminUsers = lazyWithRetry(() => import("./admin/AdminUsers").then(m => ({ default: m.AdminUsers })));
+const AdminChatUsers = lazyWithRetry(() => import("./admin/AdminChatUsers").then(m => ({ default: m.AdminChatUsers })));
+const AdminChatRoomSettings = lazyWithRetry(() => import("./admin/AdminChatRoomSettings").then(m => ({ default: m.AdminChatRoomSettings })));
+const AdminAuditLogs = lazyWithRetry(() => import("./admin/AdminAuditLogs").then(m => ({ default: m.AdminAuditLogs })));
+const AdminBackup = lazyWithRetry(() => import("./admin/AdminBackup").then(m => ({ default: m.AdminBackup })));
+const AdminAds = lazyWithRetry(() => import("./admin/AdminAds").then(m => ({ default: m.AdminAds })));
+const AdminEvents = lazyWithRetry(() => import("./admin/AdminEvents").then(m => ({ default: m.AdminEvents })));
+const AdminMedia = lazyWithRetry(() => import("./admin/AdminMedia").then(m => ({ default: m.AdminMedia })));
+const AdminMenu = lazyWithRetry(() => import("./admin/AdminMenu").then(m => ({ default: m.AdminMenu })));
+const AdminPages = lazyWithRetry(() => import("./admin/AdminPages").then(m => ({ default: m.AdminPages })));
+const AdminStudio = lazyWithRetry(() => import("./admin/AdminStudio").then(m => ({ default: m.AdminStudio })));
+const AdminMetaIntegrations = lazyWithRetry(() => import("./admin/AdminMetaIntegrations").then(m => ({ default: m.AdminMetaIntegrations })));
+const AdminSEO = lazyWithRetry(() => import("./admin/AdminSEO").then(m => ({ default: m.AdminSEO })));
+const AdminFeatures = lazyWithRetry(() => import("./admin/AdminFeatures").then(m => ({ default: m.AdminFeatures })));
+const AdminSongRequests = lazyWithRetry(() => import("./admin/AdminSongRequests").then(m => ({ default: m.AdminSongRequests })));
+const AdminOwnerControl = lazyWithRetry(() => import("./admin/AdminOwnerControl"));
+const AdminAIContentStudio = lazyWithRetry(() => import("./admin/AdminAIContentStudio").then(m => ({ default: m.AdminAIContentStudio })));
 import { useLogo } from "../hooks/useLogo";
 import { PremiumRingLoader } from "../components/PremiumRingLoader";
 import { AppLoader } from "../components/AppLoader";
@@ -143,7 +202,7 @@ export default function Admin() {
 
   // Listen to background messages when user is not on the Studio page
   useEffect(() => {
-    if (!isLogged || (userRole !== 'admin' && userRole !== 'dj') || isStudioRoute) {
+    if (!isLogged || (userRole !== 'admin' && userRole !== 'dj' && userRole !== 'owner') || isStudioRoute) {
       return;
     }
 
@@ -189,9 +248,9 @@ export default function Admin() {
           avatar: msg.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(msg.sender || msg.user)}`,
           text: msg.text || '',
           timestamp: msg.timestamp,
-          imageUrl: msg.imageUrl,
-          audioUrl: msg.audioUrl,
-          videoUrl: msg.videoUrl,
+          imageUrl: extractImageUrl(msg),
+          audioUrl: extractAudioUrl(msg),
+          videoUrl: extractVideoUrl(msg),
           recipient: msg.recipient,
           platform: msg.platform,
         };
@@ -240,9 +299,9 @@ export default function Admin() {
           avatar: shoutout.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(shoutout.listener_name || shoutout.user || 'shoutout')}`,
           text: shoutout.message || '',
           timestamp: ts,
-          imageUrl: shoutout.imageUrl,
-          audioUrl: shoutout.audioUrl,
-          videoUrl: shoutout.videoUrl,
+          imageUrl: extractImageUrl(shoutout),
+          audioUrl: extractAudioUrl(shoutout),
+          videoUrl: extractVideoUrl(shoutout),
         };
 
         const isDuplicate = existing.messages.some((m: any) => m.id === incomingMessage.id);
@@ -318,9 +377,9 @@ export default function Admin() {
         avatar: message.avatar_url || message.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(message.user || message.listener_name || 'Shoutout')}`,
         text: message.text || message.message || '',
         timestamp: message.timestamp || Date.now(),
-        imageUrl: message.imageUrl,
-        audioUrl: message.audioUrl,
-        videoUrl: message.videoUrl,
+        imageUrl: extractImageUrl(message),
+        audioUrl: extractAudioUrl(message),
+        videoUrl: extractVideoUrl(message),
         recipient: message.recipient,
         platform: message.platform,
       };
@@ -581,16 +640,12 @@ export default function Admin() {
   useEffect(() => {
     // Avoid triggering tab loader if not logged in, or if navigating to studio or during initial load
     if (!isLogged || location.pathname.startsWith('/admin/studio') || sessionChecking) {
+      setTabLoading(false);
       return;
     }
 
-    setTabLoading(true);
-    const timer = setTimeout(() => {
-      setTabLoading(false);
-    }, 450); // 450ms transition time
-
-    return () => clearTimeout(timer);
-  }, [location.pathname]);
+    setTabLoading(false);
+  }, [location.pathname, isLogged, sessionChecking]);
 
   useEffect(() => {
     const verifySession = async () => {
@@ -695,9 +750,26 @@ export default function Admin() {
     );
   }
 
+  // Render the AI Social Content Studio as a dedicated, full-screen standalone workspace for Admins only
+  if (location.pathname.includes('/social-studio') || location.pathname.includes('/ai-studio')) {
+    if (userRole !== 'admin' && userRole !== 'owner') {
+      return <Navigate to={`${adminBasePath}/live-tools`} replace />;
+    }
+    if (settings?.feat_ai_studio === '0' || settings?.ai_studio_enabled === '0') {
+      return <Navigate to={adminBasePath} replace />;
+    }
+    return (
+      <Suspense fallback={
+        <AppLoader size="lg" fullScreen />
+      }>
+        <AdminAIContentStudio onLogout={handleLogout} />
+      </Suspense>
+    );
+  }
+
   // Render the Studio page as a full-screen, standalone component if the path matches
   if (location.pathname.includes('/studio')) {
-    if (userRole && userRole !== 'admin' && userRole !== 'dj') {
+    if (userRole && userRole !== 'admin' && userRole !== 'dj' && userRole !== 'owner') {
       return <Navigate to={`${adminBasePath}/live-tools`} replace />;
     }
     return (
@@ -734,14 +806,24 @@ export default function Admin() {
           </motion.div>
  
           <div className="flex items-center gap-3">
-            {(userRole === 'admin' || userRole === 'dj') && (
+            {(userRole === 'admin' || userRole === 'owner') && settings?.feat_ai_studio !== '0' && settings?.ai_studio_enabled !== '0' && (
+              <Link
+                to={`${adminBasePath}/social-studio`}
+                className="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-full border border-neon-purple/30 bg-neon-purple/10 text-[var(--color-neon-purple)] font-bold uppercase text-xs tracking-widest transition hover:bg-neon-purple hover:text-white hover:shadow-lg hover:shadow-neon-purple/20 relative"
+                title="Open AI Automatic Social Content Studio"
+              >
+                <Sparkles className="w-4 h-4" />
+                AI Content Studio
+              </Link>
+            )}
+            {(userRole === 'admin' || userRole === 'dj' || userRole === 'owner') && (
               <Link
                 to={`${adminBasePath}/studio`}
                 className="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-full border border-neon-purple/30 bg-neon-purple/10 text-[var(--color-neon-purple)] font-bold uppercase text-xs tracking-widest transition hover:bg-neon-purple hover:text-[#ffffff] hover:shadow-lg hover:shadow-neon-purple/20 relative"
-                title="Go to Live Studio Tools"
+                title="Go to Studio Inbox"
               >
                 <Radio className="w-4 h-4" />
-                Studio
+                Studio Inbox
                 {totalUnread > 0 && (
                   <span 
                     className="absolute -top-1.5 -right-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-black font-mono leading-none text-[#ffffff] border border-[#0A0C16]/40 shadow-[0_2px_10px_-1px_var(--color-neon-purple)]"
@@ -787,7 +869,7 @@ export default function Admin() {
         </div>
 
         <div className="glass-panel admin-dashboard-container min-h-[80vh] rounded-3xl flex flex-col md:flex-row overflow-hidden shadow-2xl relative z-10">
-          <AdminSidebar onLogout={handleLogout} isAdminUser={userRole === 'admin'} />
+          <AdminSidebar onLogout={handleLogout} isAdminUser={userRole === 'admin'} userRole={userRole} />
           <div className="flex-1 p-4 md:p-8 lg:p-12 overflow-y-auto">
             <AnimatePresence mode="wait">
               <motion.div
@@ -798,41 +880,45 @@ export default function Admin() {
                 transition={{ duration: 0.2, ease: "easeOut" }}
                 className="min-h-full"
               >
-                <Suspense fallback={<LoadingFallback />}>
-                  {tabLoading ? (
-                    <LoadingFallback />
-                  ) : (
-                    <Routes location={location}>
-                      <Route path="/" element={userRole === 'admin' ? <AdminAnalytics isAdminUser={true} /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
-                      <Route path="/live-tools" element={<AdminLiveTools />} />
-                      <Route path="/menu" element={userRole === 'admin' ? <AdminMenu /> : <Navigate to={adminBasePath} replace />} />
-                      <Route path="/pages" element={userRole === 'admin' ? <AdminPages /> : <Navigate to={adminBasePath} replace />} />
-                      <Route path="/features" element={userRole === 'admin' ? <AdminFeatures /> : <Navigate to={adminBasePath} replace />} />
-                      <Route path="/djs" element={userRole === 'admin' ? <AdminDJs /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
-                      <Route path="/popup" element={userRole === 'admin' ? <AdminPopup /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
-                      <Route path="/ads" element={userRole === 'admin' ? <AdminAds /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
-                      <Route path="/shoutouts" element={<AdminShoutouts isAdminUser={userRole === 'admin'} />} />
-                      <Route path="/bookings" element={userRole === 'admin' ? <AdminBookings /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
-                      <Route path="/schedule" element={userRole === 'admin' ? <AdminSchedule /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
-                      <Route path="/profile" element={<AdminProfile />} />
-                      <Route path="/song-requests" element={<AdminSongRequests />} />
+                <ErrorBoundary key={location.pathname}>
+                  <Suspense fallback={<LoadingFallback />}>
+                    {tabLoading ? (
+                      <LoadingFallback />
+                    ) : (
+                      <Routes>
+                        <Route path="/" element={userRole === 'admin' || userRole === 'owner' ? <AdminAnalytics isAdminUser={true} /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
+                        <Route path="/live-tools" element={<AdminLiveTools />} />
+                        <Route path="/menu" element={userRole === 'admin' || userRole === 'owner' ? <AdminMenu /> : <Navigate to={adminBasePath} replace />} />
+                        <Route path="/pages" element={userRole === 'admin' || userRole === 'owner' ? <AdminPages /> : <Navigate to={adminBasePath} replace />} />
+                        <Route path="/features" element={userRole === 'admin' || userRole === 'owner' ? <AdminFeatures /> : <Navigate to={adminBasePath} replace />} />
+                        <Route path="/djs" element={userRole === 'admin' || userRole === 'owner' ? <AdminDJs /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
+                        <Route path="/popup" element={userRole === 'admin' || userRole === 'owner' ? <AdminPopup /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
+                        <Route path="/ads" element={userRole === 'admin' || userRole === 'owner' ? <AdminAds /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
+                        <Route path="/events" element={userRole === 'admin' || userRole === 'owner' ? <AdminEvents /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
+                        <Route path="/shoutouts" element={<AdminShoutouts isAdminUser={userRole === 'admin' || userRole === 'owner'} />} />
+                        <Route path="/bookings" element={userRole === 'admin' || userRole === 'owner' ? <AdminBookings /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
+                        <Route path="/schedule" element={userRole === 'admin' || userRole === 'owner' ? <AdminSchedule /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
+                        <Route path="/profile" element={<AdminProfile />} />
+                        <Route path="/song-requests" element={<AdminSongRequests />} />
 
-                      <Route path="/settings" element={userRole === 'admin' ? <AdminSettings /> : <Navigate to={adminBasePath} replace />} />
-                      <Route path="/advanced" element={userRole === 'admin' ? <AdminAdvanced /> : <Navigate to={adminBasePath} replace />} />
-                      <Route path="/media" element={userRole === 'admin' ? <AdminMedia /> : <Navigate to={adminBasePath} replace />} />
-                      <Route path="/branding" element={userRole === 'admin' ? <AdminBranding /> : <Navigate to={adminBasePath} replace />} />
-                      <Route path="/users" element={userRole === 'admin' ? <AdminUsers isAdminUser={userRole === 'admin'} /> : <Navigate to={adminBasePath} replace />} />
-                      <Route path="/chat-users" element={userRole === 'admin' ? <AdminChatUsers isAdminUser={userRole === 'admin'} /> : <Navigate to={adminBasePath} replace />} />
-                      <Route path="/chat-room-setting" element={userRole === 'admin' ? <AdminChatRoomSettings /> : <Navigate to={adminBasePath} replace />} />
-                      <Route path="/audit-logs" element={userRole === 'admin' ? <AdminAuditLogs /> : <Navigate to={adminBasePath} replace />} />
-                      <Route path="/backup" element={userRole === 'admin' ? <AdminBackup /> : <Navigate to={adminBasePath} replace />} />
-                      <Route path="/meta-integrations" element={userRole === 'admin' ? <AdminMetaIntegrations /> : <Navigate to={adminBasePath} replace />} />
-                      <Route path="/seo" element={userRole === 'admin' ? <AdminSEO /> : <Navigate to={adminBasePath} replace />} />
+                        <Route path="/settings" element={userRole === 'admin' || userRole === 'owner' ? <AdminSettings /> : <Navigate to={adminBasePath} replace />} />
+                        <Route path="/advanced" element={userRole === 'admin' || userRole === 'owner' ? <AdminAdvanced /> : <Navigate to={adminBasePath} replace />} />
+                        <Route path="/media" element={userRole === 'admin' || userRole === 'owner' ? <AdminMedia /> : <Navigate to={adminBasePath} replace />} />
+                        <Route path="/branding" element={userRole === 'admin' || userRole === 'owner' ? <AdminBranding /> : <Navigate to={adminBasePath} replace />} />
+                        <Route path="/users" element={userRole === 'admin' || userRole === 'owner' ? <AdminUsers isAdminUser={userRole === 'admin' || userRole === 'owner'} userRole={userRole} currentUsername={adminUsername} /> : <Navigate to={adminBasePath} replace />} />
+                        <Route path="/chat-users" element={userRole === 'admin' || userRole === 'owner' ? <AdminChatUsers isAdminUser={userRole === 'admin' || userRole === 'owner'} /> : <Navigate to={adminBasePath} replace />} />
+                        <Route path="/chat-room-setting" element={userRole === 'admin' || userRole === 'owner' ? <AdminChatRoomSettings /> : <Navigate to={adminBasePath} replace />} />
+                        <Route path="/audit-logs" element={userRole === 'admin' || userRole === 'owner' ? <AdminAuditLogs /> : <Navigate to={adminBasePath} replace />} />
+                        <Route path="/backup" element={userRole === 'admin' || userRole === 'owner' ? <AdminBackup /> : <Navigate to={adminBasePath} replace />} />
+                        <Route path="/meta-integrations" element={userRole === 'admin' || userRole === 'owner' ? <AdminMetaIntegrations /> : <Navigate to={adminBasePath} replace />} />
+                        <Route path="/seo" element={userRole === 'admin' || userRole === 'owner' ? <AdminSEO /> : <Navigate to={adminBasePath} replace />} />
+                        <Route path="/owner-control" element={userRole === 'owner' ? <AdminOwnerControl /> : <Navigate to={adminBasePath} replace />} />
 
-                      <Route path="*" element={<Navigate to={adminBasePath} replace />} />
-                    </Routes>
-                  )}
-                </Suspense>
+                        <Route path="*" element={<Navigate to={adminBasePath} replace />} />
+                      </Routes>
+                    )}
+                  </Suspense>
+                </ErrorBoundary>
               </motion.div>
             </AnimatePresence>
           </div>

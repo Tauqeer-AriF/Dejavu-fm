@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Copy, Check, Share2, QrCode } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useLogo } from '../hooks/useLogo';
+import { useGamification } from '../context/GamificationContext';
+import { toast } from 'sonner';
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -15,12 +17,15 @@ interface ShareModalProps {
 export function ShareModal({ isOpen, onClose, appName, appTagline, shareUrl }: ShareModalProps) {
   const [copied, setCopied] = useState(false);
   const { isLightMode } = useLogo();
+  const { claimShareXp } = useGamification();
   const targetUrl = shareUrl || window.location.origin;
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(targetUrl);
       setCopied(true);
+      toast.success('Link copied to clipboard! +25 XP');
+      await claimShareXp('Dejavu FM', targetUrl);
       setTimeout(() => setCopied(false), 2500);
     } catch (err) {
       console.error('Failed to copy text: ', err);
@@ -37,6 +42,8 @@ export function ShareModal({ isOpen, onClose, appName, appTagline, shareUrl }: S
     if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
       try {
         await navigator.share(shareData);
+        toast.success('Station shared successfully! +25 XP');
+        await claimShareXp('Dejavu FM', targetUrl);
       } catch (e) {
         console.log('Native share failed or aborted', e);
       }

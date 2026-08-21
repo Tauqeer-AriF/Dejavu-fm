@@ -5,6 +5,7 @@ import { Autoplay, Pagination, Navigation } from "swiper/modules";
 import { ExternalLink } from "lucide-react";
 import { motion } from "motion/react";
 import { useLocation } from "react-router-dom";
+import { safeFetchJson } from "../utils/safeFetch";
 
 // Import Swiper styles
 import "swiper/css";
@@ -49,12 +50,12 @@ export function AdvertisementSliders({ position = "bottom" }: { position?: "top"
 
   const { data: ads = [] } = useQuery({
     queryKey: ['publicAds', currentPage],
-    queryFn: () => fetch(`/api/public/ads?page=${encodeURIComponent(currentPage)}`).then(res => res.json())
+    queryFn: () => safeFetchJson(`/api/public/ads?page=${encodeURIComponent(currentPage)}`)
   });
 
   const { data: settings = {} } = useQuery({
     queryKey: ['publicSettings'],
-    queryFn: () => fetch("/api/public/settings").then(res => res.json())
+    queryFn: () => safeFetchJson("/api/public/settings")
   });
 
   const autoScroll = settings.ad_auto_scroll === '1';

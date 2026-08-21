@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
-import { Play, Pause, Volume2, Radio, Sliders, Monitor, Mic2, Minimize2, ChevronUp } from 'lucide-react';
+import { Play, Pause, Volume2, Radio, Sliders, Monitor, Mic2, Minimize2, ChevronUp, RotateCcw, RotateCw, FastForward } from 'lucide-react';
 import { useAudio, AudioQuality } from '../context/AudioContext';
 import { useLogo } from '../hooks/useLogo';
+import { safeFetchJson } from '../utils/safeFetch';
 import { motion, AnimatePresence } from 'motion/react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -131,7 +132,7 @@ function QualitySelector() {
   const { isLightMode } = useLogo();
   const { data: settings } = useQuery({
     queryKey: ['settings'],
-    queryFn: () => fetch('/api/public/settings').then(res => res.json()),
+    queryFn: () => safeFetchJson('/api/public/settings'),
   });
 
   const { quality, setQuality, qualityUrls } = useAudio();
@@ -184,13 +185,35 @@ function QualitySelector() {
   );
 }
 
+function formatTime(secs: number) {
+  if (isNaN(secs) || !isFinite(secs)) return "0:00";
+  const minutes = Math.floor(secs / 60);
+  const seconds = Math.floor(secs % 60);
+  return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+}
+
 export function PlayerBar() {
-  const { isPlaying, isBuffering, togglePlay, volume, setVolume, onAirInfo, toggleCinematic, activeType, podcastTrack } = useAudio();
+  const { 
+    isPlaying, 
+    isBuffering, 
+    togglePlay, 
+    volume, 
+    setVolume, 
+    onAirInfo, 
+    toggleCinematic, 
+    activeType, 
+    podcastTrack,
+    podcastProgress,
+    podcastDuration,
+    seekPodcast,
+    playbackRate,
+    setPlaybackRate
+  } = useAudio();
   const { logoUrl, isLightMode, settings, resolveDjImage } = useLogo();
   
   const { data: djs } = useQuery<any[]>({
     queryKey: ['djs'],
-    queryFn: () => fetch('/api/public/djs').then(res => res.json()),
+    queryFn: () => safeFetchJson('/api/public/djs'),
   });
 
   const matchedDj = djs?.find(dj => {
@@ -219,6 +242,20 @@ export function PlayerBar() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const handleSkip = (delta: number) => {
+    if (activeType !== 'podcast') return;
+    const maxDur = podcastDuration || 999999;
+    const newProgress = Math.max(0, Math.min(maxDur, podcastProgress + delta));
+    seekPodcast(newProgress);
+  };
+
+  const speedOptions = [1, 1.25, 1.5, 2];
+  const toggleSpeed = () => {
+    const currentIdx = speedOptions.indexOf(playbackRate);
+    const nextIdx = (currentIdx + 1) % speedOptions.length;
+    setPlaybackRate(speedOptions[nextIdx]);
+  };
+
   return (
     <AnimatePresence mode="wait">
       {!isMinimized ? (
@@ -228,123 +265,196 @@ export function PlayerBar() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          className="front-player-bar hidden sm:block fixed bottom-[104px] sm:bottom-[112px] xl:bottom-8 left-0 right-0 z-50 px-3 sm:px-6 pointer-events-none"
+          className="front-player-bar fixed bottom-[88px] sm:bottom-[112px] xl:bottom-8 left-0 right-0 z-50 px-2 sm:px-6 pointer-events-none"
         >
-          <div className={`front-player-bar-card max-w-6xl mx-auto backdrop-blur-3xl rounded-2xl md:rounded-3xl h-20 md:h-28 flex items-center px-4 md:px-10 border relative group pointer-events-auto ${isLightMode ? "bg-[#ffffff]/95 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-black/10" : "bg-dark-bg/95 shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-white/10"}`}>
+          <div className={`front-player-bar-card max-w-6xl mx-auto backdrop-blur-3xl rounded-2xl md:rounded-3xl h-24 md:h-28 flex flex-col justify-center px-3 sm:px-6 md:px-10 border relative group pointer-events-auto shadow-2xl ${isLightMode ? "bg-[#ffffff]/95 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-black/10" : "bg-dark-bg/95 shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-white/10"}`}>
             {/* Close/Minimize Button */}
             <button 
               onClick={() => setIsMinimized(true)}
-              className={`front-player-minimize-btn absolute top-2 right-2 md:top-4 md:right-4 p-2 rounded-full transition-all ${isLightMode ? "text-black/30 hover:text-black hover:bg-black/10" : "text-white/30 hover:text-white hover:bg-white/10"}`}
+              className={`front-player-minimize-btn absolute top-1.5 right-1.5 md:top-3 md:right-3 p-1.5 md:p-2 rounded-full transition-all z-20 ${isLightMode ? "text-black/30 hover:text-black hover:bg-black/10" : "text-white/30 hover:text-white hover:bg-white/10"}`}
               title="Minimize Player"
             >
-              <Minimize2 className="w-4 h-4" />
+              <Minimize2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
             </button>
 
-            <div className="front-player-left flex-1 flex items-center space-x-3 md:space-x-6 overflow-hidden">
-              <div className="front-player-artwork relative shrink-0">
-                <div className={`w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl text-dark-bg flex items-center justify-center overflow-hidden transition-all duration-500 ${isPlaying ? 'scale-100' : 'scale-95 grayscale'} ${
-                  activeType === 'radio' && resolveDjImage(onAirInfo?.djPhoto) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-black' : 'bg-transparent') : ''
-                }`}>
-                  {activeType === 'podcast' && podcastTrack ? (
-                    <img src={podcastTrack.imageUrl} alt={podcastTrack.title} className="w-full h-full object-cover" />
-                  ) : resolveDjImage(onAirInfo?.djPhoto) ? (
-                    <img src={resolveDjImage(onAirInfo?.djPhoto)} alt={onAirInfo?.djName || "DJ"} className={`w-full h-full ${resolveDjImage(onAirInfo?.djPhoto) === logoUrl && logoUrl ? 'object-contain p-2' : 'object-cover'}`} />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center text-white">
-                      <Mic2 className="w-6 h-6 md:w-8 md:h-8" />
-                    </div>
-                  )}
-                </div>
-                {isPlaying && (
-                  <div className="absolute -inset-1 rounded-xl md:rounded-2xl border border-neon-blue/30 animate-pulse duration-1000"></div>
-                )}
-              </div>
-              
-              <div className="front-player-info flex-1 min-w-0 pr-2">
-                <div className="flex items-center space-x-2 md:space-x-3 mb-1 flex-wrap gap-y-1">
-                  <p className={`text-[8px] md:text-xs uppercase tracking-[0.2em] font-black flex items-center shrink-0 ${isLightMode ? "text-black/60" : "text-white/60"}`}>
-                    <span className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full mr-2 glow-box shrink-0 ${isBuffering && isPlaying ? 'bg-amber-500 animate-pulse' : isPlaying ? 'bg-neon-blue animate-pulse' : isLightMode ? 'bg-black/20' : 'bg-white/20'}`}></span>
-                    <span className="truncate">
-                      {isBuffering && isPlaying ? 'Buffering feed...' : (activeType === 'podcast' ? 'Podcast Player' : (onAirInfo ? 'Broadcasting Live' : 'Auto-Mix Mode'))}
-                    </span>
-                  </p>
-                </div>
-                
-                <h4 className={`front-player-title font-display font-bold text-sm md:text-2xl truncate tracking-tight leading-tight mb-1 ${isLightMode ? "text-black" : "text-white"}`}>
-                  {activeType === 'podcast' && podcastTrack ? (
-                    <div className="flex items-center truncate">
-                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue font-black uppercase italic tracking-tighter mr-2 pr-2 shrink-0">EPISODE</span>
-                      <span className={`opacity-80 font-medium truncate ${isLightMode ? "text-black" : "text-white"}`}>{podcastTrack.title}</span>
-                    </div>
-                  ) : onAirInfo ? (
-                    <div className="flex items-center truncate">
-                      <Link 
-                        to={matchedDj ? `/djs/${matchedDj.id}` : `/djs?search=${encodeURIComponent(onAirInfo.djName)}`}
-                        className="hover:opacity-85 transition-opacity shrink-0 cursor-pointer"
-                      >
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue font-black uppercase italic tracking-tighter mr-2 pr-2 shrink-0">{onAirInfo.djName}</span>
-                      </Link>
-                      <span className={`opacity-80 font-medium truncate ${isLightMode ? "text-black" : "text-white"}`}>{onAirInfo.showName}</span>
-                    </div>
-                  ) : (
-                    <span className={`opacity-80 ${isLightMode ? "text-black" : "text-white"}`}>DejavuFM Global Stream</span>
-                  )}
-                </h4>
-                <div className="lg:hidden flex items-center">
-                  <QualitySelector />
-                </div>
-              </div>
-            </div>
-
-            <div className="front-player-center flex items-center justify-center shrink-0 mx-2 md:mx-6 relative">
-              <button 
-                onClick={togglePlay}
-                className={`front-player-play-btn w-12 h-12 md:w-20 md:h-20 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all relative group/play z-10 ${isLightMode ? "bg-black text-[#ffffff] shadow-[0_0_40px_rgba(0,0,0,0.2)]" : "bg-white text-dark-bg shadow-[0_0_40px_rgba(255,255,255,0.3)]"}`}
-              >
-                {isBuffering && isPlaying ? (
-                  <div className={`w-6 h-6 md:w-10 md:h-10 rounded-full border-4 border-t-neon-blue animate-spin ${isLightMode ? "border-[#ffffff]" : "border-dark-bg"}`} />
-                ) : isPlaying ? (
-                  <Pause className="w-6 h-6 md:w-10 md:h-10 fill-current" />
-                ) : (
-                  <Play className="w-6 h-6 md:w-10 md:h-10 ml-1 fill-current" />
-                )}
-              </button>
-              
-              {/* Animated rings around play button */}
-              {isPlaying && (
-                <>
-                  <div className={`absolute inset-0 rounded-full border animate-[ping_2s_linear_infinite] scale-150 opacity-0 ${isLightMode ? "border-black/20" : "border-white/20"}`}></div>
-                  <div className={`absolute inset-0 rounded-full border animate-[ping_3s_linear_infinite] scale-[2] opacity-0 ${isLightMode ? "border-black/10" : "border-white/10"}`}></div>
-                </>
-              )}
-            </div>
-
-            <div className="front-player-right flex-1 flex justify-end items-center space-x-6 hidden lg:flex">
-              <div className="flex flex-col items-end space-y-2">
-                <QualitySelector />
-                <div className={`front-player-volume flex items-center space-x-3 px-4 py-2 rounded-xl border ${isLightMode ? "bg-black/5 border-black/5" : "bg-white/5 border-white/5"}`}>
-                  <Volume2 className={`w-4 h-4 ${isLightMode ? "text-black/40" : "text-white/40"}`} />
-                  <input 
-                    type="range" 
-                    min="0" 
-                    max="1" 
-                    step="0.01" 
-                    value={volume}
-                    onChange={(e) => setVolume(parseFloat(e.target.value))}
-                    className="w-24 accent-neon-blue cursor-pointer"
+            {/* Podcast Scrub Bar (Compact top row when in podcast mode) */}
+            {activeType === 'podcast' && podcastTrack && (
+              <div className="w-full flex items-center space-x-2 text-[10px] md:text-xs font-mono mb-1 select-none">
+                <span className={`shrink-0 ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>
+                  {formatTime(podcastProgress)}
+                </span>
+                <div className="relative flex-1 group/scrub py-1">
+                  <input
+                    type="range"
+                    min="0"
+                    max={podcastDuration || 100}
+                    step="1"
+                    value={podcastProgress}
+                    onChange={(e) => seekPodcast(parseFloat(e.target.value))}
+                    className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-neon-purple focus:outline-none"
                   />
                 </div>
+                <span className={`shrink-0 ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>
+                  {formatTime(podcastDuration)}
+                </span>
               </div>
-              <button 
-                onClick={() => toggleCinematic()}
-                className="front-player-visualizer-btn relative group transition-opacity hover:opacity-80"
-                title="Open Cinematic Visualizer"
-              >
-                <Visualizer isPlaying={isPlaying} volume={volume} isLightMode={isLightMode} />
-                <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg ${isLightMode ? "bg-[#ffffff]/40" : "bg-black/40"}`}>
-                  <Monitor className={`w-5 h-5 ${isLightMode ? "text-black" : "text-white"}`} />
+            )}
+
+            <div className="flex items-center justify-between w-full">
+              <div className="front-player-left flex-1 flex items-center space-x-2 sm:space-x-3 md:space-x-6 overflow-hidden">
+                <div className="front-player-artwork relative shrink-0">
+                  <div className={`w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl text-dark-bg flex items-center justify-center overflow-hidden transition-all duration-500 ${isPlaying ? 'scale-100' : 'scale-95 grayscale'} ${
+                    activeType === 'radio' && resolveDjImage(onAirInfo?.djPhoto) === logoUrl && isLightMode && logoUrl ? (settings?.logo_light || settings?.logo_url ? 'bg-black' : 'bg-transparent') : ''
+                  }`}>
+                    {activeType === 'podcast' && podcastTrack ? (
+                      <Link to={`/podcasts/${podcastTrack.id}`} className="w-full h-full block">
+                        <img src={podcastTrack.imageUrl} alt={podcastTrack.title} className="w-full h-full object-cover hover:scale-105 transition-transform" />
+                      </Link>
+                    ) : resolveDjImage(onAirInfo?.djPhoto) ? (
+                      <img src={resolveDjImage(onAirInfo?.djPhoto)} alt={onAirInfo?.djName || "DJ"} className={`w-full h-full ${resolveDjImage(onAirInfo?.djPhoto) === logoUrl && logoUrl ? 'object-contain p-2' : 'object-cover'}`} />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center text-white">
+                        <Mic2 className="w-5 h-5 md:w-8 md:h-8" />
+                      </div>
+                    )}
+                  </div>
+                  {isPlaying && (
+                    <div className="absolute -inset-1 rounded-xl md:rounded-2xl border border-neon-blue/30 animate-pulse duration-1000 pointer-events-none"></div>
+                  )}
                 </div>
-              </button>
+                
+                <div className="front-player-info flex-1 min-w-0 pr-2">
+                  <div className="flex items-center space-x-2 md:space-x-3 mb-0.5 flex-wrap gap-y-1">
+                    <p className={`text-[8px] md:text-xs uppercase tracking-[0.2em] font-black flex items-center shrink-0 ${isLightMode ? "text-black/60" : "text-white/60"}`}>
+                      <span className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full mr-2 glow-box shrink-0 ${isBuffering && isPlaying ? 'bg-amber-500 animate-pulse' : isPlaying ? 'bg-neon-blue animate-pulse' : isLightMode ? 'bg-black/20' : 'bg-white/20'}`}></span>
+                      <span className="truncate">
+                        {isBuffering && isPlaying ? 'Buffering feed...' : (activeType === 'podcast' ? 'Podcast Player' : (onAirInfo ? 'Broadcasting Live' : 'Auto-Mix Mode'))}
+                      </span>
+                    </p>
+                  </div>
+                  
+                  <h4 className={`front-player-title font-display font-bold text-xs sm:text-sm md:text-xl truncate tracking-tight leading-tight mb-0.5 ${isLightMode ? "text-black" : "text-white"}`}>
+                    {activeType === 'podcast' && podcastTrack ? (
+                      <Link to={`/podcasts/${podcastTrack.id}`} className="flex items-center truncate hover:text-neon-purple transition-colors">
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue font-black uppercase italic tracking-tighter mr-2 pr-2 shrink-0">EPISODE</span>
+                        <span className={`opacity-80 font-medium truncate ${isLightMode ? "text-black" : "text-white"}`}>{podcastTrack.title}</span>
+                      </Link>
+                    ) : onAirInfo ? (
+                      <div className="flex items-center truncate">
+                        <Link 
+                          to={matchedDj ? `/djs/${matchedDj.id}` : `/djs?search=${encodeURIComponent(onAirInfo.djName)}`}
+                          className="hover:opacity-85 transition-opacity shrink-0 cursor-pointer"
+                        >
+                          <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue font-black uppercase italic tracking-tighter mr-2 pr-2 shrink-0">{onAirInfo.djName}</span>
+                        </Link>
+                        <span className={`opacity-80 font-medium truncate ${isLightMode ? "text-black" : "text-white"}`}>{onAirInfo.showName}</span>
+                      </div>
+                    ) : (
+                      <span className={`opacity-80 ${isLightMode ? "text-black" : "text-white"}`}>DejavuFM Global Stream</span>
+                    )}
+                  </h4>
+                  {activeType === 'radio' && (
+                    <div className="lg:hidden flex items-center">
+                      <QualitySelector />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="front-player-center flex items-center justify-center shrink-0 space-x-2 sm:space-x-3 mx-1 sm:mx-2 md:mx-6 relative">
+                {activeType === 'podcast' && (
+                  <button
+                    type="button"
+                    onClick={() => handleSkip(-15)}
+                    aria-label="Rewind 15 seconds"
+                    className={`p-1.5 sm:p-2 rounded-full transition-all hover:scale-110 active:scale-95 ${
+                      isLightMode ? 'text-black/60 hover:text-black hover:bg-black/5' : 'text-white/60 hover:text-white hover:bg-white/10'
+                    }`}
+                    title="Rewind 15s"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  </button>
+                )}
+
+                <button 
+                  onClick={togglePlay}
+                  className={`front-player-play-btn w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all relative group/play z-10 ${isLightMode ? "bg-black text-[#ffffff] shadow-[0_0_40px_rgba(0,0,0,0.2)]" : "bg-white text-dark-bg shadow-[0_0_40px_rgba(255,255,255,0.3)]"}`}
+                >
+                  {isBuffering && isPlaying ? (
+                    <div className={`w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 rounded-full border-3 border-t-neon-blue animate-spin ${isLightMode ? "border-[#ffffff]" : "border-dark-bg"}`} />
+                  ) : isPlaying ? (
+                    <Pause className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 fill-current" />
+                  ) : (
+                    <Play className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 ml-0.5 sm:ml-1 fill-current" />
+                  )}
+                </button>
+
+                {activeType === 'podcast' && (
+                  <button
+                    type="button"
+                    onClick={() => handleSkip(15)}
+                    aria-label="Skip forward 15 seconds"
+                    className={`p-1.5 sm:p-2 rounded-full transition-all hover:scale-110 active:scale-95 ${
+                      isLightMode ? 'text-black/60 hover:text-black hover:bg-black/5' : 'text-white/60 hover:text-white hover:bg-white/10'
+                    }`}
+                    title="Skip forward 15s"
+                  >
+                    <RotateCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  </button>
+                )}
+                
+                {/* Animated rings around play button */}
+                {isPlaying && (
+                  <>
+                    <div className={`absolute inset-0 rounded-full border animate-[ping_2s_linear_infinite] scale-150 opacity-0 pointer-events-none ${isLightMode ? "border-black/20" : "border-white/20"}`}></div>
+                    <div className={`absolute inset-0 rounded-full border animate-[ping_3s_linear_infinite] scale-[2] opacity-0 pointer-events-none ${isLightMode ? "border-black/10" : "border-white/10"}`}></div>
+                  </>
+                )}
+              </div>
+
+              <div className="front-player-right flex-1 flex justify-end items-center space-x-3 sm:space-x-6 hidden md:flex">
+                <div className="flex flex-col items-end space-y-1.5">
+                  {activeType === 'radio' ? (
+                    <QualitySelector />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={toggleSpeed}
+                      className={`flex items-center space-x-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border transition-all ${
+                        isLightMode ? 'bg-black/5 hover:bg-black/10 text-black/70 border-black/10' : 'bg-white/5 hover:bg-white/10 text-white/70 border-white/10'
+                      }`}
+                      title="Toggle Playback Speed"
+                    >
+                      <FastForward className="w-3 h-3" />
+                      <span>{playbackRate}x Speed</span>
+                    </button>
+                  )}
+                  <div className={`front-player-volume flex items-center space-x-2 sm:space-x-3 px-3 sm:px-4 py-1.5 rounded-xl border ${isLightMode ? "bg-black/5 border-black/5" : "bg-white/5 border-white/5"}`}>
+                    <Volume2 className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isLightMode ? "text-black/40" : "text-white/40"}`} />
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="1" 
+                      step="0.01" 
+                      value={volume}
+                      onChange={(e) => setVolume(parseFloat(e.target.value))}
+                      className="w-16 sm:w-24 accent-neon-blue cursor-pointer"
+                    />
+                  </div>
+                </div>
+                {activeType === 'radio' && (
+                  <button 
+                    onClick={() => toggleCinematic()}
+                    className="front-player-visualizer-btn relative group transition-opacity hover:opacity-80 shrink-0"
+                    title="Open Cinematic Visualizer"
+                  >
+                    <Visualizer isPlaying={isPlaying} volume={volume} isLightMode={isLightMode} />
+                    <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg ${isLightMode ? "bg-[#ffffff]/40" : "bg-black/40"}`}>
+                      <Monitor className={`w-5 h-5 ${isLightMode ? "text-black" : "text-white"}`} />
+                    </div>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </motion.div>
@@ -354,30 +464,30 @@ export function PlayerBar() {
           initial={{ scale: 0, opacity: 0, x: 50 }}
           animate={{ scale: 1, opacity: 1, x: 0 }}
           exit={{ scale: 0, opacity: 0, x: 50 }}
-          className="front-player-bar-minimized hidden sm:flex fixed bottom-[104px] sm:bottom-[112px] xl:bottom-8 right-4 sm:right-8 z-50 flex items-center space-x-3 cursor-grab active:cursor-grabbing touch-none select-none"
+          className="front-player-bar-minimized fixed bottom-[88px] sm:bottom-[112px] xl:bottom-8 right-3 sm:right-8 z-50 hidden sm:flex items-center space-x-2 sm:space-x-3 cursor-grab active:cursor-grabbing touch-none select-none"
           drag
           dragConstraints={dragConstraints}
           dragElastic={0.1}
           dragMomentum={false}
         >
-          <div className={`backdrop-blur-3xl border rounded-full p-1.5 flex items-center ${isLightMode ? "bg-[#ffffff]/80 border-black/10 shadow-[0_20px_50px_rgba(0,0,0,0.1)]" : "bg-dark-bg/80 border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]"}`}>
+          <div className={`backdrop-blur-3xl border rounded-full p-1 sm:p-1.5 flex items-center ${isLightMode ? "bg-[#ffffff]/80 border-black/10 shadow-[0_20px_50px_rgba(0,0,0,0.1)]" : "bg-dark-bg/80 border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]"}`}>
              <button 
               onClick={() => setIsMinimized(false)}
-              className={`p-2 rounded-full transition-all mr-1 ${isLightMode ? "text-black/50 hover:text-black hover:bg-black/10" : "text-white/50 hover:text-white hover:bg-white/10"}`}
+              className={`p-1.5 sm:p-2 rounded-full transition-all mr-0.5 sm:mr-1 ${isLightMode ? "text-black/50 hover:text-black hover:bg-black/10" : "text-white/50 hover:text-white hover:bg-white/10"}`}
               title="Expand Player"
             >
-              <ChevronUp className="w-5 h-5" />
+              <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
             <button 
               onClick={togglePlay}
-              className={`w-12 h-12 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all ${isLightMode ? "bg-black text-[#ffffff] shadow-[0_10px_30px_rgba(0,0,0,0.2)]" : "bg-white text-dark-bg shadow-[0_10px_30px_rgba(255,255,255,0.3)]"}`}
+              className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all ${isLightMode ? "bg-black text-[#ffffff] shadow-[0_10px_30px_rgba(0,0,0,0.2)]" : "bg-white text-dark-bg shadow-[0_10px_30px_rgba(255,255,255,0.3)]"}`}
             >
               {isBuffering && isPlaying ? (
-                <div className={`w-5 h-5 rounded-full border-2 border-t-neon-blue animate-spin ${isLightMode ? "border-[#ffffff]" : "border-dark-bg"}`} />
+                <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 border-t-neon-blue animate-spin ${isLightMode ? "border-[#ffffff]" : "border-dark-bg"}`} />
               ) : isPlaying ? (
-                <Pause className="w-5 h-5 fill-current" />
+                <Pause className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
               ) : (
-                <Play className="w-5 h-5 ml-1 fill-current" />
+                <Play className="w-4 h-4 sm:w-5 sm:h-5 ml-0.5 sm:ml-1 fill-current" />
               )}
             </button>
           </div>

@@ -2,11 +2,13 @@ import { ChatMessage } from "../types";
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { io, Socket } from 'socket.io-client';
-import { Send, User, LogOut, Loader2, X, MessageSquare, Users, ShieldAlert, WifiOff, Smile, Search, Paperclip, Music, Mic, Square, Trash2, ArrowLeft, Eye, EyeOff, Volume2, VolumeX, Video, Disc } from 'lucide-react';
+import { Send, User, LogOut, Loader2, X, MessageSquare, Users, ShieldAlert, WifiOff, Smile, Search, Paperclip, Music, Mic, Square, Trash2, ArrowLeft, Eye, EyeOff, Volume2, VolumeX, Video, Disc, Crown, Sparkles, Trophy } from 'lucide-react';
 import { toast } from 'sonner';
 import { useModal } from '../context/ModalContext';
 import { useLogo } from '../hooks/useLogo';
 import { playUINotificationSound } from '../lib/soundHelper';
+import { StudioAudioPlayer } from "./StudioAudioPlayer";
+import { MessageReactions } from "./chat/MessageReactions";
 
 
 const EMOJI_CATEGORIES = [
@@ -125,8 +127,44 @@ const authenticatedFetch = (input: RequestInfo | URL, init?: RequestInit): Promi
   });
 };
 
+const renderLevelBadge = (level?: number, levelTitle?: string, showGamificationLevels: boolean = true, isLightMode: boolean = false) => {
+  if (!showGamificationLevels) return null;
+  if (!level || level < 1) return null;
+  
+  let bgClasses = isLightMode 
+    ? 'bg-neon-blue/10 border-neon-blue/30 text-neon-blue' 
+    : 'bg-neon-blue/15 border-neon-blue/40 text-neon-blue shadow-[0_0_8px_rgba(0,210,255,0.25)]';
+  
+  if (level >= 7) {
+    bgClasses = isLightMode
+      ? 'bg-amber-500/10 border-amber-500/30 text-amber-700'
+      : 'bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.3)]';
+  } else if (level >= 4) {
+    bgClasses = isLightMode
+      ? 'bg-neon-purple/10 border-neon-purple/30 text-neon-purple'
+      : 'bg-neon-purple/20 border-neon-purple/40 text-neon-purple shadow-[0_0_8px_rgba(176,38,255,0.25)]';
+  }
+
+  return (
+    <span 
+      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[9px] font-mono font-black uppercase tracking-wider shrink-0 select-none ${bgClasses}`}
+      title={levelTitle ? `Level ${level} • ${levelTitle}` : `Level ${level}`}
+    >
+      {level >= 7 ? (
+        <Crown className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+      ) : level >= 4 ? (
+        <Sparkles className="w-2.5 h-2.5 text-neon-purple shrink-0" />
+      ) : (
+        <Trophy className="w-2.5 h-2.5 text-neon-blue shrink-0" />
+      )}
+      <span>{levelTitle || `Lvl ${level}`}</span>
+    </span>
+  );
+};
+
 export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = false }: { isOpen?: boolean; onClose?: () => void; embedded?: boolean }) {
-  const { isLightMode } = useLogo();
+  const { isLightMode, settings } = useLogo();
+  const showGamificationLevels = settings?.feat_gamification !== '0';
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
     const saved = safeLocalStorage.getItem('dejavu_chat_sound_enabled');
     return saved !== null ? JSON.parse(saved) : true;
@@ -816,6 +854,9 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
 
     const onChatMessage = (msg: ChatMessage) => {
       setMessages(prev => {
+        if (msg.id && prev.some(m => m.id === msg.id)) {
+          return prev.map(m => m.id === msg.id ? { ...m, ...msg } : m);
+        }
         const newArr = [...prev, msg];
         if (newArr.length > 100) newArr.shift();
         return newArr;
@@ -856,6 +897,9 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
       }
 
       setPrivateMessages(prev => {
+        if (msg.id && prev.some(m => m.id === msg.id)) {
+          return prev.map(m => m.id === msg.id ? { ...m, ...msg } : m);
+        }
         const newArr = [...prev, msg];
         return newArr;
       });
@@ -968,6 +1012,22 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
       setOnlineUsers(sorted);
     };
 
+    const onMessageReactionUpdated = (data: {
+      messageId: string;
+      reactions: Record<string, string[]>;
+      action: string;
+      emoji: string;
+      user: string;
+    }) => {
+      if (!data || !data.messageId) return;
+      setMessages(prev =>
+        prev.map(m => (m.id === data.messageId ? { ...m, reactions: data.reactions } : m))
+      );
+      setPrivateMessages(prev =>
+        prev.map(m => (m.id === data.messageId ? { ...m, reactions: data.reactions } : m))
+      );
+    };
+
     socket.on('chatHistory', onChatHistory);
     socket.on('chatMessage', onChatMessage);
     socket.on('privateHistory', onPrivateHistory);
@@ -977,6 +1037,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     socket.on('user_banned', onUserBanned);
     socket.on('user_blocked_update', onUserBlockedUpdate);
     socket.on('presence_update', onPresenceUpdate);
+    socket.on('messageReactionUpdated', onMessageReactionUpdated);
 
     if (loggedInUser) {
       socket.emit('registerUser', loggedInUser);
@@ -995,6 +1056,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
       socket.off('user_banned', onUserBanned);
       socket.off('user_blocked_update', onUserBlockedUpdate);
       socket.off('presence_update', onPresenceUpdate);
+      socket.off('messageReactionUpdated', onMessageReactionUpdated);
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('connect_error', onConnectError);
@@ -1600,6 +1662,64 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     }
   };
 
+  const handleToggleReaction = (messageId: string, emoji: string, isPrivate: boolean = false) => {
+    const currentUsername = loggedInUser || 'Anonymous';
+    
+    // Optimistic UI state update
+    const updateReactionMap = (prevReactions: Record<string, string[]> = {}) => {
+      const nextReactions: Record<string, string[]> = {};
+      Object.keys(prevReactions || {}).forEach(k => {
+        nextReactions[k] = [...prevReactions[k]];
+      });
+      const currentUsers = nextReactions[emoji] ? [...nextReactions[emoji]] : [];
+      const currentLower = currentUsername.toLowerCase();
+      const existingIdx = currentUsers.findIndex(u => u.toLowerCase() === currentLower);
+      if (existingIdx >= 0) {
+        currentUsers.splice(existingIdx, 1);
+        if (currentUsers.length === 0) {
+          delete nextReactions[emoji];
+        } else {
+          nextReactions[emoji] = currentUsers;
+        }
+      } else {
+        nextReactions[emoji] = [...currentUsers, currentUsername];
+      }
+      return nextReactions;
+    };
+
+    if (!isPrivate) {
+      setMessages(prev =>
+        prev.map(m => (m.id === messageId ? { ...m, reactions: updateReactionMap(m.reactions) } : m))
+      );
+    } else {
+      setPrivateMessages(prev =>
+        prev.map(m => (m.id === messageId ? { ...m, reactions: updateReactionMap(m.reactions) } : m))
+      );
+    }
+
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit('messageReaction', {
+        messageId,
+        emoji,
+        user: currentUsername,
+        isPrivate
+      });
+    } else {
+      authenticatedFetch('/api/chat/react', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messageId,
+          emoji,
+          user: currentUsername,
+          isPrivate
+        })
+      }).catch(err => {
+        console.error('Failed to post reaction:', err);
+      });
+    }
+  };
+
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const handleClearAll = () => {
@@ -1983,10 +2103,11 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                         <div className="flex-1 min-w-0">
                           {!msg.isSystem && (
                             <div className="flex items-baseline justify-between mb-1">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className="font-black text-neon-blue text-xs uppercase tracking-widest">
                                   {msg.user.includes('@') ? msg.user.split('@')[0] : msg.user}
                                 </span>
+                                {renderLevelBadge(msg.level, msg.levelTitle, showGamificationLevels, isLightMode)}
                                 {loggedInUser && msg.user !== loggedInUser && (
                                   <button 
                                     onClick={() => {
@@ -2101,19 +2222,21 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                   </div>
                                 )}
                                 {msg.audioUrl && (
-                                  <div className="w-full p-2 rounded-xl bg-black/30 border border-neon-pink/10 flex flex-col gap-1">
-                                    {msg.audioName && (
-                                      <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider truncate mb-1">
-                                        🎵 {msg.audioName}
-                                      </p>
-                                    )}
-                                    <audio 
-                                      src={msg.audioUrl} 
-                                      controls 
-                                      className="w-full h-8 accent-neon-pink rounded" 
+                                  <div className="mt-2 w-full">
+                                    <StudioAudioPlayer
+                                      src={msg.audioUrl}
+                                      title={msg.audioName || "Voice Note"}
+                                      variant="admin"
                                     />
                                   </div>
                                 )}
+                                <MessageReactions
+                                  messageId={msg.id}
+                                  reactions={msg.reactions}
+                                  currentUser={loggedInUser}
+                                  isLightMode={isLightMode}
+                                  onToggleReaction={(emoji) => handleToggleReaction(msg.id, emoji, false)}
+                                />
                               </div>
                             )
                         ) : (
@@ -2169,19 +2292,21 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                               </div>
                             )}
                             {msg.audioUrl && (
-                              <div className="mt-2 w-full p-2 rounded-xl bg-black/30 border border-white/5 flex flex-col gap-1">
-                                {msg.audioName && (
-                                  <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider truncate mb-1">
-                                    🎵 {msg.audioName}
-                                  </p>
-                                )}
-                                <audio 
-                                  src={msg.audioUrl} 
-                                  controls 
-                                  className="w-full h-8 accent-neon-purple rounded" 
+                              <div className="mt-2 w-full">
+                                <StudioAudioPlayer
+                                  src={msg.audioUrl}
+                                  title={msg.audioName || "Voice Note"}
+                                  variant={isLightMode ? "light" : "dark"}
                                 />
                               </div>
                             )}
+                            <MessageReactions
+                              messageId={msg.id}
+                              reactions={msg.reactions}
+                              currentUser={loggedInUser}
+                              isLightMode={isLightMode}
+                              onToggleReaction={(emoji) => handleToggleReaction(msg.id, emoji, false)}
+                            />
                           </div>
                         )}
                       </div>
@@ -2258,6 +2383,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                             <div className="flex items-baseline justify-between mb-1">
                               <span className="font-black text-neon-blue text-xs uppercase tracking-widest flex items-center gap-1.5 flex-wrap">
                                 {msg.user.includes('@') ? msg.user.split('@')[0] : msg.user}
+                                {renderLevelBadge(msg.level, msg.levelTitle, showGamificationLevels, isLightMode)}
                                 {isAdmin && msg.recipient && (
                                   <span className="text-[9px] text-white/30 font-bold lowercase flex items-center gap-1">
                                     to
@@ -2336,6 +2462,13 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                   />
                                 </div>
                               )}
+                              <MessageReactions
+                                messageId={msg.id}
+                                reactions={msg.reactions}
+                                currentUser={loggedInUser}
+                                isLightMode={isLightMode}
+                                onToggleReaction={(emoji) => handleToggleReaction(msg.id, emoji, true)}
+                              />
                             </div>
                           </div>
                         </motion.div>
@@ -2530,10 +2663,11 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                 </div>
 
                                 <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
                                     <span className={`text-xs font-black uppercase tracking-widest truncate ${isLightMode ? 'text-black' : 'text-white'}`}>
                                       {user.username.includes('@') ? user.username.split('@')[0] : user.username}
                                     </span>
+                                    {renderLevelBadge(user.level, user.levelTitle, showGamificationLevels, isLightMode)}
                                     {isSelf && (
                                       <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[7px] font-mono font-black uppercase tracking-wider bg-white/10 text-white/60">
                                         You
@@ -2545,6 +2679,11 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                       </span>
                                     )}
                                   </div>
+                                  {showGamificationLevels && user.level && (
+                                    <div className={`text-[10px] font-medium tracking-wide truncate ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
+                                      Level {user.level}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
 
@@ -3273,3 +3412,5 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
     </>
   );
 }
+
+export default ChatSidebar;

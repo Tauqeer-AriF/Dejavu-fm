@@ -1,10 +1,12 @@
 import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Instagram, Facebook, Search, X, UserX, ChevronLeft, ChevronRight, Globe } from 'lucide-react';
+import { Instagram, Facebook, Search, X, UserX, ChevronLeft, ChevronRight, Globe, Heart } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useLogo } from '../hooks/useLogo';
+import { safeFetchJson } from '../utils/safeFetch';
 import { PremiumRingLoader } from '../components/PremiumRingLoader';
+import { useGamification } from '../context/GamificationContext';
 
 const MixcloudIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
   <svg className={className} viewBox="0 0 640 512" fill="currentColor">
@@ -26,8 +28,11 @@ interface DJ {
 
 import { SkeletonCard } from '../components/Skeleton';
 
-function DjCard({ dj, index, resolveDjImage, logoUrl, settings }: { dj: DJ, index: number, resolveDjImage: (url: string) => string, logoUrl: string, isLightMode?: boolean, settings: any }) {
+function DjCard({ dj, index, resolveDjImage, logoUrl, isLightMode, settings }: { dj: DJ, index: number, resolveDjImage: (url: string) => string, logoUrl: string, isLightMode?: boolean, settings: any }) {
   const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const { toggleFollowDj, isFollowingDj, isEnabled } = useGamification();
+  const following = isFollowingDj(dj.id);
+  const isGamificationActive = (isEnabled ?? true) && settings?.feat_chat !== '0' && settings?.feat_gamification !== '0';
 
   return (
     <motion.div      
@@ -37,6 +42,36 @@ function DjCard({ dj, index, resolveDjImage, logoUrl, settings }: { dj: DJ, inde
       whileHover="hover"
       className="group relative overflow-hidden rounded-[2.5rem] transition-all duration-700 shadow-2xl bg-[#0A0A0A]/80 border-white/5 hover:border-neon-blue/30 hover:shadow-neon-blue/10 backdrop-blur-xl"
     >
+      {/* Follow Quick Button - only when gamification is enabled */}
+      {isGamificationActive && (
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleFollowDj(dj.id);
+          }}
+          className={`dj-follow-btn ${following ? 'following' : ''} absolute top-4 right-4 z-50 p-3 rounded-2xl backdrop-blur-md border transition-all cursor-pointer ${
+            following
+              ? isLightMode
+                ? 'bg-pink-50 border-pink-300 text-pink-600 shadow-md ring-2 ring-pink-400/20'
+                : 'bg-pink-500/20 border-pink-500/50 text-pink-400'
+              : isLightMode
+                ? 'bg-white/95 hover:bg-white border-slate-300/90 text-slate-800 hover:text-pink-600 hover:border-pink-300 shadow-md'
+                : 'bg-black/40 border-white/10 text-white/60 hover:text-pink-400 hover:border-pink-500/30'
+          }`}
+          title={following ? 'Following DJ' : 'Follow DJ (+50 XP)'}
+          aria-label={following ? `Unfollow ${dj.name}` : `Follow ${dj.name}`}
+        >
+          <Heart className={`w-4 h-4 transition-colors ${
+            following
+              ? 'fill-pink-500 text-pink-500'
+              : isLightMode
+                ? 'text-slate-800'
+                : 'text-white/70'
+          }`} />
+        </button>
+      )}
+
       <motion.div
         className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 z-30"
         variants={{ hover: { x: ['-150%', '150%'] } }}
@@ -142,13 +177,13 @@ export default function DJs() {
 
   const { data: settings } = useQuery({
     queryKey: ['settings'],
-    queryFn: () => fetch('/api/public/settings').then(res => res.json()),
+    queryFn: () => safeFetchJson('/api/public/settings'),
     refetchInterval: 3000,
   });
 
   const { data: djs, isLoading } = useQuery<DJ[]>({
     queryKey: ['djs'],
-    queryFn: () => fetch('/api/public/djs').then(res => res.json()),
+    queryFn: () => safeFetchJson('/api/public/djs'),
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 

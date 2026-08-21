@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Instagram, Facebook, Radio, Calendar, Send, X, CheckCircle, Globe } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useLogo } from '../hooks/useLogo';
+import { safeFetchJson } from '../utils/safeFetch';
 
 const MixcloudIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
   <svg className={className} viewBox="0 0 640 512" fill="currentColor">
@@ -21,7 +22,7 @@ export default function DJDetail() {
 
   const { data: djs, isLoading } = useQuery<any[]>({
     queryKey: ['djs'],
-    queryFn: () => fetch('/api/public/djs').then(res => res.json()),
+    queryFn: () => safeFetchJson('/api/public/djs'),
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
@@ -135,7 +136,7 @@ export default function DJDetail() {
               {featBookings && (
                 <button 
                   onClick={() => setIsBookingOpen(true)}
-                  className="flex items-center space-x-2 px-8 py-3 bg-white text-dark-bg hover:bg-neon-purple hover:text-white rounded-2xl transition-all shadow-xl font-black uppercase tracking-widest text-xs"
+                  className="flex items-center space-x-2 px-8 py-3 bg-white text-dark-bg hover:bg-neon-purple hover:text-white rounded-2xl transition-all shadow-xl font-black uppercase tracking-widest text-xs cursor-pointer"
                 >
                   <Calendar className="w-5 h-5" />
                   <span>Book Artist</span>

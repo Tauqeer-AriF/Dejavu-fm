@@ -3,21 +3,82 @@ import { ReactNode } from 'react';
 import { toast } from 'sonner';
 
 // External Singletons to avoid putting non-serializable objects in Zustand state
-let audio: HTMLAudioElement | null = null;
+let radioAudio: HTMLAudioElement | null = null;
+let podcastAudio: HTMLAudioElement | null = null;
 let audioContext: AudioContext | null = null;
 let analyser: AnalyserNode | null = null;
 
 if (typeof window !== 'undefined') {
-  audio = new Audio();
-  audio.crossOrigin = "anonymous";
+  radioAudio = new Audio();
+  podcastAudio = new Audio();
+}
+
+export function getProxiedRadioUrl(url: string | undefined): string {
+  if (!url || !url.trim()) return '';
+  const trimmed = url.trim();
+  if (trimmed.startsWith('/api/public/radio-stream') || trimmed.startsWith('/api/public/stream')) {
+    return typeof window !== 'undefined' ? `${window.location.origin}${trimmed}` : trimmed;
+  }
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    const path = `/api/public/radio-stream?url=${encodeURIComponent(trimmed)}`;
+    return typeof window !== 'undefined' ? `${window.location.origin}${path}` : path;
+  }
+  if (typeof window !== 'undefined' && trimmed.startsWith('/')) {
+    return `${window.location.origin}${trimmed}`;
+  }
+  return trimmed;
+}
+
+export function playRadioAudioWithFallback(rawUrl: string, vol: number): Promise<void> {
+  if (!radioAudio || !rawUrl || !rawUrl.trim()) {
+    return Promise.reject(new Error("No audio element or empty stream URL"));
+  }
+
+  const cleanUrl = rawUrl.trim();
+  const proxied = getProxiedRadioUrl(cleanUrl);
+
+  radioAudio.muted = false;
+  radioAudio.volume = vol;
+
+  // 1. First attempt: Use the proxied URL with CORS anonymous
+  // This avoids Mixed Content on HTTPS and enables the Web Audio analyser / visualizer
+  radioAudio.crossOrigin = "anonymous";
+  radioAudio.src = proxied;
+  radioAudio.load();
+
+  const playPromise = radioAudio.play();
+  if (playPromise !== undefined) {
+    return playPromise.catch((proxyErr) => {
+      if (proxyErr.name === 'AbortError') return;
+      console.warn("[AudioContext] Proxied radio stream playback failed, attempting direct source fallback...", proxyErr);
+
+      // 2. Direct Fallback: Remove crossOrigin to prevent CORS errors on Icecast/Shoutcast servers
+      if (radioAudio && cleanUrl) {
+        radioAudio.removeAttribute('crossOrigin');
+        radioAudio.src = cleanUrl;
+        radioAudio.load();
+        return radioAudio.play().catch((fallbackErr) => {
+          if (fallbackErr.name === 'AbortError') return;
+          console.error("[AudioContext] Direct radio stream playback fallback also failed:", fallbackErr);
+          throw fallbackErr;
+        });
+      }
+      throw proxyErr;
+    });
+  }
+  return Promise.resolve();
 }
 
 function getProxiedPodcastUrl(url: string | undefined): string {
   if (!url) return '';
-  if (url.startsWith('http')) {
-    return `/api/public/podcast-stream?url=${encodeURIComponent(url)}`;
+  let path = url;
+  if (!url.startsWith('/api/public/podcast-stream') && (url.startsWith('http://') || url.startsWith('https://'))) {
+    path = `/api/public/podcast-stream?url=${encodeURIComponent(url)}`;
   }
-  return url;
+  if (typeof window !== 'undefined' && path.startsWith('/')) {
+    return `${window.location.origin}${path}`;
+  }
+  return path;
 }
 
 export type AudioQuality = 'low' | 'medium' | 'high';
@@ -77,6 +138,7 @@ interface AudioStore {
   } | null) => void;
   toggleCinematic: () => void;
   getAnalyser: () => AnalyserNode | null;
+  stopAudio: () => void;
 
   // Podcast Actions
   playPodcast: (track: { id: string; title: string; audioUrl: string; imageUrl: string }) => void;
@@ -153,6 +215,54 @@ const updateMediaMetadata = (currentTrack: string, onAirInfo: AudioStore['onAirI
   }
 };
 
+function initAudioContextIfNeeded() {
+  if (typeof window === 'undefined' || !radioAudio) return;
+  
+  const isMobile = (
+    /Mobi|Android|iPhone|iPad|iPod|Windows Phone|IEMobile|BlackBerry|Opera Mini/i.test(navigator.userAgent) ||
+    (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
+  );
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const shouldBypassAudioContext = isMobile || isSafari;
+
+  if (!audioContext && !shouldBypassAudioContext) {
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioContextClass) {
+        const ctx = new AudioContextClass({ latencyHint: 'playback' });
+        audioContext = ctx;
+        
+        const analyserNode = ctx.createAnalyser();
+        analyserNode.fftSize = 64;
+        analyserNode.smoothingTimeConstant = 0.8;
+        analyser = analyserNode;
+        
+        const compressor = ctx.createDynamicsCompressor();
+        compressor.threshold.setValueAtTime(-24, ctx.currentTime);
+        compressor.knee.setValueAtTime(30, ctx.currentTime);
+        compressor.ratio.setValueAtTime(12, ctx.currentTime);
+        compressor.attack.setValueAtTime(0.003, ctx.currentTime);
+        compressor.release.setValueAtTime(0.25, ctx.currentTime);
+
+        try {
+          const source = ctx.createMediaElementSource(radioAudio);
+          source.connect(compressor);
+          compressor.connect(analyserNode);
+          analyserNode.connect(ctx.destination);
+        } catch (sourceErr) {
+          console.warn("[AudioContext] WebAudio source connection bypassed:", sourceErr);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to initialize Web Audio API:", err);
+    }
+  }
+
+  if (audioContext && audioContext.state === 'suspended') {
+    audioContext.resume().catch(console.error);
+  }
+}
+
 export const useAudioStore = create<AudioStore>((set, get) => ({
   isPlaying: false,
   isBuffering: false,
@@ -173,306 +283,213 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
 
   togglePlay: () => {
     const { isPlaying, activeType, streamUrl, volume, quality, qualityUrls, podcastTrack } = get();
-    if (!audio) return;
 
     if (activeType === 'podcast') {
+      if (!podcastAudio) return;
       if (isPlaying) {
-        audio.pause();
-        set({ isPlaying: false });
+        podcastAudio.pause();
+        set({ isPlaying: false, isBuffering: false });
+        if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
       } else {
-        if (podcastTrack?.audioUrl) {
-          const proxiedUrl = getProxiedPodcastUrl(podcastTrack.audioUrl);
-          const isSameSource = audio.src && (audio.src === proxiedUrl || audio.src.endsWith(proxiedUrl));
-          if (!isSameSource) {
-            audio.src = proxiedUrl;
-            audio.load();
-          }
-          audio.playbackRate = get().playbackRate;
-          audio.volume = get().volume;
-          audio.play().then(() => {
-            set({ isPlaying: true });
+        if (!podcastTrack?.audioUrl || !podcastTrack.audioUrl.trim()) {
+          toast.error("Audio stream not available for this episode.");
+          return;
+        }
+
+        if (radioAudio) {
+          radioAudio.pause();
+          radioAudio.src = '';
+        }
+
+        const proxiedUrl = getProxiedPodcastUrl(podcastTrack.audioUrl);
+        if (podcastAudio.src !== proxiedUrl) {
+          podcastAudio.src = proxiedUrl;
+          podcastAudio.load();
+        }
+        podcastAudio.muted = false;
+        podcastAudio.playbackRate = get().playbackRate;
+        podcastAudio.volume = get().volume;
+        set({ isPlaying: true, isBuffering: true });
+        if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+
+        const playPromise = podcastAudio.play();
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            set({ isPlaying: true, isBuffering: false });
           }).catch(e => {
-            console.error("Podcast play error:", e);
-            toast.error("Failed to play podcast");
-            set({ isPlaying: false });
+            if (e.name === 'AbortError') return;
+            console.warn("Podcast proxy play failed, trying direct fallback...", e);
+            if (podcastAudio && podcastTrack.audioUrl) {
+              podcastAudio.src = podcastTrack.audioUrl;
+              podcastAudio.load();
+              podcastAudio.play().then(() => {
+                set({ isPlaying: true, isBuffering: false });
+              }).catch(fallbackErr => {
+                if (fallbackErr.name === 'AbortError') return;
+                console.error("Podcast fallback play error:", fallbackErr);
+                toast.error("Failed to load podcast audio stream.");
+                set({ isPlaying: false, isBuffering: false });
+                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+              });
+            } else {
+              toast.error("Failed to play podcast");
+              set({ isPlaying: false, isBuffering: false });
+              if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+            }
           });
         }
       }
       return;
     }
 
-    
-    // Choose the best URL based on quality if streamUrl isn't explicitly set to something else
-    let targetUrl = streamUrl;
-    if (!targetUrl && qualityUrls[quality]) {
-      targetUrl = qualityUrls[quality];
-    }
-    
-    if (!isPlaying && !targetUrl) {
-      toast.error("Connecting to station feed...");
-      // Trigger a direct, synchronous-feeling fetch inside the click gesture flow
-      fetch('/api/public/settings')
-        .then(res => res.json())
-        .then(settings => {
-          if (settings && settings.stream_url) {
-            const lowUrl = settings.stream_url_low || settings.stream_url;
-            const medUrl = settings.stream_url_medium || settings.stream_url;
-            const hiUrl = settings.stream_url_high || settings.stream_url;
-            const fetchedUrls = { low: lowUrl, medium: medUrl, high: hiUrl };
-            const selectedUrl = fetchedUrls[quality];
-            
-            // Instantly cache in localStorage so it's always ready immediately next time
-            localStorage.setItem('dejavufm_stream_url', settings.stream_url);
-            localStorage.setItem('dejavufm_quality_urls', JSON.stringify(fetchedUrls));
-            
-            set({ 
-              streamUrl: settings.stream_url,
-              qualityUrls: fetchedUrls
-            });
-            
-            if (audio) {
-              audio.src = selectedUrl;
-              audio.load();
-              audio.volume = volume;
+    if (!radioAudio) return;
+    if (podcastAudio) podcastAudio.pause();
+
+    if (isPlaying) {
+      radioAudio.pause();
+      radioAudio.src = '';
+      set({ isPlaying: false, isBuffering: false });
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+    } else {
+      initAudioContextIfNeeded();
+      const targetUrl = streamUrl || qualityUrls[quality] || qualityUrls.medium || qualityUrls.low || qualityUrls.high;
+      
+      if (!targetUrl) {
+        toast.info("Connecting to live station stream...");
+        fetch('/api/public/settings')
+          .then(res => res.json())
+          .then(settings => {
+            if (settings && (settings.stream_url || settings.stream_url_medium || settings.stream_url_low || settings.stream_url_high)) {
+              const lowUrl = settings.stream_url_low || settings.stream_url || "";
+              const medUrl = settings.stream_url_medium || settings.stream_url || "";
+              const hiUrl = settings.stream_url_high || settings.stream_url || "";
+              const fetchedUrls = { low: lowUrl, medium: medUrl, high: hiUrl };
+              const selectedUrl = fetchedUrls[quality] || settings.stream_url || medUrl || lowUrl || hiUrl;
               
-              set({ isPlaying: true });
+              set({ 
+                streamUrl: selectedUrl,
+                qualityUrls: fetchedUrls,
+                isPlaying: true,
+                isBuffering: true
+              });
               if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
               
-              audio.play().catch(e => {
-                console.error("Delayed load stream play failed:", e);
-                toast.error("Playback failed. Please try again.");
-                set({ isPlaying: false });
+              playRadioAudioWithFallback(selectedUrl, volume).then(() => {
+                set({ isPlaying: true, isBuffering: false });
+              }).catch(e => {
+                if (e.name !== 'AbortError') {
+                  console.error("Radio stream playback error:", e);
+                  toast.error("Failed to connect to live stream. Please check stream URL.");
+                }
+                set({ isPlaying: false, isBuffering: false });
                 if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
               });
+            } else {
+              toast.error("Live audio stream URL not configured in Settings.");
+              set({ isPlaying: false, isBuffering: false });
             }
-          } else {
-            toast.error("Station broadcast feed is currently unavailable.");
-          }
-        })
-        .catch(err => {
-          console.error("Direct fallback fetch failed:", err);
-          toast.error("Network error. Please try again in a moment.");
-        });
-      return;
-    }
-    
-    // Init Audio Context on first play if needed
-    // Bypassing AudioContext on all mobile devices is vital for reliable background sleep playback
-    const isMobile = typeof navigator !== 'undefined' && (
-      /Mobi|Android|iPhone|iPad|iPod|Windows Phone|IEMobile|BlackBerry|Opera Mini/i.test(navigator.userAgent) ||
-      (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
-    );
-    const isSafari = typeof navigator !== 'undefined' && (
-      /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
-    );
-    const shouldBypassAudioContext = isMobile || isSafari;
-
-    if (!isPlaying && !audioContext && !shouldBypassAudioContext) {
-      try {
-        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioContextClass) {
-          // Use 'playback' latencyHint to optimize buffering/performance on desktop
-          const ctx = new AudioContextClass({ latencyHint: 'playback' });
-          audioContext = ctx;
-          
-          const analyserNode = ctx.createAnalyser();
-          analyserNode.fftSize = 64; // Will yield 32 frequency bins
-          analyserNode.smoothingTimeConstant = 0.8;
-          analyser = analyserNode;
-          
-          // Master Compression / Normalization
-          const compressor = ctx.createDynamicsCompressor();
-          compressor.threshold.setValueAtTime(-24, ctx.currentTime);
-          compressor.knee.setValueAtTime(30, ctx.currentTime);
-          compressor.ratio.setValueAtTime(12, ctx.currentTime);
-          compressor.attack.setValueAtTime(0.003, ctx.currentTime);
-          compressor.release.setValueAtTime(0.25, ctx.currentTime);
-
-          const source = ctx.createMediaElementSource(audio);
-          source.connect(compressor);
-          compressor.connect(analyserNode);
-          analyserNode.connect(ctx.destination);
-        }
-      } catch (err) {
-        console.error("Failed to initialize Web Audio API:", err);
+          })
+          .catch(() => {
+            toast.error("Failed to connect to audio server.");
+            set({ isPlaying: false, isBuffering: false });
+          });
+        return;
       }
-    }
-    
-    if (!isPlaying && audioContext && audioContext.state === 'suspended') {
-      audioContext.resume();
-    }
-    
-    if (!isPlaying) {
-      // For live radio, always force load a fresh stream to pull the latest live segment.
-      // This prevents the browser from trying to resume a dead/stale HTTP stream buffer.
-      if (activeType === 'radio') {
-        audio.src = targetUrl;
-        audio.load();
-      } else if (audio.src !== targetUrl) {
-        audio.src = targetUrl;
-        audio.load();
-      }
-      audio.volume = volume;
-      
-      // Set playing to true immediately to render a pause icon and lock state to prevent click-spamming
-      set({ isPlaying: true });
+
+      set({ isPlaying: true, isBuffering: true });
       if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
 
-      audio.play().then(() => {
-        // Track stream start
-        fetch('/api/public/analytics/track', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ category: 'stream_starts' })
-        }).catch(() => {});
+      playRadioAudioWithFallback(targetUrl, volume).then(() => {
+        set({ isPlaying: true, isBuffering: false });
       }).catch(e => {
-        if (e.name === 'AbortError') {
-           console.log("Playback interrupted by new request, ignoring.");
-           return;
+        if (e.name !== 'AbortError') {
+          console.error("Radio stream playback error:", e);
+          toast.error("Failed to connect to audio stream. Check stream URL.");
         }
-        console.error("Autoplay blocked or playback failed:", e);
-        toast.error("Failed to connect to stream. Please try again.");
-        set({ isPlaying: false });
+        set({ isPlaying: false, isBuffering: false });
         if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
       });
-    } else {
-      audio.pause();
-      if (activeType === 'radio') {
-        // Disconnect stream completely when paused to save user data,
-        // prevent server connection slots leak, and ensure fresh play on resume.
-        audio.src = '';
-      }
-      set({ isPlaying: false });
-      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
     }
   },
-
-  setVolume: (val: number) => {
-    if (audio) audio.volume = val;
-    localStorage.setItem('dejavufm_volume', val.toString());
-    set({ volume: val });
-  },
-
-  setCurrentTrack: (val: string) => {
-    const { onAirInfo } = get();
-    updateMediaMetadata(val, onAirInfo);
-    set({ currentTrack: val });
-  },
-
-  setStreamUrl: (val: string) => {
-    const { isPlaying } = get();
-    if (val) {
-      localStorage.setItem('dejavufm_stream_url', val);
-    }
-    if (audio && audio.src !== val) {
-      audio.src = val;
-      audio.load();
-      if (isPlaying) {
-        audio.play().then(() => {
-          if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-        }).catch(e => {
-           if (e.name === 'AbortError') return;
-           console.error("Playback error:", e);
-           toast.error("Failed to connect to stream. Retrying...");
-           set({ isPlaying: false });
-           if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
-        });
-      }
-    }
-    set({ streamUrl: val });
-  },
-
-  setQuality: (quality: AudioQuality) => {
-    const { isPlaying, qualityUrls, quality: currentQuality } = get();
-    if (quality === currentQuality) return;
-
-    localStorage.setItem('dejavufm_quality', quality);
-    set({ quality });
-
-    const newUrl = qualityUrls[quality];
-    if (newUrl && audio) {
-      const wasPlaying = isPlaying;
-      audio.pause();
-      audio.src = newUrl;
-      audio.load();
-      if (wasPlaying) {
-        audio.play().catch(e => {
-          if (e.name !== 'AbortError') console.error("Quality switch playback error:", e);
-        });
-      }
-    }
-  },
-
-  setQualityUrls: (urls: Record<AudioQuality, string>) => {
-    localStorage.setItem('dejavufm_quality_urls', JSON.stringify(urls));
-    set({ qualityUrls: urls });
-    
-    // If we're currently playing the default stream, update it to the active quality
-    const { quality, isPlaying, streamUrl } = get();
-    if (!streamUrl && urls[quality] && audio && audio.src !== urls[quality]) {
-       const wasPlaying = isPlaying;
-       audio.src = urls[quality];
-       audio.load();
-       if (wasPlaying) {
-         audio.play().catch(e => {
-           if (e.name !== 'AbortError') console.error("Playback error after URL update:", e);
-         });
-       }
-    }
-  },
-
-  setOnAirInfo: (info) => {
-    const { currentTrack } = get();
-    updateMediaMetadata(currentTrack, info);
-    set({ onAirInfo: info });
-  },
-
-  toggleCinematic: () => set(state => ({ isCinematicOpen: !state.isCinematicOpen })),
 
   playRadio: () => {
-    const { isPlaying, activeType } = get();
-    if (!audio) return;
-    
-    if (activeType !== 'radio') {
-      audio.pause();
-      // Clear audio source to ensure we fetch fresh stream next
-      audio.src = '';
-      set({ activeType: 'radio', isPlaying: false });
+    if (!radioAudio) return;
+    const { streamUrl, volume, quality, qualityUrls } = get();
+
+    if (podcastAudio) {
+      podcastAudio.pause();
     }
-    
-    if (!get().isPlaying) {
-      get().togglePlay();
+
+    set({ activeType: 'radio' });
+
+    let targetUrl = streamUrl || qualityUrls[quality] || qualityUrls.medium || qualityUrls.low || qualityUrls.high;
+    if (!targetUrl) {
+      fetch('/api/public/settings')
+        .then(r => r.json())
+        .then(settings => {
+          if (settings && (settings.stream_url || settings.stream_url_medium)) {
+            const url = settings.stream_url || settings.stream_url_medium || "";
+            set({ streamUrl: url });
+            playRadioAudioWithFallback(url, volume).catch(() => {});
+          }
+        })
+        .catch(() => {});
+      return;
     }
+
+    initAudioContextIfNeeded();
+
+    set({ isPlaying: true, isBuffering: true });
+    updateMediaMetadata(get().currentTrack, get().onAirInfo);
+
+    playRadioAudioWithFallback(targetUrl, volume).then(() => {
+      set({ isPlaying: true, isBuffering: false });
+    }).catch(err => {
+      if (err.name === 'AbortError') return;
+      console.error("Radio play error:", err);
+      set({ isPlaying: false, isBuffering: false });
+    });
   },
 
   playPodcast: (track) => {
-    if (!audio) return;
+    if (!podcastAudio) return;
     
+    if (!track?.audioUrl || !track.audioUrl.trim()) {
+      toast.error("Audio stream not available for this episode.");
+      return;
+    }
+
     const { podcastTrack, isPlaying, activeType } = get();
     
-    // If it's already the active podcast track, toggle play/pause
     if (activeType === 'podcast' && podcastTrack?.id === track.id) {
       get().togglePlay();
       return;
     }
 
-    audio.pause();
+    if (radioAudio) {
+      radioAudio.pause();
+      radioAudio.src = '';
+    }
 
     set({
       activeType: 'podcast',
       podcastTrack: track,
       podcastProgress: 0,
       podcastDuration: 0,
-      isPlaying: true
+      isPlaying: true,
+      isBuffering: true
     });
 
     const proxiedUrl = getProxiedPodcastUrl(track.audioUrl);
-    audio.src = proxiedUrl;
-    audio.playbackRate = get().playbackRate;
-    audio.load();
-    audio.volume = get().volume;
-    
-    // Update MediaSession metadata
+
+    if (podcastAudio.src !== proxiedUrl) {
+      podcastAudio.src = proxiedUrl;
+      podcastAudio.load();
+    }
+    podcastAudio.muted = false;
+    podcastAudio.playbackRate = get().playbackRate;
+    podcastAudio.volume = get().volume;
+
     if ('mediaSession' in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: track.title,
@@ -486,34 +503,160 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
       navigator.mediaSession.playbackState = 'playing';
     }
 
-    audio.play().then(() => {
-      // Track analytics
-      fetch('/api/public/analytics/podcast-play', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: track.title })
-      }).catch(() => {});
-    }).catch(err => {
-      if (err.name === 'AbortError') return;
-      console.error("Podcast play error:", err);
-      toast.error("Failed to play podcast");
-      set({ isPlaying: false });
-    });
+    const playPromise = podcastAudio.play();
+    if (playPromise !== undefined) {
+      playPromise.then(() => {
+        set({ isPlaying: true, isBuffering: false });
+        fetch('/api/public/analytics/podcast-play', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ title: track.title })
+        })
+        .then(res => { if (res.ok) return res.json(); })
+        .then(data => {
+          if (data && data.xpResult) {
+            window.dispatchEvent(new CustomEvent('gamificationReward', { detail: data.xpResult }));
+          }
+        })
+        .catch(() => {});
+      }).catch(err => {
+        if (err.name === 'AbortError') return;
+        console.warn("Podcast proxy playback failed, attempting direct source fallback...", err);
+        
+        if (podcastAudio && track.audioUrl) {
+          podcastAudio.src = track.audioUrl;
+          podcastAudio.load();
+          podcastAudio.play().then(() => {
+            set({ isPlaying: true, isBuffering: false });
+          }).catch(fallbackErr => {
+            if (fallbackErr.name === 'AbortError') return;
+            console.error("Direct podcast playback fallback failed:", fallbackErr);
+            toast.error("Failed to load podcast audio stream.");
+            set({ isPlaying: false, isBuffering: false });
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+          });
+        } else {
+          toast.error("Failed to play podcast");
+          set({ isPlaying: false, isBuffering: false });
+          if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+        }
+      });
+    }
   },
 
   seekPodcast: (time) => {
-    if (!audio) return;
-    audio.currentTime = time;
+    if (!podcastAudio) return;
+    podcastAudio.currentTime = time;
     set({ podcastProgress: time });
   },
 
   setPlaybackRate: (rate) => {
-    if (!audio) return;
-    audio.playbackRate = rate;
+    if (!podcastAudio) return;
+    podcastAudio.playbackRate = rate;
     set({ playbackRate: rate });
   },
 
-  getAnalyser: () => analyser
+  setVolume: (val) => {
+    if (radioAudio) radioAudio.volume = val;
+    if (podcastAudio) podcastAudio.volume = val;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dejavufm_volume', val.toString());
+    }
+    set({ volume: val });
+  },
+
+  setCurrentTrack: (val) => {
+    if (get().currentTrack === val) return;
+    set({ currentTrack: val });
+    updateMediaMetadata(val, get().onAirInfo);
+  },
+
+  setStreamUrl: (val) => {
+    if (get().streamUrl === val) return;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dejavufm_stream_url', val);
+    }
+    set({ streamUrl: val });
+  },
+
+  setQuality: (quality) => {
+    const { qualityUrls, isPlaying, activeType, volume } = get();
+    if (get().quality === quality) return;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dejavufm_quality', quality);
+    }
+    set({ quality });
+    
+    const targetUrl = qualityUrls[quality] || qualityUrls.medium || qualityUrls.low || qualityUrls.high;
+    if (targetUrl && activeType === 'radio') {
+      set({ streamUrl: targetUrl });
+      
+      if (isPlaying && radioAudio) {
+        playRadioAudioWithFallback(targetUrl, volume).catch(e => {
+          if (e.name !== 'AbortError') console.error("Quality switch play error:", e);
+        });
+      }
+    }
+  },
+
+  setQualityUrls: (urls) => {
+    const prev = get().qualityUrls;
+    if (prev && prev.low === urls.low && prev.medium === urls.medium && prev.high === urls.high) {
+      return;
+    }
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dejavufm_quality_urls', JSON.stringify(urls));
+    }
+    const currentQuality = get().quality;
+    const updates: Partial<AudioStore> = { qualityUrls: urls };
+    const bestUrl = urls[currentQuality] || urls.medium || urls.low || urls.high;
+    if (bestUrl) {
+      updates.streamUrl = bestUrl;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('dejavufm_stream_url', bestUrl);
+      }
+    }
+    set(updates);
+  },
+
+  setOnAirInfo: (info) => {
+    const current = get().onAirInfo;
+    if (current === null && info === null) return;
+    if (
+      current !== null && 
+      info !== null &&
+      current.djName === info.djName &&
+      current.showName === info.showName &&
+      current.djPhoto === info.djPhoto &&
+      current.startTime === info.startTime &&
+      current.endTime === info.endTime &&
+      current.djBio === info.djBio &&
+      current.instagram === info.instagram
+    ) {
+      return;
+    }
+    set({ onAirInfo: info });
+    updateMediaMetadata(get().currentTrack, info);
+  },
+
+  toggleCinematic: () => {
+    set((state) => ({ isCinematicOpen: !state.isCinematicOpen }));
+  },
+
+  getAnalyser: () => analyser,
+
+  stopAudio: () => {
+    if (radioAudio) {
+      radioAudio.pause();
+      radioAudio.src = '';
+    }
+    if (podcastAudio) {
+      podcastAudio.pause();
+    }
+    set({ isPlaying: false, isBuffering: false });
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+  }
 }));
 
 if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
@@ -523,28 +666,73 @@ if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
     album: 'Live Radio',
   });
 
-  navigator.mediaSession.setActionHandler('play', () => {
+  const setSafeActionHandler = (action: MediaSessionAction, handler: MediaSessionActionHandler | null) => {
+    try {
+      navigator.mediaSession.setActionHandler(action, handler);
+    } catch (e) {
+      // Action not supported in this browser
+    }
+  };
+
+  setSafeActionHandler('play', () => {
     const store = useAudioStore.getState();
     if (!store.isPlaying) {
       store.togglePlay();
-    } else if (audio && audio.paused) {
-      // Recovery via OS lock screen play button if stream stalled
-      audio.load();
-      audio.play().catch(e => {
-        if (e.name !== 'AbortError') console.error("MediaSession play recovery failed:", e);
-      });
     }
   });
 
-  navigator.mediaSession.setActionHandler('pause', () => {
+  setSafeActionHandler('pause', () => {
     if (useAudioStore.getState().isPlaying) {
       useAudioStore.getState().togglePlay();
     }
   });
+
+  setSafeActionHandler('stop', () => {
+    useAudioStore.getState().stopAudio();
+  });
+
+  setSafeActionHandler('seekbackward', (details) => {
+    const store = useAudioStore.getState();
+    if (store.activeType === 'podcast' && podcastAudio) {
+      const skip = details.seekOffset || 10;
+      const target = Math.max(0, podcastAudio.currentTime - skip);
+      store.seekPodcast(target);
+    }
+  });
+
+  setSafeActionHandler('seekforward', (details) => {
+    const store = useAudioStore.getState();
+    if (store.activeType === 'podcast' && podcastAudio) {
+      const skip = details.seekOffset || 10;
+      const target = Math.min(podcastAudio.duration || Infinity, podcastAudio.currentTime + skip);
+      store.seekPodcast(target);
+    }
+  });
+
+  setSafeActionHandler('seekto', (details) => {
+    const store = useAudioStore.getState();
+    if (store.activeType === 'podcast' && details.seekTime !== undefined && details.seekTime !== null) {
+      store.seekPodcast(details.seekTime);
+    }
+  });
+
+  setSafeActionHandler('previoustrack', () => {
+    const store = useAudioStore.getState();
+    if (store.activeType === 'podcast' && podcastAudio) {
+      store.seekPodcast(0);
+    }
+  });
+
+  setSafeActionHandler('nexttrack', () => {
+    const store = useAudioStore.getState();
+    if (store.activeType === 'podcast') {
+      store.togglePlay();
+    }
+  });
 }
 
-// Background & network drop recovery
-if (typeof window !== 'undefined' && audio) {
+// Attach Event Listeners to Radio Audio
+if (typeof window !== 'undefined' && radioAudio) {
   let recoveryTimeout: ReturnType<typeof setTimeout> | null = null;
   let isRecovering = false;
   let retryCount = 0;
@@ -553,15 +741,14 @@ if (typeof window !== 'undefined' && audio) {
   let silenceCheckInterval: ReturnType<typeof setInterval> | null = null;
   let lastPosition = 0;
   let stuckTicks = 0;
-  let silenceTicks = 0;
 
   const attemptRecovery = () => {
     const store = useAudioStore.getState();
-    if (store.activeType === 'podcast') return; // Do not recover for podcasts
-    if (!store.isPlaying || !audio || isRecovering) return;
+    if (store.activeType === 'podcast') return;
+    if (!store.isPlaying || !radioAudio || isRecovering) return;
 
     if (retryCount >= MAX_RETRIES) {
-      console.warn(`[Audio] Max recovery retries (${MAX_RETRIES}) reached. Halting playback.`);
+      console.warn(`[Radio] Max recovery retries (${MAX_RETRIES}) reached.`);
       retryCount = 0;
       isRecovering = false;
       useAudioStore.setState({ isPlaying: false, isBuffering: false });
@@ -572,31 +759,30 @@ if (typeof window !== 'undefined' && audio) {
     
     isRecovering = true;
     retryCount++;
-    console.log(`Audio stream interrupted. Attempting recovery ${retryCount}/${MAX_RETRIES}...`);
     useAudioStore.setState({ isBuffering: true });
     
-    // Slight delay to handle brief network switching (e.g., WiFi to Cellular)
     if (recoveryTimeout) clearTimeout(recoveryTimeout);
     recoveryTimeout = setTimeout(() => {
       const currentStore = useAudioStore.getState();
-      if (currentStore.isPlaying && audio) {
-        console.log("Reloading stream buffer...");
-        const currentSrc = audio.src || currentStore.streamUrl || currentStore.qualityUrls[currentStore.quality];
-        audio.src = ''; // Force resource release
-        setTimeout(() => {
-          if (audio && currentSrc && useAudioStore.getState().isPlaying) {
-            audio.src = currentSrc;
-            audio.load();
-            audio.play().catch(e => {
-              if (e.name !== 'AbortError') console.error("Background stream recovery failed:", e);
-            }).finally(() => {
-              isRecovering = false;
-            });
-          } else {
+      if (currentStore.isPlaying && currentStore.activeType === 'radio' && radioAudio) {
+        // Adaptive stream fallback: on retry >= 2, try alternate lower bitrate stream if available
+        let rawTarget = currentStore.streamUrl || currentStore.qualityUrls[currentStore.quality] || currentStore.qualityUrls.medium;
+        if (retryCount >= 2 && currentStore.qualityUrls) {
+          rawTarget = currentStore.qualityUrls.low || currentStore.qualityUrls.medium || rawTarget;
+        }
+
+        if (rawTarget && useAudioStore.getState().isPlaying) {
+          playRadioAudioWithFallback(rawTarget, currentStore.volume).then(() => {
             isRecovering = false;
             useAudioStore.setState({ isBuffering: false });
-          }
-        }, 100);
+          }).catch(e => {
+            if (e.name !== 'AbortError') console.error("Radio recovery failed:", e);
+            isRecovering = false;
+          });
+        } else {
+          isRecovering = false;
+          useAudioStore.setState({ isBuffering: false });
+        }
       } else {
         isRecovering = false;
         useAudioStore.setState({ isBuffering: false });
@@ -606,56 +792,28 @@ if (typeof window !== 'undefined' && audio) {
 
   const startSilenceMonitor = () => {
     if (silenceCheckInterval) clearInterval(silenceCheckInterval);
-    
-    if (audio) {
-      lastPosition = audio.currentTime;
+    if (radioAudio) {
+      lastPosition = radioAudio.currentTime;
     }
     stuckTicks = 0;
-    silenceTicks = 0;
 
     silenceCheckInterval = setInterval(() => {
       const store = useAudioStore.getState();
-      if (!store.isPlaying || !audio) {
+      if (!store.isPlaying || store.activeType !== 'radio' || !radioAudio) {
         stopSilenceMonitor();
         return;
       }
 
-      // Check 1: Is playhead moving?
-      const currentPos = audio.currentTime;
-      if (currentPos === lastPosition && !audio.paused) {
+      const currentPos = radioAudio.currentTime;
+      if (currentPos === lastPosition && !radioAudio.paused) {
         stuckTicks++;
-        console.log(`[Audio Monitor] Audio playhead is stuck. Stuck count: ${stuckTicks}`);
       } else {
         stuckTicks = 0;
         lastPosition = currentPos;
       }
 
-      // Check 2: Silence check using Web Audio Analyser if active
-      let isSilent = false;
-      if (analyser && audioContext && audioContext.state === 'running') {
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
-        analyser.getByteFrequencyData(dataArray);
-        let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) {
-          sum += dataArray[i];
-        }
-        if (sum < 5) {
-          isSilent = true;
-          silenceTicks++;
-          console.log(`[Audio Monitor] Audio output is silent. Silence count: ${silenceTicks}`);
-        } else {
-          silenceTicks = 0;
-        }
-      }
-
-      // Trigger recovery if:
-      // - Playhead is stuck for 3 ticks (4.5s)
-      // - OR live stream is totally silent for 4 ticks (6.0s)
-      const isRadio = store.activeType === 'radio';
-      if (stuckTicks >= 3 || (isRadio && silenceTicks >= 4)) {
-        console.warn(`[Audio Monitor] Detecting dead/silent stream (stuckTicks: ${stuckTicks}, silenceTicks: ${silenceTicks}). Reconnecting...`);
+      if (stuckTicks >= 4) {
         stuckTicks = 0;
-        silenceTicks = 0;
         attemptRecovery();
       }
     }, 1500);
@@ -668,156 +826,158 @@ if (typeof window !== 'undefined' && audio) {
     }
   };
 
-  audio.addEventListener('error', attemptRecovery);
-  
-  // Note: We deliberately DO NOT listen to the 'stalled' event for recovery.
-  // The 'stalled' event fires normally when the browser halts downloading because the buffer is completely full.
-  // Triggering recovery on 'stalled' would wipe the buffer and disconnect the stream, causing endless buffering.
+  radioAudio.addEventListener('error', (e) => {
+    const store = useAudioStore.getState();
+    if (store.activeType === 'radio') {
+      attemptRecovery();
+    }
+  });
 
-  audio.addEventListener('waiting', () => {
-    console.log("[Audio] Waiting for data (buffering)...");
-    if (useAudioStore.getState().isPlaying) {
-      useAudioStore.setState({ isBuffering: true });
-    } else {
+  radioAudio.addEventListener('waiting', () => {
+    if (useAudioStore.getState().activeType === 'radio') {
+      useAudioStore.setState({ isBuffering: useAudioStore.getState().isPlaying });
+    }
+  });
+
+  radioAudio.addEventListener('canplay', () => {
+    if (useAudioStore.getState().activeType === 'radio') {
       useAudioStore.setState({ isBuffering: false });
     }
   });
 
-  audio.addEventListener('stalled', () => {
-    console.log("[Audio] Stream stalled...");
-    if (useAudioStore.getState().isPlaying) {
-      useAudioStore.setState({ isBuffering: true });
-    } else {
-      useAudioStore.setState({ isBuffering: false });
+  radioAudio.addEventListener('playing', () => {
+    if (useAudioStore.getState().activeType === 'radio') {
+      useAudioStore.setState({ isPlaying: true, isBuffering: false });
+      isRecovering = false;
+      retryCount = 0;
+      if (recoveryTimeout) {
+        clearTimeout(recoveryTimeout);
+        recoveryTimeout = null;
+      }
+      startSilenceMonitor();
     }
   });
 
-  audio.addEventListener('canplay', () => {
-    useAudioStore.setState({ isBuffering: false });
+  radioAudio.addEventListener('play', () => {
+    if (useAudioStore.getState().activeType === 'radio') {
+      useAudioStore.setState({ isPlaying: true });
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+      startSilenceMonitor();
+    }
   });
 
-  audio.addEventListener('canplaythrough', () => {
-    useAudioStore.setState({ isBuffering: false });
+  radioAudio.addEventListener('pause', () => {
+    if (useAudioStore.getState().activeType === 'radio') {
+      useAudioStore.setState({ isPlaying: false, isBuffering: false });
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+      stopSilenceMonitor();
+    }
+  });
+}
+
+// Attach Event Listeners to Podcast Audio
+if (typeof window !== 'undefined' && podcastAudio) {
+  const updateMediaSessionPosition = () => {
+    if ('mediaSession' in navigator && typeof navigator.mediaSession.setPositionState === 'function' && podcastAudio) {
+      try {
+        const duration = isFinite(podcastAudio.duration) && podcastAudio.duration > 0 ? podcastAudio.duration : 0;
+        const position = isFinite(podcastAudio.currentTime) ? podcastAudio.currentTime : 0;
+        if (duration > 0 && position <= duration) {
+          navigator.mediaSession.setPositionState({
+            duration: duration,
+            playbackRate: podcastAudio.playbackRate || 1.0,
+            position: position
+          });
+        }
+      } catch (e) {
+        // Suppress position state sync error if duration temporarily invalid
+      }
+    }
+  };
+
+  podcastAudio.addEventListener('timeupdate', () => {
+    const store = useAudioStore.getState();
+    if (store.activeType === 'podcast' && podcastAudio) {
+      useAudioStore.setState({
+        podcastProgress: podcastAudio.currentTime,
+        podcastDuration: isFinite(podcastAudio.duration) && podcastAudio.duration > 0 ? podcastAudio.duration : store.podcastDuration
+      });
+      updateMediaSessionPosition();
+    }
   });
 
-  audio.addEventListener('ended', () => {
+  podcastAudio.addEventListener('durationchange', () => {
+    const store = useAudioStore.getState();
+    if (store.activeType === 'podcast' && podcastAudio && isFinite(podcastAudio.duration)) {
+      useAudioStore.setState({ podcastDuration: podcastAudio.duration });
+      updateMediaSessionPosition();
+    }
+  });
+
+  podcastAudio.addEventListener('ended', () => {
     const store = useAudioStore.getState();
     if (store.activeType === 'podcast') {
       useAudioStore.setState({ isPlaying: false, podcastProgress: 0, isBuffering: false });
-    } else {
-      attemptRecovery();
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
     }
   });
 
-  audio.addEventListener('timeupdate', () => {
+  podcastAudio.addEventListener('playing', () => {
     const store = useAudioStore.getState();
-    if (store.activeType === 'podcast' && audio) {
-      useAudioStore.setState({ podcastProgress: audio.currentTime });
+    if (store.activeType === 'podcast') {
+      useAudioStore.setState({ isPlaying: true, isBuffering: false });
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
     }
   });
 
-  audio.addEventListener('durationchange', () => {
+  podcastAudio.addEventListener('play', () => {
     const store = useAudioStore.getState();
-    if (store.activeType === 'podcast' && audio && isFinite(audio.duration)) {
-      useAudioStore.setState({ podcastDuration: audio.duration });
+    if (store.activeType === 'podcast') {
+      useAudioStore.setState({ isPlaying: true });
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
     }
   });
-  
-  audio.addEventListener('playing', () => {
-    console.log("[Audio] Playback started/resumed successfully.");
-    useAudioStore.setState({ isPlaying: true, isBuffering: false });
-    isRecovering = false;
-    retryCount = 0; // Reset retry counter on successful play!
-    if (recoveryTimeout) {
-      clearTimeout(recoveryTimeout);
-      recoveryTimeout = null;
-    }
-    startSilenceMonitor();
-  });
 
-  // Keep Zustand state perfectly in sync with native audio actions (headphone unplugs, lock screen, bluetooth, etc.)
-  audio.addEventListener('play', () => {
-    useAudioStore.setState({ isPlaying: true });
-    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-    startSilenceMonitor();
-  });
-
-  audio.addEventListener('pause', () => {
-    useAudioStore.setState({ isPlaying: false, isBuffering: false });
-    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
-    stopSilenceMonitor();
-  });
-
-  // Handle network restoration online/offline events
-  window.addEventListener('online', () => {
-    console.log("[Audio] Network connection restored online. Testing stream connectivity...");
+  podcastAudio.addEventListener('pause', () => {
     const store = useAudioStore.getState();
-    if (store.isPlaying) {
-      attemptRecovery();
+    if (store.activeType === 'podcast') {
+      useAudioStore.setState({ isPlaying: false, isBuffering: false });
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
     }
   });
 
-  // Handle minimizing/reopening or locking/unlocking background-to-foreground PWA state recovery
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      console.log("[Audio] App brought to foreground. Checking stream synchronization...");
-      const store = useAudioStore.getState();
-      
-      // Auto-resume AudioContext if it was suspended by the browser (desktop)
-      if (audioContext && audioContext.state === 'suspended') {
-        audioContext.resume().then(() => {
-          console.log("[Audio] AudioContext resumed on foreground visibility.");
-        }).catch(err => {
-          console.error("[Audio] Failed to resume AudioContext on visibilitychange:", err);
-        });
-      }
-      
-      // If our app state thinks it should be playing, but the hardware audio element is paused/ended
-      if (store.isPlaying && audio) {
-        if (audio.paused || audio.ended) {
-          console.warn("[Audio] Audio is paused/ended but state is playing. Attempting smooth play resume...");
-          useAudioStore.setState({ isBuffering: true });
-          audio.play()
-            .then(() => {
-              console.log("[Audio] Smooth play resume successful.");
-              useAudioStore.setState({ isBuffering: false });
-            })
-            .catch(e => {
-              console.warn("[Audio] Smooth play resume blocked. Retrying with full stream reload...", e);
-              // Only reload the source as a fallback if standard play() is blocked or fails
-              const currentSrc = store.activeType === 'podcast'
-                ? getProxiedPodcastUrl(store.podcastTrack?.audioUrl)
-                : (audio.src || store.streamUrl || store.qualityUrls[store.quality]);
-              if (currentSrc) {
-                audio.src = ''; // Force release
-                setTimeout(() => {
-                  if (audio) {
-                    audio.src = currentSrc;
-                    audio.load();
-                    audio.play()
-                      .then(() => {
-                        console.log("[Audio] Foreground automatic stream recovery successful.");
-                      })
-                      .catch(err => {
-                        console.warn("[Audio] Foreground recovery auto-play blocked by browser.", err);
-                        useAudioStore.setState({ isPlaying: false, isBuffering: false });
-                        if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
-                      });
-                  }
-                }, 100);
-              } else {
-                useAudioStore.setState({ isPlaying: false, isBuffering: false });
-              }
-            });
-        } else {
-          // If it's already playing, ensure silence monitor is fully active
-          startSilenceMonitor();
-        }
-      }
+  podcastAudio.addEventListener('waiting', () => {
+    const store = useAudioStore.getState();
+    if (store.activeType === 'podcast') {
+      useAudioStore.setState({ isBuffering: true });
     }
   });
 
-  // Global Buffering Safety Watchdog to prevent endless loading spinner
+  podcastAudio.addEventListener('canplay', () => {
+    const store = useAudioStore.getState();
+    if (store.activeType === 'podcast') {
+      useAudioStore.setState({ isBuffering: false });
+    }
+  });
+
+  podcastAudio.addEventListener('canplaythrough', () => {
+    const store = useAudioStore.getState();
+    if (store.activeType === 'podcast') {
+      useAudioStore.setState({ isBuffering: false });
+    }
+  });
+
+  podcastAudio.addEventListener('error', (e) => {
+    const store = useAudioStore.getState();
+    if (store.activeType === 'podcast') {
+      console.warn("[PodcastAudio] Error event fired:", e);
+      useAudioStore.setState({ isBuffering: false });
+    }
+  });
+}
+
+// Global Buffering Safety Watchdog
+if (typeof window !== 'undefined') {
   let bufferingSafetyTimer: ReturnType<typeof setTimeout> | null = null;
 
   useAudioStore.subscribe((state) => {
@@ -827,14 +987,7 @@ if (typeof window !== 'undefined' && audio) {
           bufferingSafetyTimer = null;
           const currentStore = useAudioStore.getState();
           if (currentStore.isBuffering) {
-            console.warn("[Audio Watchdog] Buffering safety timeout (10s) reached. Force stopping buffer state.");
             useAudioStore.setState({ isBuffering: false });
-            if (audio && (audio.paused || audio.readyState < 2)) {
-              // Instead of stopping playback entirely, notify that we timed out but are retrying in background.
-              // We do not set isPlaying to false, so the player remains active (not static) and will auto-animate when loaded.
-              toast.info("Connection timeout. Retrying in background...");
-              attemptRecovery();
-            }
           }
         }, 10000);
       }

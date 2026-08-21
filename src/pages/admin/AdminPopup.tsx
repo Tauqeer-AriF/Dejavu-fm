@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useNavigate, Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
-import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles } from "lucide-react";
+import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles, Megaphone } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { useModal } from "../../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
@@ -129,7 +129,7 @@ export function AdminPopup() {
       <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-6 border-b pb-8 transition-colors ${isLightMode ? 'border-black/10' : 'border-white/10'}`}>
         <div>
           <h2 className={`text-2xl sm:text-3xl font-display font-black uppercase tracking-wider flex items-center ${isLightMode ? 'text-black' : 'text-white'}`}>
-            <Sparkles className="w-7 h-7 sm:w-8 sm:h-8 mr-3 text-neon-purple" /> Pop-up <span className="text-neon-purple ml-2">Manager</span>
+            <Megaphone className="w-7 h-7 sm:w-8 sm:h-8 mr-3 text-neon-purple" /> Pop-up <span className="text-neon-purple ml-2">Manager</span>
           </h2>
           <p className={`text-[10px] mt-2 uppercase tracking-widest font-black ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Announcements & Alerts</p>
         </div>

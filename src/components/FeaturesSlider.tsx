@@ -8,6 +8,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Navigation, Pagination } from "swiper/modules";
 import type { Swiper as SwiperType } from "swiper";
 import { useLogo } from "../hooks/useLogo";
+import { safeFetchJson } from "../utils/safeFetch";
 
 // Import Swiper styles
 import "swiper/css";
@@ -39,14 +40,14 @@ export function FeaturesSlider() {
   // Fetch settings
   const { data: settings } = useQuery<any>({
     queryKey: ["settings"],
-    queryFn: () => fetch("/api/public/settings").then(res => res.json()),
+    queryFn: () => safeFetchJson("/api/public/settings"),
     staleTime: 1000 * 60,
   });
 
   // Fetch posts
   const { data: posts = [], isLoading } = useQuery<BlogPost[]>({
     queryKey: ["features"],
-    queryFn: () => fetch("/api/public/features").then(res => res.json()),
+    queryFn: () => safeFetchJson("/api/public/features"),
     staleTime: 1000 * 60 * 5,
   });
 

@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { CalendarDays, FileText, Search, X, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { useLogo } from "../hooks/useLogo";
+import { safeFetchJson } from "../utils/safeFetch";
 
 
 const fallbackImage = "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&q=80&w=1200";
@@ -36,7 +37,7 @@ export default function Features() {
 
   const { data: posts = [], isLoading } = useQuery<BlogPost[]>({
     queryKey: ["features"],
-    queryFn: () => fetch("/api/public/features").then(res => res.json()),
+    queryFn: () => safeFetchJson("/api/public/features"),
     staleTime: 1000 * 60 * 5,
   });
 

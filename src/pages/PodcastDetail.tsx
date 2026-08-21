@@ -5,25 +5,33 @@ import { ArrowLeft, Play, Pause, Calendar, Share2, Copy, Twitter, Facebook, X, C
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { useAudio } from "../context/AudioContext";
+import { useGamification } from "../context/GamificationContext";
+import { safeFetchJson, getPodcastId } from "../utils/safeFetch";
 
 function ShareModal({ podcast, isOpen, onClose }: { podcast: any, isOpen: boolean, onClose: () => void }) {
   const [copied, setCopied] = useState(false);
+  const { claimShareXp } = useGamification();
   const shareUrl = window.location.href;
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     navigator.clipboard.writeText(shareUrl);
     setCopied(true);
-    toast.success("Link copied to clipboard!");
+    toast.success("Link copied to clipboard! +25 XP");
+    await claimShareXp(podcast?.title || "Podcast Episode", shareUrl);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleTwitterShare = () => {
+  const handleTwitterShare = async () => {
     const text = encodeURIComponent(`Listen to "${podcast.title}" on DejavuFM\n`);
     window.open(`https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(shareUrl)}`, '_blank');
+    toast.success("Shared to Twitter! +25 XP");
+    await claimShareXp(podcast?.title || "Podcast Episode", shareUrl);
   };
 
-  const handleFacebookShare = () => {
+  const handleFacebookShare = async () => {
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank');
+    toast.success("Shared to Facebook! +25 XP");
+    await claimShareXp(podcast?.title || "Podcast Episode", shareUrl);
   };
 
   return (
@@ -116,7 +124,7 @@ export default function PodcastDetail() {
 
   const { data: feed, isLoading: loading } = useQuery({
     queryKey: ['podcasts'],
-    queryFn: () => fetch("/api/public/podcasts").then(res => res.json()),
+    queryFn: () => safeFetchJson("/api/public/podcasts"),
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
@@ -169,11 +177,10 @@ export default function PodcastDetail() {
     );
   }
 
-  const podcast = feed?.items?.find((i: any) => {
+  const podcast = feed?.items?.find((i: any, idx: number) => {
     try {
-      const idStr = i.guid || i.link || "";
-      const currentId = btoa(idStr).replace(/=/g, '');
-      return currentId === id;
+      const currentId = getPodcastId(i);
+      return currentId === id || String(idx) === id;
     } catch (e) {
       return false;
     }
@@ -188,14 +195,17 @@ export default function PodcastDetail() {
     );
   }
 
-  const audioUrl = podcast.enclosure?.url;
+  const audioUrl = podcast.enclosure?.url || 
+                   podcast.enclosure?.link || 
+                   podcast.audioUrl || 
+                   (typeof podcast.link === 'string' && podcast.link.includes('.mp3') ? podcast.link : '');
 
   const dateStr = (podcast.pubDate || podcast.isoDate) 
     ? new Date(podcast.pubDate || podcast.isoDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) 
     : 'Recent';
 
   // Extract a sensible image if possible; many RSS feeds have itunes:image or just use a default
-  const imageUrl = podcast.itunes?.image || "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=1200";
+  const imageUrl = podcast.imageUrl || podcast.itunes?.image || "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=1200";
 
   const isCurrentPodcastPlaying = activeType === 'podcast' && podcastTrack?.id === id && isPlaying;
   const isCurrentPodcastLoaded = activeType === 'podcast' && podcastTrack?.id === id;
@@ -225,7 +235,10 @@ export default function PodcastDetail() {
     toast.info("Starting download...");
 
     try {
-      const response = await fetch(audioUrl);
+      const downloadTarget = audioUrl.startsWith('http') 
+        ? `/api/public/podcast-stream?url=${encodeURIComponent(audioUrl)}`
+        : audioUrl;
+      const response = await fetch(downloadTarget);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       
       const contentLength = response.headers.get('content-length');

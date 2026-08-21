@@ -9,6 +9,8 @@ import { useModal } from "../../context/ModalContext";
 import { useLogo } from "../../hooks/useLogo";
 import { playUINotificationSound } from "../../lib/soundHelper";
 import { MediaPickerModal } from "./MediaPickerModal";
+import { StudioAudioPlayer } from "../../components/StudioAudioPlayer";
+import { MessageReactions } from "../../components/chat/MessageReactions";
 
 interface Message {
   id: string;
@@ -22,6 +24,7 @@ interface Message {
   videoUrl?: string;
   recipient?: string;
   platform?: string;
+  reactions?: Record<string, string[]>;
 }
 
 interface UserThread {
@@ -32,6 +35,32 @@ interface UserThread {
   unreadCount: number;
   platform?: string;
 }
+
+const formatMediaUrl = (url?: string): string | undefined => {
+  if (!url) return undefined;
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('/')) {
+    return url;
+  }
+  return '/' + url;
+};
+
+const extractAudioUrl = (item: any): string | undefined => {
+  if (!item) return undefined;
+  const raw = item.audioUrl || item.audio_url || item.audio || item.audioName || item.replyAudioUrl || item.reply_audio_url || (item.mediaType === 'audio' ? item.mediaUrl : undefined);
+  return formatMediaUrl(raw);
+};
+
+const extractImageUrl = (item: any): string | undefined => {
+  if (!item) return undefined;
+  const raw = item.imageUrl || item.image_url || item.image || item.imageName || item.replyImageUrl || item.reply_image_url || (item.mediaType === 'image' ? item.mediaUrl : undefined);
+  return formatMediaUrl(raw);
+};
+
+const extractVideoUrl = (item: any): string | undefined => {
+  if (!item) return undefined;
+  const raw = item.videoUrl || item.video_url || item.video || item.videoName || item.replyVideoUrl || item.reply_video_url || (item.mediaType === 'video' ? item.mediaUrl : undefined);
+  return formatMediaUrl(raw);
+};
 
 const isSameMessage = (msgA: Message, msgB: Message) => {
   if (msgA.id === msgB.id) return true;
@@ -88,9 +117,11 @@ const AttachmentPreview = ({ file, onRemove }: { file: File; onRemove: () => voi
     <div className="relative group w-48 bg-black/30 rounded-xl border border-white/10 p-2">
       {previewUrl && fileType === 'image' && <img src={previewUrl} alt="Preview" className="w-full h-24 object-cover rounded-md" />}
       {previewUrl && fileType === 'video' && <video src={previewUrl} controls className="w-full h-24 object-cover rounded-md bg-black" />}
-      {previewUrl && fileType === 'audio' && <div className="w-full h-24 flex flex-col justify-center bg-black/20 rounded-md p-2">
-        <audio src={previewUrl} controls className="w-full h-8 accent-neon-purple" />
-      </div>}
+      {previewUrl && fileType === 'audio' && (
+        <div className="w-full mt-1">
+          <StudioAudioPlayer src={previewUrl} title={file.name} compact variant="dark" />
+        </div>
+      )}
       <p className="text-xs text-white/70 truncate mt-2 px-1">{file.name}</p>
       <p className="text-[10px] text-white/40 px-1">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
       <button onClick={onRemove} className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-3.5 h-3.5" /></button>
@@ -216,7 +247,7 @@ const parseEmojisAndEmotes = (text: string) => {
   };
 
   return (
-    <span className="inline-flex flex-wrap items-center gap-x-1 whitespace-pre-wrap">
+    <>
       {words.map((word, idx) => {
         const trimmed = word.trim();
         if (twitchEmoteMap[trimmed]) {
@@ -224,7 +255,7 @@ const parseEmojisAndEmotes = (text: string) => {
           return (
             <span 
               key={idx} 
-              className={`inline-flex items-center gap-1 px-1.5 py-0.5 mx-0.5 text-xs font-bold rounded border ${emote.color} cursor-help transition-all duration-200 hover:scale-105`}
+              className={`inline-flex items-center gap-1 px-1.5 py-0.5 mx-0.5 text-xs font-bold rounded border align-middle ${emote.color} cursor-help transition-all duration-200 hover:scale-105`}
               title={trimmed}
             >
               <span className="text-sm select-none">{emote.emoji}</span>
@@ -232,9 +263,9 @@ const parseEmojisAndEmotes = (text: string) => {
             </span>
           );
         }
-        return <span key={idx}>{word}</span>;
+        return <React.Fragment key={idx}>{word}</React.Fragment>;
       })}
-    </span>
+    </>
   );
 };
 
@@ -283,7 +314,7 @@ const PlatformFieldInput = ({
               toast.success(`Saved configuration parameter for ${platformId.toUpperCase()}`);
             }}
             className={`text-[9px] font-bold uppercase tracking-wider font-mono flex items-center gap-1 transition-all duration-150 hover:scale-105 active:scale-95 ${
-              isLightMode ? 'text-purple-600 hover:text-purple-700' : 'text-cyan-400 hover:text-cyan-300'
+              isLightMode ? 'text-neon-purple hover:text-neon-purple/90' : 'text-cyan-400 hover:text-cyan-300'
             }`}
           >
             <Check className="w-3 h-3" />
@@ -300,7 +331,7 @@ const PlatformFieldInput = ({
           disabled={disabled}
           className={`w-full rounded-xl pl-3.5 pr-10 py-2.5 text-xs transition-all duration-200 outline-none ${
             isLightMode
-              ? `bg-slate-50/60 hover:bg-slate-100/50 text-slate-800 border ${val !== initialValue ? 'border-purple-500 ring-2 ring-purple-500/10' : 'border-slate-200'} placeholder-slate-400 focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10`
+              ? `bg-slate-50/60 hover:bg-slate-100/50 text-slate-800 border ${val !== initialValue ? 'border-neon-purple ring-2 ring-neon-purple/10' : 'border-slate-200'} placeholder-slate-400 focus:bg-white focus:border-neon-purple focus:ring-2 focus:ring-neon-purple/10`
               : `bg-[#04050a]/40 hover:bg-[#04050a]/70 text-slate-100 border ${val !== initialValue ? 'border-cyan-500/50 ring-2 ring-cyan-500/10' : 'border-white/[0.04]'} placeholder-white/20 focus:bg-[#04050a] focus:border-neon-purple/50 focus:ring-2 focus:ring-neon-purple/10`
           } ${disabled ? 'opacity-40 cursor-not-allowed bg-slate-100/50' : ''}`}
         />
@@ -678,7 +709,9 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     queryFn: () => fetchAdmin('/api/admin/check').then(res => res.json()),
   });
   const adminUsername = authData?.user?.username ?? authData?.username;
-  const isAdmin = authData?.user?.role === 'admin' || authData?.role === 'admin';
+  const userRole = authData?.user?.role || authData?.role;
+  const isOwner = userRole === 'owner';
+  const isAdmin = isOwner || userRole === 'admin';
 
   const isSenderAdminMsg = (user: string) => {
     if (!user) return false;
@@ -1296,10 +1329,11 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             avatar: msg.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(msg.user)}`,
             text: msg.text || '',
             timestamp: msg.timestamp,
-            imageUrl: msg.imageUrl,
-            audioUrl: msg.audioUrl,
-            videoUrl: msg.videoUrl,
+            imageUrl: extractImageUrl(msg),
+            audioUrl: extractAudioUrl(msg),
+            videoUrl: extractVideoUrl(msg),
             recipient: msg.recipient,
+            reactions: msg.reactions || {},
           };
 
           const threadMessages = existing
@@ -1363,11 +1397,12 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             avatar: msg.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(msg.user)}`,
             text: msg.text || '',
             timestamp: msg.timestamp,
-            imageUrl: msg.imageUrl,
-            audioUrl: msg.audioUrl,
-            videoUrl: msg.videoUrl,
+            imageUrl: extractImageUrl(msg),
+            audioUrl: extractAudioUrl(msg),
+            videoUrl: extractVideoUrl(msg),
             recipient: msg.recipient,
             platform: msg.platform,
+            reactions: msg.reactions || {},
           };
 
           const threadMessages = existing
@@ -1434,9 +1469,9 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             avatar: shoutout.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(shoutout.listener_name || shoutout.user || 'shoutout')}`,
             text: shoutout.message || '',
             timestamp: ts,
-            imageUrl: shoutout.imageUrl,
-            audioUrl: shoutout.audioUrl,
-            videoUrl: shoutout.videoUrl,
+            imageUrl: extractImageUrl(shoutout),
+            audioUrl: extractAudioUrl(shoutout),
+            videoUrl: extractVideoUrl(shoutout),
           };
 
           const threadInfo = getThreadUserAndKey(incomingMessage, adminUsername);
@@ -1495,11 +1530,12 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         avatar: msg.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(msg.user)}`,
         text: msg.text || '',
         timestamp: msg.timestamp,
-        imageUrl: msg.imageUrl,
-        audioUrl: msg.audioUrl,
-        videoUrl: msg.videoUrl,
+        imageUrl: extractImageUrl(msg),
+        audioUrl: extractAudioUrl(msg),
+        videoUrl: extractVideoUrl(msg),
         recipient: msg.recipient,
         platform: msg.platform,
+        reactions: msg.reactions || {},
       };
 
       addMessageToThread(incomingMessage);
@@ -1513,11 +1549,12 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         avatar: msg.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(msg.user)}`,
         text: msg.text || '',
         timestamp: msg.timestamp,
-        imageUrl: msg.imageUrl,
-        audioUrl: msg.audioUrl,
-        videoUrl: msg.videoUrl,
+        imageUrl: extractImageUrl(msg),
+        audioUrl: extractAudioUrl(msg),
+        videoUrl: extractVideoUrl(msg),
         recipient: msg.recipient,
         platform: msg.platform,
+        reactions: msg.reactions || {},
       };
       addMessageToThread(incomingMessage);
     };
@@ -1530,9 +1567,9 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         avatar: shoutout.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(shoutout.listener_name || shoutout.user || 'shoutout')}`,
         text: shoutout.message || '',
         timestamp: shoutout.timestamp || Date.now(),
-        imageUrl: shoutout.imageUrl,
-        audioUrl: shoutout.audioUrl,
-        videoUrl: shoutout.videoUrl,
+        imageUrl: extractImageUrl(shoutout),
+        audioUrl: extractAudioUrl(shoutout),
+        videoUrl: extractVideoUrl(shoutout),
       });
     };
 
@@ -1661,9 +1698,9 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         avatar: studioImage, // Local studio image
         text: data.replyText,
         timestamp: Date.now(),
-        imageUrl: data.replyImageUrl,
-        audioUrl: data.replyAudioUrl,
-        videoUrl: data.replyVideoUrl,
+        imageUrl: extractImageUrl(data),
+        audioUrl: extractAudioUrl(data),
+        videoUrl: extractVideoUrl(data),
       };
 
       // Use listenerName (email/username) if provided to map to the correct thread
@@ -1683,9 +1720,9 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         avatar: data.studioImage || "/icon.svg",
         text: `GLOBAL BROADCAST: ${data.text}`,
         timestamp: data.timestamp || Date.now(),
-        imageUrl: data.imageUrl,
-        audioUrl: data.audioUrl,
-        videoUrl: data.videoUrl,
+        imageUrl: extractImageUrl(data),
+        audioUrl: extractAudioUrl(data),
+        videoUrl: extractVideoUrl(data),
       };
 
       // Add to simulated threads if they match selected platforms
@@ -1710,6 +1747,34 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       });
     };
 
+    const handleMessageReactionUpdated = (data: {
+      messageId: string;
+      reactions: Record<string, string[]>;
+      action: string;
+      emoji: string;
+      user: string;
+    }) => {
+      if (!data || !data.messageId) return;
+      setThreads(prev => {
+        let changed = false;
+        const nextThreads = { ...prev };
+        Object.keys(nextThreads).forEach(userKey => {
+          const thread = nextThreads[userKey];
+          const hasMsg = thread.messages.some(m => m.id === data.messageId);
+          if (hasMsg) {
+            changed = true;
+            nextThreads[userKey] = {
+              ...thread,
+              messages: thread.messages.map(m =>
+                m.id === data.messageId ? { ...m, reactions: data.reactions } : m
+              )
+            };
+          }
+        });
+        return changed ? nextThreads : prev;
+      });
+    };
+
     socket.on('chatHistory', handleChatHistory);
     socket.on('privateHistory', handlePrivateHistory);
     socket.on('shoutoutHistory', handleShoutoutHistory);
@@ -1723,6 +1788,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     socket.on('shoutoutDeleted', handleShoutoutDeleted);
     socket.on('shoutoutReply', handleShoutoutReply);
     socket.on('platform_broadcast', handlePlatformBroadcast);
+    socket.on('messageReactionUpdated', handleMessageReactionUpdated);
 
     if (adminUsername) {
       socket.emit('registerUser', adminUsername);
@@ -1742,6 +1808,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       socket.off('shoutoutDeleted', handleShoutoutDeleted);
       socket.off('shoutoutReply', handleShoutoutReply);
       socket.off('platform_broadcast', handlePlatformBroadcast);
+      socket.off('messageReactionUpdated', handleMessageReactionUpdated);
     };
   }, [adminUsername]);
 
@@ -1905,6 +1972,72 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
     if (confirmed) {
       banUserMutation.mutate(username);
+    }
+  };
+
+  const handleToggleReaction = (msg: Message, emoji: string) => {
+    const currentUsername = adminUsername || 'DJ Admin';
+    const isPrivate = Boolean(msg.recipient || (selectedUser && selectedUser !== 'public' && selectedUser !== 'shoutouts'));
+
+    // Optimistic UI update
+    setThreads(prev => {
+      const nextThreads = { ...prev };
+      Object.keys(nextThreads).forEach(userKey => {
+        const thread = nextThreads[userKey];
+        if (thread.messages.some(m => m.id === msg.id)) {
+          nextThreads[userKey] = {
+            ...thread,
+            messages: thread.messages.map(m => {
+              if (m.id !== msg.id) return m;
+              const nextReactions: Record<string, string[]> = {};
+              Object.keys(m.reactions || {}).forEach(k => {
+                nextReactions[k] = [...m.reactions![k]];
+              });
+              const currentUsers = nextReactions[emoji] ? [...nextReactions[emoji]] : [];
+              const lower = currentUsername.toLowerCase();
+              const idx = currentUsers.findIndex(u => u.toLowerCase() === lower);
+              if (idx >= 0) {
+                currentUsers.splice(idx, 1);
+                if (currentUsers.length === 0) {
+                  delete nextReactions[emoji];
+                } else {
+                  nextReactions[emoji] = currentUsers;
+                }
+              } else {
+                nextReactions[emoji] = [...currentUsers, currentUsername];
+              }
+              return { ...m, reactions: nextReactions };
+            })
+          };
+        }
+      });
+      return nextThreads;
+    });
+
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit('messageReaction', {
+        messageId: msg.id,
+        emoji,
+        user: currentUsername,
+        isPrivate
+      });
+    } else {
+      const token = localStorage.getItem("admin_token");
+      fetch('/api/chat/react', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          messageId: msg.id,
+          emoji,
+          user: currentUsername,
+          isPrivate
+        })
+      }).catch(err => {
+        console.error('Failed to post admin reaction:', err);
+      });
     }
   };
 
@@ -2161,9 +2294,9 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           avatar: studioImage,
           text: `@${selectedUser} ${replyText}`,
           timestamp: Date.now(),
-          imageUrl: mediaType === 'image' && mediaUrl ? mediaUrl : undefined,
-          audioUrl: mediaType === 'audio' && mediaUrl ? mediaUrl : undefined,
-          videoUrl: mediaType === 'video' && mediaUrl ? mediaUrl : undefined,
+          imageUrl: mediaType === 'image' && mediaUrl ? formatMediaUrl(mediaUrl) : undefined,
+          audioUrl: mediaType === 'audio' && mediaUrl ? formatMediaUrl(mediaUrl) : undefined,
+          videoUrl: mediaType === 'video' && mediaUrl ? formatMediaUrl(mediaUrl) : undefined,
           recipient: ['private_dm', 'whatsapp', 'instagram', 'facebook', 'twitch'].includes(source) ? selectedUser : undefined,
           platform: ['whatsapp', 'instagram', 'facebook', 'twitch'].includes(source) ? source : undefined,
         };
@@ -2400,7 +2533,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                     placeholder="Enter your broadcast message here... Use @username to target specific listeners if needed."
                     className={`w-full h-48 rounded-xl p-4 text-sm transition-all duration-200 resize-none outline-none ${
                       isStudioLight
-                        ? 'bg-slate-50/60 border border-slate-200 text-slate-800 placeholder-slate-400/80 focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10'
+                        ? 'bg-slate-50/60 border border-slate-200 text-slate-800 placeholder-slate-400/80 focus:bg-white focus:border-neon-purple focus:ring-2 focus:ring-neon-purple/10'
                         : 'bg-[#04050a]/40 border border-white/[0.04] text-slate-200 placeholder-white/20 focus:bg-[#04050a] focus:border-neon-purple/50 focus:ring-2 focus:ring-neon-purple/10'
                     }`}
                   />
@@ -2486,7 +2619,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                     <button 
                       onClick={() => setBroadcastChannels(channels.map(c => c.id))}
                       className={`text-[9px] font-bold uppercase font-mono ${
-                        isStudioLight ? 'text-purple-600 hover:text-purple-700' : 'text-cyan-400 hover:text-cyan-300'
+                        isStudioLight ? 'text-neon-purple hover:text-neon-purple/90' : 'text-cyan-400 hover:text-cyan-300'
                       }`}
                     >
                       ALL
@@ -2734,7 +2867,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                       <div className="space-y-2.5 font-mono text-[11px]">
                         <div className="flex items-center justify-between border-b border-dashed pb-1.5 border-white/10">
                           <span className={`text-[9px] font-bold uppercase tracking-wider ${isStudioLight ? 'text-slate-400' : 'text-white/30'}`}>Configuration parameters</span>
-                          <span className="text-[8px] px-1.5 py-0.5 rounded border border-purple-500/10 bg-purple-500/5 text-purple-400 font-bold uppercase tracking-widest">
+                          <span className="text-[8px] px-1.5 py-0.5 rounded border border-neon-purple/20 bg-neon-purple/5 text-neon-purple font-bold uppercase tracking-widest">
                             Meta Cloud API
                           </span>
                         </div>
@@ -2794,7 +2927,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                         to="/admin/meta-integrations"
                         className={`w-full py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider font-mono transition-all flex items-center justify-center gap-1.5 border hover:scale-102 duration-150 cursor-pointer ${
                           isStudioLight 
-                            ? 'bg-purple-50 hover:bg-purple-100/75 text-purple-700 border-purple-200/60 shadow-3xs' 
+                            ? 'bg-neon-purple/10 hover:bg-neon-purple/20 text-neon-purple border-neon-purple/20 shadow-3xs' 
                             : 'bg-white/[0.02] hover:bg-white/[0.05] border-white/5 hover:border-white/10 text-white/80'
                         }`}
                       >
@@ -2847,7 +2980,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                           onClick={() => simulatePlatformMessage(platform.id)}
                           className={`py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider font-mono transition-all flex items-center justify-center gap-1.5 border cursor-pointer hover:scale-102 active:scale-98 ${
                             isStudioLight
-                              ? 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200/60'
+                              ? 'bg-neon-purple/10 hover:bg-neon-purple/20 text-neon-purple border-neon-purple/20'
                               : 'bg-neon-purple/10 hover:bg-neon-purple/20 border-neon-purple/20 text-neon-purple hover:text-white'
                           }`}
                         >
@@ -2896,7 +3029,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             }`}>
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Volume2 className="w-4 h-4 text-purple-500" />
+                  <Volume2 className="w-4 h-4 text-neon-purple" />
                   <h3 className={`text-xs font-extrabold uppercase tracking-wider font-display ${
                     isStudioLight ? 'text-slate-700' : 'text-slate-200'
                   }`}>
@@ -2920,7 +3053,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                     Live Ring Alerts
                   </span>
                   <div className="flex items-center gap-1.5">
-                    <span className={`w-1.5 h-1.5 rounded-full ${soundEnabled ? 'bg-purple-500 animate-pulse' : 'bg-slate-500'}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full ${soundEnabled ? 'bg-neon-purple animate-pulse' : 'bg-slate-500'}`} />
                     <span className={`text-[9px] font-mono ${
                       isStudioLight ? 'text-slate-400' : 'text-white/30'
                     }`}>
@@ -2933,7 +3066,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                   className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200 border cursor-pointer hover:scale-105 active:scale-95 ${
                     soundEnabled 
                       ? (isStudioLight 
-                          ? 'bg-purple-50 text-purple-700 border-purple-200 shadow-3xs'
+                          ? 'bg-neon-purple/10 text-neon-purple border-neon-purple/20 shadow-3xs'
                           : 'bg-neon-purple/10 text-neon-purple border border-neon-purple/20 shadow-[0_0_12px_rgba(176,38,255,0.15)]')
                       : (isStudioLight 
                           ? 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100' 
@@ -2951,7 +3084,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4 text-purple-500" />
+                    <MessageSquare className="w-4 h-4 text-neon-purple" />
                     <h3 className={`text-xs font-extrabold uppercase tracking-wider font-display ${
                       isStudioLight ? 'text-slate-700' : 'text-slate-200'
                     }`}>
@@ -2992,7 +3125,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                 {customReplies.map(reply => (
                   <div key={reply} className={`flex items-center justify-between p-2.5 rounded-xl border text-[11px] font-mono ${
                     isStudioLight 
-                      ? 'bg-purple-50/80 border-purple-200/60 text-purple-700' 
+                      ? 'bg-neon-purple/5 border-neon-purple/10 text-neon-purple' 
                       : 'bg-neon-purple/5 border-neon-purple/20 text-neon-purple'
                   }`}>
                     <span className="truncate pr-4 font-semibold">{reply}</span>
@@ -3016,7 +3149,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
               }`}>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-purple-500" />
+                    <Clock className="w-4 h-4 text-neon-purple" />
                     <h3 className={`text-xs font-extrabold uppercase tracking-wider font-display ${
                       isStudioLight ? 'text-slate-700' : 'text-slate-200'
                     }`}>
@@ -3073,7 +3206,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                           className={`px-3 py-2 rounded-xl text-[11px] font-display transition-all duration-150 border cursor-pointer ${
                             autoDeleteHours === preset.hours
                               ? (isStudioLight 
-                                  ? 'bg-purple-50 border-purple-200 text-purple-700 font-bold shadow-3xs' 
+                                  ? 'bg-neon-purple/10 border-neon-purple/20 text-neon-purple font-bold shadow-3xs' 
                                   : 'bg-neon-purple/10 border-neon-purple/30 text-neon-purple font-bold')
                               : (isStudioLight 
                                   ? 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100' 
@@ -3104,7 +3237,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                           placeholder="e.g. 5"
                           className={`flex-1 min-w-0 border rounded-xl px-4 py-2.5 text-xs font-sans focus:outline-none transition-colors ${
                             isStudioLight 
-                              ? 'bg-slate-50/60 border-slate-200 focus:bg-white focus:border-purple-500 text-slate-800 placeholder:text-slate-400' 
+                              ? 'bg-slate-50/60 border-slate-200 focus:bg-white focus:border-neon-purple text-slate-800 placeholder:text-slate-400' 
                               : 'bg-[#04050a]/40 border-white/[0.04] focus:border-neon-purple/50 text-slate-200 placeholder:text-white/20'
                           }`}
                         />
@@ -3113,7 +3246,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                           onChange={(e) => setCustomUnitInput(e.target.value as 'hours' | 'days')}
                           className={`border rounded-xl px-3 py-2.5 text-xs font-bold font-sans focus:outline-none cursor-pointer outline-none transition-colors ${
                             isStudioLight
-                              ? 'bg-slate-50/60 border-slate-200 text-purple-700 hover:bg-slate-100'
+                              ? 'bg-slate-50/60 border-slate-200 text-neon-purple hover:bg-slate-100'
                               : 'bg-[#04050a]/40 border-white/[0.04] text-neon-purple hover:bg-[#0d0f1e]'
                           }`}
                         >
@@ -3127,7 +3260,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                         disabled={isSavingAutoDelete}
                         className={`px-5 py-2.5 rounded-xl text-xs font-bold font-display transition-all duration-150 shrink-0 border cursor-pointer hover:scale-102 active:scale-98 ${
                           isStudioLight 
-                            ? 'bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700 shadow-3xs' 
+                            ? 'bg-neon-purple/10 hover:bg-neon-purple/20 border-neon-purple/20 text-neon-purple shadow-3xs' 
                             : 'bg-[#04050a] hover:bg-white/[0.02] border-white/5 hover:border-white/10 text-white/80'
                         }`}
                       >
@@ -3290,7 +3423,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                 )}
               </div>
               <div className="space-y-2">
-                <span className="text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded border border-purple-500/10 bg-purple-500/5 text-purple-400 font-mono">
+                <span className="text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded border border-neon-purple/20 bg-neon-purple/5 text-neon-purple font-mono">
                   STATION IDENTITY
                 </span>
                 <p className={`text-[11px] mt-1 max-w-xs mx-auto ${
@@ -3321,11 +3454,11 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                     onClick={() => setIsProfileMediaPickerOpen(true)}
                     className={`px-3.5 py-2 border rounded-xl text-xs font-semibold transition-all duration-150 flex items-center gap-2 cursor-pointer hover:scale-102 ${
                       isStudioLight 
-                        ? 'bg-purple-50 hover:bg-purple-100 border-purple-200/60 text-purple-700 shadow-3xs' 
+                        ? 'bg-neon-purple/10 hover:bg-neon-purple/20 border-neon-purple/20 text-neon-purple shadow-3xs' 
                         : 'bg-white/[0.01] hover:bg-white/[0.03] border-white/5 text-white/80'
                     }`}
                   >
-                    <ImageIcon className="w-3.5 h-3.5 text-purple-500" />
+                    <ImageIcon className="w-3.5 h-3.5 text-neon-purple" />
                     <span>Select from Media</span>
                   </button>
                 </div>
@@ -3357,7 +3490,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                     maxLength={50}
                     className={`w-full border rounded-xl px-4 py-3 text-xs transition-all duration-200 outline-none ${
                       isStudioLight
-                        ? 'bg-slate-50/60 border-slate-200 text-slate-800 placeholder-slate-400/80 focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10'
+                        ? 'bg-slate-50/60 border-slate-200 text-slate-800 placeholder-slate-400/80 focus:bg-white focus:border-neon-purple focus:ring-2 focus:ring-neon-purple/10'
                         : 'bg-[#04050a]/40 border-white/[0.04] text-slate-200 placeholder-white/20 focus:bg-[#04050a] focus:border-neon-purple/50 focus:ring-2 focus:ring-neon-purple/10'
                     }`}
                   />
@@ -3527,7 +3660,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             onClick={() => setIsMobileSettingsOpen(!isMobileSettingsOpen)} 
             className={`p-2 rounded-xl transition-all border cursor-pointer ${
               isMobileSettingsOpen
-                ? (studioTheme === 'light' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-neon-purple/20 text-neon-purple border-neon-purple/30')
+                ? (studioTheme === 'light' ? 'bg-neon-purple/10 text-neon-purple border-neon-purple/20' : 'bg-neon-purple/20 text-neon-purple border-neon-purple/30')
                 : (studioTheme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200' : 'bg-white/[0.05] hover:bg-white/10 text-white/70 border-white/10')
             }`}
             title="Desk Menu"
@@ -3598,7 +3731,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                       studioTheme === 'light' ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-white/80'
                     }`}
                   >
-                    {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-purple-500" /> : <VolumeX className="w-3.5 h-3.5 text-slate-500" />}
+                    {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-neon-purple" /> : <VolumeX className="w-3.5 h-3.5 text-slate-500" />}
                     <span>Sound: {soundEnabled ? 'Enabled' : 'Muted'}</span>
                   </button>
 
@@ -3771,7 +3904,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                   onChange={e => setSearchQuery(e.target.value)}
                   className={`w-full rounded-xl pl-10 pr-4 py-2.5 text-xs transition-all focus:outline-none ${
                     isStudioLight
-                      ? 'bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 shadow-2xs'
+                      ? 'bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-neon-purple focus:ring-2 focus:ring-neon-purple/10 shadow-2xs'
                       : 'bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 text-white placeholder:text-white/40 focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/20'
                   }`}
                 />
@@ -3788,7 +3921,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                 className={`p-2.5 rounded-xl border transition-all text-xs font-bold shrink-0 flex items-center justify-center cursor-pointer ${
                   selectedThreads.length > 0
                     ? (isStudioLight 
-                        ? 'bg-purple-100 text-purple-700 border-purple-300 shadow-xs' 
+                        ? 'bg-neon-purple/10 text-neon-purple border-neon-purple/20 shadow-xs' 
                         : 'bg-neon-purple/20 text-neon-purple border-neon-purple/30 shadow-[0_0_10px_rgba(176,38,255,0.15)]')
                     : (isStudioLight 
                         ? 'bg-white hover:bg-slate-100 border-slate-200 text-slate-600 hover:text-slate-900' 
@@ -3887,7 +4020,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                         >
                           <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all ${
                             selectedThreads.length === sortedThreads.length && sortedThreads.length > 0
-                              ? (isStudioLight ? 'bg-purple-600 border-purple-600 text-white' : 'bg-neon-purple border-neon-purple text-white')
+                              ? (isStudioLight ? 'bg-neon-purple border-neon-purple text-white' : 'bg-neon-purple border-neon-purple text-white')
                               : (isStudioLight ? 'border-slate-300 hover:border-slate-400 bg-white' : 'border-white/30 hover:border-white/50')
                           }`}>
                             {selectedThreads.length === sortedThreads.length && sortedThreads.length > 0 && (
@@ -3897,7 +4030,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                           <span>Select All ({sortedThreads.length})</span>
                         </button>
                       </div>
-                      <span className={`font-bold font-mono ${isStudioLight ? 'text-purple-700' : 'text-neon-purple'}`}>
+                      <span className={`font-bold font-mono text-neon-purple`}>
                         {selectedThreads.length} selected
                       </span>
                     </div>
@@ -3925,7 +4058,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                         }`}
                         title="Mark Selected as Unread"
                       >
-                        <Mail className={`w-3.5 h-3.5 ${isStudioLight ? 'text-purple-600' : 'text-violet-400'}`} />
+                        <Mail className="w-3.5 h-3.5 text-neon-purple" />
                         <span className="text-[9px] font-bold uppercase tracking-wider font-mono">Unread</span>
                       </button>
 
@@ -3982,13 +4115,13 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                     className={`group/item relative flex items-center gap-3.5 p-3.5 mx-1.5 rounded-xl transition-all duration-250 cursor-pointer border ${
                       isSelected 
                         ? (isStudioLight 
-                            ? 'bg-purple-600/5 border-purple-500/20 text-slate-900 shadow-2xs' 
+                            ? 'bg-neon-purple/5 border-neon-purple/20 text-slate-900 shadow-2xs' 
                             : 'bg-white/[0.03] border-neon-purple/20 text-white shadow-[inset_1px_1px_0_rgba(255,255,255,0.05),0_4px_12px_rgba(0,0,0,0.1)]')
                         : (isStudioLight 
                             ? 'bg-transparent border-transparent hover:bg-slate-100/60 hover:border-slate-200/50' 
                             : 'bg-transparent border-transparent hover:bg-white/[0.015] hover:border-white/5')
                     }`}
-                    style={isSelected && !isStudioLight ? { borderLeft: `3px solid ${primaryColor}` } : isSelected && isStudioLight ? { borderLeft: `3px solid #7c3aed` } : undefined}
+                    style={isSelected && !isStudioLight ? { borderLeft: `3px solid ${primaryColor}` } : isSelected && isStudioLight ? { borderLeft: `3px solid var(--color-neon-purple)` } : undefined}
                   >
                     {/* Bulk selection checkbox */}
                     <div 
@@ -4004,7 +4137,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                         className={`w-4 h-4 rounded border flex items-center justify-center transition-all cursor-pointer ${
                           isThreadChecked
                             ? (isStudioLight 
-                                ? 'bg-purple-600 border-purple-600 text-white shadow-xs' 
+                                ? 'bg-neon-purple border-neon-purple text-white shadow-xs' 
                                 : 'bg-neon-purple border-neon-purple text-white shadow-[0_0_8px_rgba(176,38,255,0.3)]')
                             : (isStudioLight 
                                 ? 'border-slate-300 hover:border-slate-400 bg-white text-transparent' 
@@ -4049,7 +4182,14 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                         <p className={`text-[11px] truncate pr-2 ${
                           isStudioLight ? 'text-slate-500' : 'text-slate-400/80'
                         } ${thread.unreadCount > 0 ? (isStudioLight ? 'text-slate-950 font-semibold' : 'text-white font-semibold') : ''}`}>
-                          {thread.messages.slice(-1)[0] ? replaceTextEmojis(thread.messages.slice(-1)[0].text) : 'No messages'}
+                          {(() => {
+                            const lastMsg = thread.messages.slice(-1)[0];
+                            if (!lastMsg) return 'No messages';
+                            if (lastMsg.audioUrl) return '🎵 Audio clip';
+                            if (lastMsg.imageUrl) return '📷 Image attachment';
+                            if (lastMsg.videoUrl) return '🎥 Video attachment';
+                            return replaceTextEmojis(lastMsg.text) || 'Attachment';
+                          })()}
                         </p>
                       </div>
                     </div>
@@ -4072,10 +4212,10 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                             <div 
                               className={`px-1.5 py-0.5 text-[9px] font-sans font-bold leading-none rounded-full border shadow-xs ${
                                 isStudioLight 
-                                  ? 'bg-purple-100 text-purple-700 border-purple-200/50' 
+                                  ? 'bg-neon-purple/10 text-neon-purple border-neon-purple/20' 
                                   : 'text-white force-text-white border-black/30'
                               }`}
-                              style={isStudioLight ? undefined : { background: 'linear-gradient(135deg, #7C3AED, #2563EB)' }}
+                              style={isStudioLight ? undefined : { background: 'linear-gradient(135deg, var(--color-neon-purple), var(--color-neon-blue))' }}
                             >
                               {thread.unreadCount}
                             </div>
@@ -4263,7 +4403,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                           src={msg.avatar || studioImage || '/icon.svg'} 
                           alt={msg.user} 
                           className={`w-9 h-9 rounded-xl mt-0.5 object-cover border shadow-sm shrink-0 ${
-                            isStudioLight ? 'bg-purple-100 border-purple-300' : 'bg-white/5 border-neon-purple/50 shadow-[0_0_10px_rgba(124,58,237,0.3)]'
+                            isStudioLight ? 'bg-neon-purple/15 border-neon-purple/20' : 'bg-white/5 border-neon-purple/50 shadow-[0_0_10px_rgba(176,38,255,0.3)]'
                           }`} 
                         />
                       )}
@@ -4282,7 +4422,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                         } ${isAdminReply ? 'justify-end' : ''}`}>
                           <span className={`font-bold uppercase tracking-wider ${
                             isAdminReply 
-                              ? (isStudioLight ? 'text-purple-700' : 'text-neon-purple')
+                              ? 'text-neon-purple'
                               : (msg.type === 'shoutout' ? 'text-amber-500' : (isStudioLight ? 'text-blue-600' : 'text-neon-blue'))
                           }`}>
                             {msg.type === 'shoutout' ? '🔥 Shoutout' : msg.user}
@@ -4290,7 +4430,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                           {isAdminReply && (
                             <span className={`text-[8px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded-md border shrink-0 ${
                               isStudioLight 
-                                ? 'bg-purple-100 text-purple-700 border-purple-200' 
+                                ? 'bg-neon-purple/10 text-neon-purple border-neon-purple/20' 
                                 : 'bg-neon-purple/20 text-neon-purple border-neon-purple/30'
                             }`}>
                               Representative
@@ -4311,7 +4451,9 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                             }`}
                             style={isAdminReply ? { background: `linear-gradient(135deg, ${primaryColor || '#7C3AED'}, ${secondaryColor || '#4F46E5'})` } : undefined}
                           >
-                            {msg.text && <p className="whitespace-pre-wrap select-text">{parseEmojisAndEmotes(msg.text)}</p>}
+                            {msg.text && (msg.text !== "Shared an audio clip" || !msg.audioUrl) && (msg.text !== "Shared an image" || !msg.imageUrl) && (msg.text !== "Shared a video clip" || !msg.videoUrl) && (
+                              <p className="whitespace-pre-wrap break-words select-text">{parseEmojisAndEmotes(msg.text)}</p>
+                            )}
                             
                             {msg.imageUrl && (
                               <div className={`mt-2.5 rounded-xl overflow-hidden border max-w-sm ${
@@ -4322,10 +4464,12 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                             )}
                             
                             {msg.audioUrl && (
-                              <div className={`mt-2.5 p-2 rounded-xl border max-w-sm ${
-                                isStudioLight ? 'bg-slate-100 border-slate-200/80' : 'border-white/5 bg-black/30'
-                              }`}>
-                                <audio src={msg.audioUrl} controls className="w-full h-10" />
+                              <div className="mt-2.5">
+                                <StudioAudioPlayer
+                                  src={msg.audioUrl}
+                                  title="Voice Note"
+                                  variant={isAdminReply ? 'admin' : (isStudioLight ? 'light' : 'dark')}
+                                />
                               </div>
                             )}
                             
@@ -4336,6 +4480,15 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                                 <video src={msg.videoUrl} controls className="w-full h-auto max-h-60" />
                               </div>
                             )}
+
+                            <MessageReactions
+                              messageId={msg.id}
+                              reactions={msg.reactions}
+                              currentUser={adminUsername}
+                              isLightMode={isStudioLight}
+                              onToggleReaction={(emoji) => handleToggleReaction(msg, emoji)}
+                              align={isAdminReply ? 'right' : 'left'}
+                            />
                           </div>
 
                           {/* Elegant, Non-Overlapping Action Buttons Sitting Outside the Bubble */}
@@ -4354,8 +4507,8 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                                   }}
                                   className={`flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-200 cursor-pointer hover:scale-110 active:scale-95 border ${
                                     isStudioLight 
-                                      ? 'bg-white border-slate-200/80 text-slate-500 hover:text-purple-600 hover:bg-purple-50 hover:border-purple-200/80 shadow-3xs' 
-                                      : 'bg-[#121424] border-white/5 text-white/50 hover:text-purple-400 hover:bg-purple-500/10 hover:border-purple-500/20 shadow-md'
+                                      ? 'bg-white border-slate-200/80 text-slate-500 hover:text-neon-purple hover:bg-neon-purple/5 hover:border-neon-purple/20 shadow-3xs' 
+                                      : 'bg-[#121424] border-white/5 text-white/50 hover:text-neon-purple hover:bg-neon-purple/10 hover:border-neon-purple/20 shadow-md'
                                   }`}
                                   title="Load into Reply"
                                 >
@@ -4407,7 +4560,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                         onClick={() => setReplyText(reply)} 
                         className={`pl-3 pr-7 py-1.5 rounded-full text-[10px] font-semibold transition-all duration-200 border ${
                           isStudioLight 
-                            ? 'bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-800' 
+                            ? 'bg-neon-purple/10 hover:bg-neon-purple/20 border-neon-purple/20 text-neon-purple' 
                             : 'bg-neon-purple/5 hover:bg-neon-purple/15 border-neon-purple/10 hover:border-neon-purple/20 text-neon-purple'
                         }`}
                       >
@@ -4472,7 +4625,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                       placeholder={`Reply to @${selectedUser}...`}
                       className={`w-full rounded-xl px-4 py-3 text-xs transition-all focus:outline-none ${
                         isStudioLight 
-                          ? 'bg-slate-50 hover:bg-slate-100/70 border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 shadow-2xs' 
+                          ? 'bg-slate-50 hover:bg-slate-100/70 border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-neon-purple focus:ring-2 focus:ring-neon-purple/10 shadow-2xs' 
                           : 'bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 text-white placeholder:text-white/40 focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/20'
                       }`}
                     />
@@ -4482,8 +4635,8 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                     disabled={isSending} 
                     className={`w-11 h-11 rounded-xl flex items-center justify-center text-white transition-all duration-200 shadow-md hover:scale-102 active:scale-98 disabled:opacity-40 shrink-0 cursor-pointer ${
                       isStudioLight 
-                        ? 'bg-purple-600 hover:bg-purple-700 border border-purple-700/10 shadow-3xs' 
-                        : 'bg-[#b026ff] hover:bg-[#a016ef] border border-white/5 shadow-[0_4px_16px_rgba(176,38,255,0.25)]'
+                        ? 'bg-neon-purple hover:bg-neon-purple/90 border border-neon-purple/10 shadow-3xs' 
+                        : 'bg-neon-purple hover:brightness-110 border border-white/5 shadow-[0_4px_16px_rgba(176,38,255,0.25)]'
                     }`}
                   >
                     {isSending ? <div className="w-4 h-4 border-2 border-white rounded-full border-t-transparent animate-spin" /> : <Send className="w-4.5 h-4.5" />}
@@ -4499,7 +4652,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                 <div className="relative inline-block">
                   <div className={`w-20 h-20 rounded-2xl border flex items-center justify-center mx-auto transition-transform hover:scale-105 duration-300 ${
                     isStudioLight 
-                      ? 'border-purple-200 bg-white text-purple-600 shadow-[0_8px_30px_rgb(0,0,0,0.04)]' 
+                      ? 'border-neon-purple/20 bg-white text-neon-purple shadow-[0_8px_30px_rgb(0,0,0,0.04)]' 
                       : 'border-neon-purple/20 bg-white/[0.02] text-neon-purple shadow-[0_0_50px_rgba(176,38,255,0.1)]'
                   }`}>
                     <MessageSquare className="w-10 h-10 animate-pulse" />
@@ -4653,14 +4806,14 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             whileTap={{ scale: 0.92 }}
             className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 !overflow-visible ${
               activeTab === 'chats' 
-                ? (isStudioLight ? 'text-purple-700' : 'text-neon-purple') 
+                ? 'text-neon-purple' 
                 : (isStudioLight ? 'text-slate-400 hover:text-slate-700' : 'text-white/40 hover:text-white/80')
             }`}
           >
             {activeTab === 'chats' && (
               <motion.div
                 layoutId="activeTabGlow"
-                className={`absolute inset-0 rounded-full ${isStudioLight ? 'bg-purple-100' : 'bg-white/5'}`}
+                className={`absolute inset-0 rounded-full ${isStudioLight ? 'bg-neon-purple/10' : 'bg-white/5'}`}
                 transition={{ type: "spring", stiffness: 380, damping: 30 }}
               />
             )}
@@ -4675,10 +4828,10 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                   <span 
                     className={`absolute -top-1.5 -right-1.5 flex h-4.5 min-w-[18px] items-center justify-center rounded-full px-1 text-[9px] font-bold font-sans leading-none border shadow-xs ${
                       isStudioLight
-                        ? 'bg-purple-100 text-purple-700 border-purple-200'
+                        ? 'bg-neon-purple/10 text-neon-purple border-neon-purple/20'
                         : 'text-white force-text-white border-white/40'
                     }`}
-                    style={isStudioLight ? undefined : { background: 'linear-gradient(135deg, #7C3AED, #2563EB)' }}
+                    style={isStudioLight ? undefined : { background: 'linear-gradient(135deg, var(--color-neon-purple), var(--color-neon-blue))' }}
                   >
                     {totalUnreadCount}
                   </span>
@@ -4747,14 +4900,14 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             whileTap={{ scale: 0.92 }}
             className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 !overflow-visible ${
               activeTab === 'profile' 
-                ? (isStudioLight ? 'text-purple-700' : 'text-neon-purple') 
+                ? 'text-neon-purple' 
                 : (isStudioLight ? 'text-slate-400 hover:text-slate-700' : 'text-white/40 hover:text-white/80')
             }`}
           >
             {activeTab === 'profile' && (
               <motion.div
                 layoutId="activeTabGlow"
-                className={`absolute inset-0 rounded-full ${isStudioLight ? 'bg-purple-100' : 'bg-white/5'}`}
+                className={`absolute inset-0 rounded-full ${isStudioLight ? 'bg-neon-purple/10' : 'bg-white/5'}`}
                 transition={{ type: "spring", stiffness: 380, damping: 30 }}
               />
             )}
@@ -4821,7 +4974,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                 rows={3}
                 className={`w-full border rounded-xl p-3 text-xs transition-all focus:outline-none ${
                   isStudioLight 
-                    ? 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20' 
+                    ? 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-neon-purple focus:ring-2 focus:ring-neon-purple/10' 
                     : 'bg-black/40 border-white/5 text-white placeholder-white/20 focus:border-neon-purple/40 focus:ring-1 focus:ring-neon-purple/20'
                 }`}
               />
@@ -4838,7 +4991,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                 </button>
                 <button
                   onClick={handleSaveCustomReply}
-                  className="px-4 py-2 bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 rounded-xl text-xs font-bold text-white shadow-md hover:brightness-110 active:scale-95 transition-all"
+                  className="px-4 py-2 bg-gradient-to-r from-neon-purple to-neon-blue rounded-xl text-xs font-bold text-white shadow-md hover:brightness-110 active:scale-95 transition-all"
                 >
                   Save Template
                 </button>
@@ -4865,9 +5018,9 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
               <div className="flex items-center gap-4">
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border shadow-sm ${
-                  isStudioLight ? 'bg-purple-100 border-purple-200 text-purple-700' : 'bg-gradient-to-tr from-neon-purple/20 to-neon-blue/20 text-white border-white/10 shadow-[0_0_15px_rgba(176,38,255,0.2)]'
+                  isStudioLight ? 'bg-neon-purple/10 border-neon-purple/20 text-neon-purple' : 'bg-gradient-to-tr from-neon-purple/20 to-neon-blue/20 text-white border-white/10 shadow-[0_0_15px_rgba(176,38,255,0.2)]'
                 }`}>
-                  <Activity className={`w-6 h-6 ${isStudioLight ? 'text-purple-600' : 'text-neon-purple'}`} />
+                  <Activity className="w-6 h-6 text-neon-purple" />
                 </div>
                 <div>
                   <h3 className={`text-sm font-bold uppercase tracking-wider ${

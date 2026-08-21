@@ -356,21 +356,25 @@ export default function Booth() {
           type="button"
           onClick={toggleSounds}
           className={`booth-sfx-btn shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border shadow-xs ${
-            isLightMode
-              ? 'bg-[#ffffff] border-slate-300 text-slate-900 hover:text-slate-950 hover:bg-slate-100 hover:border-slate-400'
-              : 'bg-white/10 border-white/15 text-white/80 hover:text-white hover:bg-white/15'
+            soundsEnabled
+              ? isLightMode
+                ? 'bg-neon-purple/10 border-neon-purple/30 text-slate-800 hover:bg-neon-purple/20'
+                : 'bg-neon-purple/20 border-neon-purple/40 text-white hover:bg-neon-purple/30 shadow-[0_0_12px_rgba(176,38,255,0.25)]'
+              : isLightMode
+                ? 'bg-slate-50 border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                : 'bg-white/5 border-white/10 text-white/35 hover:text-white/60 hover:bg-white/10'
           }`}
           title={soundsEnabled ? "Mute notification sound effects" : "Enable notification sound effects"}
         >
           {soundsEnabled ? (
             <>
-              <Volume2 className={`w-3.5 h-3.5 ${isLightMode ? 'text-purple-600' : 'text-neon-purple'}`} />
-              <span className={isLightMode ? 'text-slate-900 font-extrabold' : 'text-white/80'}>SFX On</span>
+              <Volume2 className="w-3.5 h-3.5 text-neon-purple animate-pulse" />
+              <span className={isLightMode ? 'text-slate-900 font-extrabold' : 'text-white/90'}>SFX On</span>
             </>
           ) : (
             <>
-              <VolumeX className={`w-3.5 h-3.5 ${isLightMode ? 'text-red-600' : 'text-red-500'}`} />
-              <span className={isLightMode ? 'text-slate-800 font-extrabold' : 'text-white/60'}>SFX Off</span>
+              <VolumeX className="w-3.5 h-3.5 opacity-60" />
+              <span className={isLightMode ? 'text-slate-400 font-extrabold' : 'text-white/40'}>SFX Off</span>
             </>
           )}
         </button>

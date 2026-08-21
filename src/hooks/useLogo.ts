@@ -1,104 +1,83 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
+import { safeFetchJson } from '../utils/safeFetch';
 
 export function useLogo() {
-  let pathname = '';
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const location = useLocation();
-    pathname = location.pathname;
-  } catch {
-    pathname = typeof window !== 'undefined' ? window.location.pathname : '';
-  }
+  const location = useLocation();
+  const pathname = location?.pathname || (typeof window !== 'undefined' ? window.location.pathname : '');
 
   const { data: settings } = useQuery({
     queryKey: ['settings'],
-    queryFn: () => fetch("/api/public/settings").then(res => res.json())
+    queryFn: () => safeFetchJson("/api/public/settings"),
+    staleTime: 1000 * 60 * 2,
   });
 
   const customAdminPath = (settings?.admin_custom_path || '/admin').trim().replace(/\/+$/, '') || '/admin';
   const checkAdmin = (p: string) => p.startsWith(customAdminPath);
 
-  const [isLightMode, setIsLightMode] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const isAdmin = checkAdmin(pathname);
-      if (isAdmin) {
-        return document.documentElement.classList.contains('admin-light-mode');
-      }
-      return localStorage.getItem('theme') === 'light' || document.documentElement.classList.contains('light');
+  const getThemeState = useCallback((p: string) => {
+    if (typeof window === 'undefined') return false;
+    const isAdmin = checkAdmin(p);
+    if (isAdmin) {
+      return document.documentElement.classList.contains('admin-light-mode');
     }
-    return false;
-  });
+    return localStorage.getItem('theme') === 'light' || document.documentElement.classList.contains('light');
+  }, [customAdminPath]);
+
+  const [isLightMode, setIsLightMode] = useState(() => getThemeState(pathname));
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const isAdmin = checkAdmin(pathname);
 
-    if (isAdmin) {
-      const handleThemeChange = () => {
-        setIsLightMode(document.documentElement.classList.contains('admin-light-mode'));
-      };
-      
-      const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-          if (mutation.attributeName === 'class') {
-            handleThemeChange();
-          }
-        });
-      });
-      observer.observe(document.documentElement, { attributes: true });
+    const handleThemeChange = () => {
+      const nextTheme = getThemeState(pathname);
+      setIsLightMode(prev => (prev !== nextTheme ? nextTheme : prev));
+    };
 
-      window.addEventListener('dashboard-theme-change', handleThemeChange);
-      
-      const handleStorageChange = (e: StorageEvent) => {
-        if (e.key === 'dashboard_theme' || e.key === 'studio_theme') {
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.attributeName === 'class') {
           handleThemeChange();
+          break;
         }
-      };
-      window.addEventListener('storage', handleStorageChange);
+      }
+    });
 
-      handleThemeChange();
+    observer.observe(document.documentElement, { 
+      attributes: true, 
+      attributeFilter: ['class'] 
+    });
 
-      return () => {
-        observer.disconnect();
-        window.removeEventListener('dashboard-theme-change', handleThemeChange);
-        window.removeEventListener('storage', handleStorageChange);
-      };
+    if (isAdmin) {
+      window.addEventListener('dashboard-theme-change', handleThemeChange);
     } else {
-      const handleThemeChange = () => {
-        setIsLightMode(document.documentElement.classList.contains('light') || localStorage.getItem('theme') === 'light');
-      };
-
-      const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-          if (mutation.attributeName === 'class') {
-            handleThemeChange();
-          }
-        });
-      });
-      observer.observe(document.documentElement, { attributes: true });
-
       window.addEventListener('theme-change', handleThemeChange);
-      window.addEventListener('storage', handleThemeChange);
-
-      // Run on mount to ensure synchronization
-      handleThemeChange();
-
-      return () => {
-        observer.disconnect();
-        window.removeEventListener('theme-change', handleThemeChange);
-        window.removeEventListener('storage', handleThemeChange);
-      };
     }
-  }, [location.pathname]);
+    window.addEventListener('storage', handleThemeChange);
+
+    handleThemeChange();
+
+    return () => {
+      observer.disconnect();
+      if (isAdmin) {
+        window.removeEventListener('dashboard-theme-change', handleThemeChange);
+      } else {
+        window.removeEventListener('theme-change', handleThemeChange);
+      }
+      window.removeEventListener('storage', handleThemeChange);
+    };
+  }, [pathname, getThemeState]);
 
   useEffect(() => {
     if (settings?.favicon) {
       const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
       if (link) {
-        link.href = settings.favicon;
+        if (link.href !== settings.favicon) {
+          link.href = settings.favicon;
+        }
       } else {
         const newLink = document.createElement('link');
         newLink.rel = 'icon';
@@ -109,8 +88,11 @@ export function useLogo() {
   }, [settings?.favicon]);
 
   useEffect(() => {
-    if (settings) {
-      if (settings.primary_color) {
+    if (!settings) return;
+
+    if (settings.primary_color) {
+      const current = document.documentElement.style.getPropertyValue('--color-neon-purple');
+      if (current !== settings.primary_color) {
         document.documentElement.style.setProperty('--color-neon-purple', settings.primary_color);
         localStorage.setItem('branding_primary_color', settings.primary_color);
         let metaThemeColor = document.querySelector('meta[name="theme-color"]');
@@ -121,39 +103,50 @@ export function useLogo() {
         }
         metaThemeColor.setAttribute('content', settings.primary_color);
       }
-      if (settings.secondary_color) {
+    }
+    if (settings.secondary_color) {
+      const current = document.documentElement.style.getPropertyValue('--color-neon-blue');
+      if (current !== settings.secondary_color) {
         document.documentElement.style.setProperty('--color-neon-blue', settings.secondary_color);
         localStorage.setItem('branding_secondary_color', settings.secondary_color);
       }
+    }
 
-      if (settings.font_sans) {
-        const sansFallback = ', ui-sans-serif, system-ui, sans-serif';
-        document.documentElement.style.setProperty('--font-sans', `"${settings.font_sans}"${sansFallback}`);
-        document.documentElement.style.setProperty('--font-mono', `"${settings.font_sans}"${sansFallback}`);
+    if (settings.font_sans) {
+      const sansFallback = ', ui-sans-serif, system-ui, sans-serif';
+      const val = `"${settings.font_sans}"${sansFallback}`;
+      if (document.documentElement.style.getPropertyValue('--font-sans') !== val) {
+        document.documentElement.style.setProperty('--font-sans', val);
+        document.documentElement.style.setProperty('--font-mono', val);
       }
-      if (settings.font_display) {
-        let displayFallback = ', sans-serif';
-        if (settings.font_display === 'Playfair Display') displayFallback = ', serif';
-        if (settings.font_display === 'JetBrains Mono') displayFallback = ', monospace';
-        document.documentElement.style.setProperty('--font-display', `"${settings.font_display}"${displayFallback}`);
+    }
+    if (settings.font_display) {
+      let displayFallback = ', sans-serif';
+      if (settings.font_display === 'Playfair Display') displayFallback = ', serif';
+      if (settings.font_display === 'JetBrains Mono') displayFallback = ', monospace';
+      const val = `"${settings.font_display}"${displayFallback}`;
+      if (document.documentElement.style.getPropertyValue('--font-display') !== val) {
+        document.documentElement.style.setProperty('--font-display', val);
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      if (settings.default_theme) {
+        localStorage.setItem('default_theme_fallback', settings.default_theme);
       }
 
-      // Handle front-end default theme if user hasn't explicitly set a preference
-      if (typeof window !== 'undefined') {
-        // Always update the fallback so it's ready for the next front-end load
-        if (settings.default_theme) {
-          localStorage.setItem('default_theme_fallback', settings.default_theme);
-        }
-
-        const isAdmin = checkAdmin(location.pathname);
-        if (!isAdmin) {
-          const savedTheme = localStorage.getItem('theme');
-          if (savedTheme === null) {
-            const defaultTheme = settings.default_theme || 'dark';
-            if (defaultTheme === 'light') {
+      const isAdmin = checkAdmin(location.pathname);
+      if (!isAdmin) {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === null) {
+          const defaultTheme = settings.default_theme || 'dark';
+          if (defaultTheme === 'light') {
+            if (!document.documentElement.classList.contains('light')) {
               document.documentElement.classList.add('light');
               document.documentElement.style.backgroundColor = '#f8f9fa';
-            } else {
+            }
+          } else {
+            if (document.documentElement.classList.contains('light')) {
               document.documentElement.classList.remove('light');
               document.documentElement.style.backgroundColor = '#0a0a0f';
             }
@@ -170,14 +163,14 @@ export function useLogo() {
   const logoUrl = (logoUrlRaw && logoUrlRaw.trim() !== "") ? logoUrlRaw : undefined;
   const logoShape = settings?.logo_shape || 'square';
 
-  const resolveDjImage = (djPhoto: string | null | undefined) => {
+  const resolveDjImage = useCallback((djPhoto: string | null | undefined) => {
     if (!djPhoto || djPhoto.trim() === "") {
       return logoUrl || "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=200&q=80";
     }
     return djPhoto;
-  };
+  }, [logoUrl]);
 
-  const getPageTitle = (key: string, defaultTitle: string): string => {
+  const getPageTitle = useCallback((key: string, defaultTitle: string): string => {
     if (settings?.menu_item_page_titles) {
       try {
         const titles = JSON.parse(settings.menu_item_page_titles);
@@ -189,7 +182,7 @@ export function useLogo() {
       }
     }
     return defaultTitle;
-  };
+  }, [settings?.menu_item_page_titles]);
 
   return { logoUrl, logoShape, isLightMode, settings, resolveDjImage, getPageTitle };
 }

@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
-import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles, Database, Video, Key, Facebook, Layers, Mic, Music } from "lucide-react";
+import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles, Database, Video, Key, Facebook, Layers, Mic, Music, Power, Ticket, Megaphone } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { useModal } from "../../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
@@ -9,8 +9,9 @@ import { fetchAdmin } from "./adminApi";
 import { ImageUploadField } from "./ImageUploadField";
 
 import { useLogo } from "../../hooks/useLogo";
+import { safeFetchJson } from "../../utils/safeFetch";
 
-export function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; isAdminUser: boolean }) {
+export function AdminSidebar({ onLogout, isAdminUser, userRole }: { onLogout: () => void; isAdminUser: boolean; userRole: string | null }) {
   const { isLightMode } = useLogo();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
@@ -25,7 +26,7 @@ export function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; 
 
   const { data: features = {} } = useQuery({
     queryKey: ['settings'],
-    queryFn: () => fetch('/api/public/settings').then(res => res.json()),
+    queryFn: () => safeFetchJson('/api/public/settings'),
   });
 
   const adminBasePath = (features.admin_custom_path || '/admin').trim().replace(/\/+$/, '') || '/admin';
@@ -46,8 +47,9 @@ export function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; 
     { name: "Agency", path: `${adminBasePath}/bookings`, icon: Calendar },
     { name: "Branding", path: `${adminBasePath}/branding`, icon: HomeIcon },
     { name: "DJs", path: `${adminBasePath}/djs`, icon: Users },
-    { name: "Pop-up", path: `${adminBasePath}/popup`, icon: Sparkles },
+    { name: "Pop-up", path: `${adminBasePath}/popup`, icon: Megaphone },
     { name: "Ads", path: `${adminBasePath}/ads`, icon: ImageIcon },
+    { name: "Special Events", path: `${adminBasePath}/events`, icon: Ticket },
     { name: "Schedule", path: `${adminBasePath}/schedule`, icon: Calendar },
     { name: "Staff Users", path: `${adminBasePath}/users`, icon: UserCog },
     { name: "Chat Users", path: `${adminBasePath}/chat-users`, icon: MessageSquare },
@@ -57,8 +59,12 @@ export function AdminSidebar({ onLogout, isAdminUser }: { onLogout: () => void; 
     { name: "Meta Integrations", path: `${adminBasePath}/meta-integrations`, icon: Facebook },
   ];
 
-  if (!isAdminUser) {
-    // DJs/non-admins only see Live Tools, Interactions, My Profile, and Song Requests
+  if (userRole === "owner") {
+    navs.unshift({ name: "Owner Control", path: `${adminBasePath}/owner-control`, icon: Power });
+  }
+
+  if (!isAdminUser && userRole !== "owner") {
+    // DJs/non-admins see Live Tools, Interactions, My Profile, and Song Requests
     navs = navs.filter(n =>
       n.name === "Live Tools" ||
       n.name === "Interactions" ||

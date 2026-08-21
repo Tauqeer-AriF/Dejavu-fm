@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { fetchAdmin } from "./adminApi";
 import { ImageUploadField } from "./ImageUploadField";
 import { useLogo } from "../../hooks/useLogo";
+import { safeFetchJson } from "../../utils/safeFetch";
 
 import { LiveLocationsModal } from '../../components/LiveLocationsModal';
 import { PremiumRingLoader } from "../../components/PremiumRingLoader";
@@ -17,7 +18,7 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
   const [stats, setStats] = useState<any>(null);
   const { data: settings = {} } = useQuery({
     queryKey: ['settings'],
-    queryFn: () => fetch('/api/public/settings').then(res => res.json()),
+    queryFn: () => safeFetchJson('/api/public/settings'),
   });
 
   const primaryColor = settings?.primary_color || '#b026ff';

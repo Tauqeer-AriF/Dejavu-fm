@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { convertToLocalTime, getLondonTime } from "../lib/timeUtils";
 import { useLogo } from "../hooks/useLogo";
+import { safeFetchJson } from "../utils/safeFetch";
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const SHORT_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -32,7 +33,7 @@ export default function Schedule() {
   
   const { data: scheduleData, isLoading } = useQuery({
     queryKey: ['schedule'],
-    queryFn: () => fetch("/api/public/schedule").then(res => res.json())
+    queryFn: () => safeFetchJson("/api/public/schedule")
   });
 
   const { logoUrl, isLightMode, settings, resolveDjImage, getPageTitle } = useLogo();

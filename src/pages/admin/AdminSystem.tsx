@@ -8,19 +8,23 @@ import { useModal } from "../../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
 import { fetchAdmin } from "./adminApi";
 import { ImageUploadField } from "./ImageUploadField";
+import { safeFetchJson } from "../../utils/safeFetch";
 
 import { useLogo } from "../../hooks/useLogo";
+import { useAudioStore } from "../../context/AudioContext";
 
 export function AdminAdvanced() {
   const { isLightMode } = useLogo();
   const queryClient = useQueryClient();
   const { data: serverSettings } = useQuery({
     queryKey: ['settings'],
-    queryFn: () => fetch('/api/public/settings').then(res => res.json()),
+    queryFn: () => safeFetchJson('/api/public/settings'),
   });
 
   const [features, setFeatures] = useState<Record<string, boolean>>({
+    feat_greeting: true,
     feat_chat: true,
+    feat_gamification: true,
     feat_shoutouts: true,
     feat_cinematic: true,
     feat_pwa: true,
@@ -29,13 +33,17 @@ export function AdminAdvanced() {
     feat_stream_quality: true,
     feat_auto_fullscreen: true,
     feat_booth: true,
+    feat_special_events: true,
+    feat_ai_studio: true,
   });
   const { showAlert } = useModal();
 
   useEffect(() => {
     if (serverSettings) {
       setFeatures({
+        feat_greeting: serverSettings.feat_greeting !== '0',
         feat_chat: serverSettings.feat_chat !== '0',
+        feat_gamification: serverSettings.feat_gamification !== '0',
         feat_shoutouts: serverSettings.feat_shoutouts !== '0',
         feat_cinematic: serverSettings.feat_cinematic !== '0',
         feat_pwa: serverSettings.feat_pwa !== '0',
@@ -44,6 +52,8 @@ export function AdminAdvanced() {
         feat_stream_quality: serverSettings.feat_stream_quality !== '0',
         feat_auto_fullscreen: serverSettings.feat_auto_fullscreen !== '0',
         feat_booth: serverSettings.feat_booth !== '0',
+        feat_special_events: serverSettings.feat_special_events !== '0',
+        feat_ai_studio: serverSettings.feat_ai_studio !== '0' && serverSettings.ai_studio_enabled !== '0',
       });
     }
   }, [serverSettings]);
@@ -56,9 +66,14 @@ export function AdminAdvanced() {
     e.preventDefault();
     
     // Save all features
-    const settingsToSave = Object.fromEntries(
+    const settingsToSave: Record<string, string> = Object.fromEntries(
       Object.entries(features).map(([k, v]) => [k, v ? '1' : '0'])
     );
+
+    // Keep ai_studio_enabled synchronized
+    if (features.feat_ai_studio !== undefined) {
+      settingsToSave.ai_studio_enabled = features.feat_ai_studio ? '1' : '0';
+    }
 
     const res = await fetchAdmin("/api/admin/settings", {
       method: "PUT",
@@ -69,21 +84,25 @@ export function AdminAdvanced() {
     if (res.ok) {
       showAlert({ title: "Success", message: "Advanced features saved!", style: "success" });
       queryClient.invalidateQueries({ queryKey: ['settings'] });
+      queryClient.invalidateQueries({ queryKey: ['publicSettings'] });
     } else {
       showAlert({ title: "Error", message: "Failed to save settings", style: "danger" });
     }
   };
 
   const toggleItems = [
+    { id: 'feat_greeting', title: 'Personalised Greeting Modal', description: 'Enable or disable the interactive welcome greeting modal with personalised messages for returning listeners and live show alerts.' },
     { id: 'feat_chat', title: 'Chat Room', description: 'Enable real-time chat functionality.' },
     { id: 'feat_shoutouts', title: 'Shoutout Widget', description: 'Enable direct interaction (fire, hearts, messages).' },
+    { id: 'feat_ai_studio', title: 'AI Social Content Studio', description: 'Enable or disable the automated AI Social Content Studio, video reel generation pipeline, AI prompt presets, and schedule listener.' },
     { id: 'feat_cinematic', title: 'Cinematic Visualiser', description: 'Enable the immersive audio visualiser mode.' },
     { id: 'feat_pwa', title: 'PWA Install Prompt', description: 'Prompt users to install the web app to their home screen.' },
     { id: 'feat_bookings', title: 'DJ Bookings (Agency)', description: 'Enable the DJ inquiry and booking system.' },
     { id: 'feat_live_tools', title: 'Live Tools / Studio Cam', description: 'Enable the studio camera watch live tools.' },
     { id: 'feat_booth', title: 'Virtual DJ Booth', description: 'Enable or disable the whole DJ Booth feature, request queue, and navigation link.' },
+    { id: 'feat_special_events', title: 'Special Events Module', description: 'Enable or disable the special events broadcast listings, RSVP details, and floating date/schedule badges.' },
     { id: 'feat_stream_quality', title: 'Stream Quality Toggle', description: 'Show or hide the stream quality selector in the playbar.' },
-  ];
+  ].filter(item => serverSettings?.[`owner_hide_${item.id}`] !== '1');
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
@@ -92,7 +111,20 @@ export function AdminAdvanced() {
       </h2>
 
       <div className={`border rounded-2xl p-5 sm:p-6 transition-colors ${isLightMode ? 'bg-white border-black/10 shadow-sm' : 'bg-dark-bg/50 border-white/10'}`}>
-        <form onSubmit={handleSave} className="space-y-6">
+        {toggleItems.length === 0 ? (
+          <div className="py-12 px-4 text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-neon-purple/10 border border-neon-purple/20 text-neon-purple flex items-center justify-center mx-auto">
+              <Shield className="w-6 h-6" />
+            </div>
+            <h3 className={`text-lg font-black uppercase tracking-tight ${isLightMode ? 'text-black' : 'text-white'}`}>
+              Advanced Feature Toggles Restricted
+            </h3>
+            <p className={`text-xs max-w-md mx-auto ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
+              The station owner has currently set all advanced feature controls as hidden from this panel. Contact primary station authority for access.
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handleSave} className="space-y-6">
           <div className="grid gap-4">
             {toggleItems.map(item => (
               <React.Fragment key={item.id}>
@@ -113,6 +145,45 @@ export function AdminAdvanced() {
                     }`}></div>
                   </label>
                 </div>
+
+                {item.id === 'feat_chat' && (
+                  <div className={`ml-6 sm:ml-10 pl-4 border-l-2 transition-all duration-300 -mt-2 mb-2 ${
+                    features['feat_chat'] 
+                      ? 'border-neon-purple/40 opacity-100' 
+                      : 'border-white/5 opacity-40'
+                  }`}>
+                    <div className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${
+                      isLightMode ? 'bg-black/[0.02] border-black/5' : 'bg-white/[0.02] border-white/5'
+                    }`}>
+                      <div className="flex-1 pr-4 text-left">
+                        <h4 className={`text-base font-bold mb-1 ${
+                          features['feat_chat'] 
+                            ? isLightMode ? 'text-black' : 'text-white' 
+                            : isLightMode ? 'text-black/40' : 'text-white/40'
+                        }`}>
+                          ↳ Listener Gamification & Rewards
+                        </h4>
+                        <p className={`text-xs ${isLightMode ? 'text-black/50 font-medium' : 'text-white/40'}`}>
+                          Enable XP progression, listener levels, daily streaks, achievement badges, and community leaderboard.
+                        </p>
+                      </div>
+                      <label className={`relative inline-flex items-center shrink-0 ${
+                        features['feat_chat'] ? 'cursor-pointer' : 'cursor-not-allowed'
+                      }`}>
+                        <input 
+                          type="checkbox" 
+                          className="sr-only peer" 
+                          checked={features['feat_gamification'] || false} 
+                          disabled={!features['feat_chat']}
+                          onChange={e => handleToggle('feat_gamification', e.target.checked)} 
+                        />
+                        <div className={`w-12 h-6 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-neon-purple shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] ${
+                          isLightMode ? 'bg-black/10' : 'bg-white/10'
+                        }`}></div>
+                      </label>
+                    </div>
+                  </div>
+                )}
 
                 {item.id === 'feat_live_tools' && (
                   <div className={`ml-6 sm:ml-10 pl-4 border-l-2 transition-all duration-300 -mt-2 mb-2 ${
@@ -162,6 +233,7 @@ export function AdminAdvanced() {
             Save All Features
           </button>
         </form>
+        )}
       </div>
     </div>
   );
@@ -245,7 +317,7 @@ export function AdminBranding() {
 
   const { data: serverSettings } = useQuery({
     queryKey: ['settings'],
-    queryFn: () => fetch('/api/public/settings').then(res => res.json()),
+    queryFn: () => safeFetchJson('/api/public/settings'),
   });
 
   useEffect(() => {
@@ -752,6 +824,7 @@ export function AdminSettings() {
   }, []);
 
   const [isSavingMaintenance, setIsSavingMaintenance] = useState(false);
+  const [isSavingGeneral, setIsSavingGeneral] = useState(false);
 
   const saveMaintenanceOnly = async (overrideMode?: boolean) => {
     setIsSavingMaintenance(true);
@@ -789,6 +862,8 @@ export function AdminSettings() {
   };
 
   const saveNode = async () => {
+    setIsSavingGeneral(true);
+    const toastId = toast.loading("Saving general settings...");
     try {
       let formattedPath = adminCustomPath.trim();
       if (!formattedPath) {
@@ -822,12 +897,33 @@ export function AdminSettings() {
       });
       if (res.ok) {
         setAdminCustomPath(formattedPath);
+        
+        // Sync live audio store immediately
+        const urls = {
+          low: streamLow || stream || "",
+          medium: streamMedium || stream || "",
+          high: streamHigh || stream || ""
+        };
+        useAudioStore.getState().setQualityUrls(urls);
+        if (stream) {
+          useAudioStore.getState().setStreamUrl(stream);
+        }
+
+        toast.success(`General settings saved! Dashboard path: ${formattedPath}`, { id: toastId });
         showAlert({ title: "Success", message: `General settings saved! Dashboard path updated to: ${formattedPath}`, style: "success" });
         queryClient.invalidateQueries({ queryKey: ["settings"] });
+      } else {
+        const data = await res.json().catch(() => ({}));
+        const errMsg = data.error || "Failed to save settings on server.";
+        toast.error(errMsg, { id: toastId });
+        showAlert({ title: "Error", message: errMsg, style: "danger" });
       }
-    } catch(e) {
+    } catch(e: any) {
       console.error(e);
+      toast.error(e?.message || "Failed to save settings", { id: toastId });
       showAlert({ title: "Error", message: "Failed to save settings", style: "danger" });
+    } finally {
+      setIsSavingGeneral(false);
     }
   }
 
@@ -1070,10 +1166,18 @@ export function AdminSettings() {
           </div>
 
           <button 
+            disabled={isSavingGeneral}
             onClick={saveNode} 
-            className="w-full sm:w-auto bg-neon-purple text-white font-black uppercase tracking-widest text-xs py-4 px-10 rounded-xl hover:bg-neon-blue transition-all shadow-lg shadow-neon-purple/20 mt-4"
+            className="w-full sm:w-auto bg-neon-purple text-white font-black uppercase tracking-widest text-xs py-4 px-10 rounded-xl hover:bg-neon-blue transition-all shadow-lg shadow-neon-purple/20 mt-4 disabled:opacity-50 flex items-center justify-center space-x-2"
           >
-            Update General Settings
+            {isSavingGeneral ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span>Updating Settings...</span>
+              </>
+            ) : (
+              <span>Update General Settings</span>
+            )}
           </button>
         </div>
       </div>
