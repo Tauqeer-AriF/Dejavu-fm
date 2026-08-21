@@ -312,5 +312,51 @@ export const aiStudioApi = {
       throw new Error(err.error || "Failed to upload media");
     }
     return res.json();
+  },
+
+  getAuditLogs: async (params?: {
+    action?: string;
+    category?: string;
+    search?: string;
+    timeframe?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    logs: any[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    stats: {
+      totalAIEvents: number;
+      jobOperations: number;
+      reelReviews: number;
+      mediaEngineering: number;
+      maintenanceActions: number;
+      configUpdates: number;
+    };
+  }> => {
+    const sp = new URLSearchParams();
+    if (params?.action) sp.set("action", params.action);
+    if (params?.category) sp.set("category", params.category);
+    if (params?.search) sp.set("search", params.search);
+    if (params?.timeframe) sp.set("timeframe", params.timeframe);
+    if (params?.page) sp.set("page", String(params.page));
+    if (params?.limit) sp.set("limit", String(params.limit));
+
+    const res = await fetchAdmin(`/api/admin/ai-studio/audit-logs?${sp.toString()}`);
+    if (!res.ok) throw new Error("Failed to fetch AI Studio audit logs");
+    return res.json();
+  },
+
+  clearAuditLogs: async (): Promise<{ success: boolean; message: string; deletedCount: number }> => {
+    const res = await fetchAdmin("/api/admin/ai-studio/audit-logs", {
+      method: "DELETE",
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Failed to clear AI Studio audit logs");
+    }
+    return res.json();
   }
 };

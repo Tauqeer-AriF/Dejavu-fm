@@ -99,3 +99,32 @@ export interface AIStats {
   rejectedReels: number;
   avgViralityScore: number;
 }
+
+export interface AIAuditLog {
+  id: number;
+  username: string;
+  role: string;
+  action: string;
+  resource: string;
+  resource_id?: string | null;
+  details?: string | null;
+  timestamp: string;
+}
+
+export interface AIAuditStats {
+  totalAIEvents: number;
+  jobOperations: number;
+  reelReviews: number;
+  mediaEngineering: number;
+  maintenanceActions: number;
+  configUpdates: number;
+}
+
+export interface AIAuditLogsResponse {
+  logs: AIAuditLog[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  stats: AIAuditStats;
+}

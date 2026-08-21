@@ -17,6 +17,7 @@ import {
   Sliders,
   Layers,
   ShieldAlert,
+  Shield,
   Sun,
   Moon
 } from "lucide-react";
@@ -24,6 +25,7 @@ import { AIJob, AIReel, AIPromptPreset, AIStats } from "./ai-studio/types";
 import { aiStudioApi } from "./ai-studio/aiStudioApi";
 import { ReelsReviewSuite } from "./ai-studio/ReelsReviewSuite";
 import { JobsPipelineMonitor } from "./ai-studio/JobsPipelineMonitor";
+import { AIAuditLogsVault } from "./ai-studio/AIAuditLogsVault";
 import { NewJobModal } from "./ai-studio/NewJobModal";
 import { SettingsAndPresetsModal } from "./ai-studio/SettingsAndPresetsModal";
 import { AIStudioThemeProvider, useAIStudioTheme } from "./ai-studio/themeContext";
@@ -36,7 +38,7 @@ interface Props {
 const AdminAIContentStudioInner: React.FC<Props> = ({ onLogout }) => {
   const navigate = useNavigate();
   const { isLight, toggleTheme } = useAIStudioTheme();
-  const [activeTab, setActiveTab] = useState<"reels" | "jobs">("reels");
+  const [activeTab, setActiveTab] = useState<"reels" | "jobs" | "audit">("reels");
   const [stats, setStats] = useState<AIStats>({
     totalJobs: 0,
     activeJobs: 0,
@@ -331,6 +333,20 @@ const AdminAIContentStudioInner: React.FC<Props> = ({ onLogout }) => {
                 </span>
               )}
             </button>
+
+            <button
+              onClick={() => setActiveTab("audit")}
+              className={`px-5 py-2.5 rounded-2xl text-xs font-bold transition flex items-center gap-2 ${
+                activeTab === "audit"
+                  ? "bg-neon-purple text-white shadow-lg shadow-neon-purple/20"
+                  : isLight
+                  ? "bg-white text-slate-700 hover:text-slate-900 border border-slate-200/90 hover:bg-slate-50 shadow-xs"
+                  : "bg-black/30 text-white/60 hover:text-white border border-white/10"
+              }`}
+            >
+              <Shield className="w-4 h-4 text-neon-blue" />
+              <span>Security & Audit Vault</span>
+            </button>
           </div>
 
           <button
@@ -349,7 +365,7 @@ const AdminAIContentStudioInner: React.FC<Props> = ({ onLogout }) => {
         </div>
 
         {/* Active Filter Banner */}
-        {selectedJobId && (
+        {selectedJobId && activeTab === "reels" && (
           <div className={`mb-4 px-4 py-2.5 rounded-2xl border flex items-center justify-between text-xs font-bold ${
             isLight ? "bg-purple-50 text-purple-900 border-purple-200" : "bg-purple-950/40 text-purple-200 border-purple-800/50"
           }`}>
@@ -370,11 +386,16 @@ const AdminAIContentStudioInner: React.FC<Props> = ({ onLogout }) => {
             onRefresh={() => loadAllData(false)}
             onSelectJob={handleFilterJobReels}
           />
-        ) : (
+        ) : activeTab === "jobs" ? (
           <JobsPipelineMonitor
             jobs={jobs}
             onRefresh={() => loadAllData(false)}
             onViewReels={handleFilterJobReels}
+          />
+        ) : (
+          <AIAuditLogsVault
+            onNavigateToReels={handleFilterJobReels}
+            onNavigateToJobs={() => setActiveTab("jobs")}
           />
         )}
       </main>
