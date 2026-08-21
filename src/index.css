@@ -35,6 +35,150 @@
   box-shadow: 0 32px 64px -16px rgba(0, 0, 0, 0.1);
 }
 
+/* Personalized Greeting Modal - Premium Glassmorphism Styling */
+:root.light #personalized-greeting-modal-backdrop,
+html.light #personalized-greeting-modal-backdrop,
+.light #personalized-greeting-modal-backdrop {
+  background-color: rgba(15, 23, 42, 0.25) !important;
+  backdrop-filter: blur(12px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(150%) !important;
+}
+
+:root.light #personalized-greeting-modal-card,
+html.light #personalized-greeting-modal-card,
+.light #personalized-greeting-modal-card {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.90) 100%) !important;
+  backdrop-filter: blur(36px) saturate(210%) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(210%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.95) !important;
+  color: #0f172a !important;
+  box-shadow: 
+    0 30px 65px -15px rgba(15, 23, 42, 0.08),
+    0 15px 35px -10px rgba(176, 38, 255, 0.07),
+    0 6px 16px -4px rgba(15, 23, 42, 0.04),
+    inset 0 2px 3px 0 #ffffff,
+    inset 0 -3px 8px 0 rgba(15, 23, 42, 0.02),
+    inset 0 0 28px 0 rgba(255, 255, 255, 0.8) !important;
+}
+
+:root.light #personalized-greeting-modal-card h2,
+html.light #personalized-greeting-modal-card h2,
+.light #personalized-greeting-modal-card h2 {
+  color: #0f172a !important;
+}
+
+:root.light #personalized-greeting-modal-card p,
+html.light #personalized-greeting-modal-card p,
+.light #personalized-greeting-modal-card p {
+  color: #334155 !important;
+}
+
+:root.light #personalized-greeting-modal-card .greeting-support-text,
+html.light #personalized-greeting-modal-card .greeting-support-text,
+.light #personalized-greeting-modal-card .greeting-support-text {
+  color: #64748b !important;
+}
+
+:root.light #greeting-modal-close-btn,
+html.light #greeting-modal-close-btn,
+.light #greeting-modal-close-btn {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(241, 245, 249, 0.8)) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  border-color: rgba(255, 255, 255, 0.95) !important;
+  color: #475569 !important;
+  box-shadow: 
+    0 4px 10px rgba(15, 23, 42, 0.04),
+    inset 0 1.5px 1.5px #ffffff,
+    inset 0 -1.5px 3px rgba(15, 23, 42, 0.02) !important;
+}
+
+:root.light #greeting-modal-close-btn:hover,
+html.light #greeting-modal-close-btn:hover,
+.light #greeting-modal-close-btn:hover {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: rgba(176, 38, 255, 0.4) !important;
+  box-shadow: 0 6px 16px rgba(176, 38, 255, 0.12), inset 0 1.5px 1.5px #ffffff !important;
+}
+
+#greeting-modal-favicon-container {
+  overflow: hidden !important;
+  border-radius: 1.125rem !important;
+}
+
+#greeting-modal-favicon-container img {
+  border-radius: 0.75rem !important;
+  object-fit: contain !important;
+}
+
+:root.light #greeting-modal-favicon-container,
+html.light #greeting-modal-favicon-container,
+.light #greeting-modal-favicon-container {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.92)) !important;
+  backdrop-filter: blur(18px) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+  border-color: rgba(255, 255, 255, 0.95) !important;
+  box-shadow: 
+    0 10px 24px -4px rgba(15, 23, 42, 0.06),
+    0 4px 12px -2px rgba(176, 38, 255, 0.06),
+    inset 0 2px 3px 0 #ffffff,
+    inset 0 -2px 5px 0 rgba(15, 23, 42, 0.03) !important;
+}
+
+:root.light #greeting-modal-primary-cta,
+html.light #greeting-modal-primary-cta,
+.light #greeting-modal-primary-cta {
+  background: linear-gradient(135deg, #b026ff, #7928ca) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 24px -4px rgba(176, 38, 255, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.4) !important;
+}
+
+:root.light #greeting-modal-primary-cta:hover,
+html.light #greeting-modal-primary-cta:hover,
+.light #greeting-modal-primary-cta:hover {
+  filter: brightness(1.08) !important;
+  box-shadow: 0 10px 28px -2px rgba(176, 38, 255, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.4) !important;
+}
+
+:root.light #greeting-modal-primary-cta svg,
+html.light #greeting-modal-primary-cta svg,
+.light #greeting-modal-primary-cta svg {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+}
+
+:root.light #greeting-modal-secondary-cta,
+html.light #greeting-modal-secondary-cta,
+.light #greeting-modal-secondary-cta {
+  background-color: rgba(241, 245, 249, 0.8) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  color: #334155 !important;
+  border-color: rgba(226, 232, 240, 0.9) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03), inset 0 1px 1px #ffffff !important;
+}
+
+:root.light #greeting-modal-secondary-cta:hover,
+html.light #greeting-modal-secondary-cta:hover,
+.light #greeting-modal-secondary-cta:hover {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: rgba(176, 38, 255, 0.3) !important;
+}
+
+:root.light #greeting-modal-dismiss-btn,
+html.light #greeting-modal-dismiss-btn,
+.light #greeting-modal-dismiss-btn {
+  color: #64748b !important;
+}
+
+:root.light #greeting-modal-dismiss-btn:hover,
+html.light #greeting-modal-dismiss-btn:hover,
+.light #greeting-modal-dismiss-btn:hover {
+  color: #0f172a !important;
+}
+
 /* Swiper Navigation Custom Styles - Premium Redesign */
 .swiper-button-next,
 .swiper-button-prev {
@@ -212,25 +356,25 @@ input, button, select, textarea {
 /* ==========================================================================
    Light Mode Inputs, Textareas, Selects & Autofill Professional Resilience
    ========================================================================== */
-:root.light input:not([type="checkbox"]):not([type="radio"]),
+:root.light input:not([type="checkbox"]):not([type="radio"]):not(.bg-transparent),
 :root.light textarea,
 :root.light select,
-html.light input:not([type="checkbox"]):not([type="radio"]),
+html.light input:not([type="checkbox"]):not([type="radio"]):not(.bg-transparent),
 html.light textarea,
 html.light select,
-.light input:not([type="checkbox"]):not([type="radio"]),
+.light input:not([type="checkbox"]):not([type="radio"]):not(.bg-transparent),
 .light textarea,
 .light select,
-html.light input[type="email"],
-html.light input[type="text"],
-html.light input[type="password"],
-html.light input[type="number"],
-html.light input[type="tel"],
-html.light input[type="url"],
-html.light input[type="search"],
-.light input[type="email"],
-.light input[type="text"],
-.light input[type="password"] {
+html.light input[type="email"]:not(.bg-transparent),
+html.light input[type="text"]:not(.bg-transparent),
+html.light input[type="password"]:not(.bg-transparent),
+html.light input[type="number"]:not(.bg-transparent),
+html.light input[type="tel"]:not(.bg-transparent),
+html.light input[type="url"]:not(.bg-transparent),
+html.light input[type="search"]:not(.bg-transparent),
+.light input[type="email"]:not(.bg-transparent),
+.light input[type="text"]:not(.bg-transparent),
+.light input[type="password"]:not(.bg-transparent) {
   color-scheme: light !important;
   background-color: #ffffff !important;
   background: #ffffff !important;
@@ -238,20 +382,20 @@ html.light input[type="search"],
   caret-color: #0f172a !important;
 }
 
-:root.light input:not([type="checkbox"]):not([type="radio"]):focus,
+:root.light input:not([type="checkbox"]):not([type="radio"]):not(.bg-transparent):focus,
 :root.light textarea:focus,
 :root.light select:focus,
-html.light input:not([type="checkbox"]):not([type="radio"]):focus,
+html.light input:not([type="checkbox"]):not([type="radio"]):not(.bg-transparent):focus,
 html.light textarea:focus,
 html.light select:focus,
-.light input:not([type="checkbox"]):not([type="radio"]):focus,
+.light input:not([type="checkbox"]):not([type="radio"]):not(.bg-transparent):focus,
 .light textarea:focus,
 .light select:focus,
-html.light input[type="email"]:focus,
-html.light input[type="text"]:focus,
-html.light input[type="password"]:focus,
-.light input[type="email"]:focus,
-.light input[type="text"]:focus {
+html.light input[type="email"]:not(.bg-transparent):focus,
+html.light input[type="text"]:not(.bg-transparent):focus,
+html.light input[type="password"]:not(.bg-transparent):focus,
+.light input[type="email"]:not(.bg-transparent):focus,
+.light input[type="text"]:not(.bg-transparent):focus {
   background-color: #ffffff !important;
   background: #ffffff !important;
   color: #0f172a !important;
@@ -585,23 +729,20 @@ button:not(.absolute) {
   font-family: var(--font-display);
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
+/* Hide scrollbar globally across all elements (including AI Studio) while keeping content fully scrollable */
+html, body, *, ::-webkit-scrollbar, *::-webkit-scrollbar {
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none !important;  /* Firefox */
 }
-::-webkit-scrollbar-track {
-  background: var(--theme-bg);
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  border: 2px solid var(--theme-bg);
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-neon-purple);
-}
-:root.light ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
+
+::-webkit-scrollbar,
+*::-webkit-scrollbar,
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
 }
 
 /* Audio Visualizer Bars */
@@ -883,7 +1024,7 @@ button:not(.absolute) {
 }
 
 /* Input Fields & Dropdowns - Pristine high-contrast light styles */
-.admin-light-mode .admin-dashboard-container input:not([type="checkbox"]):not([type="radio"]),
+.admin-light-mode .admin-dashboard-container input:not([type="checkbox"]):not([type="radio"]):not(.bg-transparent),
 .admin-light-mode .admin-dashboard-container select,
 .admin-light-mode .admin-dashboard-container textarea {
   background-color: #ffffff !important;
@@ -897,7 +1038,7 @@ button:not(.absolute) {
   color: #111827 !important;
 }
 
-.admin-light-mode .admin-dashboard-container input:not([type="checkbox"]):not([type="radio"]):focus,
+.admin-light-mode .admin-dashboard-container input:not([type="checkbox"]):not([type="radio"]):not(.bg-transparent):focus,
 .admin-light-mode .admin-dashboard-container select:focus,
 .admin-light-mode .admin-dashboard-container textarea:focus {
   border-color: var(--color-neon-purple) !important;
@@ -1613,6 +1754,563 @@ html.light .vote-btn-elem:disabled:not(.bg-neon-purple) svg,
   color: #64748b !important;
 }
 
+
+
+
+
+
+/* Gamification Widget Theme Enforcements */
+.gamification-widget-btn {
+  background-color: rgba(15, 17, 24, 0.8) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+.gamification-widget-btn:hover {
+  background-color: #151824 !important;
+}
+
+:root.light .gamification-widget-btn,
+.light .gamification-widget-btn,
+.admin-light-mode .gamification-widget-btn {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+:root.light .gamification-widget-btn:hover,
+.light .gamification-widget-btn:hover,
+.admin-light-mode .gamification-widget-btn:hover {
+  background-color: #f8fafc !important;
+}
+
+:root.light #gamification-guest-btn,
+.light #gamification-guest-btn,
+.admin-light-mode #gamification-guest-btn {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+:root.light #gamification-guest-btn:hover,
+.light #gamification-guest-btn:hover,
+.admin-light-mode #gamification-guest-btn:hover {
+  background-color: #f8fafc !important;
+}
+
+:root.light #gamification-mobile-menu-profile-card,
+.light #gamification-mobile-menu-profile-card,
+.admin-light-mode #gamification-mobile-menu-profile-card {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1) !important;
+}
+
+:root.light #gamification-mobile-menu-guest-card,
+.light #gamification-mobile-menu-guest-card,
+.admin-light-mode #gamification-mobile-menu-guest-card {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Gamification Hub Modal Light Mode Safeguards & Full Styling */
+:root.light #gamification-hub-modal-card,
+html.light #gamification-hub-modal-card,
+.light #gamification-hub-modal-card,
+.theme-light #gamification-hub-modal-card,
+.contrast-high-light #gamification-hub-modal-card,
+[data-theme="light"] #gamification-hub-modal-card,
+.admin-light-mode #gamification-hub-modal-card {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  box-shadow: 0 25px 70px -15px rgba(0, 0, 0, 0.15) !important;
+}
+
+:root.light #gamification-hub-modal-card h1,
+:root.light #gamification-hub-modal-card h2,
+:root.light #gamification-hub-modal-card h3,
+:root.light #gamification-hub-modal-card h4,
+:root.light #gamification-hub-modal-card h5,
+html.light #gamification-hub-modal-card h1,
+html.light #gamification-hub-modal-card h2,
+html.light #gamification-hub-modal-card h3,
+html.light #gamification-hub-modal-card h4,
+html.light #gamification-hub-modal-card h5,
+.light #gamification-hub-modal-card h1,
+.light #gamification-hub-modal-card h2,
+.light #gamification-hub-modal-card h3,
+.light #gamification-hub-modal-card h4,
+.light #gamification-hub-modal-card h5,
+.theme-light #gamification-hub-modal-card h1,
+.theme-light #gamification-hub-modal-card h2,
+.theme-light #gamification-hub-modal-card h3,
+.theme-light #gamification-hub-modal-card h4,
+.theme-light #gamification-hub-modal-card h5,
+.admin-light-mode #gamification-hub-modal-card h1,
+.admin-light-mode #gamification-hub-modal-card h2,
+.admin-light-mode #gamification-hub-modal-card h3,
+.admin-light-mode #gamification-hub-modal-card h4,
+.admin-light-mode #gamification-hub-modal-card h5 {
+  color: #0f172a !important;
+}
+
+/* Neutralize ANY dark background inside gamification modal in light mode */
+:root.light #gamification-hub-modal-card .bg-black,
+:root.light #gamification-hub-modal-card [class*="bg-black/"],
+:root.light #gamification-hub-modal-card .bg-slate-900,
+:root.light #gamification-hub-modal-card .bg-slate-950,
+:root.light #gamification-hub-modal-card [class*="bg-slate-900/"],
+:root.light #gamification-hub-modal-card [class*="bg-slate-950/"],
+:root.light #gamification-hub-modal-card [class*="bg-[#0"],
+:root.light #gamification-hub-modal-card [class*="bg-[#1"],
+:root.light #gamification-hub-modal-card [class*="bg-white/"],
+:root.light #gamification-hub-modal-card .gamification-card-surface,
+html.light #gamification-hub-modal-card .bg-black,
+html.light #gamification-hub-modal-card [class*="bg-black/"],
+html.light #gamification-hub-modal-card .bg-slate-900,
+html.light #gamification-hub-modal-card .bg-slate-950,
+html.light #gamification-hub-modal-card [class*="bg-slate-900/"],
+html.light #gamification-hub-modal-card [class*="bg-slate-950/"],
+html.light #gamification-hub-modal-card [class*="bg-[#0"],
+html.light #gamification-hub-modal-card [class*="bg-[#1"],
+html.light #gamification-hub-modal-card [class*="bg-white/"],
+html.light #gamification-hub-modal-card .gamification-card-surface,
+.light #gamification-hub-modal-card .bg-black,
+.light #gamification-hub-modal-card [class*="bg-black/"],
+.light #gamification-hub-modal-card .bg-slate-900,
+.light #gamification-hub-modal-card .bg-slate-950,
+.light #gamification-hub-modal-card [class*="bg-slate-900/"],
+.light #gamification-hub-modal-card [class*="bg-slate-950/"],
+.light #gamification-hub-modal-card [class*="bg-[#0"],
+.light #gamification-hub-modal-card [class*="bg-[#1"],
+.light #gamification-hub-modal-card [class*="bg-white/"],
+.light #gamification-hub-modal-card .gamification-card-surface,
+.theme-light #gamification-hub-modal-card .gamification-card-surface,
+.theme-light #gamification-hub-modal-card [class*="bg-white/"],
+.theme-light #gamification-hub-modal-card [class*="bg-black/"],
+.admin-light-mode #gamification-hub-modal-card .gamification-card-surface,
+.admin-light-mode #gamification-hub-modal-card [class*="bg-white/"],
+.admin-light-mode #gamification-hub-modal-card [class*="bg-black/"] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+/* Light mode identity banner */
+:root.light #gamification-hub-modal-card .gamification-banner-surface,
+html.light #gamification-hub-modal-card .gamification-banner-surface,
+.light #gamification-hub-modal-card .gamification-banner-surface,
+.theme-light #gamification-hub-modal-card .gamification-banner-surface,
+.admin-light-mode #gamification-hub-modal-card .gamification-banner-surface {
+  background: #f8fafc !important;
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Sub-containers & borders inside modal */
+:root.light #gamification-hub-modal-card .border-white\/5,
+:root.light #gamification-hub-modal-card .border-white\/10,
+:root.light #gamification-hub-modal-card .border-white\/20,
+:root.light #gamification-hub-modal-card [class*="border-white/"],
+html.light #gamification-hub-modal-card .border-white\/5,
+html.light #gamification-hub-modal-card .border-white\/10,
+html.light #gamification-hub-modal-card .border-white\/20,
+html.light #gamification-hub-modal-card [class*="border-white/"],
+.light #gamification-hub-modal-card .border-white\/5,
+.light #gamification-hub-modal-card .border-white\/10,
+.light #gamification-hub-modal-card .border-white\/20,
+.light #gamification-hub-modal-card [class*="border-white/"],
+.theme-light #gamification-hub-modal-card [class*="border-white/"],
+.admin-light-mode #gamification-hub-modal-card [class*="border-white/"] {
+  border-color: #e2e8f0 !important;
+}
+
+/* Navigation Tabs in Light Mode */
+:root.light #gamification-hub-modal-card .gamification-nav-tab:not(.active),
+html.light #gamification-hub-modal-card .gamification-nav-tab:not(.active),
+.light #gamification-hub-modal-card .gamification-nav-tab:not(.active),
+.theme-light #gamification-hub-modal-card .gamification-nav-tab:not(.active),
+.admin-light-mode #gamification-hub-modal-card .gamification-nav-tab:not(.active) {
+  background-color: transparent !important;
+  background: transparent !important;
+  color: #475569 !important;
+  border-color: transparent !important;
+}
+
+:root.light #gamification-hub-modal-card .gamification-nav-tab:not(.active):hover,
+html.light #gamification-hub-modal-card .gamification-nav-tab:not(.active):hover,
+.light #gamification-hub-modal-card .gamification-nav-tab:not(.active):hover,
+.theme-light #gamification-hub-modal-card .gamification-nav-tab:not(.active):hover,
+.admin-light-mode #gamification-hub-modal-card .gamification-nav-tab:not(.active):hover {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+:root.light #gamification-hub-modal-card .gamification-nav-tab.active,
+html.light #gamification-hub-modal-card .gamification-nav-tab.active,
+.light #gamification-hub-modal-card .gamification-nav-tab.active,
+.theme-light #gamification-hub-modal-card .gamification-nav-tab.active,
+.admin-light-mode #gamification-hub-modal-card .gamification-nav-tab.active {
+  color: #ffffff !important;
+  background: var(--color-neon-purple) !important;
+  border-color: transparent !important;
+}
+
+/* Leaderboard Timeframe Filter Buttons in Light Mode */
+:root.light #gamification-hub-modal-card .gamification-timeframe-container,
+html.light #gamification-hub-modal-card .gamification-timeframe-container,
+.light #gamification-hub-modal-card .gamification-timeframe-container,
+.theme-light #gamification-hub-modal-card .gamification-timeframe-container,
+.admin-light-mode #gamification-hub-modal-card .gamification-timeframe-container {
+  background-color: #f1f5f9 !important;
+  background: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+}
+
+:root.light #gamification-hub-modal-card .gamification-timeframe-btn.active,
+html.light #gamification-hub-modal-card .gamification-timeframe-btn.active,
+.light #gamification-hub-modal-card .gamification-timeframe-btn.active,
+.theme-light #gamification-hub-modal-card .gamification-timeframe-btn.active,
+.admin-light-mode #gamification-hub-modal-card .gamification-timeframe-btn.active {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+:root.light #gamification-hub-modal-card .gamification-timeframe-btn:not(.active),
+html.light #gamification-hub-modal-card .gamification-timeframe-btn:not(.active),
+.light #gamification-hub-modal-card .gamification-timeframe-btn:not(.active),
+.theme-light #gamification-hub-modal-card .gamification-timeframe-btn:not(.active),
+.admin-light-mode #gamification-hub-modal-card .gamification-timeframe-btn:not(.active) {
+  background-color: transparent !important;
+  background: transparent !important;
+  color: #64748b !important;
+  border: 1px solid transparent !important;
+}
+
+:root.light #gamification-hub-modal-card .gamification-timeframe-btn:not(.active):hover,
+html.light #gamification-hub-modal-card .gamification-timeframe-btn:not(.active):hover,
+.light #gamification-hub-modal-card .gamification-timeframe-btn:not(.active):hover,
+.theme-light #gamification-hub-modal-card .gamification-timeframe-btn:not(.active):hover,
+.admin-light-mode #gamification-hub-modal-card .gamification-timeframe-btn:not(.active):hover {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Close button inside modal */
+:root.light #gamification-hub-modal-card button[aria-label="Close Gamification Hub"],
+html.light #gamification-hub-modal-card button[aria-label="Close Gamification Hub"],
+.light #gamification-hub-modal-card button[aria-label="Close Gamification Hub"],
+.theme-light #gamification-hub-modal-card button[aria-label="Close Gamification Hub"],
+.admin-light-mode #gamification-hub-modal-card button[aria-label="Close Gamification Hub"] {
+  background-color: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+:root.light #gamification-hub-modal-card button[aria-label="Close Gamification Hub"]:hover,
+html.light #gamification-hub-modal-card button[aria-label="Close Gamification Hub"]:hover,
+.light #gamification-hub-modal-card button[aria-label="Close Gamification Hub"]:hover,
+.theme-light #gamification-hub-modal-card button[aria-label="Close Gamification Hub"]:hover,
+.admin-light-mode #gamification-hub-modal-card button[aria-label="Close Gamification Hub"]:hover {
+  background-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+/* Level Up Celebration Modal in Light Mode */
+:root.light #level-up-modal-card,
+html.light #level-up-modal-card,
+.light #level-up-modal-card,
+.theme-light #level-up-modal-card,
+.contrast-high-light #level-up-modal-card,
+[data-theme="light"] #level-up-modal-card,
+.admin-light-mode #level-up-modal-card {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  box-shadow: 0 25px 70px -15px rgba(0, 0, 0, 0.2) !important;
+}
+
+:root.light #level-up-modal-card h1,
+:root.light #level-up-modal-card h2,
+:root.light #level-up-modal-card h3,
+html.light #level-up-modal-card h1,
+html.light #level-up-modal-card h2,
+html.light #level-up-modal-card h3,
+.light #level-up-modal-card h1,
+.light #level-up-modal-card h2,
+.light #level-up-modal-card h3,
+.theme-light #level-up-modal-card h1,
+.theme-light #level-up-modal-card h2,
+.theme-light #level-up-modal-card h3,
+.admin-light-mode #level-up-modal-card h1,
+.admin-light-mode #level-up-modal-card h2,
+.admin-light-mode #level-up-modal-card h3 {
+  color: #0f172a !important;
+}
+
+/* DJ Follow Heart Button in Light Mode */
+:root.light .dj-follow-btn:not(.following),
+html.light .dj-follow-btn:not(.following),
+.light .dj-follow-btn:not(.following),
+.theme-light .dj-follow-btn:not(.following),
+.admin-light-mode .dj-follow-btn:not(.following) {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+:root.light .dj-follow-btn:not(.following) svg,
+html.light .dj-follow-btn:not(.following) svg,
+.light .dj-follow-btn:not(.following) svg,
+.theme-light .dj-follow-btn:not(.following) svg,
+.admin-light-mode .dj-follow-btn:not(.following) svg {
+  color: #1e293b !important;
+}
+
+:root.light .dj-follow-btn:not(.following):hover,
+html.light .dj-follow-btn:not(.following):hover,
+.light .dj-follow-btn:not(.following):hover,
+.theme-light .dj-follow-btn:not(.following):hover,
+.admin-light-mode .dj-follow-btn:not(.following):hover {
+  background-color: #ffffff !important;
+  border-color: #f472b6 !important;
+  color: #db2777 !important;
+}
+
+:root.light .dj-follow-btn:not(.following):hover svg,
+html.light .dj-follow-btn:not(.following):hover svg,
+.light .dj-follow-btn:not(.following):hover svg,
+.theme-light .dj-follow-btn:not(.following):hover svg,
+.admin-light-mode .dj-follow-btn:not(.following):hover svg {
+  color: #db2777 !important;
+}
+
+:root.light .dj-follow-btn.following,
+html.light .dj-follow-btn.following,
+.light .dj-follow-btn.following,
+.theme-light .dj-follow-btn.following,
+.admin-light-mode .dj-follow-btn.following {
+  background-color: #fdf2f8 !important;
+  border-color: #f472b6 !important;
+  color: #db2777 !important;
+}
+
+:root.light .dj-follow-btn.following svg,
+html.light .dj-follow-btn.following svg,
+.light .dj-follow-btn.following svg,
+.theme-light .dj-follow-btn.following svg,
+.admin-light-mode .dj-follow-btn.following svg {
+  fill: #db2777 !important;
+  color: #db2777 !important;
+}
+
+/* Sonner Toast Wrapper Global Styling & Close Button Fix */
+[data-sonner-toaster] [data-sonner-toast] {
+  border-radius: 16px !important;
+  font-family: var(--font-sans) !important;
+  position: relative !important;
+  padding-right: 36px !important;
+}
+
+/* Ensure Sonner Close Button is cleanly visible, uncropped, and positioned at top-right */
+[data-sonner-toaster] [data-close-button],
+[data-sonner-toast] [data-close-button] {
+  position: absolute !important;
+  top: 10px !important;
+  right: 10px !important;
+  left: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px !important;
+  min-height: 22px !important;
+  border-radius: 9999px !important;
+  z-index: 100 !important;
+  cursor: pointer !important;
+  opacity: 0.85 !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+[data-sonner-toaster] [data-close-button]:hover,
+[data-sonner-toast] [data-close-button]:hover {
+  opacity: 1 !important;
+  background: rgba(255, 255, 255, 0.28) !important;
+  border-color: rgba(255, 255, 255, 0.45) !important;
+  transform: scale(1.08) !important;
+}
+
+[data-sonner-toaster] [data-close-button] svg,
+[data-sonner-toast] [data-close-button] svg {
+  width: 12px !important;
+  height: 12px !important;
+  stroke-width: 2.5 !important;
+}
+
+/* Light mode close button styling */
+:root.light [data-sonner-toaster] [data-close-button],
+html.light [data-sonner-toaster] [data-close-button],
+.light [data-sonner-toaster] [data-close-button],
+.theme-light [data-sonner-toaster] [data-close-button],
+.contrast-high-light [data-sonner-toaster] [data-close-button],
+[data-theme="light"] [data-sonner-toaster] [data-close-button],
+.admin-light-mode [data-sonner-toaster] [data-close-button],
+:root.light [data-sonner-toast] [data-close-button],
+html.light [data-sonner-toast] [data-close-button],
+.light [data-sonner-toast] [data-close-button],
+.theme-light [data-sonner-toast] [data-close-button],
+.contrast-high-light [data-sonner-toast] [data-close-button],
+[data-theme="light"] [data-sonner-toast] [data-close-button],
+.admin-light-mode [data-sonner-toast] [data-close-button] {
+  background: rgba(0, 0, 0, 0.07) !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+  color: #0f172a !important;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08) !important;
+}
+
+:root.light [data-sonner-toaster] [data-close-button]:hover,
+html.light [data-sonner-toaster] [data-close-button]:hover,
+.light [data-sonner-toaster] [data-close-button]:hover,
+.theme-light [data-sonner-toaster] [data-close-button]:hover,
+.contrast-high-light [data-sonner-toaster] [data-close-button]:hover,
+[data-theme="light"] [data-sonner-toaster] [data-close-button]:hover,
+.admin-light-mode [data-sonner-toaster] [data-close-button]:hover,
+:root.light [data-sonner-toast] [data-close-button]:hover,
+html.light [data-sonner-toast] [data-close-button]:hover,
+.light [data-sonner-toast] [data-close-button]:hover,
+.theme-light [data-sonner-toast] [data-close-button]:hover,
+.contrast-high-light [data-sonner-toast] [data-close-button]:hover,
+[data-theme="light"] [data-sonner-toast] [data-close-button]:hover,
+.admin-light-mode [data-sonner-toast] [data-close-button]:hover {
+  background: rgba(0, 0, 0, 0.16) !important;
+  border-color: rgba(0, 0, 0, 0.3) !important;
+  color: #000000 !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast]:has(.gamification-toast),
+[data-sonner-toaster] [data-sonner-toast]:has([class*="gamification-"]),
+[data-sonner-toaster] [data-sonner-toast][data-custom="true"] {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border-radius: 16px !important;
+  font-family: var(--font-sans) !important;
+}
+
+.gamification-toast {
+  border-radius: 16px !important;
+  overflow: hidden !important;
+}
+
+/* Ensure all gamification notifications and level-up modals follow the page's dynamic fonts */
+.gamification-toast,
+.gamification-toast *,
+#level-up-modal-card,
+#level-up-modal-card * {
+  font-family: var(--font-sans) !important;
+}
+
+/* Gamification Toast Notifications in Light Mode */
+:root.light .gamification-toast,
+html.light .gamification-toast,
+.light .gamification-toast,
+.theme-light .gamification-toast,
+.contrast-high-light .gamification-toast,
+[data-theme="light"] .gamification-toast,
+.admin-light-mode .gamification-toast {
+  background-color: rgba(255, 255, 255, 0.98) !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  color: #0f172a !important;
+  border-radius: 16px !important;
+  box-shadow: 0 12px 36px -4px rgba(0, 0, 0, 0.14), 0 0 20px rgba(6, 182, 212, 0.15) !important;
+}
+
+:root.light .gamification-xp-toast,
+html.light .gamification-xp-toast,
+.light .gamification-xp-toast,
+.theme-light .gamification-xp-toast,
+.contrast-high-light .gamification-xp-toast,
+[data-theme="light"] .gamification-xp-toast,
+.admin-light-mode .gamification-xp-toast {
+  border-color: rgba(6, 182, 212, 0.4) !important;
+  border-radius: 16px !important;
+}
+
+:root.light .gamification-badge-toast,
+html.light .gamification-badge-toast,
+.light .gamification-badge-toast,
+.theme-light .gamification-badge-toast,
+.contrast-high-light .gamification-badge-toast,
+[data-theme="light"] .gamification-badge-toast,
+.admin-light-mode .gamification-badge-toast {
+  border-color: rgba(168, 85, 247, 0.4) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 12px 36px -4px rgba(0, 0, 0, 0.14), 0 0 25px rgba(168, 85, 247, 0.2) !important;
+}
+
+:root.light .gamification-toast p,
+html.light .gamification-toast p,
+.light .gamification-toast p,
+.theme-light .gamification-toast p,
+.contrast-high-light .gamification-toast p,
+[data-theme="light"] .gamification-toast p,
+.admin-light-mode .gamification-toast p {
+  color: #1e293b !important;
+}
+
+/* ==========================================================================
+   AI Social Content Studio Light Mode Enhancements
+   ========================================================================== */
+.admin-light-mode .ai-studio-root {
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+}
+
+.admin-light-mode .ai-studio-root input[type="text"],
+.admin-light-mode .ai-studio-root input[type="number"],
+.admin-light-mode .ai-studio-root input[type="url"],
+.admin-light-mode .ai-studio-root textarea,
+.admin-light-mode .ai-studio-root select {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
+}
+
+.admin-light-mode .ai-studio-root input::placeholder,
+.admin-light-mode .ai-studio-root textarea::placeholder {
+  color: #94A3B8 !important;
+}
+
+.admin-light-mode .ai-studio-card {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  color: #0F172A !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
+}
 
 
 

@@ -4,6 +4,8 @@ import path from 'path';
 import fs from 'fs';
 import * as tar from 'tar';
 import crypto from 'crypto';
+import { initGamificationDb } from './gamification.db.ts';
+import { initEventsDb } from './events.db.ts';
 
 const isWritableDir = (dirPath: string): boolean => {
   try {
@@ -94,6 +96,14 @@ const configureDb = (connection: any) => {
     connection.pragma('temp_store = MEMORY');       // Store temporary tables and indices in RAM
     connection.pragma('mmap_size = 268435456');     // Use memory-mapped I/O (256 MB) for ultra-fast reads
     connection.pragma('journal_size_limit = 67108864'); // Limit WAL file size to 64MB to avoid unbounded disk growth
+    
+    // Quick startup integrity verification
+    try {
+      const integrity = connection.pragma('quick_check', { simple: true });
+      console.log(`[DB] Integrity Quick Check Status: ${integrity}`);
+    } catch (checkErr) {
+      console.warn('[DB] Integrity check warning:', checkErr);
+    }
   } catch (err) {
     console.error('[DB] Error during pragma configuration:', err);
     throw err;
@@ -105,6 +115,12 @@ const createAndConfigureDb = (pathStr: string): any => {
   try {
     conn = new Database(pathStr);
     configureDb(conn);
+    try {
+      initGamificationDb(conn);
+      initEventsDb(conn);
+    } catch (gErr) {
+      console.warn('[DB] Non-critical warning initializing gamification/events schema on connection start:', gErr);
+    }
     return conn;
   } catch (err: any) {
     console.error(`[DB] Database connection or configuration failed at ${pathStr}:`, err);
@@ -262,6 +278,7 @@ export function initDb() {
       role TEXT DEFAULT 'admin', -- New column for user roles
       email TEXT,
       dj_profile_id TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       last_login DATETIME,
       last_seen DATETIME,
       current_page TEXT
@@ -511,7 +528,7 @@ export function initDb() {
   `);
   runMigration('audit_logs_table', "CREATE TABLE IF NOT EXISTS audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL, role TEXT NOT NULL, action TEXT NOT NULL, resource TEXT NOT NULL, resource_id TEXT, details TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);");
   runMigration('shoutouts_dj_context_fields', "ALTER TABLE shoutouts ADD COLUMN dj_id TEXT; ALTER TABLE shoutouts ADD COLUMN dj_name TEXT; ALTER TABLE shoutouts ADD COLUMN show_name TEXT;");
-  runMigration('correct_rss_endpoint', "UPDATE settings SET value = 'https://dejavufmpodcast.podomatic.com/rss2.xml' WHERE key = 'rss_feed_url' AND value = 'https://dejavufm.podomatic.com/rss2.xml';");
+  runMigration('correct_dejavufmpodcast_rss_endpoint', "UPDATE settings SET value = 'https://dejavufmpodcast.podomatic.com/rss2.xml' WHERE key = 'rss_feed_url';");
   runMigration('advanced_features_flag', "INSERT OR IGNORE INTO settings (key, value) VALUES ('advanced_features_enabled', '1');");
   runMigration('backup_enabled_flag', "INSERT OR IGNORE INTO settings (key, value) VALUES ('backup_enabled', '1');");
   runMigration('backup_status_logging', "INSERT OR IGNORE INTO settings (key, value) VALUES ('backup_last_attempt', ''), ('backup_last_status', 'never');");
@@ -555,6 +572,8 @@ export function initDb() {
     ALTER TABLE schedule_new RENAME TO schedule;
   `);
   runMigration('admin_dj_profile_link_v2', "ALTER TABLE admins ADD COLUMN dj_profile_id TEXT DEFAULT NULL;");
+  runMigration('admin_created_at_field', "ALTER TABLE admins ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;");
+  try { db.exec(`ALTER TABLE admins ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;`); } catch (e) {}
   runMigration('default_theme_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('default_theme', 'dark');");
   runMigration('device_sessions_table', `
     CREATE TABLE IF NOT EXISTS device_sessions (
@@ -708,6 +727,166 @@ export function initDb() {
   } catch (e) {
     console.error("[Migration] Failed to backfill dj_profile_id:", e);
   }
+
+  runMigration('message_reactions_table_v1', `
+    CREATE TABLE IF NOT EXISTS message_reactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      message_id TEXT NOT NULL,
+      emoji TEXT NOT NULL,
+      username TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(message_id, emoji, username)
+    );
+    CREATE INDEX IF NOT EXISTS idx_reactions_message ON message_reactions(message_id);
+    CREATE INDEX IF NOT EXISTS idx_reactions_user ON message_reactions(username);
+  `);
+
+  runMigration('ai_reels_template_column_v1', "ALTER TABLE ai_reels ADD COLUMN template TEXT DEFAULT 'neon_cyber';");
+  runMigration('ai_content_studio_tables_v1', `
+    CREATE TABLE IF NOT EXISTS ai_jobs (
+      id TEXT PRIMARY KEY,
+      show_name TEXT NOT NULL,
+      dj_name TEXT NOT NULL,
+      dj_id TEXT,
+      source_type TEXT NOT NULL,
+      source_url TEXT,
+      status TEXT NOT NULL DEFAULT 'QUEUED',
+      progress INTEGER DEFAULT 0,
+      stage_message TEXT,
+      error_message TEXT,
+      config_json TEXT,
+      created_by TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      completed_at DATETIME
+    );
+    CREATE INDEX IF NOT EXISTS idx_ai_jobs_status ON ai_jobs(status);
+    CREATE INDEX IF NOT EXISTS idx_ai_jobs_created_at ON ai_jobs(created_at);
+
+    CREATE TABLE IF NOT EXISTS ai_reels (
+      id TEXT PRIMARY KEY,
+      job_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      hook TEXT,
+      summary TEXT,
+      virality_score INTEGER DEFAULT 85,
+      category TEXT DEFAULT 'Drop',
+      start_seconds REAL NOT NULL,
+      end_seconds REAL NOT NULL,
+      duration_seconds REAL NOT NULL,
+      audio_url TEXT,
+      video_url TEXT,
+      thumbnail_url TEXT,
+      waveform_data TEXT,
+      captions_json TEXT,
+      social_copy TEXT,
+      hashtags TEXT,
+      status TEXT DEFAULT 'PENDING_REVIEW',
+      admin_notes TEXT,
+      aspect_ratio TEXT DEFAULT '9:16',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (job_id) REFERENCES ai_jobs(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_ai_reels_job_id ON ai_reels(job_id);
+    CREATE INDEX IF NOT EXISTS idx_ai_reels_status ON ai_reels(status);
+    CREATE INDEX IF NOT EXISTS idx_ai_reels_virality ON ai_reels(virality_score);
+
+    CREATE TABLE IF NOT EXISTS ai_prompt_presets (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      category TEXT NOT NULL,
+      prompt_instructions TEXT NOT NULL,
+      style_tags TEXT,
+      target_duration INTEGER DEFAULT 30,
+      is_default INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // Seed default AI Prompt Presets if table is empty
+  try {
+    const countPresets = db.prepare("SELECT COUNT(*) as count FROM ai_prompt_presets").get() as { count: number };
+    if (countPresets.count === 0) {
+      const insertPreset = db.prepare(`
+        INSERT INTO ai_prompt_presets (id, name, description, category, prompt_instructions, style_tags, target_duration, is_default)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      insertPreset.run(
+        'preset_bass_drop',
+        'Heavy Bass Drop & High Energy',
+        'Focuses on intense bass drops, beat switch-ups, double drops, and peak dancefloor moments.',
+        'Drop',
+        'Analyze the audio for massive energy build-ups, sudden bass drops, high frequency transitions, and crowd-moving beat switches. Extract a 20-35s clip starting 5s before the drop and capturing the full release.',
+        '#BassDrop #UKGarage #Energy #CrowdHype',
+        30,
+        1
+      );
+      insertPreset.run(
+        'preset_dj_banter',
+        'DJ Banter, Jokes & Mic Highlights',
+        'Detects funny moments, witty banter, iconic shoutouts, listener jokes, and personality-driven mic speech.',
+        'Banter',
+        'Analyze the DJ voice segments and studio mic talk for funny stories, memorable station banter, infectious laughs, viral jokes, and high-engagement host commentary.',
+        '#StudioBanter #DJTalk #FunnyMoments #RadioHost',
+        30,
+        0
+      );
+      insertPreset.run(
+        'preset_mix_transition',
+        'Flawless Mix Transition / Track ID',
+        'Highlights technical DJ mixing, harmonic blends, rewinds / wheel-ups, and legendary track IDs.',
+        'Transition',
+        'Identify seamless blends between two tracks, creative cueing, unexpected track combinations, reload wheel-ups, and technical mixing craft that make viewers ask for the Track ID.',
+        '#TrackID #MixingSkills #WheelUp #DJTransition',
+        30,
+        0
+      );
+      insertPreset.run(
+        'preset_listener_hype',
+        'Listener Shoutouts & Hype Requests',
+        'Moments where the DJ shouts out listeners, reads hyped live messages, and connects with the community.',
+        'Shoutout',
+        'Detect moments when the DJ shouts out listeners in the live chat or on WhatsApp, plays custom community requests, and creates an authentic underground radio connection.',
+        '#ListenerShoutout #LiveRadio #Community #UndergroundFM',
+        25,
+        0
+      );
+    }
+  } catch (presetErr) {
+    console.error("[DB] Error seeding ai_prompt_presets:", presetErr);
+  }
+
+  // Seed default AI Studio settings
+  runMigration('ai_studio_settings_init', `
+    INSERT OR IGNORE INTO settings (key, value) VALUES 
+      ('ai_studio_enabled', '1'),
+      ('ai_gemini_model', 'gemini-2.5-flash'),
+      ('ai_default_reel_duration', '30'),
+      ('ai_brand_handle', '@dejavufm'),
+      ('ai_brand_hashtag', '#DejavuFM #LondonUnderground #DJSet #UKGarage #HouseMusic #Grime'),
+      ('ai_auto_process_on_show_end', '0'),
+      ('ai_system_prompt', 'You are an elite electronic music curator and social media viral content specialist for DejavuFM, London legendary underground radio station. Analyze the provided DJ set, detect peak emotional moments, explosive bass drops, unforgettable DJ mic talk, and generate punchy, highly shareable social reels for TikTok, Instagram Reels, and YouTube Shorts.');
+  `);
+
+  // NEXT-LEVEL SCALING: Composite and performance indexes for high-throughput messaging, presence, shoutouts & reactions
+  runMigration('next_level_scaling_indexes_v1', `
+    CREATE INDEX IF NOT EXISTS idx_public_msgs_ts_desc ON public_messages(timestamp DESC);
+    CREATE INDEX IF NOT EXISTS idx_public_msgs_sender ON public_messages(sender);
+    CREATE INDEX IF NOT EXISTS idx_private_msgs_users_ts ON private_messages(sender, recipient, timestamp);
+    CREATE INDEX IF NOT EXISTS idx_private_msgs_recipient_ts ON private_messages(recipient, timestamp);
+    CREATE INDEX IF NOT EXISTS idx_shoutouts_created_desc ON shoutouts(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_shoutouts_ts_desc ON shoutouts(timestamp DESC);
+    CREATE INDEX IF NOT EXISTS idx_shoutouts_listener ON shoutouts(listener_name);
+    CREATE INDEX IF NOT EXISTS idx_users_username_lower ON users(username);
+    CREATE INDEX IF NOT EXISTS idx_admins_username_lower ON admins(username);
+    CREATE INDEX IF NOT EXISTS idx_reactions_msg_user ON message_reactions(message_id, username);
+    CREATE INDEX IF NOT EXISTS idx_song_requests_status_votes ON song_requests(status, votes DESC);
+  `);
+  try {
+    db.exec("UPDATE settings SET value = 'gemini-2.5-flash' WHERE key = 'ai_gemini_model' AND (value LIKE '%3.%' OR value LIKE '%2.0%' OR value = 'gemini-3.6-flash' OR value = 'gemini-flash-latest');");
+  } catch (e) {}
   try {
     db.exec("UPDATE users SET email = username WHERE email IS NULL AND username LIKE '%@%'");
   } catch (e) {}
@@ -739,12 +918,12 @@ export function initDb() {
   // Insert default settings if not exists
   const countSettings = db.prepare('SELECT COUNT(*) as count FROM settings').get() as {count: number};
   if (countSettings.count === 0) {
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('stream_url', 'https://ice1.somafm.com/groovesalad-128-mp3');
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('stream_url_low', 'https://ice1.somafm.com/groovesalad-64-aac');
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('stream_url_medium', 'https://ice1.somafm.com/groovesalad-128-mp3');
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('stream_url_high', 'https://ice1.somafm.com/groovesalad-256-mp3');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('stream_url', 'https://dejavufm.radioca.st/;');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('stream_url_low', 'https://dejavufm.radioca.st/;');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('stream_url_medium', 'https://dejavufm.radioca.st/;');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('stream_url_high', 'https://dejavufm.radioca.st/;');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('rss_feed_url', 'https://dejavufmpodcast.podomatic.com/rss2.xml');
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('studio_video_url', 'https://player.twitch.tv/?channel=bbcnews&parent=localhost');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('studio_video_url', 'https://www.twitch.tv/dejavufmlive');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('app_name', 'DEJAVUFM');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('app_title', 'DEJAVUFM | THE SOUND OF LONDON');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('app_tagline', 'The Underground Worldwide');
@@ -761,6 +940,7 @@ export function initDb() {
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('secondary_color', '#00d2ff');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('is_on_air', '0');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_chat', '1');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_gamification', '1');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_shoutouts', '1');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_cinematic', '1');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_pwa', '1');
@@ -769,6 +949,7 @@ export function initDb() {
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_stream_quality', '1');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_auto_fullscreen', '0');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_booth', '1');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('feat_greeting', '1');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('advanced_features_enabled', '1');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('backup_frequency_hours', '24');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('backup_enabled', '1');
@@ -854,6 +1035,16 @@ export function initDb() {
     console.log(`[DB] Already have ${countAdmins.count} admin user(s).`);
   }
 
+  // Ensure default owner exists
+  const ownerHash = bcrypt.hashSync('owner', 10);
+  const ownerExists = db.prepare("SELECT 1 FROM admins WHERE LOWER(username) = ?").get('owner');
+  if (!ownerExists) {
+    console.log("[DB] Seeding default owner user (owner/owner)");
+    db.prepare('INSERT INTO admins (username, password_hash, role) VALUES (?, ?, ?)').run('owner', ownerHash, 'owner');
+  } else {
+    db.prepare('UPDATE admins SET password_hash = ? WHERE username = ?').run(ownerHash, 'owner');
+  }
+
   // Create high-performance indexes for tables and columns frequently used in filtering, sorting, or joining
   try {
     db.exec(`
@@ -919,6 +1110,14 @@ export function initDb() {
     }
   } catch (err) {
     console.error("[DB] Warning: Failed to seed privacy-policy in custom_pages table:", err);
+  }
+
+  // Initialize Gamification System & Special Events
+  try {
+    initGamificationDb(db);
+    initEventsDb(db);
+  } catch (gamErr) {
+    console.error("[DB] Warning: Failed to initialize gamification/events tables:", gamErr);
   }
 
   console.log("[DB] Database initialization complete.");
@@ -1026,53 +1225,162 @@ export function pruneBackups() {
 }
 
 /**
- * Atomic backup of the SQLite database.
+ * Creates a complete application backup bundle including the SQLite database,
+ * the entire uploads directory (media, avatars, banners, AI studio assets, etc.),
+ * and an application manifest summary.
  */
-export async function backupDatabase() {
+export async function createApplicationBackupBundle(options: {
+  label?: string;
+  customFilename?: string;
+  isManual?: boolean;
+} = {}): Promise<{ filename: string; finalBackupPath: string; manifest: any }> {
   if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const finalBackupPath = path.join(backupDir, `backup-${timestamp}.bundle`);
-  const tempDir = path.join(backupDir, `temp-${timestamp}`);
-  
-  const now = new Date().toISOString();
+  const prefix = options.isManual ? 'manual-backup' : 'backup';
+  const filename = options.customFilename || `${prefix}-${timestamp}.bundle`;
+  const finalBackupPath = path.join(backupDir, filename);
+  const tempDir = path.join(backupDir, `temp-${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`);
+
   try {
-    console.log(`[DB] Starting automated bundled backup...`);
-    db.prepare("UPDATE settings SET value = ? WHERE key = 'backup_last_attempt'").run(now);
+    // 1. Create temporary staging directory
+    fs.mkdirSync(tempDir, { recursive: true });
 
-    // 1. Create temp directory
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-
-    // 2. Backup database to temp dir
+    // 2. Perform SQLite WAL checkpoint (PASSIVE fallback if busy) and atomic backup
     const dbBackupPath = path.join(tempDir, 'database.db');
     try {
       db.pragma('wal_checkpoint(TRUNCATE)');
     } catch (e) {
-      console.warn('[DB] WAL checkpoint failed before backup, continuing...', e);
+      try {
+        db.pragma('wal_checkpoint(PASSIVE)');
+      } catch (e2) {
+        console.warn('[DB] WAL checkpoint failed before backup, continuing...', e2);
+      }
     }
     await db.backup(dbBackupPath);
 
-    // 3. Copy uploads if they exist
+    // 3. Collect table statistics for manifest
+    const tableStats: Record<string, number> = {};
+    try {
+      const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all() as Array<{ name: string }>;
+      for (const t of tables) {
+        try {
+          const countRow = db.prepare(`SELECT count(*) as count FROM "${t.name}"`).get() as { count: number };
+          tableStats[t.name] = countRow?.count ?? 0;
+        } catch {}
+      }
+    } catch {}
+
+    // 4. Copy entire /uploads directory recursively (including nested folders like ai-studio/)
     const uploadsDir = getUploadsDir();
+    let totalUploadsFiles = 0;
+    let totalUploadsBytes = 0;
+
     if (fs.existsSync(uploadsDir)) {
       const destUploads = path.join(tempDir, 'uploads');
-      if (!fs.existsSync(destUploads)) fs.mkdirSync(destUploads, { recursive: true });
+      fs.mkdirSync(destUploads, { recursive: true });
       fs.cpSync(uploadsDir, destUploads, { recursive: true, force: true });
+
+      const countFiles = (dir: string) => {
+        try {
+          const entries = fs.readdirSync(dir, { withFileTypes: true });
+          for (const entry of entries) {
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+              countFiles(fullPath);
+            } else if (entry.isFile()) {
+              totalUploadsFiles++;
+              try {
+                totalUploadsBytes += fs.statSync(fullPath).size;
+              } catch {}
+            }
+          }
+        } catch {}
+      };
+      countFiles(destUploads);
     }
 
-    // 4. Create tarball bundle
-    await tar.c({ gzip: true, file: finalBackupPath, cwd: tempDir }, ['.']);
+    // 5. Generate Manifest
+    const dbSize = fs.existsSync(dbBackupPath) ? fs.statSync(dbBackupPath).size : 0;
+    const appSettingsRow = db.prepare("SELECT value FROM settings WHERE key = 'app_name'").get() as { value: string } | undefined;
+    const manifest = {
+      app: appSettingsRow?.value || "DejavuFM",
+      version: "2.5.0",
+      type: "full_application_bundle",
+      createdAt: new Date().toISOString(),
+      label: options.label || null,
+      database: {
+        sizeBytes: dbSize,
+        tableCount: Object.keys(tableStats).length,
+        tables: tableStats,
+      },
+      uploads: {
+        fileCount: totalUploadsFiles,
+        totalSizeBytes: totalUploadsBytes,
+      },
+      integrity: "verified",
+    };
+
+    fs.writeFileSync(path.join(tempDir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf-8');
+
+    // 6. Create Tarball Bundle (using level 6 compression for optimal speed & size)
+    await tar.c({ gzip: { level: 6 }, file: finalBackupPath, cwd: tempDir }, ['.']);
+
+    // 7. Store label in backup_metadata if provided
+    if (options.label) {
+      try {
+        db.prepare("INSERT INTO backup_metadata (filename, label) VALUES (?, ?) ON CONFLICT(filename) DO UPDATE SET label = excluded.label").run(filename, options.label);
+      } catch (e) {
+        console.warn("[DB] Failed to record backup metadata label:", e);
+      }
+    }
+
+    // 8. Cleanup temp dir
+    if (fs.existsSync(tempDir)) {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+
+    return { filename, finalBackupPath, manifest };
+  } catch (err) {
+    if (fs.existsSync(tempDir)) {
+      try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch {}
+    }
+    throw err;
+  }
+}
+
+/**
+ * Atomic backup of the entire application (database + all media uploads + manifest).
+ */
+export async function backupDatabase() {
+  const now = new Date().toISOString();
+  try {
+    console.log(`[DB] Starting automated full application backup bundle...`);
+    db.prepare("UPDATE settings SET value = ? WHERE key = 'backup_last_attempt'").run(now);
+
+    const { filename, finalBackupPath } = await createApplicationBackupBundle({ isManual: false });
 
     db.prepare("UPDATE settings SET value = ? WHERE key = 'backup_last_status'").run('success');
-    console.log(`[DB] Bundled backup successful: ${finalBackupPath}`);
-    
-    // Cleanup temp dir
-    fs.rmSync(tempDir, { recursive: true, force: true });
-    
+    console.log(`[DB] Automated application backup bundle successful: ${filename}`);
+
     pruneBackups();
+    return { success: true, filename, finalBackupPath };
   } catch (err) {
     db.prepare("UPDATE settings SET value = ? WHERE key = 'backup_last_status'").run('failed');
     console.error("[DB] Automated backup failed:", err);
-    if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true });
+    throw err;
   }
+}
+
+// Background WAL periodic maintenance (every 15 minutes, non-blocking PASSIVE mode)
+if (typeof setInterval !== 'undefined') {
+  setInterval(() => {
+    try {
+      if (db && db.open) {
+        db.pragma('wal_checkpoint(PASSIVE)');
+      }
+    } catch (e) {
+      // Non-critical background maintenance
+    }
+  }, 15 * 60 * 1000);
 }

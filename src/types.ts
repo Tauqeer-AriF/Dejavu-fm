@@ -25,4 +25,8 @@ export interface ChatMessage {
   recipient?: string;
   source?: string;
   platform?: string;
+  level?: number;
+  levelTitle?: string;
+  avatar_url?: string;
+  reactions?: Record<string, string[]>;
 }

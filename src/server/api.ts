@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import Database from './sqlite.ts';
-import { db, dbPath, backupDir, pruneBackups, backupDatabase, reopenDatabaseConnection, getUploadsDir, pruneHistoricalData } from "./db.ts";
+import { db, dbPath, backupDir, pruneBackups, backupDatabase, createApplicationBackupBundle, reopenDatabaseConnection, initDb, getUploadsDir, pruneHistoricalData } from "./db.ts";
 import { request as httpRequest } from "http";
 import { request as httpsRequest } from "https";
 import { URL } from "url";
@@ -18,6 +18,12 @@ import * as tar from "tar";
 import { parse } from 'csv-parse/sync';
 import { Server } from "socket.io";
 import { TwitchService } from "./twitch.service.ts";
+import { gamificationRouter, getAuthenticatedUser } from "./gamification.routes.ts";
+import { eventsRouter } from "./events.routes.ts";
+import { greetingRouter } from "./greeting.routes.ts";
+import { aiStudioRouter } from "./ai-studio/ai-studio.routes.ts";
+import { ensureUserGamification, awardXP, calculateLevelProgression } from "./gamification.service.ts";
+import { toggleMessageReaction, getReactionsForMessage } from "./reactions.service.ts";
 // `sharp` is optional at runtime; dynamically import when needed to avoid startup failure
 
 async function processImage(file: any): Promise<string> {
@@ -146,6 +152,37 @@ apiRouter.post("/admin/studio-settings", authMiddleware, authorizeRole(['admin',
   }
 });
 
+apiRouter.get("/admin/owner/kill-status", authMiddleware, authorizeRole('owner'), (req, res) => {
+  try {
+    const row = db.prepare("SELECT value FROM settings WHERE key = 'app_kill_switch'").get() as { value: string } | undefined;
+    res.json({ killed: row?.value === '1' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.post("/admin/owner/toggle-kill", authMiddleware, authorizeRole('owner'), (req, res) => {
+  try {
+    const rawActive = req.body?.active;
+    const active = rawActive === true || rawActive === 'true' || rawActive === 1 || rawActive === '1';
+    const value = active ? '1' : '0';
+    db.prepare("INSERT INTO settings (key, value) VALUES ('app_kill_switch', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(value);
+    logAction(req, 'TOGGLE_KILL_SWITCH', 'settings', 'app_kill_switch', { active });
+
+    const io = req.app.get('io');
+    if (io) {
+      const rows = db.prepare("SELECT key, value FROM settings").all() as {key: string, value: string}[];
+      const settingsMap = rows.reduce((acc, row) => ({ ...acc, [row.key]: row.value }), {});
+      io.emit('settings_updated', settingsMap);
+      io.emit('kill_switch_toggled', { killed: active });
+    }
+
+    res.json({ killed: active });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Fallback secret only for development
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET && process.env.NODE_ENV === "production") {
@@ -154,7 +191,7 @@ if (!JWT_SECRET && process.env.NODE_ENV === "production") {
 const ACTUAL_SECRET = JWT_SECRET || "dev_only_secret_123456789";
 
 // Check Auth Middleware
-function authMiddleware(req: any, res: any, next: any) {
+export function authMiddleware(req: any, res: any, next: any) {
   const authHeader = req.headers.authorization;
   let bearerToken: string | null = null;
   if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -185,10 +222,19 @@ function authMiddleware(req: any, res: any, next: any) {
 }
 
 // Role Authorization Middleware
-function authorizeRole(role: string | string[]) {
-  const roles = Array.isArray(role) ? role : [role];
+export function authorizeRole(role: string | string[]) {
+  const allowedRoles = Array.isArray(role) ? [...role] : [role];
+  if (allowedRoles.includes('admin') && !allowedRoles.includes('owner')) {
+    allowedRoles.push('owner');
+  }
+  if (allowedRoles.includes('dj') && !allowedRoles.includes('owner')) {
+    allowedRoles.push('owner');
+  }
+  if (allowedRoles.includes('dj') && !allowedRoles.includes('admin')) {
+    allowedRoles.push('admin');
+  }
   return (req: any, res: any, next: any) => {
-    if (req.user && roles.includes(req.user.role)) {
+    if (req.user && allowedRoles.includes(req.user.role)) {
       next();
     } else {
       res.status(403).json({ error: "Forbidden: You do not have permission to perform this action." });
@@ -197,7 +243,7 @@ function authorizeRole(role: string | string[]) {
 }
 
 // Audit Logging Helper
-function logAction(req: any, action: string, resource: string, resource_id?: string | number | bigint, details?: any) {
+export function logAction(req: any, action: string, resource: string, resource_id?: string | number | bigint, details?: any) {
   try {
     if (!db.open) {
       console.warn("[AuditLog] Database connection is closed, skipping log entry.");
@@ -389,6 +435,15 @@ apiRouter.get("/public/schedule", (req, res) => {
   }
 });
 
+// Route aliases for /api/schedule and /api/admin/schedule GET requests
+apiRouter.get("/schedule", (req, res, next) => {
+  return (apiRouter as any).handle({ ...req, url: "/public/schedule" }, res, next);
+});
+
+apiRouter.get("/admin/schedule", (req, res, next) => {
+  return (apiRouter as any).handle({ ...req, url: "/public/schedule" }, res, next);
+});
+
 import { getPodcastFeed, clearPodcastCache } from "./utils.ts";
 
 apiRouter.get("/public/podcasts", asyncHandler(async (req: Request, res: Response) => {
@@ -402,6 +457,8 @@ function proxyPodcast(targetUrl: string, clientReq: Request, clientRes: Response
   clientRes.setHeader("Access-Control-Allow-Origin", "*");
   clientRes.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
   clientRes.setHeader("Access-Control-Allow-Headers", "Content-Type, Range");
+  clientRes.setHeader("Access-Control-Expose-Headers", "Content-Length, Content-Range, Accept-Ranges, Content-Type");
+  clientRes.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
 
   if (redirectCount > 8) {
     return clientRes.status(500).send("Too many redirects");
@@ -431,7 +488,7 @@ function proxyPodcast(targetUrl: string, clientReq: Request, clientRes: Response
     const upstreamReq = requestFn(
       sanitizedUrl,
       {
-        method: "GET",
+        method: clientReq.method === "HEAD" ? "HEAD" : "GET",
         headers,
         timeout: 15000,
       },
@@ -462,7 +519,11 @@ function proxyPodcast(targetUrl: string, clientReq: Request, clientRes: Response
         }
 
         clientRes.status(statusCode);
-        upstreamRes.pipe(clientRes);
+        if (clientReq.method === "HEAD") {
+          clientRes.end();
+        } else {
+          upstreamRes.pipe(clientRes);
+        }
       }
     );
 
@@ -497,20 +558,187 @@ apiRouter.options("/public/podcast-stream", (req: Request, res: Response) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Range");
+  res.setHeader("Access-Control-Expose-Headers", "Content-Length, Content-Range, Accept-Ranges, Content-Type");
   res.setHeader("Access-Control-Max-Age", "86400");
   res.sendStatus(204);
 });
 
-apiRouter.get("/public/podcast-stream", (req: Request, res: Response) => {
+apiRouter.head("/public/podcast-stream", (req: Request, res: Response) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Range");
+  res.setHeader("Access-Control-Expose-Headers", "Content-Length, Content-Range, Accept-Ranges, Content-Type");
 
   const targetUrl = req.query.url as string;
   if (!targetUrl || targetUrl.trim() === "") {
     return res.status(400).send("Missing target url parameter");
   }
   proxyPodcast(targetUrl, req, res);
+});
+
+apiRouter.get("/public/podcast-stream", (req: Request, res: Response) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Range");
+  res.setHeader("Access-Control-Expose-Headers", "Content-Length, Content-Range, Accept-Ranges, Content-Type");
+
+  const targetUrl = req.query.url as string;
+  if (!targetUrl || targetUrl.trim() === "") {
+    return res.status(400).send("Missing target url parameter");
+  }
+  proxyPodcast(targetUrl, req, res);
+});
+
+function proxyRadioStream(targetUrl: string, clientReq: Request, clientRes: Response, redirectCount = 0) {
+  // Always set CORS & live streaming headers to prevent browser blocks & mixed-content issues
+  clientRes.setHeader("Access-Control-Allow-Origin", "*");
+  clientRes.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+  clientRes.setHeader("Access-Control-Allow-Headers", "Content-Type, Range, Icy-MetaData");
+  clientRes.setHeader("Access-Control-Expose-Headers", "Content-Length, Content-Range, Accept-Ranges, Content-Type, icy-name, icy-genre, icy-url, icy-br");
+  clientRes.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  clientRes.setHeader("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
+  clientRes.setHeader("Pragma", "no-cache");
+  clientRes.setHeader("Expires", "0");
+
+  if (redirectCount > 8) {
+    return clientRes.status(500).send("Too many redirects");
+  }
+
+  let sanitizedUrl = targetUrl.trim();
+  try {
+    try {
+      new URL(sanitizedUrl);
+    } catch (urlErr) {
+      sanitizedUrl = encodeURI(sanitizedUrl);
+    }
+
+    const parsedUrl = new URL(sanitizedUrl);
+    const isHttps = parsedUrl.protocol === "https:";
+    const requestFn = isHttps ? httpsRequest : httpRequest;
+
+    const headers: Record<string, string> = {
+      "user-agent": (clientReq.headers["user-agent"] as string) || "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "accept": "*/*",
+      "icy-metadata": "0",
+    };
+
+    if (clientReq.headers.range) {
+      headers["range"] = clientReq.headers.range as string;
+    }
+
+    const upstreamReq = requestFn(
+      sanitizedUrl,
+      {
+        method: clientReq.method === "HEAD" ? "HEAD" : "GET",
+        headers,
+        timeout: 20000,
+      },
+      (upstreamRes) => {
+        const statusCode = upstreamRes.statusCode || 200;
+
+        if ([301, 302, 303, 307, 308].includes(statusCode) && upstreamRes.headers.location) {
+          let nextUrl = upstreamRes.headers.location;
+          if (!nextUrl.startsWith("http:") && !nextUrl.startsWith("https:")) {
+            nextUrl = new URL(nextUrl, sanitizedUrl).toString();
+          }
+          return proxyRadioStream(nextUrl, clientReq, clientRes, redirectCount + 1);
+        }
+
+        const contentType = upstreamRes.headers["content-type"] || "audio/mpeg";
+        clientRes.setHeader("Content-Type", contentType);
+
+        const copyHeaders = [
+          "content-length",
+          "content-range",
+          "accept-ranges",
+          "icy-br",
+          "icy-name",
+          "icy-genre",
+        ];
+
+        for (const h of copyHeaders) {
+          if (upstreamRes.headers[h]) {
+            clientRes.setHeader(h, upstreamRes.headers[h] as string);
+          }
+        }
+
+        clientRes.status(statusCode);
+        if (clientReq.method === "HEAD") {
+          clientRes.end();
+        } else {
+          upstreamRes.pipe(clientRes);
+        }
+      }
+    );
+
+    clientReq.on("close", () => {
+      upstreamReq.destroy();
+    });
+
+    upstreamReq.on("error", (err) => {
+      console.error("[Radio Proxy Error] Upstream connection failed:", err);
+      if (!clientRes.headersSent) {
+        clientRes.status(502).send("Proxy error connecting to radio stream");
+      }
+    });
+
+    upstreamReq.on("timeout", () => {
+      upstreamReq.destroy();
+      if (!clientRes.headersSent) {
+        clientRes.status(504).send("Proxy gateway timeout connecting to radio stream");
+      }
+    });
+
+    upstreamReq.end();
+  } catch (err) {
+    console.error("[Radio Proxy Error] Invalid URL:", err);
+    if (!clientRes.headersSent) {
+      clientRes.status(400).send("Invalid stream target URL");
+    }
+  }
+}
+
+apiRouter.options("/public/radio-stream", (req: Request, res: Response) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Range, Icy-MetaData");
+  res.setHeader("Access-Control-Expose-Headers", "Content-Length, Content-Range, Accept-Ranges, Content-Type");
+  res.setHeader("Access-Control-Max-Age", "86400");
+  res.sendStatus(204);
+});
+
+apiRouter.head("/public/radio-stream", (req: Request, res: Response) => {
+  const targetUrl = (req.query.url as string) || "";
+  if (!targetUrl.trim()) {
+    const settings = db.prepare("SELECT stream_url, stream_url_medium FROM settings WHERE id = 1").get() as any;
+    const defaultUrl = settings?.stream_url || settings?.stream_url_medium || "";
+    if (!defaultUrl) return res.status(400).send("Missing target url parameter and no default configured");
+    return proxyRadioStream(defaultUrl, req, res);
+  }
+  proxyRadioStream(targetUrl, req, res);
+});
+
+apiRouter.get("/public/radio-stream", (req: Request, res: Response) => {
+  const targetUrl = (req.query.url as string) || "";
+  if (!targetUrl.trim()) {
+    const settings = db.prepare("SELECT stream_url, stream_url_medium FROM settings WHERE id = 1").get() as any;
+    const defaultUrl = settings?.stream_url || settings?.stream_url_medium || "";
+    if (!defaultUrl) return res.status(400).send("Missing target url parameter and no default configured");
+    return proxyRadioStream(defaultUrl, req, res);
+  }
+  proxyRadioStream(targetUrl, req, res);
+});
+
+// Alias for /public/stream
+apiRouter.get("/public/stream", (req: Request, res: Response) => {
+  const targetUrl = (req.query.url as string) || "";
+  if (!targetUrl.trim()) {
+    const settings = db.prepare("SELECT stream_url, stream_url_medium FROM settings WHERE id = 1").get() as any;
+    const defaultUrl = settings?.stream_url || settings?.stream_url_medium || "";
+    if (!defaultUrl) return res.status(400).send("Missing target url parameter and no default configured");
+    return proxyRadioStream(defaultUrl, req, res);
+  }
+  proxyRadioStream(targetUrl, req, res);
 });
 
 apiRouter.get("/public/features", (req, res) => {
@@ -787,6 +1015,14 @@ apiRouter.post("/public/auth/register", (req, res) => {
     // Save device session mapping for Safari/iOS compatibility
     saveDeviceSession(req, cleanUsername);
 
+    // Initialize listener gamification and award first daily login XP
+    try {
+      ensureUserGamification(cleanUsername);
+      awardXP(cleanUsername, 'daily_login', 'Welcome to Dejavu FM! Daily login bonus');
+    } catch (e) {
+      console.error("[Gamification] Registration hook failed:", e);
+    }
+
     res.json({ success: true, username: cleanUsername, avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${cleanUsername}`, token });
   } catch (err) {
     res.status(400).json({ error: "Email or username already exists" });
@@ -833,6 +1069,12 @@ apiRouter.post("/public/auth/login", authLimiter, (req, res) => {
     
     // Save device session mapping for Safari/iOS compatibility
     saveDeviceSession(req, user.username);
+
+    // Initialize gamification profile & award daily login XP
+    try {
+      ensureUserGamification(user.username);
+      awardXP(user.username, 'daily_login', 'Daily login check-in bonus');
+    } catch (e) {}
 
     res.json({ 
       success: true, 
@@ -1381,7 +1623,18 @@ apiRouter.post("/public/analytics/podcast-play", (req: any, res: any) => {
   // New event log
   db.prepare("INSERT INTO analytics_events (category, event_key) VALUES (?, ?)").run('podcast_play', title);
 
-  res.json({ success: true });
+  // Attempt to award gamification XP if user is authenticated
+  let xpResult = null;
+  try {
+    const authUser = getAuthenticatedUser(req);
+    if (authUser && authUser.username) {
+      xpResult = awardXP(authUser.username, 'podcast_play', `Listened to podcast: ${title}`, { title });
+    }
+  } catch (err) {
+    console.error('[Gamification] Error awarding podcast play XP:', err);
+  }
+
+  res.json({ success: true, xpResult });
 });
 
 // ------ ADMIN AUTH ROUTES ------
@@ -1794,7 +2047,7 @@ export function performMediaAutoDeleteCleanup(reason = 'timer') {
   }
 }
 
-apiRouter.get("/admin/media/auto-delete", authorizeRole('admin'), (req: any, res: any) => {
+apiRouter.get("/admin/media/auto-delete", authMiddleware, authorizeRole('admin'), (req: any, res: any) => {
   try {
     const settingsRows = db.prepare(`
       SELECT key, value FROM settings
@@ -1846,7 +2099,7 @@ apiRouter.get("/admin/media/auto-delete", authorizeRole('admin'), (req: any, res
   }
 });
 
-apiRouter.put("/admin/media/auto-delete", authorizeRole('admin'), (req: any, res: any) => {
+apiRouter.put("/admin/media/auto-delete", authMiddleware, authorizeRole('admin'), (req: any, res: any) => {
   try {
     const updateStmt = db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value");
 
@@ -1884,7 +2137,7 @@ apiRouter.put("/admin/media/auto-delete", authorizeRole('admin'), (req: any, res
   }
 });
 
-apiRouter.post("/admin/media/auto-delete/run-now", authorizeRole('admin'), (req: any, res: any) => {
+apiRouter.post("/admin/media/auto-delete/run-now", authMiddleware, authorizeRole('admin'), (req: any, res: any) => {
   try {
     const result = performMediaAutoDeleteCleanup("manual");
     logAction(req, 'DELETE', 'media_auto_delete', null, { deletedCount: result.deletedCount });
@@ -2307,7 +2560,7 @@ apiRouter.get("/admin/analytics", (req: any, res: any) => {
   }
 });
 
-apiRouter.delete("/admin/analytics/purge", authorizeRole('admin'), (req: any, res: any) => {
+apiRouter.delete("/admin/analytics/purge", authMiddleware, authorizeRole('admin'), (req: any, res: any) => {
   logAction(req, 'PURGE', 'analytics');
   db.prepare("DELETE FROM analytics_events").run();
   db.prepare("DELETE FROM geo_stats").run();
@@ -2486,7 +2739,7 @@ apiRouter.delete("/admin/popups/:id", (req, res) => {
   res.json({ success: true });
 });
 
-apiRouter.post("/admin/push-popup", authorizeRole('admin'), (req, res) => {
+apiRouter.post("/admin/push-popup", authMiddleware, authorizeRole('admin'), (req, res) => {
   const { heading, text, btnText, btnLink, btnTarget } = req.body;
   const target = (btnTarget || req.body.btn_target) === '_self' ? '_self' : '_blank';
   const io = req.app.get('io');
@@ -2670,7 +2923,7 @@ apiRouter.get("/admin/shoutouts", (req, res) => {
   res.json(shoutouts);
 });
 
-apiRouter.delete("/admin/shoutouts/all", authorizeRole('admin'), (req, res) => {
+apiRouter.delete("/admin/shoutouts/all", authMiddleware, authorizeRole('admin'), (req, res) => {
   db.prepare("DELETE FROM shoutouts").run();
 
   // Notify all connected clients in real-time that interactions are gone
@@ -2862,15 +3115,15 @@ apiRouter.post("/admin/broadcast", authMiddleware, async (req: any, res: any) =>
   }
 });
 
-apiRouter.put("/admin/settings", authorizeRole(['admin', 'dj']), (req, res) => {
+apiRouter.put("/admin/settings", authMiddleware, authorizeRole(['admin', 'dj']), (req, res) => {
   const updateStmt = db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value");
   
-  const allowedKeys = [
+  const allowedKeysSet = new Set([
     "stream_url", "stream_url_low", "stream_url_medium", "stream_url_high", 
     "rss_feed_url", "studio_video_url", "app_name", "logo_url", "app_tagline", 
     "app_title", "seo_title", "seo_description", "seo_image", "font_sans", "font_display", "is_on_air", "primary_color", 
-    "secondary_color", "feat_chat", "feat_shoutouts", "feat_cinematic", 
-    "feat_pwa", "feat_bookings", "feat_live_tools", "feat_stream_quality", "feat_auto_fullscreen", "feat_booth",
+    "secondary_color", "feat_chat", "feat_gamification", "feat_shoutouts", "feat_cinematic", 
+    "feat_pwa", "feat_bookings", "feat_live_tools", "feat_stream_quality", "feat_auto_fullscreen", "feat_booth", "feat_greeting", "feat_special_events", "feat_ai_studio", "ai_studio_enabled",
     "logo_dark", "logo_light", "logo_shape", "favicon", "backup_retention_days",
     "backup_frequency_hours", "backup_enabled", "popup_delay", "studio_name", "studio_image",
     "social_instagram", "social_twitter", "social_facebook", "social_youtube", "social_soundcloud", "social_mixcloud", "social_tiktok",
@@ -2879,15 +3132,23 @@ apiRouter.put("/admin/settings", authorizeRole(['admin', 'dj']), (req, res) => {
     "menu_order", "menu_item_labels", "menu_item_visibility", "menu_item_paths", "menu_sub_items", "menu_item_page_titles",
     "maintenance_mode", "maintenance_title", "maintenance_text", "maintenance_end_time", "maintenance_show_player",
     "custom_header_inject", "robots_txt", "seo_last_ping_time", "seo_last_ping_status", "seo_last_ping_details", "custom_css"
-  ];
+  ]);
   
-  for (const key of allowedKeys) {
-    if (req.body[key] !== undefined) {
+  for (const [key, rawVal] of Object.entries(req.body)) {
+    // Allow any explicitly listed key OR any owner control / feature toggle / UI visibility key
+    const isAllowed = 
+      allowedKeysSet.has(key) || 
+      key.startsWith('owner_hide_') || 
+      key.startsWith('feat_') || 
+      key.startsWith('menu_') || 
+      key.startsWith('social_');
+
+    if (isAllowed && rawVal !== undefined) {
       if (key === 'is_on_air' || key === 'maintenance_mode' || key === 'maintenance_show_player') {
-        const isTrue = req.body[key] === '1' || req.body[key] === 1 || req.body[key] === true || req.body[key] === 'true';
+        const isTrue = rawVal === '1' || rawVal === 1 || rawVal === true || rawVal === 'true';
         updateStmt.run(key, isTrue ? '1' : '0');
       } else {
-        const val = req.body[key] === null ? "" : req.body[key].toString();
+        const val = rawVal === null ? "" : rawVal.toString();
         updateStmt.run(key, val);
       }
       if (key === 'rss_feed_url') {
@@ -2901,7 +3162,7 @@ apiRouter.put("/admin/settings", authorizeRole(['admin', 'dj']), (req, res) => {
 });
 
 // GET all page-specific SEO overrides
-apiRouter.get("/admin/seo/overrides", authorizeRole(['admin', 'dj']), (req, res) => {
+apiRouter.get("/admin/seo/overrides", authMiddleware, authorizeRole(['admin', 'dj']), (req, res) => {
   try {
     const rows = db.prepare("SELECT * FROM seo_overrides ORDER BY route_path ASC").all();
     res.json(rows);
@@ -2912,7 +3173,7 @@ apiRouter.get("/admin/seo/overrides", authorizeRole(['admin', 'dj']), (req, res)
 });
 
 // UPSERT page-specific SEO override
-apiRouter.post("/admin/seo/overrides", authorizeRole(['admin', 'dj']), (req, res) => {
+apiRouter.post("/admin/seo/overrides", authMiddleware, authorizeRole(['admin', 'dj']), (req, res) => {
   try {
     const { route_path, seo_title, seo_description, seo_image } = req.body;
     if (!route_path) {
@@ -2938,7 +3199,7 @@ apiRouter.post("/admin/seo/overrides", authorizeRole(['admin', 'dj']), (req, res
 });
 
 // DELETE page-specific SEO override
-apiRouter.delete("/admin/seo/overrides/:id", authorizeRole(['admin', 'dj']), (req, res) => {
+apiRouter.delete("/admin/seo/overrides/:id", authMiddleware, authorizeRole(['admin', 'dj']), (req, res) => {
   try {
     const { id } = req.params;
     db.prepare("DELETE FROM seo_overrides WHERE id = ?").run(id);
@@ -2951,7 +3212,7 @@ apiRouter.delete("/admin/seo/overrides/:id", authorizeRole(['admin', 'dj']), (re
 });
 
 // POST ping search engines with sitemap
-apiRouter.post("/admin/seo/ping", authorizeRole(['admin', 'dj']), async (req, res) => {
+apiRouter.post("/admin/seo/ping", authMiddleware, authorizeRole(['admin', 'dj']), async (req, res) => {
   try {
     const origin = `${req.protocol}://${req.get('host')}`;
     const sitemapUrl = `${origin}/sitemap.xml`;
@@ -3029,7 +3290,7 @@ apiRouter.post("/admin/seo/ping", authorizeRole(['admin', 'dj']), async (req, re
 });
 
 // GET SEO indexing & search coverage metrics
-apiRouter.get("/admin/seo/metrics", authorizeRole(['admin', 'dj']), async (req, res) => {
+apiRouter.get("/admin/seo/metrics", authMiddleware, authorizeRole(['admin', 'dj']), async (req, res) => {
   try {
     let totalDjs = 0;
     let totalFeatures = 0;
@@ -3104,7 +3365,7 @@ apiRouter.get("/admin/seo/metrics", authorizeRole(['admin', 'dj']), async (req, 
   }
 });
 
-apiRouter.get("/admin/chat-room-settings", authorizeRole('admin'), (req, res) => {
+apiRouter.get("/admin/chat-room-settings", authMiddleware, authorizeRole('admin'), (req, res) => {
   const settingsRows = db.prepare(`
     SELECT key, value FROM settings
     WHERE key IN ('chat_auto_delete_enabled', 'chat_auto_delete_hours', 'chat_auto_delete_last_run', 'data_prune_enabled', 'data_prune_days', 'data_prune_last_run')
@@ -3153,7 +3414,7 @@ apiRouter.get("/admin/chat-room-settings", authorizeRole('admin'), (req, res) =>
   });
 });
 
-apiRouter.put("/admin/chat-room-settings", authorizeRole('admin'), (req, res) => {
+apiRouter.put("/admin/chat-room-settings", authMiddleware, authorizeRole('admin'), (req, res) => {
   const updateStmt = db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value");
 
   // Chat auto-delete settings
@@ -3194,7 +3455,7 @@ apiRouter.put("/admin/chat-room-settings", authorizeRole('admin'), (req, res) =>
   res.json({ success: true });
 });
 
-apiRouter.post("/admin/chat-room-settings/prune-data", authorizeRole('admin'), (req, res) => {
+apiRouter.post("/admin/chat-room-settings/prune-data", authMiddleware, authorizeRole('admin'), (req, res) => {
   const days = req.body.days !== undefined ? Number(req.body.days) : undefined;
   if (days !== undefined && (isNaN(days) || days < 0)) {
     return res.status(400).json({ error: "Invalid retention days specified." });
@@ -3205,7 +3466,7 @@ apiRouter.post("/admin/chat-room-settings/prune-data", authorizeRole('admin'), (
   res.json({ success: true, ...result });
 });
 
-apiRouter.delete("/admin/chat-room-settings/data", authorizeRole('admin'), (req, res) => {
+apiRouter.delete("/admin/chat-room-settings/data", authMiddleware, authorizeRole('admin'), (req, res) => {
   const clearChatRoomData = req.app.get('clearChatRoomData') as ((reason?: string) => { publicDeleted: number; privateDeleted: number; shoutoutsDeleted: number; clearedAt?: string }) | undefined;
 
   let result = { publicDeleted: 0, privateDeleted: 0, shoutoutsDeleted: 0, clearedAt: new Date().toISOString() };
@@ -3384,17 +3645,32 @@ function parseUserAgent(ua: string) {
   return { os, browser };
 }
 
+interface PresenceUserMetaCache {
+  isStaff: boolean;
+  role: string;
+  email: string;
+  avatarUrl: string;
+  level: number;
+  levelTitle: string;
+  isOwner: boolean;
+  timestamp: number;
+}
+
+const presenceUserMetaCache = new Map<string, PresenceUserMetaCache>();
+const PRESENCE_CACHE_TTL_MS = 5000;
+
 export function getActivePresenceList(io: any) {
   if (!io || !io.sockets || !io.sockets.sockets) return [];
   const presenceMap = new Map<string, any>();
+  const now = Date.now();
 
   for (const [_, socket] of io.sockets.sockets) {
     const s = socket as any;
     if (s.username) {
       const key = s.username.toLowerCase();
       const page = s.currentPage || 'Dashboard';
-      const lastSeen = s.lastSeen || Date.now();
-      const connectedAt = s.connectedAt || Date.now();
+      const lastSeen = s.lastSeen || now;
+      const connectedAt = s.connectedAt || now;
       const tabId = s.tabId || 'tab_' + socket.id;
       const browserId = s.browserId || 'browser_' + socket.id;
       const userAgent = s.userAgent || '';
@@ -3414,26 +3690,64 @@ export function getActivePresenceList(io: any) {
       let role = 'user';
       let email = '';
       let avatarUrl = '';
+      let level = 1;
+      let levelTitle = 'New Listener';
+      let isOwner = false;
 
-      if (db.open) {
-        try {
-          const adminRow = db.prepare("SELECT role, email, photo_url FROM admins WHERE LOWER(username) = ?").get(key) as any;
-          if (adminRow) {
-            isStaff = true;
-            role = adminRow.role || 'admin';
-            email = adminRow.email || '';
-            avatarUrl = adminRow.photo_url || '';
-          } else {
-            const userRow = db.prepare("SELECT source FROM users WHERE LOWER(username) = ?").get(key) as any;
-            if (userRow) {
-              role = 'chat_user';
+      const cached = presenceUserMetaCache.get(key);
+      if (cached && (now - cached.timestamp < PRESENCE_CACHE_TTL_MS)) {
+        if (cached.isOwner) continue;
+        isStaff = cached.isStaff;
+        role = cached.role;
+        email = cached.email;
+        avatarUrl = cached.avatarUrl;
+        level = cached.level;
+        levelTitle = cached.levelTitle;
+      } else {
+        if (db.open) {
+          try {
+            const adminRow = db.prepare("SELECT role, email, photo_url FROM admins WHERE LOWER(username) = ?").get(key) as any;
+            if (adminRow) {
+              if (adminRow.role === 'owner') {
+                presenceUserMetaCache.set(key, { isStaff: false, role: 'owner', email: '', avatarUrl: '', level: 1, levelTitle: '', isOwner: true, timestamp: now });
+                continue;
+              }
+              isStaff = true;
+              role = adminRow.role || 'admin';
+              email = adminRow.email || '';
+              avatarUrl = adminRow.photo_url || '';
+            } else {
+              const userRow = db.prepare("SELECT source FROM users WHERE LOWER(username) = ?").get(key) as any;
+              if (userRow) {
+                role = 'chat_user';
+              }
             }
-          }
-        } catch {}
-      }
+          } catch {}
 
-      if (!avatarUrl) {
-        avatarUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(s.username)}`;
+          try {
+            const gamRow = db.prepare("SELECT total_xp FROM user_gamification WHERE LOWER(username) = ?").get(key) as any;
+            if (gamRow && gamRow.total_xp !== undefined) {
+              const prog = calculateLevelProgression(gamRow.total_xp || 0);
+              level = prog.currentLevel;
+              levelTitle = prog.levelTitle;
+            }
+          } catch {}
+        }
+
+        if (!avatarUrl) {
+          avatarUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(s.username)}`;
+        }
+
+        presenceUserMetaCache.set(key, {
+          isStaff,
+          role,
+          email,
+          avatarUrl,
+          level,
+          levelTitle,
+          isOwner: false,
+          timestamp: now
+        });
       }
 
       const uaInfo = parseUserAgent(userAgent);
@@ -3482,6 +3796,8 @@ export function getActivePresenceList(io: any) {
           email,
           role,
           isStaff,
+          level,
+          levelTitle,
           currentPage: page,
           lastSeen,
           connectedAt,
@@ -3500,12 +3816,13 @@ export function getActivePresenceList(io: any) {
   return Array.from(presenceMap.values());
 }
 
-apiRouter.get("/admin/users", authMiddleware, authorizeRole('admin'), (req, res) => {
+apiRouter.get("/admin/users", authMiddleware, authorizeRole(['admin', 'owner']), (req, res) => {
   const io = req.app.get('io');
   const activeList = getActivePresenceList(io);
   const activeMap = new Map(activeList.map(item => [item.username.toLowerCase(), item]));
 
-  const users = db.prepare("SELECT username, email, role, dj_profile_id, photo_url, last_login, last_seen, current_page FROM admins").all() as any[];
+  // Always filter out owner accounts from staff users list
+  const users = db.prepare("SELECT username, email, role, dj_profile_id, photo_url, last_login, last_seen, current_page FROM admins WHERE role != 'owner'").all() as any[];
 
   const enrichedUsers = users.map(u => {
     const active = activeMap.get((u.username || '').toLowerCase());
@@ -3521,13 +3838,13 @@ apiRouter.get("/admin/users", authMiddleware, authorizeRole('admin'), (req, res)
   res.json(enrichedUsers);
 });
 
-apiRouter.get("/admin/active-sessions", authMiddleware, authorizeRole('admin'), (req, res) => {
+apiRouter.get("/admin/active-sessions", authMiddleware, authorizeRole(['admin', 'owner']), (req, res) => {
   const io = req.app.get('io');
-  const activeList = getActivePresenceList(io);
+  const activeList = getActivePresenceList(io).filter(item => item.role !== 'owner');
   res.json(activeList);
 });
 
-apiRouter.post("/admin/kill-session", authMiddleware, authorizeRole('admin'), (req, res) => {
+apiRouter.post("/admin/kill-session", authMiddleware, authorizeRole(['admin', 'owner']), (req, res) => {
   const { socketId } = req.body;
   if (!socketId) return res.status(400).json({ error: "Socket ID is required" });
 
@@ -3557,10 +3874,13 @@ apiRouter.post("/admin/kill-session", authMiddleware, authorizeRole('admin'), (r
   res.status(404).json({ error: "Session connection not found or already closed" });
 });
 
-apiRouter.post("/admin/users", authMiddleware, authorizeRole('admin'), (req: Request, res: Response) => {
+apiRouter.post("/admin/users", authMiddleware, authorizeRole(['admin', 'owner']), (req: Request, res: Response) => {
   const { username, email, password, role, dj_profile_id } = req.body;
   if (!username || !password) return res.status(400).json({ error: "Username and password required" });
-  if (!['admin', 'dj'].includes(role)) return res.status(400).json({ error: "Invalid role specified" });
+  if (!['admin', 'dj', 'owner'].includes(role)) return res.status(400).json({ error: "Invalid role specified" });
+  if (role === 'owner' && (req as any).user.role !== 'owner') {
+    return res.status(403).json({ error: "Only an Owner can designate another Owner." });
+  }
   const trimmedUsername = username.trim();
   const trimmedEmail = email ? email.trim() : null;
   const hash = bcrypt.hashSync(password, 10);
@@ -3573,13 +3893,21 @@ apiRouter.post("/admin/users", authMiddleware, authorizeRole('admin'), (req: Req
   }
 });
 
-apiRouter.post("/admin/users/bulk-delete", authMiddleware, authorizeRole('admin'), (req, res) => {
+apiRouter.post("/admin/users/bulk-delete", authMiddleware, authorizeRole(['admin', 'owner']), (req, res) => {
   const { usernames } = req.body;
   if (!Array.isArray(usernames) || usernames.length === 0) {
     return res.status(400).json({ error: "No usernames provided" });
   }
-  // Filter out 'admin' (case-insensitive)
-  const deletable = usernames.filter(un => un.trim().toLowerCase() !== 'admin');
+  
+  const deletable: string[] = [];
+  for (const un of usernames) {
+    const usernameTrimmed = un.trim();
+    if (usernameTrimmed.toLowerCase() === 'admin') continue;
+    const user = db.prepare("SELECT role FROM admins WHERE LOWER(username) = LOWER(?)").get(usernameTrimmed) as any;
+    if (user && user.role === 'owner') continue;
+    deletable.push(usernameTrimmed);
+  }
+
   if (deletable.length === 0) {
     return res.status(400).json({ error: "No deletable usernames provided" });
   }
@@ -3588,7 +3916,7 @@ apiRouter.post("/admin/users/bulk-delete", authMiddleware, authorizeRole('admin'
     db.transaction(() => {
       const stmt = db.prepare("DELETE FROM admins WHERE LOWER(TRIM(username)) = LOWER(TRIM(?))");
       for (const username of deletable) {
-        stmt.run(username.trim());
+        stmt.run(username);
       }
     })();
     logAction(req, 'BULK_DELETE', 'admin_users', null, { count: deletable.length });
@@ -3598,30 +3926,46 @@ apiRouter.post("/admin/users/bulk-delete", authMiddleware, authorizeRole('admin'
   }
 });
 
-apiRouter.post("/admin/users/bulk-role", authMiddleware, authorizeRole('admin'), (req, res) => {
+apiRouter.post("/admin/users/bulk-role", authMiddleware, authorizeRole(['admin', 'owner']), (req, res) => {
   const { usernames, role } = req.body;
   if (!Array.isArray(usernames) || usernames.length === 0) {
     return res.status(400).json({ error: "No usernames provided" });
   }
-  if (!['admin', 'dj'].includes(role)) {
+  if (!['admin', 'dj', 'owner'].includes(role)) {
     return res.status(400).json({ error: "Invalid role specified" });
+  }
+  if (role === 'owner' && (req as any).user.role !== 'owner') {
+    return res.status(403).json({ error: "Only an Owner can elevate accounts to Owner role." });
+  }
+
+  const allowedUsernames: string[] = [];
+  for (const un of usernames) {
+    const trimmed = un.trim();
+    if (trimmed.toLowerCase() === 'admin') continue;
+    const user = db.prepare("SELECT role FROM admins WHERE LOWER(username) = LOWER(?)").get(trimmed) as any;
+    if (user && user.role === 'owner' && (req as any).user.role !== 'owner') continue;
+    allowedUsernames.push(trimmed);
+  }
+
+  if (allowedUsernames.length === 0) {
+    return res.status(400).json({ error: "No modifiable accounts specified." });
   }
 
   try {
     db.transaction(() => {
       const stmt = db.prepare("UPDATE admins SET role = ? WHERE LOWER(TRIM(username)) = LOWER(TRIM(?))");
-      for (const username of usernames) {
-        stmt.run(role, username.trim());
+      for (const username of allowedUsernames) {
+        stmt.run(role, username);
       }
     })();
-    logAction(req, 'BULK_ROLE', 'admin_users', null, { role, count: usernames.length });
-    res.json({ success: true, count: usernames.length });
+    logAction(req, 'BULK_ROLE', 'admin_users', null, { role, count: allowedUsernames.length });
+    res.json({ success: true, count: allowedUsernames.length });
   } catch (err) {
     res.status(500).json({ error: "Failed to update staff roles" });
   }
 });
 
-apiRouter.post("/admin/users/bulk-dj-link", authMiddleware, authorizeRole('admin'), (req, res) => {
+apiRouter.post("/admin/users/bulk-dj-link", authMiddleware, authorizeRole(['admin', 'owner']), (req, res) => {
   const { usernames, dj_profile_id } = req.body;
   if (!Array.isArray(usernames) || usernames.length === 0) {
     return res.status(400).json({ error: "No usernames provided" });
@@ -3641,10 +3985,22 @@ apiRouter.post("/admin/users/bulk-dj-link", authMiddleware, authorizeRole('admin
   }
 });
 
-apiRouter.put("/admin/users/:username", authorizeRole('admin'), (req, res) => {
+apiRouter.put("/admin/users/:username", authMiddleware, authorizeRole(['admin', 'owner']), (req, res) => {
   const { password, email, role, dj_profile_id } = req.body;
   const targetUsername = req.params.username.trim();
   
+  const isSelf = (req as any).user.username.trim().toLowerCase() === targetUsername.toLowerCase();
+  const isOwner = (req as any).user.role === 'owner';
+  
+  if ((password || email !== undefined) && !isSelf && !isOwner) {
+    return res.status(403).json({ error: "Forbidden: You are not authorized to change another user's credentials." });
+  }
+
+  const existingUser = db.prepare("SELECT role FROM admins WHERE LOWER(username) = LOWER(?)").get(targetUsername) as any;
+  if (existingUser && existingUser.role === 'owner' && !isOwner) {
+    return res.status(403).json({ error: "Forbidden: You cannot modify an Owner account." });
+  }
+
   try {
     if (password) {
       const hash = bcrypt.hashSync(password, 10);
@@ -3655,7 +4011,10 @@ apiRouter.put("/admin/users/:username", authorizeRole('admin'), (req, res) => {
       db.prepare("UPDATE admins SET email = ? WHERE LOWER(TRIM(username)) = LOWER(TRIM(?))").run(trimmedEmail, targetUsername);
     }
     if (role !== undefined) {
-      if (!['admin', 'dj'].includes(role)) return res.status(400).json({ error: "Invalid role specified" });
+      if (!['admin', 'dj', 'owner'].includes(role)) return res.status(400).json({ error: "Invalid role specified" });
+      if (role === 'owner' && !isOwner) {
+        return res.status(403).json({ error: "Forbidden: Only an Owner can designate Owner accounts." });
+      }
       db.prepare("UPDATE admins SET role = ? WHERE LOWER(TRIM(username)) = LOWER(TRIM(?))").run(role, targetUsername);
     }
     if (dj_profile_id !== undefined) {
@@ -3668,18 +4027,23 @@ apiRouter.put("/admin/users/:username", authorizeRole('admin'), (req, res) => {
   }
 });
 
-apiRouter.delete("/admin/users/:username", authorizeRole('admin'), (req, res) => {
+apiRouter.delete("/admin/users/:username", authMiddleware, authorizeRole(['admin', 'owner']), (req, res) => {
   const targetUsername = req.params.username.trim();
-  // Protect 'admin' user from being deleted
   if (targetUsername.toLowerCase() === 'admin') {
     return res.status(400).json({ error: "Cannot delete the default admin" });
   }
+  
+  const existingUser = db.prepare("SELECT role FROM admins WHERE LOWER(username) = LOWER(?)").get(targetUsername) as any;
+  if (existingUser && existingUser.role === 'owner') {
+    return res.status(400).json({ error: "Cannot delete an Owner account" });
+  }
+
   db.prepare("DELETE FROM admins WHERE LOWER(TRIM(username)) = LOWER(TRIM(?))").run(targetUsername);
   logAction(req, 'DELETE', 'admin_user', targetUsername);
   res.json({ success: true });
 });
 
-apiRouter.get("/admin/chat_users", authorizeRole('admin'), (req, res) => {
+apiRouter.get("/admin/chat_users", authMiddleware, authorizeRole('admin'), (req, res) => {
   const users = db.prepare(`
     SELECT u.id, u.username, u.email, u.password_plain, u.source, u.is_banned, u.created_at, u.avatar_url,
       (SELECT COUNT(*) FROM user_blocks WHERE LOWER(blocker) = LOWER(u.username)) as blocked_count,
@@ -3690,7 +4054,7 @@ apiRouter.get("/admin/chat_users", authorizeRole('admin'), (req, res) => {
   res.json(users);
 });
 
-apiRouter.get("/admin/user_blocks", authorizeRole('admin'), (req, res) => {
+apiRouter.get("/admin/user_blocks", authMiddleware, authorizeRole('admin'), (req, res) => {
   const blocks = db.prepare(`
     SELECT b.id, b.blocker, b.blocked, b.reason, b.created_at,
       u1.email as blocker_email, u1.avatar_url as blocker_avatar,
@@ -3703,7 +4067,7 @@ apiRouter.get("/admin/user_blocks", authorizeRole('admin'), (req, res) => {
   res.json(blocks);
 });
 
-apiRouter.post("/admin/user_blocks", authorizeRole('admin'), (req, res) => {
+apiRouter.post("/admin/user_blocks", authMiddleware, authorizeRole('admin'), (req, res) => {
   const { blocker, blocked, reason } = req.body;
   if (!blocker || !blocked) {
     return res.status(400).json({ error: "Both blocker and blocked usernames are required" });
@@ -3739,7 +4103,7 @@ apiRouter.post("/admin/user_blocks", authorizeRole('admin'), (req, res) => {
   }
 });
 
-apiRouter.post("/admin/user_blocks/unblock", authorizeRole('admin'), (req, res) => {
+apiRouter.post("/admin/user_blocks/unblock", authMiddleware, authorizeRole('admin'), (req, res) => {
   let { id, blocker, blocked } = req.body;
   try {
     let result;
@@ -3768,7 +4132,7 @@ apiRouter.post("/admin/user_blocks/unblock", authorizeRole('admin'), (req, res) 
   }
 });
 
-apiRouter.post("/admin/user_blocks/bulk-unblock", authorizeRole('admin'), (req, res) => {
+apiRouter.post("/admin/user_blocks/bulk-unblock", authMiddleware, authorizeRole('admin'), (req, res) => {
   const { ids } = req.body;
   if (!Array.isArray(ids) || ids.length === 0) {
     return res.status(400).json({ error: "No block IDs provided" });
@@ -3963,6 +4327,103 @@ apiRouter.get("/chat/block_check", (req, res) => {
   }
 });
 
+apiRouter.post("/chat/react", (req, res) => {
+  const { messageId, emoji, user, isPrivate } = req.body;
+  if (!messageId || !emoji) {
+    return res.status(400).json({ error: "messageId and emoji are required" });
+  }
+
+  const authHeader = req.headers.authorization;
+  const token = req.cookies?.user_token || req.cookies?.admin_token || (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null);
+  let resolvedUser = (user || 'Anonymous').trim();
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, ACTUAL_SECRET) as any;
+      if (decoded.username) {
+        resolvedUser = decoded.username.trim();
+      }
+    } catch {}
+  }
+
+  try {
+    const result = toggleMessageReaction(messageId, emoji, resolvedUser);
+    const io: Server | undefined = req.app.get('io');
+
+    if (result.action === 'added' && resolvedUser && resolvedUser !== 'Anonymous' && resolvedUser.toLowerCase() !== 'dejavufm studio') {
+      try {
+        const xpResult = awardXP(resolvedUser, 'chat_reaction', 'Reacted to a message', { message_id: messageId, emoji });
+        if (xpResult && xpResult.success && xpResult.xp_awarded > 0 && io) {
+          io.to(`user:${resolvedUser.toLowerCase()}`).emit('gamificationReward', xpResult);
+        }
+      } catch (e) {}
+    }
+
+    if (io) {
+      if (isPrivate) {
+        let privMsg: any = null;
+        try {
+          privMsg = db.prepare("SELECT sender, recipient FROM private_messages WHERE id = ?").get(messageId);
+        } catch {}
+
+        if (privMsg) {
+          for (const [_, s] of io.sockets.sockets) {
+            const socketUser = (s as any).username;
+            if (socketUser) {
+              const isPart = socketUser.toLowerCase() === privMsg.sender.toLowerCase() || socketUser.toLowerCase() === privMsg.recipient.toLowerCase();
+              let isAdm = false;
+              try {
+                if (db.prepare("SELECT 1 FROM admins WHERE LOWER(username) = ?").get(socketUser.toLowerCase())) isAdm = true;
+              } catch {}
+              if (isPart || isAdm) {
+                s.emit('messageReactionUpdated', {
+                  messageId,
+                  reactions: result.reactions,
+                  action: result.action,
+                  emoji: result.emoji,
+                  user: result.user
+                });
+              }
+            }
+          }
+        } else {
+          io.emit('messageReactionUpdated', {
+            messageId,
+            reactions: result.reactions,
+            action: result.action,
+            emoji: result.emoji,
+            user: result.user
+          });
+        }
+      } else {
+        io.emit('messageReactionUpdated', {
+          messageId,
+          reactions: result.reactions,
+          action: result.action,
+          emoji: result.emoji,
+          user: result.user
+        });
+      }
+    }
+
+    res.json({ success: true, ...result });
+  } catch (err: any) {
+    console.error("[API] Failed to react to message:", err);
+    res.status(500).json({ error: "Failed to update reaction" });
+  }
+});
+
+apiRouter.get("/chat/reactions/:messageId", (req, res) => {
+  const { messageId } = req.params;
+  if (!messageId) return res.status(400).json({ error: "messageId is required" });
+  try {
+    const reactions = getReactionsForMessage(messageId);
+    res.json({ success: true, reactions });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch reactions" });
+  }
+});
+
 const csvUpload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
@@ -4138,8 +4599,13 @@ apiRouter.delete("/admin/chat_users/:id", authorizeRole('admin'), (req, res) => 
   res.json({ success: true });
 });
 
-apiRouter.get("/admin/audit-logs", authorizeRole('admin'), (req, res) => {
-  const logs = db.prepare("SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 200").all();
+apiRouter.get("/admin/audit-logs", authMiddleware, authorizeRole(['admin', 'owner']), (req, res) => {
+  let logs: any[];
+  if ((req as any).user?.role === 'owner') {
+    logs = db.prepare("SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 200").all();
+  } else {
+    logs = db.prepare("SELECT * FROM audit_logs WHERE role != 'owner' AND LOWER(username) != 'owner' ORDER BY timestamp DESC LIMIT 200").all();
+  }
   res.json(logs);
 });
 
@@ -4284,102 +4750,35 @@ apiRouter.delete("/admin/database/delete-backup/:filename", authorizeRole('admin
 
 apiRouter.post("/admin/database/snapshot", authorizeRole('admin'), asyncHandler(async (req: Request, res: Response) => {
   const { label } = req.body;
-  if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
-
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const filename = `manual-backup-${timestamp}.bundle`;
-  const finalPath = path.join(backupDir, filename);
-  const tempDir = path.join(backupDir, `temp-manual-${timestamp}`);
-
   try {
-    console.log(`[DB] Creating manual bundled snapshot: ${filename}`);
-    
-    // 1. Create temp directory
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+    console.log(`[DB] Creating full application snapshot (database + all media + manifest)...`);
+    const { filename, manifest } = await createApplicationBackupBundle({ label, isManual: true });
 
-    // 2. Backup database to temp dir
-    const dbBackupPath = path.join(tempDir, 'database.db');
-    try {
-      db.pragma('wal_checkpoint(TRUNCATE)');
-    } catch (e) {
-      console.warn('[DB] WAL checkpoint failed before backup, continuing...', e);
-    }
-    await db.backup(dbBackupPath);
-
-    // 3. Copy uploads if they exist
-    const uploadsDir = getUploadsDir();
-    if (fs.existsSync(uploadsDir)) {
-      const destUploads = path.join(tempDir, 'uploads');
-      if (!fs.existsSync(destUploads)) fs.mkdirSync(destUploads, { recursive: true });
-      fs.cpSync(uploadsDir, destUploads, { recursive: true, force: true });
-    }
-
-    // 4. Create tarball bundle
-    await tar.c({ gzip: true, file: finalPath, cwd: tempDir }, ['.']);
-    
-    if (label) {
-      db.prepare("INSERT INTO backup_metadata (filename, label) VALUES (?, ?)").run(filename, label);
-    }
-    
-    // Cleanup temp dir
-    fs.rmSync(tempDir, { recursive: true, force: true });
-
-    logAction(req, 'CREATE_SNAPSHOT', 'database', null, { filename, label });
-    res.json({ success: true, filename });
-  } catch (err) {
+    logAction(req, 'CREATE_SNAPSHOT', 'database', null, { filename, label, manifest });
+    res.json({ success: true, filename, manifest });
+  } catch (err: any) {
     console.error("[API] Snapshot failed:", err);
-    if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true });
-    res.status(500).json({ error: "Failed to generate snapshot" });
+    res.status(500).json({ error: `Failed to generate snapshot: ${err?.message || 'Internal error'}` });
   }
 }));
 
 apiRouter.get("/admin/database/download", authorizeRole('admin'), asyncHandler(async (req: Request, res: Response) => {
-  if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
-
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const filename = `manual-backup-${timestamp}.bundle`;
-  const finalPath = path.join(backupDir, filename);
-  const tempDir = path.join(backupDir, `temp-dl-${timestamp}`);
-
   try {
-    // 1. Create temp directory
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-
-    // 2. Backup database to temp dir
-    const dbBackupPath = path.join(tempDir, 'database.db');
-    try {
-      db.pragma('wal_checkpoint(TRUNCATE)');
-    } catch (e) {
-      console.warn('[DB] WAL checkpoint failed before backup, continuing...', e);
-    }
-    await db.backup(dbBackupPath);
-
-    // 3. Copy uploads if they exist
-    const uploadsDir = getUploadsDir();
-    if (fs.existsSync(uploadsDir)) {
-      const destUploads = path.join(tempDir, 'uploads');
-      if (!fs.existsSync(destUploads)) fs.mkdirSync(destUploads, { recursive: true });
-      fs.cpSync(uploadsDir, destUploads, { recursive: true, force: true });
-    }
-
-    // 4. Create tarball bundle
-    await tar.c({ gzip: true, file: finalPath, cwd: tempDir }, ['.']);
+    const { filename, finalBackupPath } = await createApplicationBackupBundle({ isManual: true });
     
     logAction(req, 'DOWNLOAD_BACKUP', 'database', null, { filename });
 
-    res.download(finalPath, filename, (err) => {
+    res.download(finalBackupPath, filename, (err) => {
       if (err) console.error("[API] Backup download failed:", err);
       
-      // Cleanup: remove the temporary manual backup file and temp dir after download finishes
+      // Cleanup the generated download file after download finishes
       try {
-        if (fs.existsSync(finalPath)) fs.unlinkSync(finalPath);
-        if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true });
+        if (fs.existsSync(finalBackupPath)) fs.unlinkSync(finalBackupPath);
       } catch (e) {}
     });
-  } catch (err) {
+  } catch (err: any) {
     console.error("[API] Download generation failed:", err);
-    if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true });
-    res.status(500).json({ error: "Failed to generate download bundle" });
+    res.status(500).json({ error: `Failed to generate download bundle: ${err?.message || 'Internal error'}` });
   }
 }));
 
@@ -4580,6 +4979,13 @@ apiRouter.post("/admin/database/restore/finalize-file", authorizeRole('admin'), 
           
           // Re-open database connection in-process
           reopenDatabaseConnection();
+          // Ensure all schema tables, columns, and migrations are synchronized
+          try {
+            initDb();
+            console.log("[DB RESTORE] Database schema synchronized and verified successfully.");
+          } catch (initErr) {
+            console.warn("[DB RESTORE] Post-restore initDb notice:", initErr);
+          }
           // Regenerate dynamic server ID so health check pings detect success instantly
           req.app.get('regenerateServerId')?.();
         } catch (swapErr: any) {
@@ -4908,6 +5314,21 @@ apiRouter.post("/song-requests", (req, res) => {
       io.emit("songRequestAdded", newRequest);
     }
 
+    // Award XP for song request if user is authenticated or has valid username
+    try {
+      const authUser = getAuthenticatedUser(req);
+      const targetUser = authUser?.username || (name !== 'Anonymous Listener' ? name : null);
+      if (targetUser) {
+        awardXP(targetUser, 'song_request', `Requested track: "${track_title}" by ${artist}`, {
+          track_title,
+          artist,
+          request_id: info.lastInsertRowid
+        });
+      }
+    } catch (e) {
+      console.error("[Gamification] Error awarding song request XP:", e);
+    }
+
     res.status(201).json(newRequest);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -5143,6 +5564,18 @@ apiRouter.delete("/admin/curated-tracks/:id", authMiddleware, authorizeRole(['ad
     res.status(500).json({ error: err.message });
   }
 });
+
+// Gamification System Routes
+apiRouter.use(gamificationRouter);
+
+// Special Events System Routes
+apiRouter.use(eventsRouter);
+
+// Greeting System Routes
+apiRouter.use(greetingRouter);
+
+// AI Automatic Social Content Studio Routes (Admin-Only)
+apiRouter.use("/admin/ai-studio", aiStudioRouter);
 
 // Global Error Handler Middleware
 apiRouter.use((err: any, req: Request, res: Response, next: NextFunction) => {

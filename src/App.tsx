@@ -1,13 +1,13 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { NavLink } from 'react-router-dom';
-import { Radio, Calendar, Podcast, Shield as AdminIcon, Headphones, Menu, X, Video, MessageSquare, Sun, Moon, FileText, ChevronDown, ExternalLink, Info, Instagram, Twitter, Facebook, Youtube, Cloud, Music, Share2, Layers, Globe } from 'lucide-react';
+import { Radio, Calendar, Podcast, Shield as AdminIcon, Headphones, Menu, X, Video, MessageSquare, Sun, Moon, FileText, ChevronDown, ExternalLink, Info, Instagram, Twitter, Facebook, Youtube, Cloud, Music, Share2, Layers, Globe, ShieldAlert, Power, Sparkles } from 'lucide-react';
 import { PlayerBar } from './components/PlayerBar';
 import { NotificationManager } from './components/NotificationManager';
 import { GlobalRequestAlerts } from './components/GlobalRequestAlerts';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { AudioProvider, useAudio } from './context/AudioContext';
 import { ModalProvider, useModal } from './context/ModalContext';
-import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Toaster, toast } from 'sonner';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -20,17 +20,51 @@ import { SitePopup } from './components/SitePopup';
 import { AdvertisementSliders } from './components/AdvertisementSliders';
 import { AppLoader } from './components/AppLoader';
 import { FeaturesSlider } from './components/FeaturesSlider';
+import { safeFetchJson } from './utils/safeFetch';
 
-// Lazy-loaded components for optimal performance & minimal initial bundle size
-const ChatSidebar = lazy(() => import('./components/ChatSidebar').then(m => ({ default: m.ChatSidebar })));
-const ShoutoutWidget = lazy(() => import('./components/ShoutoutWidget').then(m => ({ default: m.ShoutoutWidget })));
-const CinematicVisualizer = lazy(() => import('./components/CinematicVisualizer').then(m => ({ default: m.CinematicVisualizer })));
+// Resilient Lazy Import Helper with automatic chunk retry and cache invalidation
+function lazyWithRetry<T extends React.ComponentType<any>>(
+  componentImport: () => Promise<{ default: T } | any>
+) {
+  return lazy(async () => {
+    try {
+      const module = await componentImport();
+      sessionStorage.removeItem('app_chunk_retry');
+      return module.default ? module : { default: module };
+    } catch (error) {
+      console.warn('[LazyRetry] Initial module import failed, retrying...', error);
+      try {
+        await new Promise(r => setTimeout(r, 100));
+        const module = await componentImport();
+        sessionStorage.removeItem('app_chunk_retry');
+        return module.default ? module : { default: module };
+      } catch (retryError) {
+        const pageHasBeenRefreshed = sessionStorage.getItem('app_chunk_retry');
+        if (!pageHasBeenRefreshed) {
+          sessionStorage.setItem('app_chunk_retry', 'true');
+          window.location.reload();
+        }
+        throw retryError;
+      }
+    }
+  });
+}
+
+import { ChatSidebar } from './components/ChatSidebar';
+import { ShoutoutWidget } from './components/ShoutoutWidget';
+import { CinematicVisualizer } from './components/CinematicVisualizer';
 // @ts-ignore
 import glitchLogoUrl from './assets/images/dejavufm_glitch_logo_1784796255055.png';
 import { ThemeAccessibilityDropdown } from './components/ThemeAccessibilityDropdown';
 import { ShareModal } from './components/ShareModal';
 import { PremiumRingLoader } from './components/PremiumRingLoader';
 import { suppressAccessibilityForAdmin, applyFrontAccessibilityOptions } from './utils/accessibility';
+import { GamificationProvider } from './context/GamificationContext';
+import { GamificationNavBadge } from './components/gamification/GamificationNavBadge';
+import { GamificationHubModal } from './components/gamification/GamificationHubModal';
+import { LevelUpModal } from './components/gamification/LevelUpModal';
+import { PersonalizedGreetingModal } from './components/PersonalizedGreetingModal';
+import { getPodcastId } from './utils/safeFetch';
 
 const TikTokIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -46,23 +80,25 @@ const MixcloudIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
 
 // Pages
 import Home from './pages/Home';
-const Schedule = lazy(() => import('./pages/Schedule'));
-const PodcastsPage = lazy(() => import('./pages/Podcasts'));
-const PodcastDetail = lazy(() => import('./pages/PodcastDetail'));
-const DJs = lazy(() => import('./pages/DJs'));
-const DJDetail = lazy(() => import('./pages/DJDetail'));
-const About = lazy(() => import('./pages/About'));
-const Contact = lazy(() => import('./pages/Contact'));
-const Admin = lazy(() => import('./pages/Admin'));
-const WatchLive = lazy(() => import('./pages/WatchLive'));
-const Features = lazy(() => import('./pages/Features'));
-const FeatureDetail = lazy(() => import('./pages/FeatureDetail'));
-const Arch421 = lazy(() => import('./pages/Arch421'));
-const NotFound = lazy(() => import('./pages/NotFound'));
-const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
-const Maintenance = lazy(() => import('./pages/Maintenance'));
-const CustomDynamicPage = lazy(() => import('./pages/CustomDynamicPage').then(m => ({ default: m.CustomDynamicPage })));
-const Booth = lazy(() => import('./pages/Booth'));
+import Admin from './pages/Admin';
+const Schedule = lazyWithRetry(() => import('./pages/Schedule'));
+const PodcastsPage = lazyWithRetry(() => import('./pages/Podcasts'));
+const PodcastDetail = lazyWithRetry(() => import('./pages/PodcastDetail'));
+const DJs = lazyWithRetry(() => import('./pages/DJs'));
+const DJDetail = lazyWithRetry(() => import('./pages/DJDetail'));
+const About = lazyWithRetry(() => import('./pages/About'));
+const Contact = lazyWithRetry(() => import('./pages/Contact'));
+const WatchLive = lazyWithRetry(() => import('./pages/WatchLive'));
+const Features = lazyWithRetry(() => import('./pages/Features'));
+const FeatureDetail = lazyWithRetry(() => import('./pages/FeatureDetail'));
+const Events = lazyWithRetry(() => import('./pages/Events').then(m => ({ default: m.Events })));
+const EventDetail = lazyWithRetry(() => import('./pages/EventDetail').then(m => ({ default: m.EventDetail })));
+const Arch421 = lazyWithRetry(() => import('./pages/Arch421'));
+const NotFound = lazyWithRetry(() => import('./pages/NotFound'));
+const PrivacyPolicy = lazyWithRetry(() => import('./pages/PrivacyPolicy'));
+const Maintenance = lazyWithRetry(() => import('./pages/Maintenance'));
+const CustomDynamicPage = lazyWithRetry(() => import('./pages/CustomDynamicPage').then(m => ({ default: m.CustomDynamicPage })));
+const Booth = lazyWithRetry(() => import('./pages/Booth'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -100,6 +136,15 @@ if (typeof window !== 'undefined') {
       tabId,
       browserId
     }
+  });
+
+  socketInstance.on('settings_updated', (updatedSettings: any) => {
+    queryClient.setQueryData(['settings'], updatedSettings);
+    queryClient.invalidateQueries({ queryKey: ['settings'] });
+  });
+
+  socketInstance.on('kill_switch_toggled', () => {
+    queryClient.invalidateQueries({ queryKey: ['settings'] });
   });
 
   socketInstance.on('force_logout', async (data: any) => {
@@ -179,13 +224,13 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
   const appTagline = settings?.app_tagline !== undefined ? settings.app_tagline : "The UKs Most Influential Independent Radio Station";
   const isLongTagline = appTagline.length > 25;
   
-  // Detect if we are using a single logo for both modes
   const isSingleLogo = !!settings?.logo_url && !settings?.logo_light && !settings?.logo_dark;
 
   const isOnAir = settings?.is_on_air === '1';
 
   const featLiveTools = settings?.feat_live_tools !== '0';
   const featBooth = settings?.feat_booth !== '0';
+  const featSpecialEvents = settings?.feat_special_events !== '0';
   // Removed internal featChat definition since it's now a prop
 
   // Custom navigation parsing from the master Menu tab settings
@@ -210,9 +255,17 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
     } catch {}
   }
 
-  let customOrder: string[] = ['arch421', 'listen', 'watch', 'schedule', 'djs', 'podcasts', 'features', 'booth'];
+  let customOrder: string[] = ['arch421', 'listen', 'watch', 'events', 'schedule', 'djs', 'podcasts', 'features', 'booth'];
   if (settings?.menu_order) {
     customOrder = settings.menu_order.split(',').map((k: string) => k.trim());
+    if (!customOrder.includes('events')) {
+      const scheduleIdx = customOrder.indexOf('schedule');
+      if (scheduleIdx !== -1) {
+        customOrder.splice(scheduleIdx, 0, 'events');
+      } else {
+        customOrder.splice(3, 0, 'events');
+      }
+    }
     if (!customOrder.includes('booth')) {
       customOrder.push('booth');
     }
@@ -239,6 +292,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
     { key: 'arch421', path: '/arch421', defaultLabel: 'Arch421' },
     { key: 'listen', path: '/', defaultLabel: 'Listen' },
     { key: 'watch', path: '/watch', defaultLabel: 'Watch' },
+    { key: 'events', path: '/events', defaultLabel: 'Events' },
     { key: 'schedule', path: '/schedule', defaultLabel: 'Schedule' },
     { key: 'djs', path: '/djs', defaultLabel: 'DJs and Hosts' },
     { key: 'podcasts', path: '/podcasts', defaultLabel: 'Podcasts' },
@@ -402,6 +456,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
       if (customVisibility[item.key] === false) return false;
       if (item.key === 'watch' && featLiveTools === false) return false;
       if (item.key === 'booth' && featBooth === false) return false;
+      if (item.key === 'events' && featSpecialEvents === false) return false;
       return true;
     })
     .map(item => {
@@ -413,6 +468,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
     { key: 'arch421', path: '/arch421', defaultLabel: 'Arch421', icon: <Layers className="w-5 h-5" />, color: 'text-[#f75c1e]' },
     { key: 'listen', path: '/', defaultLabel: 'Listen', exact: true },
     { key: 'watch', path: '/watch', defaultLabel: 'Watch', icon: <Radio className="w-5 h-5" />, color: 'text-neon-purple', conditional: featLiveTools },
+    { key: 'events', path: '/events', defaultLabel: 'Events', icon: <Sparkles className="w-5 h-5" />, color: 'text-neon-purple' },
     { key: 'schedule', path: '/schedule', defaultLabel: 'Schedule' },
     { key: 'djs', path: '/djs', defaultLabel: 'DJs and Hosts' },
     { key: 'podcasts', path: '/podcasts', defaultLabel: 'Podcasts', matchPrefix: true },
@@ -472,8 +528,8 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
         isExternal,
         exact,
         matchPrefix,
-        icon: key === 'arch421' ? <Layers className="w-5 h-5" /> : (key === 'watch' ? <Radio className="w-5 h-5" /> : <Globe className="w-5 h-5" />),
-        color: key === 'arch421' ? 'text-[#f75c1e]' : (key === 'watch' ? 'text-neon-purple' : 'text-neon-blue')
+        icon: key === 'arch421' ? <Layers className="w-5 h-5" /> : (key === 'watch' ? <Radio className="w-5 h-5" /> : (key === 'events' ? <Sparkles className="w-5 h-5" /> : <Globe className="w-5 h-5" />)),
+        color: key === 'arch421' ? 'text-[#f75c1e]' : (key === 'watch' ? 'text-neon-purple' : (key === 'events' ? 'text-neon-purple' : 'text-neon-blue'))
       };
     })
     .filter((item): item is NonNullable<typeof item> => {
@@ -481,6 +537,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
       if (customVisibility[item.key] === false) return false;
       if (item.key === 'watch' && featLiveTools === false) return false;
       if (item.key === 'booth' && featBooth === false) return false;
+      if (item.key === 'events' && featSpecialEvents === false) return false;
       return true;
     })
     .map(item => ({
@@ -622,6 +679,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
         <div className="front-nav-actions flex items-center space-x-2 md:space-x-4 xl:space-x-6 z-40">
            {featChat !== false && (
              <motion.button 
+              id="toggle-chat-button"
               onClick={onOpenChat}
               whileHover="hover"
               className="front-chat-btn flex items-center space-x-2 xl:space-x-3 px-4 xl:px-6 py-3 rounded-2xl bg-white/5 hover:bg-neon-purple/20 border border-white/10 hover:border-neon-purple/50 transition-all group whitespace-nowrap shrink-0 relative overflow-hidden"
@@ -640,7 +698,11 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
           <ThemeAccessibilityDropdown />
           
           <button 
-            className="front-mobile-menu-toggle xl:hidden text-white w-12 h-12 flex flex-shrink-0 items-center justify-center bg-white/5 rounded-2xl border border-white/5"
+            className={`front-mobile-menu-toggle xl:hidden w-12 h-12 flex flex-shrink-0 items-center justify-center rounded-2xl border transition-all ${
+              isLightMode 
+                ? 'text-slate-900 bg-black/5 hover:bg-black/10 border-black/10' 
+                : 'text-white bg-white/5 hover:bg-white/10 border-white/5'
+            }`}
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
             {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -673,10 +735,27 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
             animate={{ opacity: 1, backdropFilter: 'blur(24px)' }}
             exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            className="front-mobile-menu-drawer fixed inset-0 z-[950] bg-dark-bg/95 xl:hidden pt-36 sm:pt-40 pb-12 overflow-y-auto"
+            className={`front-mobile-menu-drawer fixed inset-0 z-[950] xl:hidden pt-36 sm:pt-44 pb-12 overflow-y-auto ${
+              isLightMode ? 'bg-slate-50/95 text-slate-900' : 'bg-dark-bg/95 text-white'
+            }`}
           >
-            <div className="flex flex-col min-h-full px-8 pb-32 max-w-md mx-auto">
-              <div className="flex flex-col space-y-2.5 mt-2 mb-auto">
+            <div className="flex flex-col min-h-full px-6 sm:px-8 pb-32 max-w-md mx-auto">
+              {/* Top Gamification Container in Mobile Menu */}
+              <motion.div
+                initial={{ opacity: 0, y: -15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                className="mb-5 mt-2 sm:mt-0 shrink-0"
+              >
+                <GamificationNavBadge
+                  mobileMenu
+                  isLightMode={isLightMode}
+                  onItemClick={() => setIsMobileMenuOpen(false)}
+                />
+              </motion.div>
+
+              <div className="flex flex-col space-y-2.5 mt-1 mb-auto">
                 {renderedMobileItems.map((item: any, index) => (
                   <motion.div
                     key={item.key}
@@ -689,7 +768,11 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                       <div className="flex flex-col">
                         <button 
                           onClick={() => item.setOpen?.(!item.isOpen)}
-                          className="flex items-center justify-between py-3 border-b border-white/5 transition-all w-full text-white/50 hover:text-white"
+                          className={`flex items-center justify-between py-3 border-b transition-all w-full ${
+                            isLightMode 
+                              ? 'border-slate-200 text-slate-700 hover:text-slate-900' 
+                              : 'border-white/5 text-white/50 hover:text-white'
+                          }`}
                         >
                           <span className="text-2xl font-display font-medium tracking-tight">
                             {item.label}
@@ -702,7 +785,9 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                               initial={{ height: 0, opacity: 0 }}
                               animate={{ height: 'auto', opacity: 1 }}
                               exit={{ height: 0, opacity: 0 }}
-                              className="overflow-hidden bg-white/5 rounded-2xl mt-2 mb-4"
+                              className={`overflow-hidden rounded-2xl mt-2 mb-4 ${
+                                isLightMode ? 'bg-slate-100/90 border border-slate-200' : 'bg-white/5'
+                              }`}
                             >
                               {item.subItems?.map((sub) => (
                                 sub.isExternal ? (
@@ -712,7 +797,11 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     onClick={() => setIsMobileMenuOpen(false)}
-                                    className="flex items-center justify-between p-4 text-white/60 hover:text-white border-b border-white/5 last:border-0"
+                                    className={`flex items-center justify-between p-4 border-b last:border-0 ${
+                                      isLightMode 
+                                        ? 'text-slate-700 hover:text-slate-900 border-slate-200' 
+                                        : 'text-white/60 hover:text-white border-white/5'
+                                    }`}
                                   >
                                     <span className="text-lg font-medium tracking-tight uppercase tracking-[0.15em] text-[14px]">
                                       {sub.label}
@@ -724,7 +813,11 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                                     key={sub.path}
                                     to={sub.path}
                                     onClick={() => setIsMobileMenuOpen(false)}
-                                    className={({isActive}) => `flex items-center justify-between p-4 border-b border-white/5 last:border-0 ${isActive ? 'text-white bg-white/10' : 'text-white/60 hover:text-white'}`}
+                                    className={({isActive}) => `flex items-center justify-between p-4 border-b last:border-0 ${
+                                      isActive 
+                                        ? (isLightMode ? 'text-neon-purple bg-slate-200/70 font-bold border-slate-200' : 'text-white bg-white/10 border-white/5') 
+                                        : (isLightMode ? 'text-slate-700 hover:text-slate-900 border-slate-200' : 'text-white/60 hover:text-white border-white/5')
+                                    }`}
                                   >
                                     <span className="text-lg font-medium tracking-tight uppercase tracking-[0.15em] text-[14px]">
                                       {sub.label}
@@ -743,13 +836,17 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                         target="_blank" 
                         rel="noopener noreferrer"
                         onClick={() => setIsMobileMenuOpen(false)} 
-                        className="group flex items-center justify-between py-3 border-b border-white/5 transition-all w-full text-white/50 hover:text-white"
+                        className={`group flex items-center justify-between py-3 border-b transition-all w-full ${
+                          isLightMode 
+                            ? 'border-slate-200 text-slate-700 hover:text-slate-900' 
+                            : 'border-white/5 text-white/50 hover:text-white'
+                        }`}
                       >
                         <span className="text-2xl font-display font-medium tracking-tight">
                           {item.label}
                         </span>
                         {item.icon ? (
-                          <div className="text-white/30 group-hover:text-white/70 transition-colors">
+                          <div className={isLightMode ? 'text-slate-400 group-hover:text-slate-700 transition-colors' : 'text-white/30 group-hover:text-white/70 transition-colors'}>
                             {item.icon}
                           </div>
                         ) : null}
@@ -763,8 +860,11 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                           if (item.path === '/arch421') {
                             return `group flex items-center justify-between px-5 py-3.5 my-1 rounded-2xl bg-[#f75c1e] text-white font-bold transition-all w-full shadow-lg hover:brightness-110`;
                           }
-                          return `group flex items-center justify-between py-3 border-b border-white/5 transition-all w-full
-                            ${isMatch ? 'text-white' : 'text-white/50 hover:text-white'}`;
+                          return `group flex items-center justify-between py-3 border-b transition-all w-full ${
+                            isMatch 
+                              ? (isLightMode ? 'text-slate-900 font-bold border-slate-300' : 'text-white font-bold border-white/10') 
+                              : (isLightMode ? 'text-slate-600 hover:text-slate-900 border-slate-200' : 'text-white/50 hover:text-white border-white/5')
+                          }`;
                         }}
                       >
                         {({isActive}) => {
@@ -787,7 +887,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                                 {item.label}
                               </span>
                               {item.icon ? (
-                                <div className={isMatch ? (item.color || 'text-white') : 'text-white/30 group-hover:text-white/70 transition-colors'}>
+                                <div className={isMatch ? (item.color || (isLightMode ? 'text-slate-900' : 'text-white')) : (isLightMode ? 'text-slate-400 group-hover:text-slate-700 transition-colors' : 'text-white/30 group-hover:text-white/70 transition-colors')}>
                                   {item.icon}
                                 </div>
                               ) : null}
@@ -909,9 +1009,10 @@ function AnimatedRoutes({ adminPath = '/admin' }: { adminPath?: string }) {
 
   const { data: settings } = useQuery({
     queryKey: ['settings'],
-    queryFn: () => fetch("/api/public/settings").then(res => res.json()),
+    queryFn: () => safeFetchJson("/api/public/settings"),
   });
   const featBooth = settings?.feat_booth !== '0';
+  const featSpecialEvents = settings?.feat_special_events !== '0';
 
   return (
     <AnimatePresence mode="wait">
@@ -937,19 +1038,30 @@ function AnimatedRoutes({ adminPath = '/admin' }: { adminPath?: string }) {
             <Route path="/podcasts/:id" element={<PodcastDetail />} />
             <Route path="/features" element={<Features />} />
             <Route path="/features/:slug" element={<FeatureDetail />} />
+            <Route path="/events" element={featSpecialEvents ? <Events /> : <Navigate to="/" replace />} />
+            <Route path="/events/:slug" element={featSpecialEvents ? <EventDetail /> : <Navigate to="/" replace />} />
             <Route path="/booth" element={featBooth ? <Booth /> : <Navigate to="/" replace />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/arch421" element={<Arch421 />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/dejavufm-privacy-policy" element={<PrivacyPolicy />} />
-            <Route path={`${adminPath}/*`} element={
+            <Route path="/admin/*" element={
               <Suspense fallback={
                 <AppLoader size="lg" fullScreen />
               }>
                 <Admin />
               </Suspense>
             } />
+            {adminPath !== '/admin' && (
+              <Route path={`${adminPath}/*`} element={
+                <Suspense fallback={
+                  <AppLoader size="lg" fullScreen />
+                }>
+                  <Admin />
+                </Suspense>
+              } />
+            )}
             <Route path="/:slug" element={<CustomDynamicPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
@@ -970,37 +1082,43 @@ function MainLayout() {
 
   const { data: scheduleData } = useQuery({
     queryKey: ['schedule'],
-    queryFn: () => fetch("/api/public/schedule").then(res => res.json()),
+    queryFn: () => safeFetchJson("/api/public/schedule"),
     refetchInterval: 10000,
   });
 
   const { data: settings } = useQuery({
     queryKey: ['settings'],
-    queryFn: () => fetch('/api/public/settings').then(res => res.json()),
+    queryFn: () => safeFetchJson('/api/public/settings'),
     refetchInterval: 3000,
   });
 
   const { data: authData } = useQuery({
     queryKey: ['auth-check'],
-    queryFn: () => fetch('/api/public/auth/check').then(res => res.json()),
-    refetchInterval: 10000,
+    queryFn: async () => {
+      let token = null;
+      try { token = localStorage.getItem("admin_token"); } catch {}
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      return safeFetchJson('/api/public/auth/check', { headers, credentials: 'include' });
+    },
+    refetchInterval: 5000,
   });
 
   const { data: podcastsFeed } = useQuery({
     queryKey: ['podcasts'],
-    queryFn: () => fetch("/api/public/podcasts").then(res => res.json()),
+    queryFn: () => safeFetchJson("/api/public/podcasts"),
     staleTime: 1000 * 60 * 5,
   });
 
   const { data: djsData } = useQuery({
     queryKey: ['djs'],
-    queryFn: () => fetch("/api/public/djs").then(res => res.json()),
+    queryFn: () => safeFetchJson("/api/public/djs"),
     staleTime: 1000 * 60 * 5,
   });
 
   const { data: featuresData } = useQuery({
     queryKey: ['features'],
-    queryFn: () => fetch("/api/public/features").then(res => res.json()),
+    queryFn: () => safeFetchJson("/api/public/features"),
     staleTime: 1000 * 60 * 5,
   });
 
@@ -1025,9 +1143,13 @@ function MainLayout() {
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
+    const handleOpenChat = () => setIsChatOpen(true);
+    window.addEventListener("open-chat", handleOpenChat);
+
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("open-chat", handleOpenChat);
     };
   }, []);
 
@@ -1036,20 +1158,20 @@ function MainLayout() {
     // Prefetch podcasts
     queryClient.prefetchQuery({
       queryKey: ['podcasts'],
-      queryFn: () => fetch("/api/public/podcasts").then(res => res.json()),
+      queryFn: () => safeFetchJson("/api/public/podcasts"),
       staleTime: 1000 * 60 * 5, // 5 minutes
     });
     
     // Prefetch DJs
     queryClient.prefetchQuery({
       queryKey: ['djs'],
-      queryFn: () => fetch("/api/public/djs").then(res => res.json()),
+      queryFn: () => safeFetchJson("/api/public/djs"),
       staleTime: 1000 * 60 * 5, // 5 minutes
     });
 
     queryClient.prefetchQuery({
       queryKey: ['features'],
-      queryFn: () => fetch("/api/public/features").then(res => res.json()),
+      queryFn: () => safeFetchJson("/api/public/features"),
       staleTime: 1000 * 60 * 5,
     });
   }, []);
@@ -1329,8 +1451,7 @@ function MainLayout() {
       const id = location.pathname.split("/").filter(Boolean).pop();
       const podcast = podcastsFeed?.items?.find((i: any) => {
         try {
-          const idStr = i.guid || i.link || "";
-          return btoa(idStr).replace(/=/g, '') === id;
+          return getPodcastId(i) === id;
         } catch (e) {
           return false;
         }
@@ -1421,6 +1542,46 @@ function MainLayout() {
   const featBookings = settings?.feat_bookings !== '0';
   const featLiveTools = settings?.feat_live_tools !== '0';
   const featBooth = settings?.feat_booth !== '0';
+  const featSpecialEvents = settings?.feat_special_events !== '0';
+
+  const isOwner = authData?.loggedIn && authData?.role === 'owner';
+  const isLoginPage = isAdmin && !authData?.loggedIn;
+
+  if (settings?.app_kill_switch === '1' && !isAdmin) {
+    const isUserLoggedIn = authData?.loggedIn;
+    return (
+      <div className="min-h-screen w-full bg-[#090a0f] text-white flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
+        {/* Animated grid lines background */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f2937_1px,transparent_1px),linear-gradient(to_bottom,#1f2937_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-20 pointer-events-none" />
+        
+        {/* Subtle glowing orbs */}
+        <div className="absolute top-[20%] left-[30%] w-96 h-96 rounded-full bg-red-600/10 blur-[150px] animate-pulse pointer-events-none" />
+        
+        <div className="max-w-xl w-full text-center space-y-8 relative z-10 px-4">
+          <div className="inline-flex p-5 rounded-3xl bg-red-500/10 border border-red-500/30 text-red-500 shadow-[0_0_30px_rgba(239,68,68,0.2)] animate-pulse">
+            <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+
+          <div className="space-y-3">
+            <h1 className="text-4xl md:text-5xl font-black tracking-tighter uppercase font-display text-red-500">
+              System Offline
+            </h1>
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/40 font-mono">
+              Emergency Suspension Active
+            </p>
+          </div>
+
+          <div className="h-px w-24 bg-red-500/30 mx-auto" />
+
+          <p className="text-sm md:text-base text-slate-400 leading-relaxed max-w-md mx-auto font-medium">
+            This application has been suspended by Station Management. Standard broadcast functions, DJ booths, audio player, and chat features are temporarily offline.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (settings?.maintenance_mode === '1' && !isAdmin) {
     return (
@@ -1626,6 +1787,11 @@ function MainLayout() {
       
       {!location.pathname.startsWith('/admin') && !isSplitActive && <MobileBottomBar featLiveTools={featLiveTools} featBooth={featBooth} />}
       {!isSplitActive && <PlayerBar />}
+      {!isAdmin && !isSplitActive && (
+        <div id="floating-gamification-container" className="hidden sm:block fixed bottom-24 sm:bottom-28 xl:bottom-12 left-4 sm:left-6 xl:left-8 z-40 pointer-events-auto">
+          <GamificationNavBadge isLightMode={isLightMode} />
+        </div>
+      )}
       {featCinematic && (
         <Suspense fallback={null}>
           <CinematicVisualizer isOpen={isCinematicOpen} onClose={toggleCinematic} />
@@ -1638,8 +1804,28 @@ function MainLayout() {
         appName={appName} 
         appTagline={appTagline} 
       />
+      <GamificationHubModal />
+      <LevelUpModal />
+      <PersonalizedGreetingModal />
     </div>
     </>
+  );
+}
+
+function AppToaster() {
+  const { isLightMode } = useLogo();
+  return (
+    <Toaster 
+      closeButton 
+      theme={isLightMode ? "light" : "dark"} 
+      position="bottom-left" 
+      toastOptions={{ 
+        style: isLightMode 
+          ? { background: '#ffffff', borderColor: '#e2e8f0', color: '#0f172a', borderRadius: '16px' } 
+          : { background: '#09090b', borderColor: 'var(--color-neon-purple)', color: 'white', borderRadius: '16px' },
+        className: 'rounded-2xl'
+      }} 
+    />
   );
 }
 
@@ -1649,8 +1835,10 @@ export default function App() {
       <Router>
         <ModalProvider>
           <AudioProvider>
-            <Toaster closeButton theme="dark" position="bottom-left" toastOptions={{ style: { background: '#09090b', borderColor: 'var(--color-neon-purple)', color: 'white' } }} />
-            <MainLayout />
+            <GamificationProvider>
+              <AppToaster />
+              <MainLayout />
+            </GamificationProvider>
           </AudioProvider>
         </ModalProvider>
       </Router>
