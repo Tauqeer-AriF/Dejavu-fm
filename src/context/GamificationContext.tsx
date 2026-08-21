@@ -78,8 +78,7 @@ function playCelebrationSound(type: 'xp' | 'badge' | 'levelup' | 'streak') {
 
 export function GamificationProvider({ children }: { children: React.ReactNode }) {
   const { settings, isLightMode } = useLogo();
-  const featChat = settings?.feat_chat !== '0';
-  const isEnabled = featChat && settings?.feat_gamification !== '0';
+  const isEnabled = settings?.feat_gamification !== '0';
 
   const [profile, setProfile] = useState<UserGamificationProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);

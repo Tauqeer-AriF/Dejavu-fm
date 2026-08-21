@@ -1145,7 +1145,7 @@ export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdmin
                       {/* Email Field */}
                       <div>
                         <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>
-                          Email Address {userRole !== 'owner' && currentUsername !== user.username && "(Locked)"}
+                          Email Address
                         </label>
                         <div className="relative">
                           <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${isLightMode ? 'text-black/40' : 'text-white/30'}`} />
@@ -1153,8 +1153,7 @@ export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdmin
                             type="email"
                             value={editStaffEmail}
                             onChange={(e) => setEditStaffEmail(e.target.value)}
-                            disabled={userRole !== 'owner' && currentUsername !== user.username}
-                            className={`w-full text-xs border rounded-xl pl-9 pr-3 py-2.5 focus:border-neon-purple focus:outline-none transition-all disabled:opacity-50 ${isLightMode ? 'bg-black/5 border-black/15 text-slate-900 placeholder-black/40' : 'bg-black/40 border-white/10 text-white placeholder-white/30'}`}
+                            className={`w-full text-xs border rounded-xl pl-9 pr-3 py-2.5 focus:border-neon-purple focus:outline-none transition-all ${isLightMode ? 'bg-black/5 border-black/15 text-slate-900 placeholder-black/40' : 'bg-black/40 border-white/10 text-white placeholder-white/30'}`}
                             placeholder="Email Address"
                           />
                         </div>
@@ -1167,8 +1166,8 @@ export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdmin
                         </label>
                         <select
                           value={editStaffRole}
-                          onChange={(e) => setEditStaffRole(e.target.value as "admin" | "dj" | "owner")}
-                          disabled={user.username === "admin" || user.role === "owner" || userRole !== "owner"}
+                          onChange={(e) => setEditStaffRole(e.target.value as "admin" | "dj")}
+                          disabled={user.username === "admin" || user.role === "owner"}
                           className={`w-full text-xs border rounded-xl px-3 py-2.5 focus:border-neon-purple focus:outline-none transition-all disabled:opacity-50 ${isLightMode ? 'bg-black/5 border-black/15 text-slate-900' : 'bg-black/40 border-white/10 text-white'}`}
                         >
                           <option value="dj" className={isLightMode ? "bg-white text-slate-900" : "bg-[#121212] text-white"}>DJ / Presenter</option>
@@ -1198,7 +1197,7 @@ export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdmin
                       {/* Password Field */}
                       <div>
                         <label className={`block text-[10px] uppercase font-black tracking-widest mb-1.5 ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>
-                          New Password {userRole !== 'owner' && currentUsername !== user.username ? "(Locked)" : "(Optional)"}
+                          New Password (Optional)
                         </label>
                         <div className="relative">
                           <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${isLightMode ? 'text-black/40' : 'text-white/30'}`} />
@@ -1206,9 +1205,8 @@ export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdmin
                             type={showEditStaffPass ? "text" : "password"}
                             value={editStaffPass}
                             onChange={(e) => setEditStaffPass(e.target.value)}
-                            disabled={userRole !== 'owner' && currentUsername !== user.username}
-                            placeholder={userRole !== 'owner' && currentUsername !== user.username ? "Insufficient authority" : "Leave blank to keep current"}
-                            className={`w-full text-xs border rounded-xl pl-9 pr-8 py-2.5 focus:border-neon-purple focus:outline-none transition-all disabled:opacity-50 ${isLightMode ? 'bg-black/5 border-black/15 text-slate-900 placeholder-black/40' : 'bg-black/40 border-white/10 text-white placeholder-white/30'}`}
+                            placeholder="Leave blank to keep current"
+                            className={`w-full text-xs border rounded-xl pl-9 pr-8 py-2.5 focus:border-neon-purple focus:outline-none transition-all ${isLightMode ? 'bg-black/5 border-black/15 text-slate-900 placeholder-black/40' : 'bg-black/40 border-white/10 text-white placeholder-white/30'}`}
                           />
                           <button
                             type="button"
@@ -1414,12 +1412,16 @@ export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdmin
                           </button>
                         </div>
                       ) : (
-                        (userRole === "owner" || currentUsername === user.username) && (
+                        (isAdminUser || userRole === "admin" || userRole === "owner" || currentUsername === user.username) && (
                           <button
-                            onClick={() => setEditingUsername(user.username)}
+                            onClick={() => {
+                              setEditingUsername(user.username);
+                              setEditPassword("");
+                              setShowEditPassword(false);
+                            }}
                             className={`inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all ${isLightMode ? 'bg-black/5 hover:bg-black/10 text-slate-800' : 'bg-white/5 hover:bg-white/10 text-white'}`}
                           >
-                            <Key className={`w-3.5 h-3.5 ${isLightMode ? 'text-black/40' : 'text-white/40'}`} /> Reset Password
+                            <Key className="w-3.5 h-3.5 text-neon-purple" /> Reset Password
                           </button>
                         )
                       )}

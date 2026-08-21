@@ -110,6 +110,27 @@ export default function Admin() {
   const { settings } = useLogo();
   const adminBasePath = (settings?.admin_custom_path || '/admin').trim().replace(/\/+$/, '') || '/admin';
 
+  const isOwner = userRole === 'owner';
+  const isAdmin = userRole === 'admin' || isOwner;
+
+  const isLiveToolsEnabled = settings?.feat_live_tools !== '0' && (isOwner || settings?.owner_hide_feat_live_tools !== '1');
+  const isShoutoutsEnabled = settings?.feat_shoutouts !== '0' && (isOwner || settings?.owner_hide_feat_shoutouts !== '1');
+  const isBookingsEnabled = settings?.feat_bookings !== '0' && (isOwner || settings?.owner_hide_feat_bookings !== '1');
+  const isBoothEnabled = settings?.feat_booth !== '0' && (isOwner || settings?.owner_hide_feat_booth !== '1');
+  const isSpecialEventsEnabled = settings?.feat_special_events !== '0' && (isOwner || settings?.owner_hide_feat_special_events !== '1');
+  const isChatEnabled = settings?.feat_chat !== '0' && (isOwner || settings?.owner_hide_feat_chat !== '1');
+  const isStudioEnabled = settings?.feat_studio !== '0' && (isOwner || settings?.owner_hide_feat_studio !== '1');
+  const isMetaEnabled = settings?.feat_meta !== '0' && (isOwner || settings?.owner_hide_feat_meta !== '1');
+  const isBackupEnabled = settings?.feat_backup !== '0' && (isOwner || settings?.owner_hide_feat_backup !== '1');
+
+  const defaultDjPath = isLiveToolsEnabled
+    ? `${adminBasePath}/live-tools`
+    : isShoutoutsEnabled
+    ? `${adminBasePath}/shoutouts`
+    : isBoothEnabled
+    ? `${adminBasePath}/song-requests`
+    : `${adminBasePath}/profile`;
+
   const isStudioRoute = location.pathname.includes('/studio');
 
   // Helpers for background message unread calculation
@@ -769,8 +790,8 @@ export default function Admin() {
 
   // Render the Studio page as a full-screen, standalone component if the path matches
   if (location.pathname.includes('/studio')) {
-    if (userRole && userRole !== 'admin' && userRole !== 'dj' && userRole !== 'owner') {
-      return <Navigate to={`${adminBasePath}/live-tools`} replace />;
+    if ((userRole && userRole !== 'admin' && userRole !== 'dj' && userRole !== 'owner') || !isStudioEnabled) {
+      return <Navigate to={isAdmin ? adminBasePath : defaultDjPath} replace />;
     }
     return (
       <Suspense fallback={
@@ -816,7 +837,7 @@ export default function Admin() {
                 AI Content Studio
               </Link>
             )}
-            {(userRole === 'admin' || userRole === 'dj' || userRole === 'owner') && (
+            {(userRole === 'admin' || userRole === 'dj' || userRole === 'owner') && isStudioEnabled && (
               <Link
                 to={`${adminBasePath}/studio`}
                 className="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-full border border-neon-purple/30 bg-neon-purple/10 text-[var(--color-neon-purple)] font-bold uppercase text-xs tracking-widest transition hover:bg-neon-purple hover:text-[#ffffff] hover:shadow-lg hover:shadow-neon-purple/20 relative"
@@ -886,35 +907,35 @@ export default function Admin() {
                       <LoadingFallback />
                     ) : (
                       <Routes>
-                        <Route path="/" element={userRole === 'admin' || userRole === 'owner' ? <AdminAnalytics isAdminUser={true} /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
-                        <Route path="/live-tools" element={<AdminLiveTools />} />
-                        <Route path="/menu" element={userRole === 'admin' || userRole === 'owner' ? <AdminMenu /> : <Navigate to={adminBasePath} replace />} />
-                        <Route path="/pages" element={userRole === 'admin' || userRole === 'owner' ? <AdminPages /> : <Navigate to={adminBasePath} replace />} />
-                        <Route path="/features" element={userRole === 'admin' || userRole === 'owner' ? <AdminFeatures /> : <Navigate to={adminBasePath} replace />} />
-                        <Route path="/djs" element={userRole === 'admin' || userRole === 'owner' ? <AdminDJs /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
-                        <Route path="/popup" element={userRole === 'admin' || userRole === 'owner' ? <AdminPopup /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
-                        <Route path="/ads" element={userRole === 'admin' || userRole === 'owner' ? <AdminAds /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
-                        <Route path="/events" element={userRole === 'admin' || userRole === 'owner' ? <AdminEvents /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
-                        <Route path="/shoutouts" element={<AdminShoutouts isAdminUser={userRole === 'admin' || userRole === 'owner'} />} />
-                        <Route path="/bookings" element={userRole === 'admin' || userRole === 'owner' ? <AdminBookings /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
-                        <Route path="/schedule" element={userRole === 'admin' || userRole === 'owner' ? <AdminSchedule /> : <Navigate to={`${adminBasePath}/live-tools`} replace />} />
+                        <Route path="/" element={isAdmin ? <AdminAnalytics isAdminUser={true} /> : <Navigate to={defaultDjPath} replace />} />
+                        <Route path="/live-tools" element={isLiveToolsEnabled ? <AdminLiveTools /> : <Navigate to={isAdmin ? adminBasePath : defaultDjPath} replace />} />
+                        <Route path="/menu" element={isAdmin ? <AdminMenu /> : <Navigate to={defaultDjPath} replace />} />
+                        <Route path="/pages" element={isAdmin ? <AdminPages /> : <Navigate to={defaultDjPath} replace />} />
+                        <Route path="/features" element={isAdmin ? <AdminFeatures /> : <Navigate to={defaultDjPath} replace />} />
+                        <Route path="/djs" element={isAdmin ? <AdminDJs /> : <Navigate to={defaultDjPath} replace />} />
+                        <Route path="/popup" element={isAdmin ? <AdminPopup /> : <Navigate to={defaultDjPath} replace />} />
+                        <Route path="/ads" element={isAdmin ? <AdminAds /> : <Navigate to={defaultDjPath} replace />} />
+                        <Route path="/events" element={isAdmin && isSpecialEventsEnabled ? <AdminEvents /> : <Navigate to={isAdmin ? adminBasePath : defaultDjPath} replace />} />
+                        <Route path="/shoutouts" element={isShoutoutsEnabled ? <AdminShoutouts isAdminUser={isAdmin} /> : <Navigate to={isAdmin ? adminBasePath : defaultDjPath} replace />} />
+                        <Route path="/bookings" element={isAdmin && isBookingsEnabled ? <AdminBookings /> : <Navigate to={isAdmin ? adminBasePath : defaultDjPath} replace />} />
+                        <Route path="/schedule" element={isAdmin ? <AdminSchedule /> : <Navigate to={defaultDjPath} replace />} />
                         <Route path="/profile" element={<AdminProfile />} />
-                        <Route path="/song-requests" element={<AdminSongRequests />} />
+                        <Route path="/song-requests" element={isBoothEnabled ? <AdminSongRequests /> : <Navigate to={isAdmin ? adminBasePath : defaultDjPath} replace />} />
 
-                        <Route path="/settings" element={userRole === 'admin' || userRole === 'owner' ? <AdminSettings /> : <Navigate to={adminBasePath} replace />} />
-                        <Route path="/advanced" element={userRole === 'admin' || userRole === 'owner' ? <AdminAdvanced /> : <Navigate to={adminBasePath} replace />} />
-                        <Route path="/media" element={userRole === 'admin' || userRole === 'owner' ? <AdminMedia /> : <Navigate to={adminBasePath} replace />} />
-                        <Route path="/branding" element={userRole === 'admin' || userRole === 'owner' ? <AdminBranding /> : <Navigate to={adminBasePath} replace />} />
-                        <Route path="/users" element={userRole === 'admin' || userRole === 'owner' ? <AdminUsers isAdminUser={userRole === 'admin' || userRole === 'owner'} userRole={userRole} currentUsername={adminUsername} /> : <Navigate to={adminBasePath} replace />} />
-                        <Route path="/chat-users" element={userRole === 'admin' || userRole === 'owner' ? <AdminChatUsers isAdminUser={userRole === 'admin' || userRole === 'owner'} /> : <Navigate to={adminBasePath} replace />} />
-                        <Route path="/chat-room-setting" element={userRole === 'admin' || userRole === 'owner' ? <AdminChatRoomSettings /> : <Navigate to={adminBasePath} replace />} />
-                        <Route path="/audit-logs" element={userRole === 'admin' || userRole === 'owner' ? <AdminAuditLogs /> : <Navigate to={adminBasePath} replace />} />
-                        <Route path="/backup" element={userRole === 'admin' || userRole === 'owner' ? <AdminBackup /> : <Navigate to={adminBasePath} replace />} />
-                        <Route path="/meta-integrations" element={userRole === 'admin' || userRole === 'owner' ? <AdminMetaIntegrations /> : <Navigate to={adminBasePath} replace />} />
-                        <Route path="/seo" element={userRole === 'admin' || userRole === 'owner' ? <AdminSEO /> : <Navigate to={adminBasePath} replace />} />
-                        <Route path="/owner-control" element={userRole === 'owner' ? <AdminOwnerControl /> : <Navigate to={adminBasePath} replace />} />
+                        <Route path="/settings" element={isAdmin ? <AdminSettings /> : <Navigate to={defaultDjPath} replace />} />
+                        <Route path="/advanced" element={isAdmin ? <AdminAdvanced /> : <Navigate to={defaultDjPath} replace />} />
+                        <Route path="/media" element={isAdmin ? <AdminMedia /> : <Navigate to={defaultDjPath} replace />} />
+                        <Route path="/branding" element={isAdmin ? <AdminBranding /> : <Navigate to={defaultDjPath} replace />} />
+                        <Route path="/users" element={isAdmin ? <AdminUsers isAdminUser={isAdmin} userRole={userRole} currentUsername={adminUsername} /> : <Navigate to={defaultDjPath} replace />} />
+                        <Route path="/chat-users" element={isAdmin && isChatEnabled ? <AdminChatUsers isAdminUser={isAdmin} /> : <Navigate to={isAdmin ? adminBasePath : defaultDjPath} replace />} />
+                        <Route path="/chat-room-setting" element={isAdmin && isChatEnabled ? <AdminChatRoomSettings /> : <Navigate to={isAdmin ? adminBasePath : defaultDjPath} replace />} />
+                        <Route path="/audit-logs" element={isAdmin ? <AdminAuditLogs /> : <Navigate to={defaultDjPath} replace />} />
+                        <Route path="/backup" element={isAdmin && isBackupEnabled ? <AdminBackup /> : <Navigate to={isAdmin ? adminBasePath : defaultDjPath} replace />} />
+                        <Route path="/meta-integrations" element={isAdmin && isMetaEnabled ? <AdminMetaIntegrations /> : <Navigate to={isAdmin ? adminBasePath : defaultDjPath} replace />} />
+                        <Route path="/seo" element={isAdmin ? <AdminSEO /> : <Navigate to={defaultDjPath} replace />} />
+                        <Route path="/owner-control" element={isOwner ? <AdminOwnerControl /> : <Navigate to={adminBasePath} replace />} />
 
-                        <Route path="*" element={<Navigate to={adminBasePath} replace />} />
+                        <Route path="*" element={<Navigate to={isAdmin ? adminBasePath : defaultDjPath} replace />} />
                       </Routes>
                     )}
                   </Suspense>

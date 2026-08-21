@@ -35,6 +35,9 @@ export function AdminAdvanced() {
     feat_booth: true,
     feat_special_events: true,
     feat_ai_studio: true,
+    feat_studio: true,
+    feat_meta: true,
+    feat_backup: true,
   });
   const { showAlert } = useModal();
 
@@ -54,6 +57,9 @@ export function AdminAdvanced() {
         feat_booth: serverSettings.feat_booth !== '0',
         feat_special_events: serverSettings.feat_special_events !== '0',
         feat_ai_studio: serverSettings.feat_ai_studio !== '0' && serverSettings.ai_studio_enabled !== '0',
+        feat_studio: serverSettings.feat_studio !== '0',
+        feat_meta: serverSettings.feat_meta !== '0',
+        feat_backup: serverSettings.feat_backup !== '0',
       });
     }
   }, [serverSettings]);
@@ -91,8 +97,12 @@ export function AdminAdvanced() {
   };
 
   const toggleItems = [
+    { id: 'feat_studio', title: 'Studio Inbox', description: 'Enable or disable the Studio Inbox messaging console, unified DJ conversations, and broadcast manager.' },
+    { id: 'feat_meta', title: 'Meta Integrations', description: 'Enable or disable Meta/Facebook/Instagram webhook receiver, lead sync, and social messaging integrations.' },
+    { id: 'feat_backup', title: 'Database & System Backups', description: 'Enable or disable automated system snapshots, database backups, and emergency restore tools.' },
     { id: 'feat_greeting', title: 'Personalised Greeting Modal', description: 'Enable or disable the interactive welcome greeting modal with personalised messages for returning listeners and live show alerts.' },
     { id: 'feat_chat', title: 'Chat Room', description: 'Enable real-time chat functionality.' },
+    { id: 'feat_gamification', title: 'Listener Gamification & Rewards', description: 'Enable XP progression, listener levels, daily streaks, achievement badges, and community leaderboard.' },
     { id: 'feat_shoutouts', title: 'Shoutout Widget', description: 'Enable direct interaction (fire, hearts, messages).' },
     { id: 'feat_ai_studio', title: 'AI Social Content Studio', description: 'Enable or disable the automated AI Social Content Studio, video reel generation pipeline, AI prompt presets, and schedule listener.' },
     { id: 'feat_cinematic', title: 'Cinematic Visualiser', description: 'Enable the immersive audio visualiser mode.' },
@@ -145,45 +155,6 @@ export function AdminAdvanced() {
                     }`}></div>
                   </label>
                 </div>
-
-                {item.id === 'feat_chat' && (
-                  <div className={`ml-6 sm:ml-10 pl-4 border-l-2 transition-all duration-300 -mt-2 mb-2 ${
-                    features['feat_chat'] 
-                      ? 'border-neon-purple/40 opacity-100' 
-                      : 'border-white/5 opacity-40'
-                  }`}>
-                    <div className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${
-                      isLightMode ? 'bg-black/[0.02] border-black/5' : 'bg-white/[0.02] border-white/5'
-                    }`}>
-                      <div className="flex-1 pr-4 text-left">
-                        <h4 className={`text-base font-bold mb-1 ${
-                          features['feat_chat'] 
-                            ? isLightMode ? 'text-black' : 'text-white' 
-                            : isLightMode ? 'text-black/40' : 'text-white/40'
-                        }`}>
-                          ↳ Listener Gamification & Rewards
-                        </h4>
-                        <p className={`text-xs ${isLightMode ? 'text-black/50 font-medium' : 'text-white/40'}`}>
-                          Enable XP progression, listener levels, daily streaks, achievement badges, and community leaderboard.
-                        </p>
-                      </div>
-                      <label className={`relative inline-flex items-center shrink-0 ${
-                        features['feat_chat'] ? 'cursor-pointer' : 'cursor-not-allowed'
-                      }`}>
-                        <input 
-                          type="checkbox" 
-                          className="sr-only peer" 
-                          checked={features['feat_gamification'] || false} 
-                          disabled={!features['feat_chat']}
-                          onChange={e => handleToggle('feat_gamification', e.target.checked)} 
-                        />
-                        <div className={`w-12 h-6 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-neon-purple shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] ${
-                          isLightMode ? 'bg-black/10' : 'bg-white/10'
-                        }`}></div>
-                      </label>
-                    </div>
-                  </div>
-                )}
 
                 {item.id === 'feat_live_tools' && (
                   <div className={`ml-6 sm:ml-10 pl-4 border-l-2 transition-all duration-300 -mt-2 mb-2 ${

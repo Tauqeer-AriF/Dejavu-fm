@@ -3123,7 +3123,7 @@ apiRouter.put("/admin/settings", authMiddleware, authorizeRole(['admin', 'dj']),
     "rss_feed_url", "studio_video_url", "app_name", "logo_url", "app_tagline", 
     "app_title", "seo_title", "seo_description", "seo_image", "font_sans", "font_display", "is_on_air", "primary_color", 
     "secondary_color", "feat_chat", "feat_gamification", "feat_shoutouts", "feat_cinematic", 
-    "feat_pwa", "feat_bookings", "feat_live_tools", "feat_stream_quality", "feat_auto_fullscreen", "feat_booth", "feat_greeting", "feat_special_events", "feat_ai_studio", "ai_studio_enabled",
+    "feat_pwa", "feat_bookings", "feat_live_tools", "feat_stream_quality", "feat_auto_fullscreen", "feat_booth", "feat_greeting", "feat_special_events", "feat_ai_studio", "ai_studio_enabled", "feat_studio", "feat_meta", "feat_backup",
     "logo_dark", "logo_light", "logo_shape", "favicon", "backup_retention_days",
     "backup_frequency_hours", "backup_enabled", "popup_delay", "studio_name", "studio_image",
     "social_instagram", "social_twitter", "social_facebook", "social_youtube", "social_soundcloud", "social_mixcloud", "social_tiktok",
@@ -3991,13 +3991,14 @@ apiRouter.put("/admin/users/:username", authMiddleware, authorizeRole(['admin', 
   
   const isSelf = (req as any).user.username.trim().toLowerCase() === targetUsername.toLowerCase();
   const isOwner = (req as any).user.role === 'owner';
-  
-  if ((password || email !== undefined) && !isSelf && !isOwner) {
-    return res.status(403).json({ error: "Forbidden: You are not authorized to change another user's credentials." });
-  }
+  const isAdmin = (req as any).user.role === 'admin' || isOwner;
 
   const existingUser = db.prepare("SELECT role FROM admins WHERE LOWER(username) = LOWER(?)").get(targetUsername) as any;
-  if (existingUser && existingUser.role === 'owner' && !isOwner) {
+  if (!existingUser) {
+    return res.status(404).json({ error: "User not found" });
+  }
+
+  if (existingUser.role === 'owner' && !isOwner) {
     return res.status(403).json({ error: "Forbidden: You cannot modify an Owner account." });
   }
 
@@ -4020,7 +4021,7 @@ apiRouter.put("/admin/users/:username", authMiddleware, authorizeRole(['admin', 
     if (dj_profile_id !== undefined) {
       db.prepare("UPDATE admins SET dj_profile_id = ? WHERE LOWER(TRIM(username)) = LOWER(TRIM(?))").run(dj_profile_id || null, targetUsername);
     }
-    logAction(req, 'UPDATE', 'admin_user', targetUsername, { email, role, dj_profile_id });
+    logAction(req, 'UPDATE', 'admin_user', targetUsername, { email, role, dj_profile_id, password_reset: !!password });
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ error: "Update failed" });

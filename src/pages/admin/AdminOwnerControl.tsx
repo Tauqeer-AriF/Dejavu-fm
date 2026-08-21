@@ -35,8 +35,12 @@ export default function AdminOwnerControl() {
   const [savingFeatureId, setSavingFeatureId] = useState<string | null>(null);
 
   const advancedFeatureList = [
+    { id: 'feat_studio', title: 'Studio Inbox Console', description: 'Real-time multi-channel DJ inbox, external chat feeds, broadcast messenger, and listener thread manager.' },
+    { id: 'feat_meta', title: 'Meta & Social Integrations', description: 'Webhook processing, Instagram/Facebook social bridge, and messaging connections.' },
+    { id: 'feat_backup', title: 'Database & System Backup', description: 'System backups, automated snapshot timers, and database download management.' },
     { id: 'feat_greeting', title: 'Personalised Welcome Greeting Modal', description: 'Interactive welcome greeting modal for returning listeners and show alerts.' },
     { id: 'feat_chat', title: 'Real-Time Chat Room', description: 'Live audience chat sidebar and message room.' },
+    { id: 'feat_gamification', title: 'Listener Gamification & Rewards', description: 'XP leveling, achievement badges, leaderboards, and daily streak rewards.' },
     { id: 'feat_shoutouts', title: 'Shoutout & Reaction Widget', description: 'Floating shoutout button and live reaction triggers (fire, hearts, chat).' },
     { id: 'feat_ai_studio', title: 'AI Social Content Studio', description: 'Automated AI social reel pipeline, video generation, and prompt presets.' },
     { id: 'feat_cinematic', title: 'Cinematic Visualiser Mode', description: 'Immersive full-screen audio frequency & particle visualizer.' },

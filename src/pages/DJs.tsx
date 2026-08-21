@@ -32,7 +32,7 @@ function DjCard({ dj, index, resolveDjImage, logoUrl, isLightMode, settings }: {
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const { toggleFollowDj, isFollowingDj, isEnabled } = useGamification();
   const following = isFollowingDj(dj.id);
-  const isGamificationActive = (isEnabled ?? true) && settings?.feat_chat !== '0' && settings?.feat_gamification !== '0';
+  const isGamificationActive = (isEnabled ?? true) && settings?.feat_gamification !== '0';
 
   return (
     <motion.div      

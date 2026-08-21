@@ -31,6 +31,8 @@ export function AdminSidebar({ onLogout, isAdminUser, userRole }: { onLogout: ()
 
   const adminBasePath = (features.admin_custom_path || '/admin').trim().replace(/\/+$/, '') || '/admin';
 
+  const isOwner = userRole === "owner";
+
   let navs = [
     { name: "Analytics", path: `${adminBasePath}`, icon: BarChart3 },
     { name: "Live Tools", path: `${adminBasePath}/live-tools`, icon: Radio },
@@ -59,22 +61,55 @@ export function AdminSidebar({ onLogout, isAdminUser, userRole }: { onLogout: ()
     { name: "Meta Integrations", path: `${adminBasePath}/meta-integrations`, icon: Facebook },
   ];
 
-  if (userRole === "owner") {
+  if (isOwner) {
     navs.unshift({ name: "Owner Control", path: `${adminBasePath}/owner-control`, icon: Power });
   }
 
-  if (!isAdminUser && userRole !== "owner") {
-    // DJs/non-admins see Live Tools, Interactions, My Profile, and Song Requests
+  // Filter out any disabled features from the dashboard
+  if (features.feat_live_tools === '0' || (!isOwner && features.owner_hide_feat_live_tools === '1')) {
+    navs = navs.filter(n => n.name !== 'Live Tools');
+  }
+
+  if (features.feat_shoutouts === '0' || (!isOwner && features.owner_hide_feat_shoutouts === '1')) {
+    navs = navs.filter(n => n.name !== 'Interactions');
+  }
+
+  if (features.feat_bookings === '0' || (!isOwner && features.owner_hide_feat_bookings === '1')) {
+    navs = navs.filter(n => n.name !== 'Agency');
+  }
+
+  if (features.feat_booth === '0' || (!isOwner && features.owner_hide_feat_booth === '1')) {
+    navs = navs.filter(n => n.name !== 'Song Requests');
+  }
+
+  if (features.feat_special_events === '0' || (!isOwner && features.owner_hide_feat_special_events === '1')) {
+    navs = navs.filter(n => n.name !== 'Special Events');
+  }
+
+  if (features.feat_chat === '0' || (!isOwner && features.owner_hide_feat_chat === '1')) {
+    navs = navs.filter(n => n.name !== 'Chat Users' && n.name !== 'Data Operations');
+  }
+
+  if (features.feat_meta === '0' || (!isOwner && features.owner_hide_feat_meta === '1')) {
+    navs = navs.filter(n => n.name !== 'Meta Integrations');
+  }
+
+  if (features.feat_backup === '0' || (!isOwner && features.owner_hide_feat_backup === '1')) {
+    navs = navs.filter(n => n.name !== 'Backup');
+  }
+
+  if (!isOwner && features.owner_hide_feat_audit_logs === '1') {
+    navs = navs.filter(n => n.name !== 'Audit Logs');
+  }
+
+  if (!isAdminUser && !isOwner) {
+    // DJs/non-admins only see their permitted operational tabs
     navs = navs.filter(n =>
       n.name === "Live Tools" ||
       n.name === "Interactions" ||
       n.name === "My Profile" ||
       n.name === "Song Requests"
     );
-
-    // Apply dynamic feature flags
-    if (features.feat_live_tools === '0') navs = navs.filter(n => n.name !== 'Live Tools');
-    if (features.feat_shoutouts === '0') navs = navs.filter(n => n.name !== 'Interactions');
   }
 
   return (
