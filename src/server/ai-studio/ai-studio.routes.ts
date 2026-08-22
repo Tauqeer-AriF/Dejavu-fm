@@ -10,6 +10,7 @@ import {
   createAndStartAIJob,
   cancelAIJob,
   deleteAIJob,
+  retryAIJob,
   deleteSingleReel,
   autoDeleteExpiredReels
 } from "./job-queue.service.ts";
@@ -247,6 +248,17 @@ aiStudioRouter.post("/jobs/:id/cancel", (req: any, res: Response) => {
   } catch (err: any) {
     console.error("[AI Studio] Error cancelling job:", err);
     res.status(500).json({ error: "Failed to cancel job" });
+  }
+});
+
+aiStudioRouter.post("/jobs/:id/retry", (req: any, res: Response) => {
+  try {
+    const job = retryAIJob(req.params.id);
+    logAction(req, 'RETRY', 'ai_job', req.params.id);
+    res.json({ success: true, job });
+  } catch (err: any) {
+    console.error("[AI Studio] Error retrying job:", err);
+    res.status(500).json({ error: err.message || "Failed to retry job" });
   }
 });
 

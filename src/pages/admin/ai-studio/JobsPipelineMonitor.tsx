@@ -14,7 +14,8 @@ import {
   Calendar,
   User,
   AlertTriangle,
-  Play
+  Play,
+  RotateCcw
 } from "lucide-react";
 import { AIJob, JobStatus } from "./types";
 import { aiStudioApi } from "./aiStudioApi";
@@ -33,6 +34,7 @@ export const JobsPipelineMonitor: React.FC<Props> = ({ jobs, onRefresh, onViewRe
   const [selectedJobForModal, setSelectedJobForModal] = useState<AIJob | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [onAirStatus, setOnAirStatus] = useState<any>(null);
+  const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchOnAir = async () => {
@@ -79,6 +81,28 @@ export const JobsPipelineMonitor: React.FC<Props> = ({ jobs, onRefresh, onViewRe
       onRefresh();
     } catch (e: any) {
       showAlert({ title: "Error", message: e.message || "Failed to delete job", style: "danger" });
+    }
+  };
+
+  const handleRetryJob = async (jobId: string) => {
+    const confirmed = await showConfirm({
+      title: "Retry Job",
+      message: "Are you sure you want to re-run this failed or cancelled AI analysis job? All previously generated partial reels for this job will be purged.",
+      style: "warning",
+      confirmText: "Retry Job",
+      cancelText: "Cancel"
+    });
+    if (!confirmed) return;
+
+    setRetryingJobId(jobId);
+    try {
+      await aiStudioApi.retryJob(jobId);
+      onRefresh();
+      showAlert({ title: "Success", message: "Job has been re-queued for processing.", style: "success" });
+    } catch (e: any) {
+      showAlert({ title: "Error", message: e.message || "Failed to retry job", style: "danger" });
+    } finally {
+      setRetryingJobId(null);
     }
   };
 
@@ -337,6 +361,21 @@ export const JobsPipelineMonitor: React.FC<Props> = ({ jobs, onRefresh, onViewRe
                       >
                         <Film className="w-4 h-4" />
                         View Reels ({job.reels_count || 0})
+                      </button>
+                    )}
+
+                    {(job.status === "FAILED" || job.status === "CANCELLED") && (
+                      <button
+                        onClick={() => handleRetryJob(job.id)}
+                        disabled={retryingJobId === job.id}
+                        className={`px-3 py-2 border rounded-xl text-xs font-bold flex items-center gap-1 transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                          isLight
+                            ? "bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200"
+                            : "bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border-purple-500/30"
+                        }`}
+                      >
+                        <RotateCcw className={`w-4 h-4 ${retryingJobId === job.id ? "animate-spin" : ""}`} />
+                        {retryingJobId === job.id ? "Retrying..." : "Retry"}
                       </button>
                     )}
 

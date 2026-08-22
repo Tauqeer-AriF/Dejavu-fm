@@ -54,6 +54,17 @@ export const aiStudioApi = {
     return res.json();
   },
 
+  retryJob: async (jobId: string): Promise<{ success: boolean; job: AIJob }> => {
+    const res = await fetchAdmin(`/api/admin/ai-studio/jobs/${jobId}/retry`, {
+      method: "POST",
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Failed to retry job");
+    }
+    return res.json();
+  },
+
   deleteJob: async (jobId: string): Promise<{ success: boolean }> => {
     const res = await fetchAdmin(`/api/admin/ai-studio/jobs/${jobId}`, {
       method: "DELETE",

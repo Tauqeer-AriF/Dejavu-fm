@@ -434,6 +434,45 @@ export function deleteAIJob(jobId: string) {
   return true;
 }
 
+export function retryAIJob(jobId: string): AIJob {
+  const job = db.prepare('SELECT * FROM ai_jobs WHERE id = ?').get(jobId) as AIJob | undefined;
+  if (!job) {
+    throw new Error('Job not found');
+  }
+
+  // Delete any partial or existing reels generated for this job ID to start fresh
+  const reels = db.prepare('SELECT audio_url, video_url, thumbnail_url FROM ai_reels WHERE job_id = ?').all(jobId) as any[];
+  const uploadsDir = getUploadsDir();
+  reels.forEach(r => {
+    ['audio_url', 'video_url', 'thumbnail_url'].forEach(k => {
+      const u = r[k];
+      if (u && typeof u === 'string') {
+        const filename = u.replace(/^\/+uploads\//, '');
+        const filePath = path.join(uploadsDir, filename);
+        try {
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        } catch (e) {}
+      }
+    });
+  });
+  db.prepare('DELETE FROM ai_reels WHERE job_id = ?').run(jobId);
+
+  // Update job back to QUEUED
+  db.prepare(`
+    UPDATE ai_jobs 
+    SET status = 'QUEUED', progress = 0, stage_message = 'Job re-queued for background processing...', error_message = NULL, completed_at = NULL, updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(jobId);
+
+  const updatedJob = db.prepare('SELECT * FROM ai_jobs WHERE id = ?').get(jobId) as AIJob;
+  emitJobUpdate('ai_job_progress', updatedJob);
+
+  // Re-enqueue the job
+  enqueueJobForProcessing(jobId);
+
+  return updatedJob;
+}
+
 export function deleteSingleReel(reelId: string) {
   const reel = db.prepare('SELECT audio_url, video_url, thumbnail_url FROM ai_reels WHERE id = ?').get(reelId) as any;
   if (reel) {
