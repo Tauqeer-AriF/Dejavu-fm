@@ -115,6 +115,9 @@ export function getLiveOnAirShowStatus() {
   return { isOnAir: false, autoProcessEnabled: Boolean(settings.ai_studio_enabled && settings.ai_auto_process_on_show_end), aiStudioEnabled: settings.ai_studio_enabled };
 }
 
+// In-memory registry of automatically triggered show slots per day to prevent re-triggering loops if a job is deleted
+const triggeredShowsToday = new Set<string>();
+
 /**
  * Check schedule slots and trigger automated reel creation ONLY for concluded shows
  */
@@ -180,7 +183,14 @@ export async function checkAndTriggerCompletedShowReels(options?: { force?: bool
         const isConcluded = effectiveMinutesToday >= endMins && effectiveMinutesToday <= (endMins + 45);
 
         if (isConcluded) {
-          // Check if an AI Job has already been created for this show today
+          const cacheKey = `${slot.show_name}:${dateStr}`;
+
+          // Avoid re-triggering if the cache shows we've already processed this slot today
+          if (triggeredShowsToday.has(cacheKey)) {
+            continue;
+          }
+
+          // Check if an AI Job has already been created for this show today in the DB
           const existingJob = db.prepare(`
             SELECT id FROM ai_jobs 
             WHERE show_name = ? 
@@ -188,21 +198,29 @@ export async function checkAndTriggerCompletedShowReels(options?: { force?: bool
             LIMIT 1
           `).get(slot.show_name, dateStr) as any;
 
-          if (!existingJob) {
-            const djName = djMap.get(String(slot.dj_id)) || "Resident DJ";
+          if (existingJob) {
+            // Register in the in-memory cache to save future DB check lookups
+            triggeredShowsToday.add(cacheKey);
+            continue;
+          }
 
-            console.log(`[AI Schedule Listener] 📻 Show concluded: "${slot.show_name}" (DJ: ${djName}). Triggering auto-reels generation...`);
+          const djName = djMap.get(String(slot.dj_id)) || "Resident DJ";
 
-            const job = await createAndStartAIJob({
-              show_name: slot.show_name,
-              dj_name: djName,
-              dj_id: slot.dj_id ? String(slot.dj_id) : undefined,
-              source_type: "schedule_slot",
-              target_reels_count: 4, // Generates 3-5 reels (default 4)
-              duration_seconds: showDurationSecs,
-              custom_prompt: `Automatically generated social reels for completed scheduled show "${slot.show_name}". Produce 3 to 5 viral highlight reels covering high energy drops, vocal shoutouts, and mic talkovers across the broadcast.`,
-              created_by: "AUTO_SCHEDULE_LISTENER"
-            });
+          console.log(`[AI Schedule Listener] 📻 Show concluded: "${slot.show_name}" (DJ: ${djName}). Triggering auto-reels generation...`);
+
+          // Register in the cache before making the call to avoid any race-condition triggers
+          triggeredShowsToday.add(cacheKey);
+
+          const job = await createAndStartAIJob({
+            show_name: slot.show_name,
+            dj_name: djName,
+            dj_id: slot.dj_id ? String(slot.dj_id) : undefined,
+            source_type: "schedule_slot",
+            target_reels_count: 4, // Generates 3-5 reels (default 4)
+            duration_seconds: showDurationSecs,
+            custom_prompt: `Automatically generated social reels for completed scheduled show "${slot.show_name}". Produce 3 to 5 viral highlight reels covering high energy drops, vocal shoutouts, and mic talkovers across the broadcast.`,
+            created_by: "AUTO_SCHEDULE_LISTENER"
+          });
 
             logAction(
               { user: { username: "Schedule AI Daemon", role: "ai_scheduler" } },
@@ -221,7 +239,6 @@ export async function checkAndTriggerCompletedShowReels(options?: { force?: bool
             const msg = `Triggered 4 auto-reels for show "${slot.show_name}" (DJ: ${djName}, duration: ${Math.round(showDurationSecs/60)} mins)`;
             messages.push(msg);
             console.log(`[AI Schedule Listener] ✅ ${msg}`);
-          }
         }
       } catch (err: any) {
         console.error(`[AI Schedule Listener] Error evaluating slot #${slot.id}:`, err);
