@@ -1,0 +1,5 @@
+# Configuration for Railway Nixpacks build system
+# Ensures ffmpeg and ffprobe are available in the container environment
+
+[phases.setup]
+nixPkgs = ["ffmpeg"]
