@@ -9,7 +9,21 @@ let cachedFFprobePath: string | null = null;
 export function getFFmpegPath(): string {
   if (cachedFFmpegPath) return cachedFFmpegPath;
   
-  // Try system paths first (most compatible and handles SSL/HTTPS stream feeds perfectly)
+  // 1. Try resolving using system PATH (highly important for Nixpacks / Railway / Render / Heroku / Docker)
+  try {
+    const { execSync } = require("child_process");
+    const systemPath = execSync("which ffmpeg", { encoding: "utf8" }).trim();
+    if (systemPath && fs.existsSync(systemPath)) {
+      try {
+        fs.chmodSync(systemPath, 0o755);
+        fs.accessSync(systemPath, fs.constants.X_OK);
+        cachedFFmpegPath = systemPath;
+        return systemPath;
+      } catch (e) {}
+    }
+  } catch (e) {}
+
+  // 2. Try hardcoded system paths
   const searchPaths = [
     "/usr/bin/ffmpeg",
     "/usr/local/bin/ffmpeg",
@@ -62,7 +76,21 @@ export function getFFmpegPath(): string {
 export function getFFprobePath(): string {
   if (cachedFFprobePath) return cachedFFprobePath;
   
-  // Try system paths first
+  // 1. Try resolving using system PATH (highly important for Nixpacks / Railway / Render / Heroku / Docker)
+  try {
+    const { execSync } = require("child_process");
+    const systemPath = execSync("which ffprobe", { encoding: "utf8" }).trim();
+    if (systemPath && fs.existsSync(systemPath)) {
+      try {
+        fs.chmodSync(systemPath, 0o755);
+        fs.accessSync(systemPath, fs.constants.X_OK);
+        cachedFFprobePath = systemPath;
+        return systemPath;
+      } catch (e) {}
+    }
+  } catch (e) {}
+
+  // 2. Try hardcoded system paths
   const searchPaths = [
     "/usr/bin/ffprobe",
     "/usr/local/bin/ffprobe",
