@@ -3,6 +3,67 @@ import path from "path";
 import fs from "fs";
 import { getUploadsDir } from "../db.ts";
 
+let cachedFFmpegPath: string | null = null;
+let cachedFFprobePath: string | null = null;
+
+export function getFFmpegPath(): string {
+  if (cachedFFmpegPath) return cachedFFmpegPath;
+  
+  const searchPaths = [
+    "/usr/bin/ffmpeg",
+    "/usr/local/bin/ffmpeg",
+    "/opt/homebrew/bin/ffmpeg"
+  ];
+  
+  for (const p of searchPaths) {
+    if (fs.existsSync(p)) {
+      try {
+        fs.accessSync(p, fs.constants.X_OK);
+        cachedFFmpegPath = p;
+        return p;
+      } catch (e) {
+        // Exists but not executable
+      }
+    }
+  }
+  
+  cachedFFmpegPath = "ffmpeg";
+  return cachedFFmpegPath;
+}
+
+export function getFFprobePath(): string {
+  if (cachedFFprobePath) return cachedFFprobePath;
+  
+  const searchPaths = [
+    "/usr/bin/ffprobe",
+    "/usr/local/bin/ffprobe",
+    "/opt/homebrew/bin/ffprobe"
+  ];
+  
+  for (const p of searchPaths) {
+    if (fs.existsSync(p)) {
+      try {
+        fs.accessSync(p, fs.constants.X_OK);
+        cachedFFprobePath = p;
+        return p;
+      } catch (e) {
+        // Exists but not executable
+      }
+    }
+  }
+  
+  cachedFFprobePath = "ffprobe";
+  return cachedFFprobePath;
+}
+
+// Log paths on load to facilitate debugging
+try {
+  console.log(`[AI Studio] FFmpeg resolved path: ${getFFmpegPath()}`);
+  console.log(`[AI Studio] FFprobe resolved path: ${getFFprobePath()}`);
+} catch (e) {
+  console.warn('[AI Studio] Warning checking FFmpeg/FFprobe paths on boot:', e);
+}
+
 export function getAIStudioStorageDir(): string {
   const base = getUploadsDir();
   const dir = path.join(base, "ai-studio");
@@ -14,7 +75,7 @@ export function getAIStudioStorageDir(): string {
 
 export function runFFmpegCommand(args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
-    const process = spawn("ffmpeg", args);
+    const process = spawn(getFFmpegPath(), args);
     let stderr = "";
     let stdout = "";
 
@@ -59,7 +120,7 @@ export function captureStreamSnippet(
       outputFile
     ];
 
-    const proc = spawn("ffmpeg", args);
+    const proc = spawn(getFFmpegPath(), args);
     let stderr = "";
 
     // Allow buffer for stream connection and completion
@@ -105,7 +166,7 @@ export function captureStreamSnippet(
  */
 export function getMediaDuration(filePath: string): Promise<number> {
   return new Promise((resolve) => {
-    const cmd = `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${filePath}"`;
+    const cmd = `"${getFFprobePath()}" -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${filePath}"`;
     exec(cmd, (err, stdout) => {
       if (!err && stdout.trim()) {
         const val = parseFloat(stdout.trim());
@@ -114,7 +175,7 @@ export function getMediaDuration(filePath: string): Promise<number> {
         }
       }
       // Fallback: estimate from file size or ffmpeg info
-      exec(`ffmpeg -i "${filePath}" 2>&1`, (fErr, fOut) => {
+      exec(`"${getFFmpegPath()}" -i "${filePath}" 2>&1`, (fErr, fOut) => {
         const match = fOut.match(/Duration:\s*(\d+):(\d+):(\d+\.?\d*)/);
         if (match) {
           const hours = parseFloat(match[1]);
