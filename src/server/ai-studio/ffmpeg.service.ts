@@ -9,21 +9,34 @@ let cachedFFprobePath: string | null = null;
 export function getFFmpegPath(): string {
   if (cachedFFmpegPath) return cachedFFmpegPath;
   
+  // Try @ffmpeg-installer/ffmpeg package first (guaranteed across all cloud hosts like Railway/Render/Heroku)
+  try {
+    const ffmpegInstaller = require("@ffmpeg-installer/ffmpeg");
+    if (ffmpegInstaller?.path && fs.existsSync(ffmpegInstaller.path)) {
+      try {
+        fs.chmodSync(ffmpegInstaller.path, 0o755);
+      } catch {}
+      cachedFFmpegPath = ffmpegInstaller.path;
+      return cachedFFmpegPath;
+    }
+  } catch (e) {}
+
   const searchPaths = [
     "/usr/bin/ffmpeg",
     "/usr/local/bin/ffmpeg",
-    "/opt/homebrew/bin/ffmpeg"
+    "/opt/homebrew/bin/ffmpeg",
+    path.join(process.cwd(), "node_modules", "@ffmpeg-installer", "linux-x64", "ffmpeg"),
+    path.join(process.cwd(), "node_modules", "ffmpeg-static", "ffmpeg"),
   ];
   
   for (const p of searchPaths) {
     if (fs.existsSync(p)) {
       try {
+        fs.chmodSync(p, 0o755);
         fs.accessSync(p, fs.constants.X_OK);
         cachedFFmpegPath = p;
         return p;
-      } catch (e) {
-        // Exists but not executable
-      }
+      } catch (e) {}
     }
   }
   
@@ -34,21 +47,33 @@ export function getFFmpegPath(): string {
 export function getFFprobePath(): string {
   if (cachedFFprobePath) return cachedFFprobePath;
   
+  // Try @ffprobe-installer/ffprobe package first (guaranteed across all cloud hosts like Railway/Render/Heroku)
+  try {
+    const ffprobeInstaller = require("@ffprobe-installer/ffprobe");
+    if (ffprobeInstaller?.path && fs.existsSync(ffprobeInstaller.path)) {
+      try {
+        fs.chmodSync(ffprobeInstaller.path, 0o755);
+      } catch {}
+      cachedFFprobePath = ffprobeInstaller.path;
+      return cachedFFprobePath;
+    }
+  } catch (e) {}
+
   const searchPaths = [
     "/usr/bin/ffprobe",
     "/usr/local/bin/ffprobe",
-    "/opt/homebrew/bin/ffprobe"
+    "/opt/homebrew/bin/ffprobe",
+    path.join(process.cwd(), "node_modules", "@ffprobe-installer", "linux-x64", "ffprobe"),
   ];
   
   for (const p of searchPaths) {
     if (fs.existsSync(p)) {
       try {
+        fs.chmodSync(p, 0o755);
         fs.accessSync(p, fs.constants.X_OK);
         cachedFFprobePath = p;
         return p;
-      } catch (e) {
-        // Exists but not executable
-      }
+      } catch (e) {}
     }
   }
   
