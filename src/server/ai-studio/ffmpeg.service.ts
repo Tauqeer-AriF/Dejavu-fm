@@ -9,7 +9,25 @@ let cachedFFprobePath: string | null = null;
 export function getFFmpegPath(): string {
   if (cachedFFmpegPath) return cachedFFmpegPath;
   
-  // Try @ffmpeg-installer/ffmpeg package first (guaranteed across all cloud hosts like Railway/Render/Heroku)
+  // Try system paths first (most compatible and handles SSL/HTTPS stream feeds perfectly)
+  const searchPaths = [
+    "/usr/bin/ffmpeg",
+    "/usr/local/bin/ffmpeg",
+    "/opt/homebrew/bin/ffmpeg",
+  ];
+  
+  for (const p of searchPaths) {
+    if (fs.existsSync(p)) {
+      try {
+        fs.chmodSync(p, 0o755);
+        fs.accessSync(p, fs.constants.X_OK);
+        cachedFFmpegPath = p;
+        return p;
+      } catch (e) {}
+    }
+  }
+
+  // Fallback: Try @ffmpeg-installer/ffmpeg package (useful for bare metal cloud deploys without packages)
   try {
     const ffmpegInstaller = require("@ffmpeg-installer/ffmpeg");
     if (ffmpegInstaller?.path && fs.existsSync(ffmpegInstaller.path)) {
@@ -21,15 +39,12 @@ export function getFFmpegPath(): string {
     }
   } catch (e) {}
 
-  const searchPaths = [
-    "/usr/bin/ffmpeg",
-    "/usr/local/bin/ffmpeg",
-    "/opt/homebrew/bin/ffmpeg",
+  // Secondary Fallback search
+  const fallbackPaths = [
     path.join(process.cwd(), "node_modules", "@ffmpeg-installer", "linux-x64", "ffmpeg"),
     path.join(process.cwd(), "node_modules", "ffmpeg-static", "ffmpeg"),
   ];
-  
-  for (const p of searchPaths) {
+  for (const p of fallbackPaths) {
     if (fs.existsSync(p)) {
       try {
         fs.chmodSync(p, 0o755);
@@ -47,7 +62,25 @@ export function getFFmpegPath(): string {
 export function getFFprobePath(): string {
   if (cachedFFprobePath) return cachedFFprobePath;
   
-  // Try @ffprobe-installer/ffprobe package first (guaranteed across all cloud hosts like Railway/Render/Heroku)
+  // Try system paths first
+  const searchPaths = [
+    "/usr/bin/ffprobe",
+    "/usr/local/bin/ffprobe",
+    "/opt/homebrew/bin/ffprobe",
+  ];
+  
+  for (const p of searchPaths) {
+    if (fs.existsSync(p)) {
+      try {
+        fs.chmodSync(p, 0o755);
+        fs.accessSync(p, fs.constants.X_OK);
+        cachedFFprobePath = p;
+        return p;
+      } catch (e) {}
+    }
+  }
+
+  // Fallback: Try @ffprobe-installer/ffprobe package
   try {
     const ffprobeInstaller = require("@ffprobe-installer/ffprobe");
     if (ffprobeInstaller?.path && fs.existsSync(ffprobeInstaller.path)) {
@@ -59,14 +92,11 @@ export function getFFprobePath(): string {
     }
   } catch (e) {}
 
-  const searchPaths = [
-    "/usr/bin/ffprobe",
-    "/usr/local/bin/ffprobe",
-    "/opt/homebrew/bin/ffprobe",
+  // Secondary Fallback search
+  const fallbackPaths = [
     path.join(process.cwd(), "node_modules", "@ffprobe-installer", "linux-x64", "ffprobe"),
   ];
-  
-  for (const p of searchPaths) {
+  for (const p of fallbackPaths) {
     if (fs.existsSync(p)) {
       try {
         fs.chmodSync(p, 0o755);
