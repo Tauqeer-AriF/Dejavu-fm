@@ -48,6 +48,8 @@ export const SettingsAndPresetsModal: React.FC<Props> = ({
     ai_brand_handle: "@dejavufm",
     ai_brand_hashtag: "#DejavuFM #UKUnderground #DJSet #ElectronicMusic #RadioReels",
     ai_auto_process_on_show_end: false,
+    ai_stream_recording_mode: "full_show",
+    ai_full_stream_capture_mins: 60,
     ai_auto_delete_reels_enabled: false,
     ai_auto_delete_reels_hours: 48,
     ai_auto_delete_unapproved_only: true,
@@ -533,6 +535,98 @@ export const SettingsAndPresetsModal: React.FC<Props> = ({
                       {scheduleCheckResult}
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+
+            {/* Full Stream Recording Mechanism Settings */}
+            <div className={`p-4 rounded-2xl border space-y-4 ${
+              isLight ? "bg-slate-50 border-slate-200" : "bg-black/30 border-white/10"
+            }`}>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Radio className="w-4 h-4 text-cyan-400" />
+                  <h4 className={`text-xs font-bold ${isLight ? "text-slate-900" : "text-white"}`}>
+                    Live Stream Recording Mechanism & Coverage
+                  </h4>
+                </div>
+                <p className={`text-[11px] leading-relaxed ${isLight ? "text-slate-500" : "text-white/50"}`}>
+                  Choose how AI Studio captures live web stream audio for scheduled DJ shows.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <label className={`p-3 rounded-xl border cursor-pointer transition flex items-start gap-3 ${
+                  (settings.ai_stream_recording_mode || 'full_show') === 'full_show'
+                    ? (isLight ? "bg-purple-50/80 border-purple-300" : "bg-purple-950/30 border-purple-500/50")
+                    : (isLight ? "bg-white border-slate-200 hover:border-slate-300" : "bg-black/20 border-white/10 hover:border-white/20")
+                }`}>
+                  <input
+                    type="radio"
+                    name="stream_recording_mode"
+                    value="full_show"
+                    checked={(settings.ai_stream_recording_mode || 'full_show') === 'full_show'}
+                    onChange={() => setSettings({ ...settings, ai_stream_recording_mode: 'full_show' })}
+                    className="mt-0.5 accent-neon-purple"
+                  />
+                  <div className="space-y-1">
+                    <span className={`text-xs font-bold block ${isLight ? "text-slate-900" : "text-white"}`}>
+                      Full Broadcast Recording (Recommended)
+                    </span>
+                    <p className={`text-[10px] leading-normal ${isLight ? "text-slate-500" : "text-white/50"}`}>
+                      Records full show audio (e.g. 30–120 mins). Waveform analysis scans every minute of the broadcast to extract top drops & mic moments from anywhere in the show.
+                    </p>
+                  </div>
+                </label>
+
+                <label className={`p-3 rounded-xl border cursor-pointer transition flex items-start gap-3 ${
+                  settings.ai_stream_recording_mode === 'snippet'
+                    ? (isLight ? "bg-purple-50/80 border-purple-300" : "bg-purple-950/30 border-purple-500/50")
+                    : (isLight ? "bg-white border-slate-200 hover:border-slate-300" : "bg-black/20 border-white/10 hover:border-white/20")
+                }`}>
+                  <input
+                    type="radio"
+                    name="stream_recording_mode"
+                    value="snippet"
+                    checked={settings.ai_stream_recording_mode === 'snippet'}
+                    onChange={() => setSettings({ ...settings, ai_stream_recording_mode: 'snippet' })}
+                    className="mt-0.5 accent-neon-purple"
+                  />
+                  <div className="space-y-1">
+                    <span className={`text-xs font-bold block ${isLight ? "text-slate-900" : "text-white"}`}>
+                      Quick 2-Minute Highlight Snippet
+                    </span>
+                    <p className={`text-[10px] leading-normal ${isLight ? "text-slate-500" : "text-white/50"}`}>
+                      Captures a short 2–3 minute audio buffer at show end for rapid, low-bandwidth reel generation.
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              {(settings.ai_stream_recording_mode || 'full_show') === 'full_show' && (
+                <div className="flex items-center justify-between gap-4 pt-1">
+                  <div className="space-y-0.5">
+                    <label className={`text-xs font-bold ${isLight ? "text-slate-800" : "text-white/90"}`}>
+                      Max Stream Capture Limit
+                    </label>
+                    <p className={`text-[10px] ${isLight ? "text-slate-500" : "text-white/40"}`}>
+                      Maximum audio duration in minutes to record per live show job.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={15}
+                      max={360}
+                      step={15}
+                      value={settings.ai_full_stream_capture_mins || 60}
+                      onChange={(e) => setSettings({ ...settings, ai_full_stream_capture_mins: Math.max(15, Math.min(360, parseInt(e.target.value, 10) || 60)) })}
+                      className={`w-20 px-3 py-1.5 rounded-xl border text-xs font-mono font-bold text-center focus:outline-none focus:border-neon-purple ${
+                        isLight ? "bg-white border-slate-300 text-slate-900" : "bg-black/60 border-white/20 text-white"
+                      }`}
+                    />
+                    <span className={`text-xs font-mono ${isLight ? "text-slate-600" : "text-white/60"}`}>mins</span>
+                  </div>
                 </div>
               )}
             </div>
