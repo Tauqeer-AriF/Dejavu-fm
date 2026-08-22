@@ -364,7 +364,9 @@ export const JobsPipelineMonitor: React.FC<Props> = ({ jobs, onRefresh, onViewRe
                       </button>
                     )}
 
-                    {(job.status === "FAILED" || job.status === "CANCELLED") && (
+                    {(job.status === "FAILED" || job.status === "CANCELLED") && 
+                     job.source_type !== "SCHEDULE_SLOT" && 
+                     job.source_type !== "LIVE_STREAM" && (
                       <button
                         onClick={() => handleRetryJob(job.id)}
                         disabled={retryingJobId === job.id}
