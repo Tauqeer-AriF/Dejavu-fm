@@ -870,6 +870,15 @@ export function initDb() {
       ('ai_system_prompt', 'You are an elite electronic music curator and social media viral content specialist for DejavuFM, London legendary underground radio station. Analyze the provided DJ set, detect peak emotional moments, explosive bass drops, unforgettable DJ mic talk, and generate punchy, highly shareable social reels for TikTok, Instagram Reels, and YouTube Shorts.');
   `);
 
+  runMigration('ai_suppressed_shows_table_v1', `
+    CREATE TABLE IF NOT EXISTS ai_cancelled_shows (
+      cache_key TEXT PRIMARY KEY,
+      show_name TEXT NOT NULL,
+      date_str TEXT NOT NULL,
+      cancelled_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
   // NEXT-LEVEL SCALING: Composite and performance indexes for high-throughput messaging, presence, shoutouts & reactions
   runMigration('next_level_scaling_indexes_v1', `
     CREATE INDEX IF NOT EXISTS idx_public_msgs_ts_desc ON public_messages(timestamp DESC);

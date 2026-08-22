@@ -246,9 +246,14 @@ export function captureStreamViaHttp(
   streamUrl: string,
   durationSeconds: number,
   outputFile: string,
-  onProgress?: (elapsedSecs: number) => void
+  onProgress?: (elapsedSecs: number) => void,
+  abortSignal?: AbortSignal
 ): Promise<string> {
   return new Promise((resolve, reject) => {
+    if (abortSignal?.aborted) {
+      return reject(new Error("JOB_ABORTED"));
+    }
+
     let settled = false;
     const client = streamUrl.startsWith("https") ? https : http;
     const startTime = Date.now();
@@ -278,7 +283,7 @@ export function captureStreamViaHttp(
           cleanup();
           fileStream.close();
           const redirectUrl = new URL(res.headers.location, streamUrl).href;
-          return captureStreamViaHttp(redirectUrl, durationSeconds, outputFile, onProgress)
+          return captureStreamViaHttp(redirectUrl, durationSeconds, outputFile, onProgress, abortSignal)
             .then(resolve)
             .catch(reject);
         }
@@ -295,6 +300,15 @@ export function captureStreamViaHttp(
         res.pipe(fileStream);
 
         intervalId = setInterval(() => {
+          if (abortSignal?.aborted) {
+            cleanup();
+            res.destroy();
+            fileStream.close();
+            if (!settled) {
+              settled = true;
+              return reject(new Error("JOB_ABORTED"));
+            }
+          }
           const elapsed = Math.min(durationSeconds, Math.floor((Date.now() - startTime) / 1000));
           if (onProgress) onProgress(elapsed);
         }, 1000);
@@ -305,6 +319,9 @@ export function captureStreamViaHttp(
           fileStream.end(() => {
             if (!settled) {
               settled = true;
+              if (abortSignal?.aborted) {
+                return reject(new Error("JOB_ABORTED"));
+              }
               if (fs.existsSync(outputFile) && fs.statSync(outputFile).size > 1000) {
                 if (onProgress) onProgress(durationSeconds);
                 resolve(outputFile);
@@ -316,6 +333,20 @@ export function captureStreamViaHttp(
         }, durationSeconds * 1000);
       }
     );
+
+    const onAbort = () => {
+      cleanup();
+      try { req.destroy(); } catch (e) {}
+      try { fileStream.close(); } catch (e) {}
+      if (!settled) {
+        settled = true;
+        reject(new Error("JOB_ABORTED"));
+      }
+    };
+
+    if (abortSignal) {
+      abortSignal.addEventListener("abort", onAbort, { once: true });
+    }
 
     req.on("error", (err) => {
       cleanup();
@@ -346,8 +377,13 @@ export async function captureStreamSnippet(
   streamUrl: string,
   durationSeconds: number,
   outputFile: string,
-  onProgress?: (elapsedSecs: number) => void
+  onProgress?: (elapsedSecs: number) => void,
+  abortSignal?: AbortSignal
 ): Promise<string> {
+  if (abortSignal?.aborted) {
+    throw new Error("JOB_ABORTED");
+  }
+
   // Ensure output directory exists
   const outDir = path.dirname(outputFile);
   if (!fs.existsSync(outDir)) {
@@ -381,7 +417,23 @@ export async function captureStreamSnippet(
         try { proc.kill("SIGTERM"); } catch (e) {}
       }, timeoutMs);
 
+      const onAbort = () => {
+        clearTimeout(timer);
+        try { proc.kill("SIGKILL"); } catch (e) {}
+        reject(new Error("JOB_ABORTED"));
+      };
+
+      if (abortSignal) {
+        abortSignal.addEventListener("abort", onAbort, { once: true });
+      }
+
       proc.stderr.on("data", (d) => {
+        if (abortSignal?.aborted) {
+          clearTimeout(timer);
+          try { proc.kill("SIGKILL"); } catch (e) {}
+          return;
+        }
+
         const chunk = d.toString();
         stderr += chunk;
 
@@ -399,6 +451,9 @@ export async function captureStreamSnippet(
 
       proc.on("close", (code) => {
         clearTimeout(timer);
+        if (abortSignal?.aborted) {
+          return reject(new Error("JOB_ABORTED"));
+        }
         if (fs.existsSync(outputFile) && fs.statSync(outputFile).size > 1000) {
           resolve(outputFile);
         } else {
@@ -414,10 +469,14 @@ export async function captureStreamSnippet(
 
     return result;
   } catch (ffmpegErr: any) {
+    if (ffmpegErr.message === "JOB_ABORTED" || abortSignal?.aborted) {
+      throw new Error("JOB_ABORTED");
+    }
+
     console.warn(`[AI Studio FFmpeg] FFmpeg capture failed (${ffmpegErr.message}). Switching to native HTTP stream capture engine fallback...`);
     
     // Attempt 2: Native Node.js HTTP/HTTPS stream downloader fallback
-    return await captureStreamViaHttp(streamUrl, durationSeconds, outputFile, onProgress);
+    return await captureStreamViaHttp(streamUrl, durationSeconds, outputFile, onProgress, abortSignal);
   }
 }
 

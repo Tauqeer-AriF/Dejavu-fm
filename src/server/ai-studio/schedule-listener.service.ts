@@ -185,14 +185,28 @@ export async function checkAndTriggerCompletedShowReels(options?: { force?: bool
         if (isConcluded) {
           const cacheKey = `${slot.show_name}:${dateStr}`;
 
-          // Avoid re-triggering if the cache shows we've already processed this slot today
+          // Avoid re-triggering if the memory cache shows we've already processed or dismissed this slot today
           if (triggeredShowsToday.has(cacheKey)) {
             continue;
           }
 
+          // Check if show has been cancelled/dismissed in DB today
+          try {
+            const cancelledRecord = db.prepare(`
+              SELECT cache_key FROM ai_cancelled_shows 
+              WHERE cache_key = ? OR (show_name = ? AND date_str = ?)
+              LIMIT 1
+            `).get(cacheKey, slot.show_name, dateStr);
+
+            if (cancelledRecord) {
+              triggeredShowsToday.add(cacheKey);
+              continue;
+            }
+          } catch (e) {}
+
           // Check if an AI Job has already been created for this show today in the DB
           const existingJob = db.prepare(`
-            SELECT id FROM ai_jobs 
+            SELECT id, status FROM ai_jobs 
             WHERE show_name = ? 
               AND DATE(created_at) = DATE(?)
             LIMIT 1

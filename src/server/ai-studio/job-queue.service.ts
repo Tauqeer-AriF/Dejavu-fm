@@ -22,6 +22,7 @@ let ioInstance: SocketIOServer | null = null;
 const MAX_CONCURRENT_JOBS = 2;
 let activeRunningJobCount = 0;
 const waitingJobQueue: string[] = [];
+const activeJobAbortControllers = new Map<string, AbortController>();
 
 export function setSocketIOInstance(io: SocketIOServer) {
   ioInstance = io;
@@ -139,7 +140,7 @@ function updateJobProgress(jobId: string, status: string, progress: number, stag
 
 async function runJobPipeline(jobId: string) {
   const job = db.prepare('SELECT * FROM ai_jobs WHERE id = ?').get(jobId) as AIJob;
-  if (!job) return;
+  if (!job || job.status === 'CANCELLED') return;
 
   const storageDir = getAIStudioStorageDir();
   const settings = getAIStudioSettingsFromDb();
@@ -148,7 +149,23 @@ async function runJobPipeline(jobId: string) {
     config = JSON.parse(job.config_json || '{}');
   } catch (e) {}
 
+  const abortController = new AbortController();
+  activeJobAbortControllers.set(jobId, abortController);
+  const signal = abortController.signal;
+
+  const checkAborted = () => {
+    if (signal.aborted) {
+      throw new Error('JOB_ABORTED');
+    }
+    const currentJob = db.prepare('SELECT status FROM ai_jobs WHERE id = ?').get(jobId) as any;
+    if (!currentJob || currentJob.status === 'CANCELLED') {
+      throw new Error('JOB_ABORTED');
+    }
+  };
+
   try {
+    checkAborted();
+
     // ----------------------------------------------------
     // STAGE 1: AUDIO CAPTURE / RESOLUTION (10% - 30%)
     // ----------------------------------------------------
@@ -179,6 +196,7 @@ async function runJobPipeline(jobId: string) {
     };
 
     const onCaptureProgress = (elapsedSecs: number) => {
+      if (signal.aborted) return;
       const progressVal = 15 + Math.min(15, Math.round((elapsedSecs / captureDuration) * 15));
       const modeLabel = recordingMode === 'full_show' ? 'Full Broadcast' : 'Snippet';
       updateJobProgress(
@@ -197,7 +215,7 @@ async function runJobPipeline(jobId: string) {
       console.log(`[AI Studio Queue] Job #${jobId}: Recording live radio broadcast stream from ${streamUrl} (${formatSecsDisplay(captureDuration)}, mode: ${recordingMode})...`);
       const targetFile = path.join(storageDir, `${jobId}_source.mp3`);
       updateJobProgress(jobId, 'CAPTURING', 15, `Recording live stream (${formatSecsDisplay(captureDuration)})...`);
-      await captureStreamSnippet(streamUrl, captureDuration, targetFile, onCaptureProgress);
+      await captureStreamSnippet(streamUrl, captureDuration, targetFile, onCaptureProgress, signal);
       sourceAudioPath = targetFile;
     } else if (job.source_type === 'upload' && job.source_url) {
       // Local uploaded file
@@ -212,7 +230,7 @@ async function runJobPipeline(jobId: string) {
     } else if (job.source_type === 'podcast' && job.source_url) {
       const targetFile = path.join(storageDir, `${jobId}_source.mp3`);
       updateJobProgress(jobId, 'CAPTURING', 15, `Fetching podcast episode audio...`);
-      await captureStreamSnippet(job.source_url, captureDuration, targetFile, onCaptureProgress);
+      await captureStreamSnippet(job.source_url, captureDuration, targetFile, onCaptureProgress, signal);
       sourceAudioPath = targetFile;
     } else {
       // Default: capture from station live radio stream
@@ -222,9 +240,11 @@ async function runJobPipeline(jobId: string) {
       }
       console.log(`[AI Studio Queue] Job #${jobId}: Capturing live radio broadcast stream from ${streamUrl}`);
       const targetFile = path.join(storageDir, `${jobId}_source.mp3`);
-      await captureStreamSnippet(streamUrl, captureDuration, targetFile, onCaptureProgress);
+      await captureStreamSnippet(streamUrl, captureDuration, targetFile, onCaptureProgress, signal);
       sourceAudioPath = targetFile;
     }
+
+    checkAborted();
 
     if (!fs.existsSync(sourceAudioPath)) {
       throw new Error('Failed to acquire valid audio source for processing.');
@@ -235,7 +255,10 @@ async function runJobPipeline(jobId: string) {
     // ----------------------------------------------------
     updateJobProgress(jobId, 'ANALYZING', 35, 'Analyzing acoustic dynamics, loudness peaks and transitions...');
     const totalDuration = await getMediaDuration(sourceAudioPath);
+    checkAborted();
+    
     const { waveformData, peaks } = await analyzeAudioWaveformAndPeaks(sourceAudioPath, totalDuration);
+    checkAborted();
 
     updateJobProgress(jobId, 'ANALYZING', 50, `Gemini AI discovering peak moments, drops & viral hooks...`);
     const targetCount = config.target_reels_count || 3;
@@ -247,6 +270,7 @@ async function runJobPipeline(jobId: string) {
       customPrompt: config.custom_prompt,
       loudnessPeaks: peaks
     });
+    checkAborted();
 
     // ----------------------------------------------------
     // STAGE 3: VIDEO RENDERING & SOCIAL PACKAGING (60% - 95%)
@@ -278,6 +302,7 @@ async function runJobPipeline(jobId: string) {
     const selectedAspect: AspectRatioOption = config.aspect_ratio || '9:16';
 
     for (let i = 0; i < highlights.length; i++) {
+      checkAborted();
       const h = highlights[i];
       const reelId = `reel_${Date.now()}_${i}_${crypto.randomBytes(3).toString('hex')}`;
       const clipDuration = Math.max(5, h.end_seconds - h.start_seconds);
@@ -289,6 +314,7 @@ async function runJobPipeline(jobId: string) {
       const audioFilename = `${reelId}_audio.mp3`;
       const audioFullPath = path.join(storageDir, audioFilename);
       await sliceAudioChunk(sourceAudioPath, h.start_seconds, clipDuration, audioFullPath);
+      checkAborted();
       const audioRelativeUrl = `/uploads/ai-studio/${audioFilename}`;
 
       // 2. Rendered Video MP4
@@ -312,6 +338,7 @@ async function runJobPipeline(jobId: string) {
         outputVideoPath: videoFullPath,
         outputThumbnailPath: thumbFullPath
       });
+      checkAborted();
 
       const videoRelativeUrl = `/uploads/ai-studio/${videoFilename}`;
       const thumbRelativeUrl = `/uploads/ai-studio/${thumbFilename}`;
@@ -345,6 +372,8 @@ async function runJobPipeline(jobId: string) {
       );
     }
 
+    checkAborted();
+
     // Run background disk prune of old intermediate captures
     try {
       pruneAIStudioDiskAssets(48);
@@ -372,6 +401,11 @@ async function runJobPipeline(jobId: string) {
       }
     );
   } catch (err: any) {
+    if (err.message === 'JOB_ABORTED' || signal.aborted) {
+      console.log(`[AI Job Queue] Job #${jobId} gracefully stopped due to cancellation.`);
+      return;
+    }
+
     console.error(`[AI Job Queue] Pipeline error for job ${jobId}:`, err);
     updateJobProgress(jobId, 'FAILED', 0, `Processing failed: ${err.message}`, err.message);
     const failedJob = db.prepare('SELECT * FROM ai_jobs WHERE id = ?').get(jobId) as AIJob;
@@ -389,21 +423,79 @@ async function runJobPipeline(jobId: string) {
         error: err.message
       }
     );
+  } finally {
+    activeJobAbortControllers.delete(jobId);
   }
 }
 
 export function cancelAIJob(jobId: string) {
+  // Abort running processes immediately
+  const controller = activeJobAbortControllers.get(jobId);
+  if (controller) {
+    try {
+      controller.abort();
+    } catch (e) {}
+    activeJobAbortControllers.delete(jobId);
+  }
+
+  // Remove from waiting queue if not yet started
+  const queueIdx = waitingJobQueue.indexOf(jobId);
+  if (queueIdx !== -1) {
+    waitingJobQueue.splice(queueIdx, 1);
+  }
+
   db.prepare(`
     UPDATE ai_jobs 
-    SET status = 'CANCELLED', stage_message = 'Job cancelled by administrator.', updated_at = CURRENT_TIMESTAMP 
+    SET status = 'CANCELLED', stage_message = 'Job cancelled by administrator.', updated_at = CURRENT_TIMESTAMP, completed_at = CURRENT_TIMESTAMP
     WHERE id = ? AND status IN ('QUEUED', 'CAPTURING', 'ANALYZING', 'GENERATING')
   `).run(jobId);
-  const job = db.prepare('SELECT * FROM ai_jobs WHERE id = ?').get(jobId);
-  if (job) emitJobUpdate('ai_job_cancelled', job);
+
+  const job = db.prepare('SELECT * FROM ai_jobs WHERE id = ?').get(jobId) as any;
+  if (job) {
+    // Record suppression in db to permanently prevent auto-schedule listener from re-triggering this show slot today
+    try {
+      const todayDate = new Date().toISOString().split('T')[0];
+      const cacheKey = `${job.show_name}:${todayDate}`;
+      db.prepare(`
+        INSERT OR REPLACE INTO ai_cancelled_shows (cache_key, show_name, date_str, cancelled_at)
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+      `).run(cacheKey, job.show_name, todayDate);
+    } catch (e) {}
+
+    emitJobUpdate('ai_job_cancelled', job);
+  }
   return job;
 }
 
 export function deleteAIJob(jobId: string) {
+  // Abort if currently executing
+  const controller = activeJobAbortControllers.get(jobId);
+  if (controller) {
+    try {
+      controller.abort();
+    } catch (e) {}
+    activeJobAbortControllers.delete(jobId);
+  }
+
+  // Remove from waiting queue
+  const queueIdx = waitingJobQueue.indexOf(jobId);
+  if (queueIdx !== -1) {
+    waitingJobQueue.splice(queueIdx, 1);
+  }
+
+  // Record suppression before deletion
+  const job = db.prepare('SELECT show_name, created_at FROM ai_jobs WHERE id = ?').get(jobId) as any;
+  if (job) {
+    try {
+      const dateStr = (job.created_at || new Date().toISOString()).split('T')[0].split(' ')[0];
+      const cacheKey = `${job.show_name}:${dateStr}`;
+      db.prepare(`
+        INSERT OR REPLACE INTO ai_cancelled_shows (cache_key, show_name, date_str, cancelled_at)
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+      `).run(cacheKey, job.show_name, dateStr);
+    } catch (e) {}
+  }
+
   // Fetch reels to clean media files
   const reels = db.prepare('SELECT audio_url, video_url, thumbnail_url FROM ai_reels WHERE job_id = ?').all(jobId) as any[];
   const uploadsDir = getUploadsDir();
