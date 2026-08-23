@@ -250,14 +250,14 @@ export function runFFmpegCommand(args: string[], abortSignal?: AbortSignal, time
       stderr += data.toString();
     });
 
-    process.on("close", (code) => {
+    process.on("close", (code, signal) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
       if (code === 0) {
         resolve(stdout || stderr);
       } else {
-        reject(new Error(`FFmpeg exited with code ${code}: ${stderr.slice(-400)}`));
+        reject(new Error(`FFmpeg exited with code ${code}${signal ? ` (signal: ${signal})` : ''}: ${stderr.slice(-400)}`));
       }
     });
 
@@ -727,53 +727,53 @@ function buildPureVisualizerFilter(theme: VisualizerTheme, aspect: AspectRatioOp
     if (theme === 'minimal_studio') {
       return [
         `color=c=0x0b0f19:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showfreqs=s=960x600:mode=bar:colors=0xf59e0b|0xffffff:fscale=log:ascale=cbrt[freqs]`,
-        `[0:a]showwaves=s=960x400:mode=cline:colors=0xf59e0b:scale=sqrt[waves]`,
-        `[bg][freqs]overlay=x=(W-w)/2:y=900[v1]`,
-        `[v1][waves]overlay=x=(W-w)/2:y=400,fps=30[v_out]`
+        `[0:a]showfreqs=s=640x360:mode=bar:colors=0xf59e0b|0xffffff:fscale=log:ascale=cbrt[freqs]`,
+        `[0:a]showwaves=s=640x260:mode=cline:colors=0xf59e0b:scale=sqrt[waves]`,
+        `[bg][freqs]overlay=x=(W-w)/2:y=600[v1]`,
+        `[v1][waves]overlay=x=(W-w)/2:y=260,fps=30[v_out]`
       ].join(';');
     } else if (theme === 'retro_vinyl') {
       return [
         `color=c=0x120c06:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showwaves=s=960x500:mode=p2p:colors=0xf59e0b|0xef4444:scale=cbrt[wave]`,
-        `[0:a]showfreqs=s=960x400:mode=bar:colors=0xef4444|0xf59e0b:fscale=log[freqs]`,
-        `[bg][wave]overlay=x=(W-w)/2:y=400[v1]`,
-        `[v1][freqs]overlay=x=(W-w)/2:y=1050,fps=30[v_out]`
+        `[0:a]showwaves=s=640x300:mode=p2p:colors=0xf59e0b|0xef4444:scale=cbrt[wave]`,
+        `[0:a]showfreqs=s=640x220:mode=bar:colors=0xef4444|0xf59e0b:fscale=log[freqs]`,
+        `[bg][wave]overlay=x=(W-w)/2:y=260[v1]`,
+        `[v1][freqs]overlay=x=(W-w)/2:y=700,fps=30[v_out]`
       ].join(';');
     } else if (theme === 'waveform_pulse') {
       return [
         `color=c=0x050814:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showwaves=s=960x520:mode=cline:colors=0x10b981|0x06b6d4|0x6366f1:scale=sqrt[wave]`,
-        `[0:a]showfreqs=s=960x420:mode=line:colors=0x6366f1|0x10b981:fscale=log[freqs]`,
-        `[bg][wave]overlay=x=(W-w)/2:y=450[v1]`,
-        `[v1][freqs]overlay=x=(W-w)/2:y=1100,fps=30[v_out]`
+        `[0:a]showwaves=s=640x320:mode=cline:colors=0x10b981|0x06b6d4|0x6366f1:scale=sqrt[wave]`,
+        `[0:a]showfreqs=s=640x240:mode=line:colors=0x6366f1|0x10b981:fscale=log[freqs]`,
+        `[bg][wave]overlay=x=(W-w)/2:y=280[v1]`,
+        `[v1][freqs]overlay=x=(W-w)/2:y=720,fps=30[v_out]`
       ].join(';');
     } else {
       // neon_cyber
       return [
         `color=c=0x070810:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showwaves=s=960x500:mode=line:colors=0xb026ff|0x00f0ff:scale=cbrt[wave]`,
-        `[0:a]showfreqs=s=960x420:mode=bar:colors=0x00f0ff|0xb026ff:fscale=log[freqs]`,
-        `[bg][wave]overlay=x=(W-w)/2:y=450[v1]`,
-        `[v1][freqs]overlay=x=(W-w)/2:y=1100,fps=30[v_out]`
+        `[0:a]showwaves=s=640x300:mode=line:colors=0xb026ff|0x00f0ff:scale=cbrt[wave]`,
+        `[0:a]showfreqs=s=640x240:mode=bar:colors=0x00f0ff|0xb026ff:fscale=log[freqs]`,
+        `[bg][wave]overlay=x=(W-w)/2:y=280[v1]`,
+        `[v1][freqs]overlay=x=(W-w)/2:y=720,fps=30[v_out]`
       ].join(';');
     }
   } else if (aspect === '1:1') {
     return [
       `color=c=0x070810:s=${width}x${height}:d=${dur}[bg]`,
-      `[0:a]showwaves=s=920x360:mode=line:colors=0x00f0ff|0xb026ff:scale=cbrt[wave]`,
-      `[0:a]showfreqs=s=920x300:mode=bar:colors=0xb026ff|0x00f0ff:fscale=log[freqs]`,
-      `[bg][wave]overlay=x=(W-w)/2:y=150[v1]`,
-      `[v1][freqs]overlay=x=(W-w)/2:y=580,fps=30[v_out]`
+      `[0:a]showwaves=s=640x240:mode=line:colors=0x00f0ff|0xb026ff:scale=cbrt[wave]`,
+      `[0:a]showfreqs=s=640x180:mode=bar:colors=0xb026ff|0x00f0ff:fscale=log[freqs]`,
+      `[bg][wave]overlay=x=(W-w)/2:y=100[v1]`,
+      `[v1][freqs]overlay=x=(W-w)/2:y=380,fps=30[v_out]`
     ].join(';');
   } else {
     // 16:9
     return [
       `color=c=0x070810:s=${width}x${height}:d=${dur}[bg]`,
-      `[0:a]showwaves=s=1600x400:mode=line:colors=0x00f0ff|0xb026ff:scale=cbrt[wave]`,
-      `[0:a]showfreqs=s=1600x300:mode=bar:colors=0xb026ff|0x00f0ff:fscale=log[freqs]`,
-      `[bg][wave]overlay=x=(W-w)/2:y=150[v1]`,
-      `[v1][freqs]overlay=x=(W-w)/2:y=620,fps=30[v_out]`
+      `[0:a]showwaves=s=1100x260:mode=line:colors=0x00f0ff|0xb026ff:scale=cbrt[wave]`,
+      `[0:a]showfreqs=s=1100x180:mode=bar:colors=0xb026ff|0x00f0ff:fscale=log[freqs]`,
+      `[bg][wave]overlay=x=(W-w)/2:y=100[v1]`,
+      `[v1][freqs]overlay=x=(W-w)/2:y=400,fps=30[v_out]`
     ].join(';');
   }
 }
@@ -786,14 +786,14 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
   thumbnailPath: string;
 }> {
   const aspect = options.aspectRatio || '9:16';
-  let width = 1080;
-  let height = 1920;
+  let width = 720;
+  let height = 1280;
   if (aspect === '1:1') {
-    width = 1080;
-    height = 1080;
+    width = 720;
+    height = 720;
   } else if (aspect === '16:9') {
-    width = 1920;
-    height = 1080;
+    width = 1280;
+    height = 720;
   }
 
   const dur = Math.max(5, Math.round(options.durationSeconds));
@@ -828,155 +828,155 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
       // Clean Studio Minimalist: Dark luxury slate, clean gold/white frequency meters
       filterComplex = [
         `color=c=0x0b0f19:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showfreqs=s=920x360:mode=bar:colors=0xf59e0b|0xffffff:fscale=log:ascale=cbrt[freqs]`,
-        `[bg][freqs]overlay=x=(W-w)/2:y=1120[v1]`,
-        `[v1]drawtext=${fontArg}text='DEJAVUFM STUDIO':fontcolor=0xf59e0b:fontsize=42:x=(w-text_w)/2:y=260:box=1:boxcolor=0x000000@0.8:boxborderw=14[v2]`,
-        `[v2]drawtext=${fontArg}text='BROADCAST ARCHIVE':fontcolor=0x94a3b8:fontsize=22:x=(w-text_w)/2:y=325[v3]`,
-        `[v3]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=62:x=(w-text_w)/2:y=500[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeShow}':fontcolor=0xf59e0b:fontsize=34:x=(w-text_w)/2:y=585[v5]`,
-        `[v5]drawtext=${fontArg}text='${safeHook}':fontcolor=0x0b0f19:fontsize=48:x=(w-text_w)/2:y=780:box=1:boxcolor=0xffffff@0.95:boxborderw=24[v6]`,
-        `[v6]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=32:x=(w-text_w)/2:y=1640:box=1:boxcolor=0x000000@0.7:boxborderw=14,fps=30[v_out]`
+        `[0:a]showfreqs=s=640x240:mode=bar:colors=0xf59e0b|0xffffff:fscale=log:ascale=cbrt[freqs]`,
+        `[bg][freqs]overlay=x=(W-w)/2:y=760[v1]`,
+        `[v1]drawtext=${fontArg}text='DEJAVUFM STUDIO':fontcolor=0xf59e0b:fontsize=30:x=(w-text_w)/2:y=170:box=1:boxcolor=0x000000@0.8:boxborderw=10[v2]`,
+        `[v2]drawtext=${fontArg}text='BROADCAST ARCHIVE':fontcolor=0x94a3b8:fontsize=16:x=(w-text_w)/2:y=215[v3]`,
+        `[v3]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=44:x=(w-text_w)/2:y=330[v4]`,
+        `[v4]drawtext=${fontArg}text='${safeShow}':fontcolor=0xf59e0b:fontsize=24:x=(w-text_w)/2:y=390[v5]`,
+        `[v5]drawtext=${fontArg}text='${safeHook}':fontcolor=0x0b0f19:fontsize=34:x=(w-text_w)/2:y=520:box=1:boxcolor=0xffffff@0.95:boxborderw=16[v6]`,
+        `[v6]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=22:x=(w-text_w)/2:y=1120:box=1:boxcolor=0x000000@0.7:boxborderw=10,fps=30[v_out]`
       ].join(";");
     } else if (theme === 'retro_vinyl') {
       // Retro Vinyl / Warm Cassette aesthetic: Gold/amber glow, warm waves
       filterComplex = [
         `color=c=0x120c06:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showwaves=s=920x320:mode=p2p:colors=0xf59e0b|0xef4444:scale=cbrt[wave]`,
-        `[0:a]showfreqs=s=920x240:mode=bar:colors=0xef4444|0xf59e0b:fscale=log[freqs]`,
-        `[bg][wave]overlay=x=(W-w)/2:y=1020[v1]`,
-        `[v1][freqs]overlay=x=(W-w)/2:y=1400[v2]`,
-        `[v2]drawtext=${fontArg}text='DEJAVUFM • ANALOG SOUND':fontcolor=0xf59e0b:fontsize=44:x=(w-text_w)/2:y=240:box=1:boxcolor=0x000000@0.85:boxborderw=16[v3]`,
-        `[v3]drawtext=${fontArg}text='LONDON PIRATE HERITAGE 92.3':fontcolor=0xd97706:fontsize=24:x=(w-text_w)/2:y=310[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=64:x=(w-text_w)/2:y=480[v5]`,
-        `[v5]drawtext=${fontArg}text='${safeShow}':fontcolor=0xfbbf24:fontsize=36:x=(w-text_w)/2:y=565[v6]`,
-        `[v6]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=52:x=(w-text_w)/2:y=760:box=1:boxcolor=0xd97706@0.9:boxborderw=24[v7]`,
-        `[v7]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=32:x=(w-text_w)/2:y=1690:box=1:boxcolor=0x000000@0.65:boxborderw=12,fps=30[v_out]`
+        `[0:a]showwaves=s=640x220:mode=p2p:colors=0xf59e0b|0xef4444:scale=cbrt[wave]`,
+        `[0:a]showfreqs=s=640x160:mode=bar:colors=0xef4444|0xf59e0b:fscale=log[freqs]`,
+        `[bg][wave]overlay=x=(W-w)/2:y=680[v1]`,
+        `[v1][freqs]overlay=x=(W-w)/2:y=940[v2]`,
+        `[v2]drawtext=${fontArg}text='DEJAVUFM • ANALOG SOUND':fontcolor=0xf59e0b:fontsize=30:x=(w-text_w)/2:y=160:box=1:boxcolor=0x000000@0.85:boxborderw=10[v3]`,
+        `[v3]drawtext=${fontArg}text='LONDON PIRATE HERITAGE 92.3':fontcolor=0xd97706:fontsize=16:x=(w-text_w)/2:y=210[v4]`,
+        `[v4]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=44:x=(w-text_w)/2:y=320[v5]`,
+        `[v5]drawtext=${fontArg}text='${safeShow}':fontcolor=0xfbbf24:fontsize=24:x=(w-text_w)/2:y=380[v6]`,
+        `[v6]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=36:x=(w-text_w)/2:y=510:box=1:boxcolor=0xd97706@0.9:boxborderw=16[v7]`,
+        `[v7]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=22:x=(w-text_w)/2:y=1140:box=1:boxcolor=0x000000@0.65:boxborderw=8,fps=30[v_out]`
       ].join(";");
     } else if (theme === 'waveform_pulse') {
       // Waveform Pulse: Multi-color kinetic spectrum wave
       filterComplex = [
         `color=c=0x050814:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showwaves=s=960x420:mode=cline:colors=0x10b981|0x06b6d4|0x6366f1:scale=sqrt[wave]`,
-        `[0:a]showfreqs=s=960x220:mode=line:colors=0x6366f1|0x10b981:fscale=log[freqs]`,
-        `[bg][wave]overlay=x=(W-w)/2:y=980[v1]`,
-        `[v1][freqs]overlay=x=(W-w)/2:y=1440[v2]`,
-        `[v2]drawtext=${fontArg}text='DEJAVUFM LIVE':fontcolor=0x10b981:fontsize=46:x=(w-text_w)/2:y=240:box=1:boxcolor=0x000000@0.8:boxborderw=16[v3]`,
-        `[v3]drawtext=${fontArg}text='24/7 ELECTRONIC SESSIONS':fontcolor=0xa7f3d0:fontsize=24:x=(w-text_w)/2:y=310[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=64:x=(w-text_w)/2:y=480[v5]`,
-        `[v5]drawtext=${fontArg}text='${safeShow}':fontcolor=0x06b6d4:fontsize=36:x=(w-text_w)/2:y=565[v6]`,
-        `[v6]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=52:x=(w-text_w)/2:y=760:box=1:boxcolor=0x059669@0.9:boxborderw=24[v7]`,
-        `[v7]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=32:x=(w-text_w)/2:y=1690:box=1:boxcolor=0x000000@0.6:boxborderw=12,fps=30[v_out]`
+        `[0:a]showwaves=s=640x240:mode=cline:colors=0x10b981|0x06b6d4|0x6366f1:scale=sqrt[wave]`,
+        `[0:a]showfreqs=s=640x160:mode=line:colors=0x6366f1|0x10b981:fscale=log[freqs]`,
+        `[bg][wave]overlay=x=(W-w)/2:y=660[v1]`,
+        `[v1][freqs]overlay=x=(W-w)/2:y=960[v2]`,
+        `[v2]drawtext=${fontArg}text='DEJAVUFM LIVE':fontcolor=0x10b981:fontsize=32:x=(w-text_w)/2:y=160:box=1:boxcolor=0x000000@0.8:boxborderw=10[v3]`,
+        `[v3]drawtext=${fontArg}text='24/7 ELECTRONIC SESSIONS':fontcolor=0xa7f3d0:fontsize=16:x=(w-text_w)/2:y=210[v4]`,
+        `[v4]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=44:x=(w-text_w)/2:y=320[v5]`,
+        `[v5]drawtext=${fontArg}text='${safeShow}':fontcolor=0x06b6d4:fontsize=24:x=(w-text_w)/2:y=380[v6]`,
+        `[v6]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=36:x=(w-text_w)/2:y=510:box=1:boxcolor=0x059669@0.9:boxborderw=16[v7]`,
+        `[v7]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=22:x=(w-text_w)/2:y=1140:box=1:boxcolor=0x000000@0.6:boxborderw=8,fps=30[v_out]`
       ].join(";");
     } else {
       // Default: neon_cyber
       filterComplex = [
         `color=c=0x070810:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showwaves=s=920x340:mode=line:colors=0xb026ff|0x00f0ff:scale=cbrt[wave]`,
-        `[0:a]showfreqs=s=920x220:mode=bar:colors=0x00f0ff|0xb026ff:fscale=log[freqs]`,
-        `[bg][wave]overlay=x=(W-w)/2:y=1040[v1]`,
-        `[v1][freqs]overlay=x=(W-w)/2:y=1420[v2]`,
-        `[v2]drawtext=${fontArg}text='DEJAVUFM':fontcolor=0xb026ff:fontsize=46:x=(w-text_w)/2:y=240:box=1:boxcolor=0x000000@0.7:boxborderw=16[v3]`,
-        `[v3]drawtext=${fontArg}text='THE SOUND OF LONDON • 24/7 UNDERGROUND':fontcolor=0x8892b0:fontsize=24:x=(w-text_w)/2:y=310[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=64:x=(w-text_w)/2:y=480[v5]`,
-        `[v5]drawtext=${fontArg}text='${safeShow}':fontcolor=0x00f0ff:fontsize=36:x=(w-text_w)/2:y=565[v6]`,
-        `[v6]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=52:x=(w-text_w)/2:y=760:box=1:boxcolor=0xb026ff@0.85:boxborderw=24[v7]`,
-        `[v7]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=32:x=(w-text_w)/2:y=1690:box=1:boxcolor=0x000000@0.6:boxborderw=12,fps=30[v_out]`
+        `[0:a]showwaves=s=640x240:mode=line:colors=0xb026ff|0x00f0ff:scale=cbrt[wave]`,
+        `[0:a]showfreqs=s=640x160:mode=bar:colors=0x00f0ff|0xb026ff:fscale=log[freqs]`,
+        `[bg][wave]overlay=x=(W-w)/2:y=700[v1]`,
+        `[v1][freqs]overlay=x=(W-w)/2:y=950[v2]`,
+        `[v2]drawtext=${fontArg}text='DEJAVUFM':fontcolor=0xb026ff:fontsize=32:x=(w-text_w)/2:y=160:box=1:boxcolor=0x000000@0.7:boxborderw=10[v3]`,
+        `[v3]drawtext=${fontArg}text='THE SOUND OF LONDON • 24/7 UNDERGROUND':fontcolor=0x8892b0:fontsize=16:x=(w-text_w)/2:y=210[v4]`,
+        `[v4]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=44:x=(w-text_w)/2:y=320[v5]`,
+        `[v5]drawtext=${fontArg}text='${safeShow}':fontcolor=0x00f0ff:fontsize=24:x=(w-text_w)/2:y=380[v6]`,
+        `[v6]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=36:x=(w-text_w)/2:y=510:box=1:boxcolor=0xb026ff@0.85:boxborderw=16[v7]`,
+        `[v7]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=22:x=(w-text_w)/2:y=1140:box=1:boxcolor=0x000000@0.6:boxborderw=8,fps=30[v_out]`
       ].join(";");
     }
   } else if (aspect === '1:1') {
-    // Square 1080x1080
+    // Square 720x720
     if (theme === 'minimal_studio') {
       filterComplex = [
         `color=c=0x0b0f19:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showfreqs=s=880x260:mode=bar:colors=0xf59e0b|0xffffff:fscale=log:ascale=cbrt[freqs]`,
-        `[bg][freqs]overlay=x=(W-w)/2:y=580[v1]`,
-        `[v1]drawtext=${fontArg}text='DEJAVUFM STUDIO':fontcolor=0xf59e0b:fontsize=32:x=(w-text_w)/2:y=90:box=1:boxcolor=0x000000@0.8:boxborderw=10[v2]`,
-        `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=48:x=(w-text_w)/2:y=200[v3]`,
-        `[v3]drawtext=${fontArg}text='${safeShow}':fontcolor=0xf59e0b:fontsize=28:x=(w-text_w)/2:y=270[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0x0b0f19:fontsize=38:x=(w-text_w)/2:y=400:box=1:boxcolor=0xffffff@0.95:boxborderw=18[v5]`,
-        `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=26:x=(w-text_w)/2:y=920:box=1:boxcolor=0x000000@0.7:boxborderw=10,fps=30[v_out]`
+        `[0:a]showfreqs=s=600x180:mode=bar:colors=0xf59e0b|0xffffff:fscale=log:ascale=cbrt[freqs]`,
+        `[bg][freqs]overlay=x=(W-w)/2:y=390[v1]`,
+        `[v1]drawtext=${fontArg}text='DEJAVUFM STUDIO':fontcolor=0xf59e0b:fontsize=24:x=(w-text_w)/2:y=60:box=1:boxcolor=0x000000@0.8:boxborderw=8[v2]`,
+        `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=34:x=(w-text_w)/2:y=140[v3]`,
+        `[v3]drawtext=${fontArg}text='${safeShow}':fontcolor=0xf59e0b:fontsize=20:x=(w-text_w)/2:y=190[v4]`,
+        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0x0b0f19:fontsize=26:x=(w-text_w)/2:y=280:box=1:boxcolor=0xffffff@0.95:boxborderw=12[v5]`,
+        `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=620:box=1:boxcolor=0x000000@0.7:boxborderw=8,fps=30[v_out]`
       ].join(";");
     } else if (theme === 'retro_vinyl') {
       filterComplex = [
         `color=c=0x120c06:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showwaves=s=880x240:mode=p2p:colors=0xf59e0b|0xef4444:scale=cbrt[wave]`,
-        `[bg][wave]overlay=x=(W-w)/2:y=580[v1]`,
-        `[v1]drawtext=${fontArg}text='DEJAVUFM • ANALOG SOUND':fontcolor=0xf59e0b:fontsize=34:x=(w-text_w)/2:y=90:box=1:boxcolor=0x000000@0.85:boxborderw=12[v2]`,
-        `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=50:x=(w-text_w)/2:y=200[v3]`,
-        `[v3]drawtext=${fontArg}text='${safeShow}':fontcolor=0xfbbf24:fontsize=28:x=(w-text_w)/2:y=270[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=40:x=(w-text_w)/2:y=400:box=1:boxcolor=0xd97706@0.9:boxborderw=18[v5]`,
-        `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=26:x=(w-text_w)/2:y=920:box=1:boxcolor=0x000000@0.65:boxborderw=10,fps=30[v_out]`
+        `[0:a]showwaves=s=600x160:mode=p2p:colors=0xf59e0b|0xef4444:scale=cbrt[wave]`,
+        `[bg][wave]overlay=x=(W-w)/2:y=390[v1]`,
+        `[v1]drawtext=${fontArg}text='DEJAVUFM • ANALOG SOUND':fontcolor=0xf59e0b:fontsize=24:x=(w-text_w)/2:y=60:box=1:boxcolor=0x000000@0.85:boxborderw=8[v2]`,
+        `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=34:x=(w-text_w)/2:y=140[v3]`,
+        `[v3]drawtext=${fontArg}text='${safeShow}':fontcolor=0xfbbf24:fontsize=20:x=(w-text_w)/2:y=190[v4]`,
+        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=28:x=(w-text_w)/2:y=280:box=1:boxcolor=0xd97706@0.9:boxborderw=12[v5]`,
+        `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=620:box=1:boxcolor=0x000000@0.65:boxborderw=8,fps=30[v_out]`
       ].join(";");
     } else if (theme === 'waveform_pulse') {
       filterComplex = [
         `color=c=0x050814:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showwaves=s=920x260:mode=cline:colors=0x10b981|0x06b6d4|0x6366f1:scale=sqrt[wave]`,
-        `[bg][wave]overlay=x=(W-w)/2:y=580[v1]`,
-        `[v1]drawtext=${fontArg}text='DEJAVUFM LIVE SESSIONS':fontcolor=0x10b981:fontsize=34:x=(w-text_w)/2:y=90:box=1:boxcolor=0x000000@0.8:boxborderw=12[v2]`,
-        `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=50:x=(w-text_w)/2:y=200[v3]`,
-        `[v3]drawtext=${fontArg}text='${safeShow}':fontcolor=0x06b6d4:fontsize=28:x=(w-text_w)/2:y=270[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=40:x=(w-text_w)/2:y=400:box=1:boxcolor=0x059669@0.9:boxborderw=18[v5]`,
-        `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=26:x=(w-text_w)/2:y=920:box=1:boxcolor=0x000000@0.6:boxborderw=10,fps=30[v_out]`
+        `[0:a]showwaves=s=600x180:mode=cline:colors=0x10b981|0x06b6d4|0x6366f1:scale=sqrt[wave]`,
+        `[bg][wave]overlay=x=(W-w)/2:y=390[v1]`,
+        `[v1]drawtext=${fontArg}text='DEJAVUFM LIVE SESSIONS':fontcolor=0x10b981:fontsize=24:x=(w-text_w)/2:y=60:box=1:boxcolor=0x000000@0.8:boxborderw=8[v2]`,
+        `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=34:x=(w-text_w)/2:y=140[v3]`,
+        `[v3]drawtext=${fontArg}text='${safeShow}':fontcolor=0x06b6d4:fontsize=20:x=(w-text_w)/2:y=190[v4]`,
+        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=28:x=(w-text_w)/2:y=280:box=1:boxcolor=0x059669@0.9:boxborderw=12[v5]`,
+        `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=620:box=1:boxcolor=0x000000@0.6:boxborderw=8,fps=30[v_out]`
       ].join(";");
     } else {
       // Default: neon_cyber
       filterComplex = [
         `color=c=0x070810:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showwaves=s=880x240:mode=line:colors=0x00f0ff|0xb026ff:scale=cbrt[wave]`,
-        `[bg][wave]overlay=x=(W-w)/2:y=580[v1]`,
-        `[v1]drawtext=${fontArg}text='DEJAVUFM RADIO':fontcolor=0xb026ff:fontsize=36:x=(w-text_w)/2:y=90:box=1:boxcolor=0x000000@0.7:boxborderw=12[v2]`,
-        `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=52:x=(w-text_w)/2:y=200[v3]`,
-        `[v3]drawtext=${fontArg}text='${safeShow}':fontcolor=0x00f0ff:fontsize=30:x=(w-text_w)/2:y=270[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=40:x=(w-text_w)/2:y=400:box=1:boxcolor=0xb026ff@0.85:boxborderw=18[v5]`,
-        `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=26:x=(w-text_w)/2:y=920:box=1:boxcolor=0x000000@0.6:boxborderw=10,fps=30[v_out]`
+        `[0:a]showwaves=s=600x160:mode=line:colors=0x00f0ff|0xb026ff:scale=cbrt[wave]`,
+        `[bg][wave]overlay=x=(W-w)/2:y=390[v1]`,
+        `[v1]drawtext=${fontArg}text='DEJAVUFM RADIO':fontcolor=0xb026ff:fontsize=26:x=(w-text_w)/2:y=60:box=1:boxcolor=0x000000@0.7:boxborderw=8[v2]`,
+        `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=36:x=(w-text_w)/2:y=140[v3]`,
+        `[v3]drawtext=${fontArg}text='${safeShow}':fontcolor=0x00f0ff:fontsize=22:x=(w-text_w)/2:y=190[v4]`,
+        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=28:x=(w-text_w)/2:y=280:box=1:boxcolor=0xb026ff@0.85:boxborderw=12[v5]`,
+        `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=620:box=1:boxcolor=0x000000@0.6:boxborderw=8,fps=30[v_out]`
       ].join(";");
     }
   } else {
-    // 16:9 Landscape 1920x1080
+    // 16:9 Landscape 1280x720
     if (theme === 'minimal_studio') {
       filterComplex = [
         `color=c=0x0b0f19:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showfreqs=s=1500x280:mode=bar:colors=0xf59e0b|0xffffff:fscale=log:ascale=cbrt[freqs]`,
-        `[bg][freqs]overlay=x=(W-w)/2:y=620[v1]`,
-        `[v1]drawtext=${fontArg}text='DEJAVUFM STUDIO ARCHIVE':fontcolor=0xf59e0b:fontsize=32:x=120:y=80:box=1:boxcolor=0x000000@0.8:boxborderw=10[v2]`,
-        `[v2]drawtext=${fontArg}text='${safeDj} • ${safeShow}':fontcolor=0xffffff:fontsize=46:x=120:y=160[v3]`,
-        `[v3]drawtext=${fontArg}text='${safeHook}':fontcolor=0x0b0f19:fontsize=40:x=120:y=280:box=1:boxcolor=0xffffff@0.95:boxborderw=18[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=26:x=(w-text_w)/2:y=960:box=1:boxcolor=0x000000@0.7:boxborderw=10,fps=30[v_out]`
+        `[0:a]showfreqs=s=1000x200:mode=bar:colors=0xf59e0b|0xffffff:fscale=log:ascale=cbrt[freqs]`,
+        `[bg][freqs]overlay=x=(W-w)/2:y=420[v1]`,
+        `[v1]drawtext=${fontArg}text='DEJAVUFM STUDIO ARCHIVE':fontcolor=0xf59e0b:fontsize=24:x=80:y=60:box=1:boxcolor=0x000000@0.8:boxborderw=8[v2]`,
+        `[v2]drawtext=${fontArg}text='${safeDj} • ${safeShow}':fontcolor=0xffffff:fontsize=34:x=80:y=115[v3]`,
+        `[v3]drawtext=${fontArg}text='${safeHook}':fontcolor=0x0b0f19:fontsize=28:x=80:y=200:box=1:boxcolor=0xffffff@0.95:boxborderw=12[v4]`,
+        `[v4]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=650:box=1:boxcolor=0x000000@0.7:boxborderw=8,fps=30[v_out]`
       ].join(";");
     } else if (theme === 'retro_vinyl') {
       filterComplex = [
         `color=c=0x120c06:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showwaves=s=1400x260:mode=p2p:colors=0xf59e0b|0xef4444:scale=cbrt[wave]`,
-        `[0:a]showfreqs=s=1400x160:mode=bar:colors=0xef4444|0xf59e0b:fscale=log[freqs]`,
-        `[bg][wave]overlay=x=(W-w)/2:y=520[v1]`,
-        `[v1][freqs]overlay=x=(W-w)/2:y=800[v2]`,
-        `[v2]drawtext=${fontArg}text='DEJAVUFM ANALOG SOUND 92.3':fontcolor=0xf59e0b:fontsize=32:x=120:y=80:box=1:boxcolor=0x000000@0.85:boxborderw=10[v3]`,
-        `[v3]drawtext=${fontArg}text='${safeDj} • ${safeShow}':fontcolor=0xffffff:fontsize=46:x=120:y=160[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=40:x=120:y=280:box=1:boxcolor=0xd97706@0.9:boxborderw=18[v5]`,
-        `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=26:x=(w-text_w)/2:y=960:box=1:boxcolor=0x000000@0.65:boxborderw=10,fps=30[v_out]`
+        `[0:a]showwaves=s=1000x180:mode=p2p:colors=0xf59e0b|0xef4444:scale=cbrt[wave]`,
+        `[0:a]showfreqs=s=1000x120:mode=bar:colors=0xef4444|0xf59e0b:fscale=log[freqs]`,
+        `[bg][wave]overlay=x=(W-w)/2:y=340[v1]`,
+        `[v1][freqs]overlay=x=(W-w)/2:y=540[v2]`,
+        `[v2]drawtext=${fontArg}text='DEJAVUFM ANALOG SOUND 92.3':fontcolor=0xf59e0b:fontsize=24:x=80:y=60:box=1:boxcolor=0x000000@0.85:boxborderw=8[v3]`,
+        `[v3]drawtext=${fontArg}text='${safeDj} • ${safeShow}':fontcolor=0xffffff:fontsize=34:x=80:y=115[v4]`,
+        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=28:x=80:y=200:box=1:boxcolor=0xd97706@0.9:boxborderw=12[v5]`,
+        `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=650:box=1:boxcolor=0x000000@0.65:boxborderw=8,fps=30[v_out]`
       ].join(";");
     } else if (theme === 'waveform_pulse') {
       filterComplex = [
         `color=c=0x050814:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showwaves=s=1500x320:mode=cline:colors=0x10b981|0x06b6d4|0x6366f1:scale=sqrt[wave]`,
-        `[bg][wave]overlay=x=(W-w)/2:y=560[v1]`,
-        `[v1]drawtext=${fontArg}text='DEJAVUFM LIVE SESSIONS':fontcolor=0x10b981:fontsize=34:x=120:y=80:box=1:boxcolor=0x000000@0.8:boxborderw=10[v2]`,
-        `[v2]drawtext=${fontArg}text='${safeDj} • ${safeShow}':fontcolor=0xffffff:fontsize=46:x=120:y=160[v3]`,
-        `[v3]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=40:x=120:y=280:box=1:boxcolor=0x059669@0.9:boxborderw=18[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=26:x=(w-text_w)/2:y=960:box=1:boxcolor=0x000000@0.6:boxborderw=10,fps=30[v_out]`
+        `[0:a]showwaves=s=1000x220:mode=cline:colors=0x10b981|0x06b6d4|0x6366f1:scale=sqrt[wave]`,
+        `[bg][wave]overlay=x=(W-w)/2:y=380[v1]`,
+        `[v1]drawtext=${fontArg}text='DEJAVUFM LIVE SESSIONS':fontcolor=0x10b981:fontsize=24:x=80:y=60:box=1:boxcolor=0x000000@0.8:boxborderw=8[v2]`,
+        `[v2]drawtext=${fontArg}text='${safeDj} • ${safeShow}':fontcolor=0xffffff:fontsize=34:x=80:y=115[v3]`,
+        `[v3]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=28:x=80:y=200:box=1:boxcolor=0x059669@0.9:boxborderw=12[v4]`,
+        `[v4]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=650:box=1:boxcolor=0x000000@0.6:boxborderw=8,fps=30[v_out]`
       ].join(";");
     } else {
       // Default: neon_cyber
       filterComplex = [
         `color=c=0x070810:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showwaves=s=1400x280:mode=line:colors=0x00f0ff|0xb026ff:scale=cbrt[wave]`,
-        `[0:a]showfreqs=s=1400x160:mode=bar:colors=0xb026ff|0x00f0ff:fscale=log[freqs]`,
-        `[bg][wave]overlay=x=(W-w)/2:y=520[v1]`,
-        `[v1][freqs]overlay=x=(W-w)/2:y=820[v2]`,
-        `[v2]drawtext=${fontArg}text='DEJAVUFM BROADCAST':fontcolor=0xb026ff:fontsize=36:x=120:y=80:box=1:boxcolor=0x000000@0.7:boxborderw=12[v3]`,
-        `[v3]drawtext=${fontArg}text='${safeDj} • ${safeShow}':fontcolor=0xffffff:fontsize=48:x=120:y=160[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=44:x=120:y=280:box=1:boxcolor=0xb026ff@0.85:boxborderw=18[v5]`,
-        `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=26:x=(w-text_w)/2:y=960:box=1:boxcolor=0x000000@0.6:boxborderw=8,fps=30[v_out]`
+        `[0:a]showwaves=s=1000x200:mode=line:colors=0x00f0ff|0xb026ff:scale=cbrt[wave]`,
+        `[0:a]showfreqs=s=1000x120:mode=bar:colors=0xb026ff|0x00f0ff:fscale=log[freqs]`,
+        `[bg][wave]overlay=x=(W-w)/2:y=340[v1]`,
+        `[v1][freqs]overlay=x=(W-w)/2:y=550[v2]`,
+        `[v2]drawtext=${fontArg}text='DEJAVUFM BROADCAST':fontcolor=0xb026ff:fontsize=26:x=80:y=60:box=1:boxcolor=0x000000@0.7:boxborderw=8[v3]`,
+        `[v3]drawtext=${fontArg}text='${safeDj} • ${safeShow}':fontcolor=0xffffff:fontsize=36:x=80:y=115[v4]`,
+        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=30:x=80:y=200:box=1:boxcolor=0xb026ff@0.85:boxborderw=12[v5]`,
+        `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=650:box=1:boxcolor=0x000000@0.6:boxborderw=6,fps=30[v_out]`
       ].join(";");
     }
   }
@@ -989,13 +989,15 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
     "-map", "0:a",
     "-c:v", "libx264",
     "-preset", "ultrafast",
+    "-threads", "2",
+    "-max_muxing_queue_size", "1024",
     "-profile:v", "main",
     "-level:v", "4.0",
     "-crf", "23",
     "-r", "30",
     "-pix_fmt", "yuv420p",
     "-c:a", "aac",
-    "-b:a", "192k",
+    "-b:a", "128k",
     "-shortest",
     "-movflags", "+faststart",
     options.outputVideoPath
@@ -1018,13 +1020,15 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
       "-map", "0:a",
       "-c:v", "libx264",
       "-preset", "ultrafast",
+      "-threads", "2",
+      "-max_muxing_queue_size", "1024",
       "-profile:v", "main",
       "-level:v", "4.0",
       "-crf", "23",
       "-r", "30",
       "-pix_fmt", "yuv420p",
       "-c:a", "aac",
-      "-b:a", "192k",
+      "-b:a", "128k",
       "-shortest",
       "-movflags", "+faststart",
       options.outputVideoPath
