@@ -801,11 +801,17 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
   
   // Clean text for FFmpeg filter safety (strip single quotes, colons, backslashes, percent signs, and emojis for reliable font rendering)
   const sanitizeForFont = (str: string, fallback: string) => {
-    const cleaned = (str || fallback)
-      .replace(/[\u{1F600}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
-      .replace(/[:\\\'\"%]/g, '')
+    if (!str) return fallback;
+    const cleaned = str
+      .replace(/[\u2018\u2019\u201A\u201B]/g, "")
+      .replace(/[\u201C\u201D\u201E\u201F]/g, "")
+      .replace(/[\u2013\u2014]/g, "-")
+      .replace(/[\u2022\u2023\u25E6\u2043\u2219]/g, "-")
+      .replace(/[\u{1F600}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, "")
+      .replace(/[:\\\'\"%\[\]\{\}\=\;\`\$\|\&\<\>\^]/g, " ")
+      .replace(/\s+/g, " ")
       .trim();
-    return cleaned || fallback.replace(/[:\\\'\"%]/g, '').trim();
+    return cleaned || fallback;
   };
 
   const safeHook = sanitizeForFont(options.hookText || "EXCLUSIVE DROP", "EXCLUSIVE DROP").toUpperCase();
@@ -818,10 +824,7 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
 
   let filterComplex = '';
 
-  if (!fontFile) {
-    // If no font file is found on the system, build pure visualizer filter graph without drawtext
-    filterComplex = buildPureVisualizerFilter(theme, aspect, width, height, dur);
-  } else if (aspect === '9:16') {
+  if (aspect === '9:16') {
     if (theme === 'minimal_studio') {
       // Clean Studio Minimalist: Dark luxury slate, clean gold/white frequency meters
       filterComplex = [
@@ -843,7 +846,7 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
         `[0:a]showfreqs=s=640x160:mode=bar:colors=0xef4444|0xf59e0b:fscale=log[freqs]`,
         `[bg][wave]overlay=x=(W-w)/2:y=680[v1]`,
         `[v1][freqs]overlay=x=(W-w)/2:y=940[v2]`,
-        `[v2]drawtext=${fontArg}text='DEJAVUFM • ANALOG SOUND':fontcolor=0xf59e0b:fontsize=30:x=(w-text_w)/2:y=160:box=1:boxcolor=0x000000@0.85:boxborderw=10[v3]`,
+        `[v2]drawtext=${fontArg}text='DEJAVUFM - ANALOG SOUND':fontcolor=0xf59e0b:fontsize=30:x=(w-text_w)/2:y=160:box=1:boxcolor=0x000000@0.85:boxborderw=10[v3]`,
         `[v3]drawtext=${fontArg}text='LONDON PIRATE HERITAGE 92.3':fontcolor=0xd97706:fontsize=16:x=(w-text_w)/2:y=210[v4]`,
         `[v4]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=44:x=(w-text_w)/2:y=320[v5]`,
         `[v5]drawtext=${fontArg}text='${safeShow}':fontcolor=0xfbbf24:fontsize=24:x=(w-text_w)/2:y=380[v6]`,
@@ -874,7 +877,7 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
         `[bg][wave]overlay=x=(W-w)/2:y=700[v1]`,
         `[v1][freqs]overlay=x=(W-w)/2:y=950[v2]`,
         `[v2]drawtext=${fontArg}text='DEJAVUFM':fontcolor=0xb026ff:fontsize=32:x=(w-text_w)/2:y=160:box=1:boxcolor=0x000000@0.7:boxborderw=10[v3]`,
-        `[v3]drawtext=${fontArg}text='THE SOUND OF LONDON • 24/7 UNDERGROUND':fontcolor=0x8892b0:fontsize=16:x=(w-text_w)/2:y=210[v4]`,
+        `[v3]drawtext=${fontArg}text='THE SOUND OF LONDON - 24/7 UNDERGROUND':fontcolor=0x8892b0:fontsize=16:x=(w-text_w)/2:y=210[v4]`,
         `[v4]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=44:x=(w-text_w)/2:y=320[v5]`,
         `[v5]drawtext=${fontArg}text='${safeShow}':fontcolor=0x00f0ff:fontsize=24:x=(w-text_w)/2:y=380[v6]`,
         `[v6]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=36:x=(w-text_w)/2:y=510:box=1:boxcolor=0xb026ff@0.85:boxborderw=16[v7]`,
@@ -899,7 +902,7 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
         `color=c=0x120c06:s=${width}x${height}:d=${dur}[bg]`,
         `[0:a]showwaves=s=600x160:mode=p2p:colors=0xf59e0b|0xef4444:scale=cbrt[wave]`,
         `[bg][wave]overlay=x=(W-w)/2:y=390[v1]`,
-        `[v1]drawtext=${fontArg}text='DEJAVUFM • ANALOG SOUND':fontcolor=0xf59e0b:fontsize=24:x=(w-text_w)/2:y=60:box=1:boxcolor=0x000000@0.85:boxborderw=8[v2]`,
+        `[v1]drawtext=${fontArg}text='DEJAVUFM - ANALOG SOUND':fontcolor=0xf59e0b:fontsize=24:x=(w-text_w)/2:y=60:box=1:boxcolor=0x000000@0.85:boxborderw=8[v2]`,
         `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=34:x=(w-text_w)/2:y=140[v3]`,
         `[v3]drawtext=${fontArg}text='${safeShow}':fontcolor=0xfbbf24:fontsize=20:x=(w-text_w)/2:y=190[v4]`,
         `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=28:x=(w-text_w)/2:y=280:box=1:boxcolor=0xd97706@0.9:boxborderw=12[v5]`,
@@ -937,7 +940,7 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
         `[0:a]showfreqs=s=1000x200:mode=bar:colors=0xf59e0b|0xffffff:fscale=log:ascale=cbrt[freqs]`,
         `[bg][freqs]overlay=x=(W-w)/2:y=420[v1]`,
         `[v1]drawtext=${fontArg}text='DEJAVUFM STUDIO ARCHIVE':fontcolor=0xf59e0b:fontsize=24:x=80:y=60:box=1:boxcolor=0x000000@0.8:boxborderw=8[v2]`,
-        `[v2]drawtext=${fontArg}text='${safeDj} • ${safeShow}':fontcolor=0xffffff:fontsize=34:x=80:y=115[v3]`,
+        `[v2]drawtext=${fontArg}text='${safeDj} - ${safeShow}':fontcolor=0xffffff:fontsize=34:x=80:y=115[v3]`,
         `[v3]drawtext=${fontArg}text='${safeHook}':fontcolor=0x0b0f19:fontsize=28:x=80:y=200:box=1:boxcolor=0xffffff@0.95:boxborderw=12[v4]`,
         `[v4]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=650:box=1:boxcolor=0x000000@0.7:boxborderw=8,fps=30[v_out]`
       ].join(";");
@@ -949,7 +952,7 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
         `[bg][wave]overlay=x=(W-w)/2:y=340[v1]`,
         `[v1][freqs]overlay=x=(W-w)/2:y=540[v2]`,
         `[v2]drawtext=${fontArg}text='DEJAVUFM ANALOG SOUND 92.3':fontcolor=0xf59e0b:fontsize=24:x=80:y=60:box=1:boxcolor=0x000000@0.85:boxborderw=8[v3]`,
-        `[v3]drawtext=${fontArg}text='${safeDj} • ${safeShow}':fontcolor=0xffffff:fontsize=34:x=80:y=115[v4]`,
+        `[v3]drawtext=${fontArg}text='${safeDj} - ${safeShow}':fontcolor=0xffffff:fontsize=34:x=80:y=115[v4]`,
         `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=28:x=80:y=200:box=1:boxcolor=0xd97706@0.9:boxborderw=12[v5]`,
         `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=650:box=1:boxcolor=0x000000@0.65:boxborderw=8,fps=30[v_out]`
       ].join(";");
@@ -959,7 +962,7 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
         `[0:a]showwaves=s=1000x220:mode=cline:colors=0x10b981|0x06b6d4|0x6366f1:scale=sqrt[wave]`,
         `[bg][wave]overlay=x=(W-w)/2:y=380[v1]`,
         `[v1]drawtext=${fontArg}text='DEJAVUFM LIVE SESSIONS':fontcolor=0x10b981:fontsize=24:x=80:y=60:box=1:boxcolor=0x000000@0.8:boxborderw=8[v2]`,
-        `[v2]drawtext=${fontArg}text='${safeDj} • ${safeShow}':fontcolor=0xffffff:fontsize=34:x=80:y=115[v3]`,
+        `[v2]drawtext=${fontArg}text='${safeDj} - ${safeShow}':fontcolor=0xffffff:fontsize=34:x=80:y=115[v3]`,
         `[v3]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=28:x=80:y=200:box=1:boxcolor=0x059669@0.9:boxborderw=12[v4]`,
         `[v4]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=650:box=1:boxcolor=0x000000@0.6:boxborderw=8,fps=30[v_out]`
       ].join(";");
@@ -972,7 +975,7 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
         `[bg][wave]overlay=x=(W-w)/2:y=340[v1]`,
         `[v1][freqs]overlay=x=(W-w)/2:y=550[v2]`,
         `[v2]drawtext=${fontArg}text='DEJAVUFM BROADCAST':fontcolor=0xb026ff:fontsize=26:x=80:y=60:box=1:boxcolor=0x000000@0.7:boxborderw=8[v3]`,
-        `[v3]drawtext=${fontArg}text='${safeDj} • ${safeShow}':fontcolor=0xffffff:fontsize=36:x=80:y=115[v4]`,
+        `[v3]drawtext=${fontArg}text='${safeDj} - ${safeShow}':fontcolor=0xffffff:fontsize=36:x=80:y=115[v4]`,
         `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=30:x=80:y=200:box=1:boxcolor=0xb026ff@0.85:boxborderw=12[v5]`,
         `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=650:box=1:boxcolor=0x000000@0.6:boxborderw=6,fps=30[v_out]`
       ].join(";");
@@ -1008,8 +1011,27 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
       throw new Error('JOB_ABORTED');
     }
 
-    console.warn(`[AI Studio FFmpeg] Initial render failed (${renderErr.message}). Switching to pure visualizer graph fallback...`);
-    const fallbackFilter = buildPureVisualizerFilter(theme, aspect, width, height, dur);
+    console.warn(`[AI Studio FFmpeg] Initial render failed (${renderErr.message}). Switching to robust text-overlay fallback...`);
+    
+    // Robust text-preserving fallback: guarantees clean station badge, DJ name, show title and waves
+    const fallbackFilter = aspect === '9:16'
+      ? [
+          `color=c=0x070810:s=720x1280:d=${dur}[bg]`,
+          `[0:a]showwaves=s=640x260:mode=line:colors=0xb026ff|0x00f0ff:scale=cbrt[wave]`,
+          `[bg][wave]overlay=x=(W-w)/2:y=680[v1]`,
+          `[v1]drawtext=text='DEJAVUFM':fontcolor=0xb026ff:fontsize=32:x=(w-text_w)/2:y=180:box=1:boxcolor=0x000000@0.7:boxborderw=10[v2]`,
+          `[v2]drawtext=text='${safeDj}':fontcolor=0xffffff:fontsize=40:x=(w-text_w)/2:y=320[v3]`,
+          `[v3]drawtext=text='${safeShow}':fontcolor=0x00f0ff:fontsize=24:x=(w-text_w)/2:y=380[v4]`,
+          `[v4]drawtext=text='${safeHook}':fontcolor=0xffffff:fontsize=32:x=(w-text_w)/2:y=500:box=1:boxcolor=0xb026ff@0.8:boxborderw=12,fps=30[v_out]`
+        ].join(';')
+      : [
+          `color=c=0x070810:s=${width}x${height}:d=${dur}[bg]`,
+          `[0:a]showwaves=s=600x180:mode=line:colors=0x00f0ff|0xb026ff:scale=cbrt[wave]`,
+          `[bg][wave]overlay=x=(W-w)/2:y=${Math.floor(height * 0.45)}[v1]`,
+          `[v1]drawtext=text='DEJAVUFM':fontcolor=0xb026ff:fontsize=26:x=(w-text_w)/2:y=60[v2]`,
+          `[v2]drawtext=text='${safeDj} - ${safeShow}':fontcolor=0xffffff:fontsize=30:x=(w-text_w)/2:y=140,fps=30[v_out]`
+        ].join(';');
+
     const fallbackArgs = [
       "-y",
       "-i", options.audioPath,

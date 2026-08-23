@@ -477,7 +477,10 @@ export function initDb() {
     try { db.exec(`ALTER TABLE users ADD COLUMN ${col} TEXT;`); } catch (e) {}
   });
 
-  // Ensure ai_reels table columns exist on any pre-existing database instance
+  // Ensure ai_reels and ai_jobs table columns exist on any pre-existing database instance
+  try { db.exec("ALTER TABLE ai_jobs ADD COLUMN template TEXT DEFAULT 'neon_cyber';"); } catch (e) {}
+  try { db.exec("ALTER TABLE ai_jobs ADD COLUMN aspect_ratio TEXT DEFAULT '9:16';"); } catch (e) {}
+  try { db.exec("ALTER TABLE ai_jobs ADD COLUMN error_log TEXT;"); } catch (e) {}
   try { db.exec("ALTER TABLE ai_reels ADD COLUMN template TEXT DEFAULT 'neon_cyber';"); } catch (e) {}
   try { db.exec("ALTER TABLE ai_reels ADD COLUMN aspect_ratio TEXT DEFAULT '9:16';"); } catch (e) {}
   try { db.exec("ALTER TABLE ai_reels ADD COLUMN status TEXT DEFAULT 'PENDING_REVIEW';"); } catch (e) {}
