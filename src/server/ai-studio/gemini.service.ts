@@ -327,9 +327,9 @@ function sanitizeHighlights(items: any[], maxDuration: number): DetectedHighligh
 }
 
 function generateHeuristicHighlights(params: AnalyzeShowParams, settings: any): DetectedHighlight[] {
-  const count = params.targetReelsCount || 3;
-  const total = Math.max(45, params.totalDurationSeconds || 180);
-  const targetDuration = Math.min(30, Math.floor(total / count));
+  const count = Math.max(1, params.targetReelsCount || 3);
+  const total = Math.max(5, params.totalDurationSeconds || 60);
+  const targetDuration = Math.min(30, Math.max(5, Math.floor(total / count)));
   const results: DetectedHighlight[] = [];
 
   const presets = [
@@ -370,17 +370,21 @@ function generateHeuristicHighlights(params: AnalyzeShowParams, settings: any): 
   for (let i = 0; i < count; i++) {
     const preset = presets[i % presets.length];
     
-    // Spread highlights evenly across the audio timeline
+    // Spread highlights evenly across the audio timeline strictly within total duration
     let idealStart = 0;
-    if (params.loudnessPeaks && params.loudnessPeaks.length > i) {
-      idealStart = Math.max(0, params.loudnessPeaks[i].time - 5);
+    if (params.loudnessPeaks && params.loudnessPeaks.length > i && params.loudnessPeaks[i].time < total) {
+      idealStart = Math.max(0, params.loudnessPeaks[i].time - 2);
     } else {
       const step = total / (count + 1);
-      idealStart = Math.max(0, Math.floor((i + 1) * step - 10));
+      idealStart = Math.max(0, Math.floor((i + 1) * step - (targetDuration / 2)));
     }
 
     let start = Math.min(idealStart, Math.max(0, total - targetDuration));
     let end = Math.min(total, start + targetDuration);
+    if (end <= start) {
+      start = 0;
+      end = Math.min(total, targetDuration);
+    }
 
     results.push({
       title: preset.title,
@@ -391,11 +395,10 @@ function generateHeuristicHighlights(params: AnalyzeShowParams, settings: any): 
       end_seconds: Math.round(end * 10) / 10,
       virality_score: preset.score - (i * 2),
       captions: [
-        { start: 0, end: 6, text: `DJ ${params.djName} on the decks`, highlight: true },
-        { start: 6, end: 18, text: "Broadcasting direct from London studio", highlight: false },
-        { start: 18, end: 30, text: "Tap the link in bio to tune in live 📻", highlight: true }
+        { start: 0, end: Math.min(5, end - start), text: `${params.djName} Live on DejavuFM`, highlight: true },
+        { start: Math.min(5, end - start), end: end - start, text: preset.hook, highlight: false }
       ],
-      social_copy: `Pure energy from ${params.djName}'s latest show "${params.showName}" on ${settings.ai_brand_handle}! Drop a 🔥 in the comments if you want the full tracklist.`,
+      social_copy: `🔥 Massive moment from ${params.showName} with ${params.djName}! Lock in live on DejavuFM 92.3.`,
       hashtags: preset.hashtags
     });
   }

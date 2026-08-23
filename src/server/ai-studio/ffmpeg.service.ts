@@ -617,13 +617,18 @@ export async function sliceAudioChunk(
   outputPath: string,
   abortSignal?: AbortSignal
 ): Promise<string> {
+  const safeStart = Math.max(0, Number(startSeconds) || 0);
+  const safeDur = Math.max(1, Number(durationSeconds) || 5);
+  
   const args = [
     "-y",
-    "-ss", String(startSeconds),
-    "-t", String(durationSeconds),
+    "-ss", String(safeStart),
     "-i", sourcePath,
+    "-t", String(safeDur),
     "-c:a", "libmp3lame",
     "-b:a", "192k",
+    "-ar", "44100",
+    "-ac", "2",
     outputPath
   ];
 
@@ -649,48 +654,60 @@ export interface RenderReelOptions {
   abortSignal?: AbortSignal;
 }
 
-let cachedFontFile: string | null | undefined = undefined;
+export type FontStyle = 'bold' | 'serif' | 'mono' | 'regular';
 
-export function getSystemFontFile(): string | null {
-  if (cachedFontFile !== undefined) return cachedFontFile;
+const fontCache: Record<string, string | null> = {};
 
-  const candidateFontPaths = [
-    // Standard TrueType fonts (best compatibility with FFmpeg libfreetype without fontconfig)
-    '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf',
-    '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
-    '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
-    '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
-    '/usr/share/fonts/truetype/freefont/FreeSansBold.ttf',
-    '/usr/share/fonts/truetype/freefont/FreeSans.ttf',
-    // Debian / Ubuntu / Railway / Docker URW base fonts
-    '/usr/share/fonts/opentype/urw-base35/NimbusSans-Bold.otf',
-    '/usr/share/fonts/opentype/urw-base35/NimbusSans-Regular.otf',
-    '/usr/share/fonts/opentype/urw-base35/NimbusRoman-Bold.otf',
-    '/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf',
-    '/usr/share/fonts/TTF/DejaVuSans-Bold.ttf',
-    '/usr/share/fonts/TTF/DejaVuSans.ttf',
-    // Alpine Linux
-    '/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf',
-    '/usr/share/fonts/dejavu/DejaVuSans.ttf',
-    // macOS
-    '/System/Library/Fonts/Supplemental/Arial Bold.ttf',
-    '/System/Library/Fonts/Supplemental/Arial.ttf',
-    '/System/Library/Fonts/Helvetica.ttc',
-    '/Library/Fonts/Arial.ttf',
-    // Windows
-    'C:/Windows/Fonts/arialbd.ttf',
-    'C:/Windows/Fonts/arial.ttf'
-  ];
+export function getDynamicFontFile(style: FontStyle = 'bold'): string | null {
+  if (fontCache[style] !== undefined) return fontCache[style];
 
-  for (const p of candidateFontPaths) {
+  const fontPreferences: Record<FontStyle, string[]> = {
+    bold: [
+      '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf',
+      '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+      '/usr/share/fonts/truetype/freefont/FreeSansBold.ttf',
+      '/usr/share/fonts/opentype/urw-base35/NimbusSans-Bold.otf',
+      '/usr/share/fonts/TTF/DejaVuSans-Bold.ttf',
+      '/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf',
+      '/System/Library/Fonts/Supplemental/Arial Bold.ttf',
+      'C:/Windows/Fonts/arialbd.ttf'
+    ],
+    serif: [
+      '/usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf',
+      '/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf',
+      '/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf',
+      '/usr/share/fonts/opentype/urw-base35/NimbusRoman-Bold.otf',
+      '/System/Library/Fonts/Supplemental/Times New Roman Bold.ttf',
+      'C:/Windows/Fonts/timesbd.ttf'
+    ],
+    mono: [
+      '/usr/share/fonts/truetype/liberation/LiberationMono-Bold.ttf',
+      '/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf',
+      '/usr/share/fonts/truetype/freefont/FreeMonoBold.ttf',
+      '/usr/share/fonts/opentype/urw-base35/NimbusMonoPS-Bold.otf',
+      '/System/Library/Fonts/Supplemental/Courier New Bold.ttf',
+      'C:/Windows/Fonts/courbd.ttf'
+    ],
+    regular: [
+      '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+      '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+      '/usr/share/fonts/truetype/freefont/FreeSans.ttf',
+      '/usr/share/fonts/opentype/urw-base35/NimbusSans-Regular.otf',
+      '/System/Library/Fonts/Supplemental/Arial.ttf',
+      'C:/Windows/Fonts/arial.ttf'
+    ]
+  };
+
+  const candidates = [...fontPreferences[style], ...fontPreferences.bold, ...fontPreferences.regular];
+
+  for (const p of candidates) {
     if (fs.existsSync(p)) {
-      console.log(`[AI Studio FFmpeg] Located system font file: ${p}`);
-      cachedFontFile = p;
-      return cachedFontFile;
+      fontCache[style] = p;
+      return p;
     }
   }
 
-  // Dynamic directory search in /usr/share/fonts
+  // Dynamic directory fallback search in /usr/share/fonts
   try {
     if (fs.existsSync('/usr/share/fonts')) {
       const searchDir = (dir: string): string | null => {
@@ -710,16 +727,19 @@ export function getSystemFontFile(): string | null {
       };
       const found = searchDir('/usr/share/fonts');
       if (found) {
-        console.log(`[AI Studio FFmpeg] Discovered system font: ${found}`);
-        cachedFontFile = found;
-        return cachedFontFile;
+        fontCache[style] = found;
+        return found;
       }
     }
   } catch (e) {}
 
-  console.warn('[AI Studio FFmpeg] No valid font file detected on system. Using audio visualizer fallback.');
-  cachedFontFile = null;
+  console.warn(`[AI Studio FFmpeg] No valid font file detected on system for style: ${style}`);
+  fontCache[style] = null;
   return null;
+}
+
+export function getSystemFontFile(): string | null {
+  return getDynamicFontFile('bold');
 }
 
 function buildPureVisualizerFilter(theme: VisualizerTheme, aspect: AspectRatioOption, width: number, height: number, dur: number): string {
@@ -800,9 +820,9 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
   const theme: VisualizerTheme = options.template || 'neon_cyber';
   
   // Clean text for FFmpeg filter safety (strip single quotes, colons, backslashes, percent signs, and emojis for reliable font rendering)
-  const sanitizeForFont = (str: string, fallback: string) => {
+  const sanitizeForFont = (str: string, fallback: string, maxLen: number = 60) => {
     if (!str) return fallback;
-    const cleaned = str
+    let cleaned = str
       .replace(/[\u2018\u2019\u201A\u201B]/g, "")
       .replace(/[\u201C\u201D\u201E\u201F]/g, "")
       .replace(/[\u2013\u2014]/g, "-")
@@ -811,16 +831,28 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
       .replace(/[:\\\'\"%\[\]\{\}\=\;\`\$\|\&\<\>\^]/g, " ")
       .replace(/\s+/g, " ")
       .trim();
+    if (cleaned.length > maxLen) {
+      cleaned = cleaned.slice(0, maxLen).trim();
+    }
     return cleaned || fallback;
   };
 
-  const safeHook = sanitizeForFont(options.hookText || "EXCLUSIVE DROP", "EXCLUSIVE DROP").toUpperCase();
-  const safeDj = sanitizeForFont(options.djName || "DEJAVUFM RESIDENT", "DEJAVUFM RESIDENT").toUpperCase();
-  const safeShow = sanitizeForFont(options.showName || "LIVE SET", "LIVE SET").toUpperCase();
-  const safeCaption = sanitizeForFont(options.captionText || "Tune in live on DejavuFM radio", "Tune in live on DejavuFM radio");
+  const safeHook = sanitizeForFont(options.hookText || "EXCLUSIVE DROP", "EXCLUSIVE DROP", 42).toUpperCase();
+  const safeDj = sanitizeForFont(options.djName || "DEJAVUFM RESIDENT", "DEJAVUFM RESIDENT", 32).toUpperCase();
+  const safeShow = sanitizeForFont(options.showName || "LIVE SET", "LIVE SET", 38).toUpperCase();
+  const safeCaption = sanitizeForFont(options.captionText || "Tune in live on DejavuFM radio", "Tune in live on DejavuFM radio", 55);
 
-  const fontFile = getSystemFontFile();
+  const fontStyle: FontStyle = theme === 'retro_vinyl' ? 'serif' : theme === 'minimal_studio' ? 'mono' : 'bold';
+  const fontFile = getDynamicFontFile(fontStyle) || getSystemFontFile();
   const fontArg = fontFile ? `fontfile=${fontFile.replace(/\\/g, '/')}:` : '';
+
+  // Adaptive font sizing based on string length to prevent overflow
+  const djFontSize916 = safeDj.length > 22 ? 34 : safeDj.length > 16 ? 38 : 44;
+  const hookFontSize916 = safeHook.length > 28 ? 26 : safeHook.length > 18 ? 30 : 36;
+  const showFontSize916 = safeShow.length > 24 ? 20 : 24;
+
+  const djFontSize11 = safeDj.length > 22 ? 28 : safeDj.length > 16 ? 32 : 36;
+  const hookFontSize11 = safeHook.length > 28 ? 22 : safeHook.length > 18 ? 26 : 28;
 
   let filterComplex = '';
 
@@ -836,9 +868,9 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
         `[bg][freqs]overlay=x=(W-w)/2:y=760[v1]`,
         `[v1]drawtext=${fontArg}text='DEJAVUFM STUDIO':fontcolor=0xf59e0b:fontsize=30:x=(w-text_w)/2:y=170:box=1:boxcolor=0x000000@0.8:boxborderw=10[v2]`,
         `[v2]drawtext=${fontArg}text='BROADCAST ARCHIVE':fontcolor=0x94a3b8:fontsize=16:x=(w-text_w)/2:y=215[v3]`,
-        `[v3]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=44:x=(w-text_w)/2:y=330[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeShow}':fontcolor=0xf59e0b:fontsize=24:x=(w-text_w)/2:y=390[v5]`,
-        `[v5]drawtext=${fontArg}text='${safeHook}':fontcolor=0x0b0f19:fontsize=34:x=(w-text_w)/2:y=520:box=1:boxcolor=0xffffff@0.95:boxborderw=16[v6]`,
+        `[v3]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=${djFontSize916}:x=(w-text_w)/2:y=330[v4]`,
+        `[v4]drawtext=${fontArg}text='${safeShow}':fontcolor=0xf59e0b:fontsize=${showFontSize916}:x=(w-text_w)/2:y=390[v5]`,
+        `[v5]drawtext=${fontArg}text='${safeHook}':fontcolor=0x0b0f19:fontsize=${hookFontSize916}:x=(w-text_w)/2:y=520:box=1:boxcolor=0xffffff@0.95:boxborderw=16[v6]`,
         `[v6]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=22:x=(w-text_w)/2:y=1120:box=1:boxcolor=0x000000@0.7:boxborderw=10,fps=30[v_out]`
       ].join(";");
     } else if (theme === 'retro_vinyl') {
@@ -851,9 +883,9 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
         `[v1][freqs]overlay=x=(W-w)/2:y=940[v2]`,
         `[v2]drawtext=${fontArg}text='DEJAVUFM - ANALOG SOUND':fontcolor=0xf59e0b:fontsize=30:x=(w-text_w)/2:y=160:box=1:boxcolor=0x000000@0.85:boxborderw=10[v3]`,
         `[v3]drawtext=${fontArg}text='LONDON PIRATE HERITAGE 92.3':fontcolor=0xd97706:fontsize=16:x=(w-text_w)/2:y=210[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=44:x=(w-text_w)/2:y=320[v5]`,
-        `[v5]drawtext=${fontArg}text='${safeShow}':fontcolor=0xfbbf24:fontsize=24:x=(w-text_w)/2:y=380[v6]`,
-        `[v6]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=36:x=(w-text_w)/2:y=510:box=1:boxcolor=0xd97706@0.9:boxborderw=16[v7]`,
+        `[v4]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=${djFontSize916}:x=(w-text_w)/2:y=320[v5]`,
+        `[v5]drawtext=${fontArg}text='${safeShow}':fontcolor=0xfbbf24:fontsize=${showFontSize916}:x=(w-text_w)/2:y=380[v6]`,
+        `[v6]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=${hookFontSize916}:x=(w-text_w)/2:y=510:box=1:boxcolor=0xd97706@0.9:boxborderw=16[v7]`,
         `[v7]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=22:x=(w-text_w)/2:y=1140:box=1:boxcolor=0x000000@0.65:boxborderw=8,fps=30[v_out]`
       ].join(";");
     } else if (theme === 'waveform_pulse') {
@@ -866,9 +898,9 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
         `[v1][freqs]overlay=x=(W-w)/2:y=960[v2]`,
         `[v2]drawtext=${fontArg}text='DEJAVUFM LIVE':fontcolor=0x10b981:fontsize=32:x=(w-text_w)/2:y=160:box=1:boxcolor=0x000000@0.8:boxborderw=10[v3]`,
         `[v3]drawtext=${fontArg}text='24/7 ELECTRONIC SESSIONS':fontcolor=0xa7f3d0:fontsize=16:x=(w-text_w)/2:y=210[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=44:x=(w-text_w)/2:y=320[v5]`,
-        `[v5]drawtext=${fontArg}text='${safeShow}':fontcolor=0x06b6d4:fontsize=24:x=(w-text_w)/2:y=380[v6]`,
-        `[v6]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=36:x=(w-text_w)/2:y=510:box=1:boxcolor=0x059669@0.9:boxborderw=16[v7]`,
+        `[v4]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=${djFontSize916}:x=(w-text_w)/2:y=320[v5]`,
+        `[v5]drawtext=${fontArg}text='${safeShow}':fontcolor=0x06b6d4:fontsize=${showFontSize916}:x=(w-text_w)/2:y=380[v6]`,
+        `[v6]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=${hookFontSize916}:x=(w-text_w)/2:y=510:box=1:boxcolor=0x059669@0.9:boxborderw=16[v7]`,
         `[v7]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=22:x=(w-text_w)/2:y=1140:box=1:boxcolor=0x000000@0.6:boxborderw=8,fps=30[v_out]`
       ].join(";");
     } else {
@@ -881,9 +913,9 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
         `[v1][freqs]overlay=x=(W-w)/2:y=950[v2]`,
         `[v2]drawtext=${fontArg}text='DEJAVUFM':fontcolor=0xb026ff:fontsize=32:x=(w-text_w)/2:y=160:box=1:boxcolor=0x000000@0.7:boxborderw=10[v3]`,
         `[v3]drawtext=${fontArg}text='THE SOUND OF LONDON - 24/7 UNDERGROUND':fontcolor=0x8892b0:fontsize=16:x=(w-text_w)/2:y=210[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=44:x=(w-text_w)/2:y=320[v5]`,
-        `[v5]drawtext=${fontArg}text='${safeShow}':fontcolor=0x00f0ff:fontsize=24:x=(w-text_w)/2:y=380[v6]`,
-        `[v6]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=36:x=(w-text_w)/2:y=510:box=1:boxcolor=0xb026ff@0.85:boxborderw=16[v7]`,
+        `[v4]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=${djFontSize916}:x=(w-text_w)/2:y=320[v5]`,
+        `[v5]drawtext=${fontArg}text='${safeShow}':fontcolor=0x00f0ff:fontsize=${showFontSize916}:x=(w-text_w)/2:y=380[v6]`,
+        `[v6]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=${hookFontSize916}:x=(w-text_w)/2:y=510:box=1:boxcolor=0xb026ff@0.85:boxborderw=16[v7]`,
         `[v7]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=22:x=(w-text_w)/2:y=1140:box=1:boxcolor=0x000000@0.6:boxborderw=8,fps=30[v_out]`
       ].join(";");
     }
@@ -895,9 +927,9 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
         `[0:a]showfreqs=s=600x180:mode=bar:colors=0xf59e0b|0xffffff:fscale=log:ascale=cbrt[freqs]`,
         `[bg][freqs]overlay=x=(W-w)/2:y=390[v1]`,
         `[v1]drawtext=${fontArg}text='DEJAVUFM STUDIO':fontcolor=0xf59e0b:fontsize=24:x=(w-text_w)/2:y=60:box=1:boxcolor=0x000000@0.8:boxborderw=8[v2]`,
-        `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=34:x=(w-text_w)/2:y=140[v3]`,
+        `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=${djFontSize11}:x=(w-text_w)/2:y=140[v3]`,
         `[v3]drawtext=${fontArg}text='${safeShow}':fontcolor=0xf59e0b:fontsize=20:x=(w-text_w)/2:y=190[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0x0b0f19:fontsize=26:x=(w-text_w)/2:y=280:box=1:boxcolor=0xffffff@0.95:boxborderw=12[v5]`,
+        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0x0b0f19:fontsize=${hookFontSize11}:x=(w-text_w)/2:y=280:box=1:boxcolor=0xffffff@0.95:boxborderw=12[v5]`,
         `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=620:box=1:boxcolor=0x000000@0.7:boxborderw=8,fps=30[v_out]`
       ].join(";");
     } else if (theme === 'retro_vinyl') {
@@ -906,9 +938,9 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
         `[0:a]showwaves=s=600x160:mode=p2p:colors=0xf59e0b|0xef4444:scale=cbrt[wave]`,
         `[bg][wave]overlay=x=(W-w)/2:y=390[v1]`,
         `[v1]drawtext=${fontArg}text='DEJAVUFM - ANALOG SOUND':fontcolor=0xf59e0b:fontsize=24:x=(w-text_w)/2:y=60:box=1:boxcolor=0x000000@0.85:boxborderw=8[v2]`,
-        `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=34:x=(w-text_w)/2:y=140[v3]`,
+        `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=${djFontSize11}:x=(w-text_w)/2:y=140[v3]`,
         `[v3]drawtext=${fontArg}text='${safeShow}':fontcolor=0xfbbf24:fontsize=20:x=(w-text_w)/2:y=190[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=28:x=(w-text_w)/2:y=280:box=1:boxcolor=0xd97706@0.9:boxborderw=12[v5]`,
+        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=${hookFontSize11}:x=(w-text_w)/2:y=280:box=1:boxcolor=0xd97706@0.9:boxborderw=12[v5]`,
         `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=620:box=1:boxcolor=0x000000@0.65:boxborderw=8,fps=30[v_out]`
       ].join(";");
     } else if (theme === 'waveform_pulse') {
@@ -917,9 +949,9 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
         `[0:a]showwaves=s=600x180:mode=cline:colors=0x10b981|0x06b6d4|0x6366f1:scale=sqrt[wave]`,
         `[bg][wave]overlay=x=(W-w)/2:y=390[v1]`,
         `[v1]drawtext=${fontArg}text='DEJAVUFM LIVE SESSIONS':fontcolor=0x10b981:fontsize=24:x=(w-text_w)/2:y=60:box=1:boxcolor=0x000000@0.8:boxborderw=8[v2]`,
-        `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=34:x=(w-text_w)/2:y=140[v3]`,
+        `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=${djFontSize11}:x=(w-text_w)/2:y=140[v3]`,
         `[v3]drawtext=${fontArg}text='${safeShow}':fontcolor=0x06b6d4:fontsize=20:x=(w-text_w)/2:y=190[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=28:x=(w-text_w)/2:y=280:box=1:boxcolor=0x059669@0.9:boxborderw=12[v5]`,
+        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=${hookFontSize11}:x=(w-text_w)/2:y=280:box=1:boxcolor=0x059669@0.9:boxborderw=12[v5]`,
         `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=620:box=1:boxcolor=0x000000@0.6:boxborderw=8,fps=30[v_out]`
       ].join(";");
     } else {
@@ -929,9 +961,9 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
         `[0:a]showwaves=s=600x160:mode=line:colors=0x00f0ff|0xb026ff:scale=cbrt[wave]`,
         `[bg][wave]overlay=x=(W-w)/2:y=390[v1]`,
         `[v1]drawtext=${fontArg}text='DEJAVUFM RADIO':fontcolor=0xb026ff:fontsize=26:x=(w-text_w)/2:y=60:box=1:boxcolor=0x000000@0.7:boxborderw=8[v2]`,
-        `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=36:x=(w-text_w)/2:y=140[v3]`,
+        `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=${djFontSize11}:x=(w-text_w)/2:y=140[v3]`,
         `[v3]drawtext=${fontArg}text='${safeShow}':fontcolor=0x00f0ff:fontsize=22:x=(w-text_w)/2:y=190[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=28:x=(w-text_w)/2:y=280:box=1:boxcolor=0xb026ff@0.85:boxborderw=12[v5]`,
+        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=${hookFontSize11}:x=(w-text_w)/2:y=280:box=1:boxcolor=0xb026ff@0.85:boxborderw=12[v5]`,
         `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=620:box=1:boxcolor=0x000000@0.6:boxborderw=8,fps=30[v_out]`
       ].join(";");
     }
