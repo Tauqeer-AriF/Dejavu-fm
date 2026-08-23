@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --loader:.ts=tsx --define:__dirname=__dirname --define:__filename=__filename --sourcemap --outfile=dist/server.cjs",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --loader:.ts=tsx --define:__dirname=__dirname --define:__filename=__filename --sourcemap --outfile=dist/server.cjs && mkdir -p dist/fonts && cp -r fonts/* dist/fonts/",
     "start": "node dist/server.cjs",
     "preview": "node dist/server.cjs",
     "clean": "rm -rf dist",
