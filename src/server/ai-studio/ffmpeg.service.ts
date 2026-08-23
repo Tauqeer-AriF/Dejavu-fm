@@ -5,6 +5,8 @@ import http from "http";
 import https from "https";
 import { getUploadsDir } from "../db.ts";
 
+const currentDirname = typeof __dirname !== "undefined" ? __dirname : process.cwd();
+
 let cachedFFmpegPath: string | null = null;
 let cachedFFprobePath: string | null = null;
 
@@ -659,9 +661,68 @@ export type FontStyle = 'bold' | 'serif' | 'mono' | 'regular';
 const fontCache: Record<string, string | null> = {};
 
 export function getDynamicFontFile(style: FontStyle = 'bold'): string | null {
-  if (fontCache[style] !== undefined) return fontCache[style];
+  if (fontCache[style] !== undefined && fontCache[style] !== null) return fontCache[style];
 
-  const fontPreferences: Record<FontStyle, string[]> = {
+  const cwd = process.cwd();
+  
+  // 1. First priority: Bundled fonts inside the application directory (Guaranteed to exist on Railway, Docker, Vercel, and local)
+  const bundledFontMap: Record<FontStyle, string[]> = {
+    bold: [
+      path.join(cwd, 'fonts', 'LiberationSans-Bold.ttf'),
+      path.join(cwd, 'public', 'fonts', 'LiberationSans-Bold.ttf'),
+      path.join(cwd, 'dist', 'fonts', 'LiberationSans-Bold.ttf'),
+      path.join(cwd, 'src', 'server', 'assets', 'fonts', 'LiberationSans-Bold.ttf'),
+      path.join(currentDirname, 'fonts', 'LiberationSans-Bold.ttf'),
+      path.join(currentDirname, '../public/fonts', 'LiberationSans-Bold.ttf'),
+      path.join(currentDirname, '../../public/fonts', 'LiberationSans-Bold.ttf'),
+      path.join(cwd, 'fonts', 'LiberationSans-Regular.ttf'),
+      path.join(cwd, 'public', 'fonts', 'LiberationSans-Regular.ttf')
+    ],
+    serif: [
+      path.join(cwd, 'fonts', 'LiberationSerif-Bold.ttf'),
+      path.join(cwd, 'public', 'fonts', 'LiberationSerif-Bold.ttf'),
+      path.join(cwd, 'dist', 'fonts', 'LiberationSerif-Bold.ttf'),
+      path.join(cwd, 'src', 'server', 'assets', 'fonts', 'LiberationSerif-Bold.ttf'),
+      path.join(currentDirname, 'fonts', 'LiberationSerif-Bold.ttf'),
+      path.join(cwd, 'fonts', 'LiberationSerif-Regular.ttf'),
+      path.join(cwd, 'public', 'fonts', 'LiberationSerif-Regular.ttf')
+    ],
+    mono: [
+      path.join(cwd, 'fonts', 'LiberationMono-Bold.ttf'),
+      path.join(cwd, 'public', 'fonts', 'LiberationMono-Bold.ttf'),
+      path.join(cwd, 'dist', 'fonts', 'LiberationMono-Bold.ttf'),
+      path.join(cwd, 'src', 'server', 'assets', 'fonts', 'LiberationMono-Bold.ttf'),
+      path.join(currentDirname, 'fonts', 'LiberationMono-Bold.ttf'),
+      path.join(cwd, 'fonts', 'LiberationMono-Regular.ttf'),
+      path.join(cwd, 'public', 'fonts', 'LiberationMono-Regular.ttf')
+    ],
+    regular: [
+      path.join(cwd, 'fonts', 'LiberationSans-Regular.ttf'),
+      path.join(cwd, 'public', 'fonts', 'LiberationSans-Regular.ttf'),
+      path.join(cwd, 'dist', 'fonts', 'LiberationSans-Regular.ttf'),
+      path.join(cwd, 'src', 'server', 'assets', 'fonts', 'LiberationSans-Regular.ttf'),
+      path.join(currentDirname, 'fonts', 'LiberationSans-Regular.ttf')
+    ]
+  };
+
+  const projectCandidates = [
+    ...bundledFontMap[style],
+    ...bundledFontMap.bold,
+    ...bundledFontMap.regular
+  ];
+
+  for (const p of projectCandidates) {
+    try {
+      if (fs.existsSync(p) && fs.statSync(p).size > 1000) {
+        console.log(`[AI Studio FFmpeg] Using bundled repository font (${style}): ${p}`);
+        fontCache[style] = p;
+        return p;
+      }
+    } catch (e) {}
+  }
+
+  // 2. Second priority: Standard Linux & OS system font paths
+  const systemFontPreferences: Record<FontStyle, string[]> = {
     bold: [
       '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf',
       '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
@@ -698,40 +759,50 @@ export function getDynamicFontFile(style: FontStyle = 'bold'): string | null {
     ]
   };
 
-  const candidates = [...fontPreferences[style], ...fontPreferences.bold, ...fontPreferences.regular];
+  const sysCandidates = [...systemFontPreferences[style], ...systemFontPreferences.bold, ...systemFontPreferences.regular];
 
-  for (const p of candidates) {
-    if (fs.existsSync(p)) {
-      fontCache[style] = p;
-      return p;
-    }
+  for (const p of sysCandidates) {
+    try {
+      if (fs.existsSync(p)) {
+        console.log(`[AI Studio FFmpeg] Using system font (${style}): ${p}`);
+        fontCache[style] = p;
+        return p;
+      }
+    } catch (e) {}
   }
 
-  // Dynamic directory fallback search in /usr/share/fonts
-  try {
-    if (fs.existsSync('/usr/share/fonts')) {
-      const searchDir = (dir: string): string | null => {
-        try {
-          const entries = fs.readdirSync(dir, { withFileTypes: true });
-          for (const entry of entries) {
-            const full = path.join(dir, entry.name);
-            if (entry.isDirectory()) {
-              const found = searchDir(full);
-              if (found) return found;
-            } else if (entry.isFile() && (entry.name.endsWith('.ttf') || entry.name.endsWith('.otf'))) {
-              return full;
+  // 3. Third priority: Dynamic deep search in /usr/share/fonts, /nix/store, and local paths
+  const searchRoots = ['/usr/share/fonts', '/nix/store', '/nix/var/nix/profiles/default/share/fonts', '/root/.nix-profile/share/fonts', path.join(cwd, 'fonts'), path.join(cwd, 'public')];
+  for (const root of searchRoots) {
+    try {
+      if (fs.existsSync(root)) {
+        const searchDir = (dir: string, depth = 0): string | null => {
+          if (depth > 5) return null;
+          try {
+            const entries = fs.readdirSync(dir, { withFileTypes: true });
+            for (const entry of entries) {
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) {
+                // skip node_modules or heavy build trees
+                if (entry.name === 'node_modules' || entry.name === '.git') continue;
+                const found = searchDir(full, depth + 1);
+                if (found) return found;
+              } else if (entry.isFile() && (entry.name.endsWith('.ttf') || entry.name.endsWith('.otf'))) {
+                return full;
+              }
             }
-          }
-        } catch (e) {}
-        return null;
-      };
-      const found = searchDir('/usr/share/fonts');
-      if (found) {
-        fontCache[style] = found;
-        return found;
+          } catch (e) {}
+          return null;
+        };
+        const found = searchDir(root);
+        if (found) {
+          console.log(`[AI Studio FFmpeg] Discovered font in search root ${root}: ${found}`);
+          fontCache[style] = found;
+          return found;
+        }
       }
-    }
-  } catch (e) {}
+    } catch (e) {}
+  }
 
   console.warn(`[AI Studio FFmpeg] No valid font file detected on system for style: ${style}`);
   fontCache[style] = null;
