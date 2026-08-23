@@ -383,7 +383,12 @@ aiStudioRouter.patch("/reels/:id", (req: any, res: Response) => {
       db.prepare(`UPDATE ai_reels SET ${updates.join(', ')} WHERE id = ?`).run(...values);
     }
 
-    const updated = db.prepare("SELECT * FROM ai_reels WHERE id = ?").get(req.params.id);
+    const updated = db.prepare(`
+      SELECT r.*, j.show_name, j.dj_name, j.dj_id
+      FROM ai_reels r
+      JOIN ai_jobs j ON r.job_id = j.id
+      WHERE r.id = ?
+    `).get(req.params.id);
     const actionName = parsed.status === 'APPROVED' ? 'APPROVE' : parsed.status === 'REJECTED' ? 'REJECT' : 'UPDATE';
     logAction(req, actionName, 'ai_reel', req.params.id, { title: reel.title, changes: parsed });
     res.json({ success: true, reel: updated });
@@ -462,7 +467,12 @@ aiStudioRouter.post("/reels/:id/trim", async (req: any, res: Response) => {
       WHERE id = ?
     `).run(start, end, clipDuration, newAudioUrl, newVideoUrl, newThumbUrl, reel.id);
 
-    const updated = db.prepare("SELECT * FROM ai_reels WHERE id = ?").get(reel.id);
+    const updated = db.prepare(`
+      SELECT r.*, j.show_name, j.dj_name, j.dj_id
+      FROM ai_reels r
+      JOIN ai_jobs j ON r.job_id = j.id
+      WHERE r.id = ?
+    `).get(reel.id);
     logAction(req, 'TRIM', 'ai_reel', reel.id, { start, end });
     res.json({ success: true, reel: updated });
   } catch (err: any) {
@@ -553,7 +563,12 @@ aiStudioRouter.post("/reels/:id/re-render", async (req: any, res: Response) => {
       WHERE id = ?
     `).run(start, end, clipDuration, hook || null, selectedAspect, selectedTemplate, newVideoUrl, newThumbUrl, reel.id);
 
-    const updated = db.prepare("SELECT * FROM ai_reels WHERE id = ?").get(reel.id);
+    const updated = db.prepare(`
+      SELECT r.*, j.show_name, j.dj_name, j.dj_id
+      FROM ai_reels r
+      JOIN ai_jobs j ON r.job_id = j.id
+      WHERE r.id = ?
+    `).get(reel.id);
     logAction(req, 'RE_RENDER', 'ai_reel', reel.id, { template: selectedTemplate, aspect: selectedAspect });
     res.json({ success: true, reel: updated });
   } catch (err: any) {

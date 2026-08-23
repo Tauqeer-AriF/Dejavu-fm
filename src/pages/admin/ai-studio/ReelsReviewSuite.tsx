@@ -900,6 +900,7 @@ export const ReelsReviewSuite: React.FC<Props> = ({ reels, onRefresh, onSelectJo
                     } bg-black rounded-2xl overflow-hidden border border-slate-800 relative shadow-2xl group flex flex-col justify-between transition-all duration-300`}>
                       {selectedReel.video_url ? (
                         <video
+                          key={selectedReel.video_url}
                           ref={videoRef}
                           src={selectedReel.video_url}
                           poster={selectedReel.thumbnail_url || undefined}
