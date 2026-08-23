@@ -477,6 +477,16 @@ export function initDb() {
     try { db.exec(`ALTER TABLE users ADD COLUMN ${col} TEXT;`); } catch (e) {}
   });
 
+  // Ensure ai_reels table columns exist on any pre-existing database instance
+  try { db.exec("ALTER TABLE ai_reels ADD COLUMN template TEXT DEFAULT 'neon_cyber';"); } catch (e) {}
+  try { db.exec("ALTER TABLE ai_reels ADD COLUMN aspect_ratio TEXT DEFAULT '9:16';"); } catch (e) {}
+  try { db.exec("ALTER TABLE ai_reels ADD COLUMN status TEXT DEFAULT 'PENDING_REVIEW';"); } catch (e) {}
+  try { db.exec("ALTER TABLE ai_reels ADD COLUMN virality_score INTEGER DEFAULT 85;"); } catch (e) {}
+  try { db.exec("ALTER TABLE ai_reels ADD COLUMN category TEXT DEFAULT 'Drop';"); } catch (e) {}
+  try { db.exec("ALTER TABLE ai_reels ADD COLUMN captions_json TEXT;"); } catch (e) {}
+  try { db.exec("ALTER TABLE ai_reels ADD COLUMN social_copy TEXT;"); } catch (e) {}
+  try { db.exec("ALTER TABLE ai_reels ADD COLUMN hashtags TEXT;"); } catch (e) {}
+
   try {
     const tableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='blogs'").get();
     if (tableExists) {
@@ -781,6 +791,7 @@ export function initDb() {
       captions_json TEXT,
       social_copy TEXT,
       hashtags TEXT,
+      template TEXT DEFAULT 'neon_cyber',
       status TEXT DEFAULT 'PENDING_REVIEW',
       admin_notes TEXT,
       aspect_ratio TEXT DEFAULT '9:16',
