@@ -655,18 +655,18 @@ export function getSystemFontFile(): string | null {
   if (cachedFontFile !== undefined) return cachedFontFile;
 
   const candidateFontPaths = [
+    // Standard TrueType fonts (best compatibility with FFmpeg libfreetype without fontconfig)
+    '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf',
+    '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+    '/usr/share/fonts/truetype/freefont/FreeSansBold.ttf',
+    '/usr/share/fonts/truetype/freefont/FreeSans.ttf',
     // Debian / Ubuntu / Railway / Docker URW base fonts
     '/usr/share/fonts/opentype/urw-base35/NimbusSans-Bold.otf',
     '/usr/share/fonts/opentype/urw-base35/NimbusSans-Regular.otf',
     '/usr/share/fonts/opentype/urw-base35/NimbusRoman-Bold.otf',
     '/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf',
-    // Standard Linux paths
-    '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
-    '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
-    '/usr/share/fonts/truetype/freefont/FreeSansBold.ttf',
-    '/usr/share/fonts/truetype/freefont/FreeSans.ttf',
-    '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf',
-    '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
     '/usr/share/fonts/TTF/DejaVuSans-Bold.ttf',
     '/usr/share/fonts/TTF/DejaVuSans.ttf',
     // Alpine Linux
@@ -824,7 +824,10 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
 
   let filterComplex = '';
 
-  if (aspect === '9:16') {
+  if (!fontFile) {
+    // If no font file is found, use pure visualizer to prevent Fontconfig errors
+    filterComplex = buildPureVisualizerFilter(theme, aspect, width, height, dur);
+  } else if (aspect === '9:16') {
     if (theme === 'minimal_studio') {
       // Clean Studio Minimalist: Dark luxury slate, clean gold/white frequency meters
       filterComplex = [
@@ -1013,24 +1016,28 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
 
     console.warn(`[AI Studio FFmpeg] Initial render failed (${renderErr.message}). Switching to robust text-overlay fallback...`);
     
-    // Robust text-preserving fallback: guarantees clean station badge, DJ name, show title and waves
-    const fallbackFilter = aspect === '9:16'
-      ? [
-          `color=c=0x070810:s=720x1280:d=${dur}[bg]`,
-          `[0:a]showwaves=s=640x260:mode=line:colors=0xb026ff|0x00f0ff:scale=cbrt[wave]`,
-          `[bg][wave]overlay=x=(W-w)/2:y=680[v1]`,
-          `[v1]drawtext=text='DEJAVUFM':fontcolor=0xb026ff:fontsize=32:x=(w-text_w)/2:y=180:box=1:boxcolor=0x000000@0.7:boxborderw=10[v2]`,
-          `[v2]drawtext=text='${safeDj}':fontcolor=0xffffff:fontsize=40:x=(w-text_w)/2:y=320[v3]`,
-          `[v3]drawtext=text='${safeShow}':fontcolor=0x00f0ff:fontsize=24:x=(w-text_w)/2:y=380[v4]`,
-          `[v4]drawtext=text='${safeHook}':fontcolor=0xffffff:fontsize=32:x=(w-text_w)/2:y=500:box=1:boxcolor=0xb026ff@0.8:boxborderw=12,fps=30[v_out]`
-        ].join(';')
-      : [
-          `color=c=0x070810:s=${width}x${height}:d=${dur}[bg]`,
-          `[0:a]showwaves=s=600x180:mode=line:colors=0x00f0ff|0xb026ff:scale=cbrt[wave]`,
-          `[bg][wave]overlay=x=(W-w)/2:y=${Math.floor(height * 0.45)}[v1]`,
-          `[v1]drawtext=text='DEJAVUFM':fontcolor=0xb026ff:fontsize=26:x=(w-text_w)/2:y=60[v2]`,
-          `[v2]drawtext=text='${safeDj} - ${safeShow}':fontcolor=0xffffff:fontsize=30:x=(w-text_w)/2:y=140,fps=30[v_out]`
-        ].join(';');
+    let fallbackFilter: string;
+    if (fontFile) {
+      fallbackFilter = aspect === '9:16'
+        ? [
+            `color=c=0x070810:s=720x1280:d=${dur}[bg]`,
+            `[0:a]showwaves=s=640x260:mode=line:colors=0xb026ff|0x00f0ff:scale=cbrt[wave]`,
+            `[bg][wave]overlay=x=(W-w)/2:y=680[v1]`,
+            `[v1]drawtext=${fontArg}text='DEJAVUFM':fontcolor=0xb026ff:fontsize=32:x=(w-text_w)/2:y=180:box=1:boxcolor=0x000000@0.7:boxborderw=10[v2]`,
+            `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=40:x=(w-text_w)/2:y=320[v3]`,
+            `[v3]drawtext=${fontArg}text='${safeShow}':fontcolor=0x00f0ff:fontsize=24:x=(w-text_w)/2:y=380[v4]`,
+            `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=32:x=(w-text_w)/2:y=500:box=1:boxcolor=0xb026ff@0.8:boxborderw=12,fps=30[v_out]`
+          ].join(';')
+        : [
+            `color=c=0x070810:s=${width}x${height}:d=${dur}[bg]`,
+            `[0:a]showwaves=s=600x180:mode=line:colors=0x00f0ff|0xb026ff:scale=cbrt[wave]`,
+            `[bg][wave]overlay=x=(W-w)/2:y=${Math.floor(height * 0.45)}[v1]`,
+            `[v1]drawtext=${fontArg}text='DEJAVUFM':fontcolor=0xb026ff:fontsize=26:x=(w-text_w)/2:y=60[v2]`,
+            `[v2]drawtext=${fontArg}text='${safeDj} - ${safeShow}':fontcolor=0xffffff:fontsize=30:x=(w-text_w)/2:y=140,fps=30[v_out]`
+          ].join(';');
+    } else {
+      fallbackFilter = buildPureVisualizerFilter(theme, aspect, width, height, dur);
+    }
 
     const fallbackArgs = [
       "-y",
@@ -1054,7 +1061,37 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
       options.outputVideoPath
     ];
 
-    await runFFmpegCommand(fallbackArgs, options.abortSignal, 180000);
+    try {
+      await runFFmpegCommand(fallbackArgs, options.abortSignal, 180000);
+    } catch (fallbackErr: any) {
+      if (fallbackErr.message === 'JOB_ABORTED' || options.abortSignal?.aborted) {
+        throw new Error('JOB_ABORTED');
+      }
+      console.warn(`[AI Studio FFmpeg] Text fallback failed (${fallbackErr.message}). Rendering pure wave visualizer failsafe...`);
+      const ultimateFilter = buildPureVisualizerFilter(theme, aspect, width, height, dur);
+      const ultimateArgs = [
+        "-y",
+        "-i", options.audioPath,
+        "-filter_complex", ultimateFilter,
+        "-map", "[v_out]",
+        "-map", "0:a",
+        "-c:v", "libx264",
+        "-preset", "ultrafast",
+        "-threads", "2",
+        "-max_muxing_queue_size", "1024",
+        "-profile:v", "main",
+        "-level:v", "4.0",
+        "-crf", "23",
+        "-r", "30",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac",
+        "-b:a", "128k",
+        "-shortest",
+        "-movflags", "+faststart",
+        options.outputVideoPath
+      ];
+      await runFFmpegCommand(ultimateArgs, options.abortSignal, 180000);
+    }
   }
 
   // Extract thumbnail frame at 2 seconds
