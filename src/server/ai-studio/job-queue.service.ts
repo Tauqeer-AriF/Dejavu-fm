@@ -313,7 +313,7 @@ async function runJobPipeline(jobId: string) {
       // 1. Sliced audio chunk
       const audioFilename = `${reelId}_audio.mp3`;
       const audioFullPath = path.join(storageDir, audioFilename);
-      await sliceAudioChunk(sourceAudioPath, h.start_seconds, clipDuration, audioFullPath);
+      await sliceAudioChunk(sourceAudioPath, h.start_seconds, clipDuration, audioFullPath, signal);
       checkAborted();
       const audioRelativeUrl = `/uploads/ai-studio/${audioFilename}`;
 
@@ -336,7 +336,8 @@ async function runJobPipeline(jobId: string) {
         template: selectedTemplate,
         aspectRatio: selectedAspect,
         outputVideoPath: videoFullPath,
-        outputThumbnailPath: thumbFullPath
+        outputThumbnailPath: thumbFullPath,
+        abortSignal: signal
       });
       checkAborted();
 

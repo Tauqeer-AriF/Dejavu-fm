@@ -210,11 +210,37 @@ export function getAIStudioStorageDir(): string {
   return dir;
 }
 
-export function runFFmpegCommand(args: string[]): Promise<string> {
+export function runFFmpegCommand(args: string[], abortSignal?: AbortSignal, timeoutMs = 180000): Promise<string> {
   return new Promise((resolve, reject) => {
+    if (abortSignal?.aborted) {
+      return reject(new Error("JOB_ABORTED"));
+    }
+
     const process = spawn(getFFmpegPath(), args);
     let stderr = "";
     let stdout = "";
+    let settled = false;
+
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        try { process.kill("SIGKILL"); } catch (e) {}
+        reject(new Error(`FFmpeg command timed out after ${Math.round(timeoutMs / 1000)}s`));
+      }
+    }, timeoutMs);
+
+    const onAbort = () => {
+      if (!settled) {
+        settled = true;
+        clearTimeout(timer);
+        try { process.kill("SIGKILL"); } catch (e) {}
+        reject(new Error("JOB_ABORTED"));
+      }
+    };
+
+    if (abortSignal) {
+      abortSignal.addEventListener("abort", onAbort, { once: true });
+    }
 
     process.stdout.on("data", (data) => {
       stdout += data.toString();
@@ -225,6 +251,9 @@ export function runFFmpegCommand(args: string[]): Promise<string> {
     });
 
     process.on("close", (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
       if (code === 0) {
         resolve(stdout || stderr);
       } else {
@@ -233,6 +262,9 @@ export function runFFmpegCommand(args: string[]): Promise<string> {
     });
 
     process.on("error", (err) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
       reject(err);
     });
   });
@@ -582,7 +614,8 @@ export async function sliceAudioChunk(
   sourcePath: string,
   startSeconds: number,
   durationSeconds: number,
-  outputPath: string
+  outputPath: string,
+  abortSignal?: AbortSignal
 ): Promise<string> {
   const args = [
     "-y",
@@ -594,7 +627,7 @@ export async function sliceAudioChunk(
     outputPath
   ];
 
-  await runFFmpegCommand(args);
+  await runFFmpegCommand(args, abortSignal, 60000);
   return outputPath;
 }
 
@@ -613,6 +646,7 @@ export interface RenderReelOptions {
   aspectRatio?: AspectRatioOption;
   outputVideoPath: string;
   outputThumbnailPath: string;
+  abortSignal?: AbortSignal;
 }
 
 /**
@@ -832,7 +866,7 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
     options.outputVideoPath
   ];
 
-  await runFFmpegCommand(videoArgs);
+  await runFFmpegCommand(videoArgs, options.abortSignal, 180000);
 
   // Extract thumbnail frame at 2 seconds
   const thumbTime = Math.min(2, Math.floor(dur / 2));
@@ -846,7 +880,7 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
   ];
 
   try {
-    await runFFmpegCommand(thumbArgs);
+    await runFFmpegCommand(thumbArgs, options.abortSignal, 30000);
   } catch (tErr) {
     console.warn("[FFmpeg] Thumbnail extraction error (non-fatal):", tErr);
   }

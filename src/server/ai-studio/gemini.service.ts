@@ -245,47 +245,44 @@ Return ONLY valid JSON matching this schema:
 ]
 `;
 
-      // Candidate models for fallback when 503 high demand or 429 rate limit occurs
+      // Candidate models for fast, reliable response
       const candidateModels = Array.from(new Set([
         primaryModel,
         'gemini-2.5-flash',
-        'gemini-2.5-pro',
-        'gemini-1.5-flash',
-        'gemini-1.5-pro'
+        'gemini-1.5-flash'
       ]));
 
       for (const modelToTry of candidateModels) {
-        for (let attempt = 1; attempt <= 2; attempt++) {
-          try {
-            console.log(`[AI Studio] Querying Gemini model '${modelToTry}' (attempt ${attempt})...`);
-            const response = await client.models.generateContent({
-              model: modelToTry,
-              contents: prompt,
-              config: {
-                responseMimeType: "application/json",
-                temperature: 0.7,
-              }
-            });
-
-            const text = response.text || "";
-            if (text.trim()) {
-              const parsed = JSON.parse(text);
-              if (Array.isArray(parsed) && parsed.length > 0) {
-                console.log(`[AI Studio] Successfully generated show analysis with Gemini model '${modelToTry}'!`);
-                return sanitizeHighlights(parsed, params.totalDurationSeconds);
-              }
+        try {
+          console.log(`[AI Studio] Querying Gemini model '${modelToTry}'...`);
+          
+          // Strict 15-second timeout wrapper to prevent hanging on network/quota bottlenecks
+          const generatePromise = client.models.generateContent({
+            model: modelToTry,
+            contents: prompt,
+            config: {
+              responseMimeType: "application/json",
+              temperature: 0.7,
             }
-          } catch (err: any) {
-            const errMessage = String(err?.message || err);
-            const is503OrRateLimit = errMessage.includes('503') || errMessage.includes('UNAVAILABLE') || errMessage.includes('high demand') || errMessage.includes('429');
-            console.warn(`[AI Studio] Gemini model '${modelToTry}' attempt ${attempt} notice: ${errMessage}`);
-            if (is503OrRateLimit) {
-              // Pause with backoff before retry or trying next candidate model
-              await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
-            } else {
-              break;
+          });
+
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error(`Timeout waiting for Gemini API response (${modelToTry})`)), 15000)
+          );
+
+          const response: any = await Promise.race([generatePromise, timeoutPromise]);
+
+          const text = response?.text || "";
+          if (text.trim()) {
+            const parsed = JSON.parse(text);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              console.log(`[AI Studio] Successfully generated show analysis with Gemini model '${modelToTry}'!`);
+              return sanitizeHighlights(parsed, params.totalDurationSeconds);
             }
           }
+        } catch (err: any) {
+          const errMessage = String(err?.message || err);
+          console.warn(`[AI Studio] Gemini model '${modelToTry}' attempt notice: ${errMessage}`);
         }
       }
     } catch (err) {
