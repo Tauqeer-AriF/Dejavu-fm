@@ -799,24 +799,22 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
   const dur = Math.max(5, Math.round(options.durationSeconds));
   const theme: VisualizerTheme = options.template || 'neon_cyber';
   
-  // Clean text for FFmpeg filter safety
-  const safeHook = (options.hookText || "EXCLUSIVE DROP 🔥")
-    .replace(/[:\\'\"]/g, '')
-    .toUpperCase();
+  // Clean text for FFmpeg filter safety (strip single quotes, colons, backslashes, percent signs, and emojis for reliable font rendering)
+  const sanitizeForFont = (str: string, fallback: string) => {
+    const cleaned = (str || fallback)
+      .replace(/[\u{1F600}-\u{1F6FF}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+      .replace(/[:\\\'\"%]/g, '')
+      .trim();
+    return cleaned || fallback.replace(/[:\\\'\"%]/g, '').trim();
+  };
 
-  const safeDj = (options.djName || "DEJAVUFM RESIDENT")
-    .replace(/[:\\'\"]/g, '')
-    .toUpperCase();
-
-  const safeShow = (options.showName || "LIVE SET")
-    .replace(/[:\\'\"]/g, '')
-    .toUpperCase();
-
-  const safeCaption = (options.captionText || "Tune in live on DejavuFM radio")
-    .replace(/[:\\'\"]/g, '');
+  const safeHook = sanitizeForFont(options.hookText || "EXCLUSIVE DROP", "EXCLUSIVE DROP").toUpperCase();
+  const safeDj = sanitizeForFont(options.djName || "DEJAVUFM RESIDENT", "DEJAVUFM RESIDENT").toUpperCase();
+  const safeShow = sanitizeForFont(options.showName || "LIVE SET", "LIVE SET").toUpperCase();
+  const safeCaption = sanitizeForFont(options.captionText || "Tune in live on DejavuFM radio", "Tune in live on DejavuFM radio");
 
   const fontFile = getSystemFontFile();
-  const fontArg = fontFile ? `fontfile='${fontFile.replace(/\\/g, '/')}':` : '';
+  const fontArg = fontFile ? `fontfile=${fontFile.replace(/\\/g, '/')}:` : '';
 
   let filterComplex = '';
 
