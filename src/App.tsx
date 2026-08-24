@@ -333,8 +333,8 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                 onClick={() => setActiveDropdown(activeDropdown === key ? null : key)}
                 className={`px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap flex items-center gap-1.5 ${
                   subItems.some(sub => location.pathname === sub.path) 
-                    ? (isLightMode ? 'bg-black text-white shadow-xl' : 'bg-white text-dark-bg shadow-xl')
-                    : (isLightMode ? 'text-black/60 hover:text-black hover:bg-black/5' : 'text-white/50 hover:text-white hover:bg-white/5')
+                    ? (isLightMode ? 'bg-[#000000] text-[#ffffff] shadow-md border border-black/5' : 'bg-[#ffffff] text-[#000000] shadow-xl')
+                    : (isLightMode ? 'text-[#000000]/60 hover:text-[#000000] hover:bg-black/5' : 'text-white/50 hover:text-white hover:bg-white/5')
                 }`}
               >
                 {lbl} <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${activeDropdown === key ? 'rotate-180' : ''}`} />
@@ -435,7 +435,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                 <NavLink 
                   key={key} 
                   to={path} 
-                  className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-[#f75c1e] text-white shadow-[0_0_20px_rgba(247,92,30,0.4)]' : 'text-[#f75c1e] bg-transparent hover:bg-[#f75c1e]/10'}`}
+                  className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-[#f75c1e] text-[#ffffff] shadow-[0_0_20px_rgba(247,92,30,0.4)]' : 'text-[#f75c1e] bg-transparent hover:bg-[#f75c1e]/10'}`}
                 >
                   {lbl}
                 </NavLink>
@@ -446,7 +446,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                 <NavLink 
                   key={key} 
                   to={path} 
-                  className={({isActive}) => `px-4 xl:px-8 py-3 flex items-center gap-2 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-neon-purple text-white shadow-[0_0_25px_rgba(176,38,255,0.4)]' : 'text-white/50 hover:text-white hover:bg-white/5'}`}
+                  className={({isActive}) => `px-4 xl:px-8 py-3 flex items-center gap-2 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-neon-purple text-[#ffffff] shadow-[0_0_25px_rgba(176,38,255,0.4)]' : (isLightMode ? 'text-[#000000]/60 hover:text-[#000000] hover:bg-black/5' : 'text-white/50 hover:text-white hover:bg-white/5')}`}
                 >
                   <Radio className="w-4 h-4 hidden xl:block" /> {lbl}
                 </NavLink>
@@ -456,7 +456,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
               <NavLink 
                 key={key} 
                 to={path} 
-                className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? 'bg-white text-dark-bg shadow-xl' : 'text-white/50 hover:text-white hover:bg-white/5'}`}
+                className={({isActive}) => `px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap ${isActive ? (isLightMode ? 'bg-[#000000] text-[#ffffff] shadow-md border border-black/5' : 'bg-[#ffffff] text-[#000000] shadow-xl') : (isLightMode ? 'text-[#000000]/60 hover:text-[#000000] hover:bg-black/5' : 'text-white/50 hover:text-white hover:bg-white/5')}`}
               >
                 {lbl}
               </NavLink>
