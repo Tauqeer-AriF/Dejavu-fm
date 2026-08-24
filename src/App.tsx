@@ -349,10 +349,10 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                     transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
                     className="absolute top-full left-0 pt-2 w-64 z-50 pointer-events-auto"
                   >
-                    <div className={`backdrop-blur-3xl border rounded-2xl overflow-hidden p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.5)] ${
+                    <div className={`border rounded-2xl overflow-hidden p-1.5 ${
                       isLightMode 
-                        ? 'bg-white/95 border-black/10 text-slate-900 shadow-xl' 
-                        : 'bg-dark-bg/95 border-white/10 text-white'
+                        ? 'bg-[#ffffff] border-black/10 text-slate-900 shadow-[0_20px_50px_rgba(0,0,0,0.15)]' 
+                        : 'backdrop-blur-3xl bg-dark-bg/95 border-white/10 text-white shadow-[0_20px_50px_rgba(0,0,0,0.5)]'
                     }`}>
                       <div className={`px-3 py-2 mb-1 border-b ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
                         <span className={`text-[9px] font-black uppercase tracking-[0.3em] ${isLightMode ? 'text-black/30' : 'text-white/20'}`}>Explore</span>
@@ -817,7 +817,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                               animate={{ height: 'auto', opacity: 1 }}
                               exit={{ height: 0, opacity: 0 }}
                               className={`overflow-hidden rounded-2xl mt-2 mb-4 ${
-                                isLightMode ? 'bg-slate-100/90 border border-slate-200' : 'bg-white/5'
+                                isLightMode ? 'bg-[#ffffff] border border-slate-200' : 'bg-white/5'
                               }`}
                             >
                               {item.subItems?.map((sub) => (
