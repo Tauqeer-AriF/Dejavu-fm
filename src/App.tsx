@@ -333,8 +333,8 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                 onClick={() => setActiveDropdown(activeDropdown === key ? null : key)}
                 className={`px-4 xl:px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap flex items-center gap-1.5 ${
                   subItems.some(sub => location.pathname === sub.path) 
-                    ? 'bg-white text-dark-bg shadow-xl' 
-                    : 'text-white/50 hover:text-white hover:bg-white/5'
+                    ? (isLightMode ? 'bg-black text-white shadow-xl' : 'bg-white text-dark-bg shadow-xl')
+                    : (isLightMode ? 'text-black/60 hover:text-black hover:bg-black/5' : 'text-white/50 hover:text-white hover:bg-white/5')
                 }`}
               >
                 {lbl} <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${activeDropdown === key ? 'rotate-180' : ''}`} />
@@ -343,52 +343,66 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
               <AnimatePresence>
                 {activeDropdown === key && (
                   <motion.div
-                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-                    className="absolute top-[calc(100%+8px)] left-0 w-64 bg-dark-bg/95 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden z-[1001] p-1.5"
+                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                    transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
+                    className="absolute top-full left-0 pt-2 w-64 z-50 pointer-events-auto"
                   >
-                    <div className="px-3 py-2 mb-1 border-b border-white/5">
-                      <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20">Explore</span>
-                    </div>
-                    {subItems.map((sub, subIdx) => {
-                      const isExt = sub.isExternal || sub.path.startsWith('http://') || sub.path.startsWith('https://');
-                      if (isExt) {
-                        return (
-                          <a 
-                            key={subIdx}
-                            href={sub.path} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="flex items-center justify-between px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] text-white/70 hover:text-white hover:bg-white/10 transition-all group/item"
-                            onClick={() => setActiveDropdown(null)}
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-neon-blue/10 flex items-center justify-center group-hover/item:bg-neon-blue/20 transition-colors">
-                                <Radio className="w-4 h-4 text-neon-blue" />
+                    <div className={`backdrop-blur-3xl border rounded-2xl overflow-hidden p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.5)] ${
+                      isLightMode 
+                        ? 'bg-white/95 border-black/10 text-slate-900 shadow-xl' 
+                        : 'bg-dark-bg/95 border-white/10 text-white'
+                    }`}>
+                      <div className={`px-3 py-2 mb-1 border-b ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
+                        <span className={`text-[9px] font-black uppercase tracking-[0.3em] ${isLightMode ? 'text-black/30' : 'text-white/20'}`}>Explore</span>
+                      </div>
+                      {subItems.map((sub, subIdx) => {
+                        const isExt = sub.isExternal || sub.path.startsWith('http://') || sub.path.startsWith('https://');
+                        if (isExt) {
+                          return (
+                            <a 
+                              key={subIdx}
+                              href={sub.path} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className={`flex items-center justify-between px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all group/item ${
+                                isLightMode
+                                  ? 'text-black/70 hover:text-black hover:bg-black/5'
+                                  : 'text-white/70 hover:text-white hover:bg-white/10'
+                              }`}
+                              onClick={() => setActiveDropdown(null)}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-neon-blue/10 flex items-center justify-center group-hover/item:bg-neon-blue/20 transition-colors">
+                                  <Radio className="w-4 h-4 text-neon-blue" />
+                                </div>
+                                {sub.label}
+                              </div>
+                              <ExternalLink className={`w-3 h-3 ${isLightMode ? 'text-black/30' : 'text-white/30'}`} />
+                            </a>
+                          );
+                        } else {
+                          return (
+                            <Link 
+                              key={subIdx}
+                              to={sub.path} 
+                              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all group/item ${
+                                isLightMode
+                                  ? 'text-black/70 hover:text-black hover:bg-black/5'
+                                  : 'text-white/70 hover:text-white hover:bg-white/10'
+                              }`}
+                              onClick={() => setActiveDropdown(null)}
+                            >
+                              <div className="w-8 h-8 rounded-lg bg-neon-purple/10 flex items-center justify-center group-hover/item:bg-neon-purple/20 transition-colors">
+                                <FileText className="w-4 h-4 text-neon-purple" />
                               </div>
                               {sub.label}
-                            </div>
-                            <ExternalLink className="w-3 h-3 text-white/30" />
-                          </a>
-                        );
-                      } else {
-                        return (
-                          <Link 
-                            key={subIdx}
-                            to={sub.path} 
-                            className="flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] text-white/70 hover:text-white hover:bg-white/10 transition-all group/item"
-                            onClick={() => setActiveDropdown(null)}
-                          >
-                            <div className="w-8 h-8 rounded-lg bg-neon-purple/10 flex items-center justify-center group-hover/item:bg-neon-purple/20 transition-colors">
-                              <FileText className="w-4 h-4 text-neon-purple" />
-                            </div>
-                            {sub.label}
-                          </Link>
-                        );
-                      }
-                    })}
+                            </Link>
+                          );
+                        }
+                      })}
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -599,7 +613,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
   return (
     <>
       {/* Top Announcement Bar */}
-      <div className="front-announcement-bar w-full bg-[#f75c1e] text-[#ffffff] py-2.5 px-4 shadow-md relative z-[1001] border-b border-black/10">
+      <div className="front-announcement-bar w-full bg-[#f75c1e] text-[#ffffff] py-2.5 px-4 shadow-md relative z-[1000] border-b border-black/10">
         <div className="front-announcement-container max-w-[100rem] mx-auto flex items-center justify-between gap-3 text-left">
           <div className="front-announcement-text flex items-center gap-2.5 font-display font-black tracking-tight text-xs sm:text-sm md:text-base uppercase text-[#ffffff] min-w-0">
             <span className="front-announcement-badge bg-black/20 border border-white/20 px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-mono tracking-widest text-[#ffffff] shrink-0 hidden xs:inline-block">ANNOUNCEMENT</span>

@@ -2123,8 +2123,22 @@ html.light .dj-follow-btn.following svg,
 [data-sonner-toaster] [data-sonner-toast] {
   border-radius: 16px !important;
   font-family: var(--font-sans) !important;
-  position: relative !important;
   padding-right: 36px !important;
+}
+
+/* Ensure toast content and text remain fully visible when stacked or hovered */
+[data-sonner-toaster] [data-sonner-toast] [data-content],
+[data-sonner-toaster] [data-sonner-toast] [data-title],
+[data-sonner-toaster] [data-sonner-toast] [data-description] {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Hide close button on collapsed back toasts so orphan close buttons don't float under active toast */
+[data-sonner-toaster] [data-sonner-toast][data-front="false"]:not([data-expanded="true"]) [data-close-button] {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 /* Ensure Sonner Close Button is cleanly visible, uncropped, and positioned at top-right */
