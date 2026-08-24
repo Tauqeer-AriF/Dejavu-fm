@@ -665,43 +665,29 @@ export function getDynamicFontFile(style: FontStyle = 'bold'): string | null {
 
   const cwd = process.cwd();
   
-  // 1. First priority: Bundled fonts inside the application directory (Guaranteed to exist on Railway, Docker, Vercel, and local)
+  // 1. First priority: Bundled fonts in public/fonts or dist/fonts
   const bundledFontMap: Record<FontStyle, string[]> = {
     bold: [
-      path.join(cwd, 'fonts', 'LiberationSans-Bold.ttf'),
       path.join(cwd, 'public', 'fonts', 'LiberationSans-Bold.ttf'),
       path.join(cwd, 'dist', 'fonts', 'LiberationSans-Bold.ttf'),
-      path.join(cwd, 'src', 'server', 'assets', 'fonts', 'LiberationSans-Bold.ttf'),
-      path.join(currentDirname, 'fonts', 'LiberationSans-Bold.ttf'),
       path.join(currentDirname, '../public/fonts', 'LiberationSans-Bold.ttf'),
       path.join(currentDirname, '../../public/fonts', 'LiberationSans-Bold.ttf'),
-      path.join(cwd, 'fonts', 'LiberationSans-Regular.ttf'),
       path.join(cwd, 'public', 'fonts', 'LiberationSans-Regular.ttf')
     ],
     serif: [
-      path.join(cwd, 'fonts', 'LiberationSerif-Bold.ttf'),
       path.join(cwd, 'public', 'fonts', 'LiberationSerif-Bold.ttf'),
       path.join(cwd, 'dist', 'fonts', 'LiberationSerif-Bold.ttf'),
-      path.join(cwd, 'src', 'server', 'assets', 'fonts', 'LiberationSerif-Bold.ttf'),
-      path.join(currentDirname, 'fonts', 'LiberationSerif-Bold.ttf'),
-      path.join(cwd, 'fonts', 'LiberationSerif-Regular.ttf'),
       path.join(cwd, 'public', 'fonts', 'LiberationSerif-Regular.ttf')
     ],
     mono: [
-      path.join(cwd, 'fonts', 'LiberationMono-Bold.ttf'),
       path.join(cwd, 'public', 'fonts', 'LiberationMono-Bold.ttf'),
       path.join(cwd, 'dist', 'fonts', 'LiberationMono-Bold.ttf'),
-      path.join(cwd, 'src', 'server', 'assets', 'fonts', 'LiberationMono-Bold.ttf'),
-      path.join(currentDirname, 'fonts', 'LiberationMono-Bold.ttf'),
-      path.join(cwd, 'fonts', 'LiberationMono-Regular.ttf'),
       path.join(cwd, 'public', 'fonts', 'LiberationMono-Regular.ttf')
     ],
     regular: [
-      path.join(cwd, 'fonts', 'LiberationSans-Regular.ttf'),
       path.join(cwd, 'public', 'fonts', 'LiberationSans-Regular.ttf'),
       path.join(cwd, 'dist', 'fonts', 'LiberationSans-Regular.ttf'),
-      path.join(cwd, 'src', 'server', 'assets', 'fonts', 'LiberationSans-Regular.ttf'),
-      path.join(currentDirname, 'fonts', 'LiberationSans-Regular.ttf')
+      path.join(currentDirname, '../public/fonts', 'LiberationSans-Regular.ttf')
     ]
   };
 
