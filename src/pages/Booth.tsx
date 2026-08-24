@@ -351,7 +351,7 @@ export default function Booth() {
       <div className="absolute bottom-10 right-1/4 w-80 h-80 bg-neon-blue/5 rounded-full blur-[100px] pointer-events-none -z-10" />
 
       {/* Floating Audio SFX Toggle */}
-      <div className="absolute top-2 right-3 sm:top-4 sm:right-4 z-[200]">
+      <div className="absolute top-2 right-3 sm:top-4 sm:right-4 z-20">
         <button
           type="button"
           onClick={toggleSounds}
@@ -400,7 +400,7 @@ export default function Booth() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-start">
         
         {/* Request Side Box */}
-        <div className="lg:col-span-5 space-y-4 lg:space-y-6 relative z-[100]">
+        <div className="lg:col-span-5 space-y-4 lg:space-y-6 relative z-10">
           <div className={`glass-panel border rounded-2xl p-3.5 sm:p-5 relative backdrop-blur-md ${
             isLightMode 
               ? 'bg-white/90 border-slate-200/90 shadow-lg shadow-slate-200/40' 
@@ -519,7 +519,7 @@ export default function Booth() {
                   </div>
 
                   {/* Dropdown for Mobile Screens */}
-                  <div className="block lg:hidden relative z-[150] mb-2">
+                  <div className="block lg:hidden relative z-20 mb-2">
                     <button
                       type="button"
                       onClick={() => setMobileDropdownOpen(!mobileDropdownOpen)}
@@ -551,7 +551,7 @@ export default function Booth() {
                             backgroundColor: isLightMode ? '#ffffff' : '#12121a',
                             borderColor: isLightMode ? '#e2e8f0' : 'rgba(255, 255, 255, 0.1)'
                           }}
-                          className={`absolute top-[105%] left-0 w-full rounded-xl border shadow-2xl z-[200] max-h-56 overflow-y-auto divide-y ${
+                          className={`absolute top-[105%] left-0 w-full rounded-xl border shadow-2xl z-30 max-h-56 overflow-y-auto divide-y ${
                             isLightMode
                               ? 'divide-slate-100 text-slate-900'
                               : 'divide-white/5 text-white'

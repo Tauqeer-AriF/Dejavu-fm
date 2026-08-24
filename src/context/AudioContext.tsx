@@ -355,10 +355,11 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
       const targetUrl = streamUrl || qualityUrls[quality] || qualityUrls.medium || qualityUrls.low || qualityUrls.high;
       
       if (!targetUrl) {
-        toast.info("Connecting to live station stream...");
+        const loadingToastId = toast.info("Connecting to live station stream...");
         fetch('/api/public/settings')
           .then(res => res.json())
           .then(settings => {
+            toast.dismiss(loadingToastId);
             if (settings && (settings.stream_url || settings.stream_url_medium || settings.stream_url_low || settings.stream_url_high)) {
               const lowUrl = settings.stream_url_low || settings.stream_url || "";
               const medUrl = settings.stream_url_medium || settings.stream_url || "";
@@ -390,6 +391,7 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
             }
           })
           .catch(() => {
+            toast.dismiss(loadingToastId);
             toast.error("Failed to connect to audio server.");
             set({ isPlaying: false, isBuffering: false });
           });

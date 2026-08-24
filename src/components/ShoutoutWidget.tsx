@@ -358,7 +358,7 @@ export function ShoutoutWidget({ isChatOpen = false }: { isChatOpen?: boolean })
   if (isSplitActive) return null;
 
   return (
-    <div className={`front-shoutouts-floating-container fixed bottom-28 sm:bottom-[180px] xl:bottom-32 z-[10020] flex flex-col items-end gap-5 pointer-events-none transition-all duration-500 ease-in-out ${
+    <div className={`front-shoutouts-floating-container fixed bottom-28 sm:bottom-[180px] xl:bottom-32 ${isOpen ? 'z-[10010]' : 'z-[60]'} flex flex-col items-end gap-5 pointer-events-none transition-all duration-500 ease-in-out ${
       isChatOpen ? 'right-6 sm:right-[472px] xl:right-[480px]' : 'right-6 xl:right-8'
     }`}>
       <AnimatePresence>

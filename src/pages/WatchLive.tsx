@@ -362,7 +362,7 @@ export default function WatchLive() {
                   animate={{ opacity: 1, x: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 20, scale: 0.9 }}
                   transition={{ type: "spring", stiffness: 120, damping: 14 }}
-                  className={`absolute bottom-6 left-6 z-[100] max-w-[90%] sm:max-w-md backdrop-blur-xl border rounded-2xl p-5 flex items-center gap-4 pointer-events-none transition-all ${
+                  className={`absolute bottom-6 left-6 z-20 max-w-[90%] sm:max-w-md backdrop-blur-xl border rounded-2xl p-5 flex items-center gap-4 pointer-events-none transition-all ${
                     isLightMode 
                       ? 'bg-[#ffffff]/95 border-black/10 shadow-[0_20px_50px_rgba(176,38,255,0.06)]' 
                       : 'bg-zinc-950/80 border-white/10 shadow-[0_20px_50px_rgba(236,72,153,0.15)]'
@@ -596,7 +596,7 @@ export default function WatchLive() {
                         animate={{ opacity: 1, x: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.9 }}
                         transition={{ type: "spring", stiffness: 120, damping: 14 }}
-                        className={`absolute bottom-6 left-6 z-[100] max-w-[90%] sm:max-w-md backdrop-blur-xl border rounded-2xl p-5 flex items-center gap-4 pointer-events-none transition-all ${
+                        className={`absolute bottom-6 left-6 z-20 max-w-[90%] sm:max-w-md backdrop-blur-xl border rounded-2xl p-5 flex items-center gap-4 pointer-events-none transition-all ${
                           isLightMode 
                             ? 'bg-[#ffffff]/95 border-black/10 shadow-[0_20px_50px_rgba(176,38,255,0.06)]' 
                             : 'bg-zinc-950/80 border-white/10 shadow-[0_20px_50px_rgba(236,72,153,0.15)]'
