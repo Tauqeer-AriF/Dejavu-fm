@@ -1237,17 +1237,25 @@ export function pruneBackups() {
   const RETENTION_MS = retentionDays * 24 * 60 * 60 * 1000;
   const now = Date.now();
 
-  fs.readdirSync(backupDir)
-    .filter(f => (f.startsWith('backup-') || f.startsWith('manual-backup-')) && (f.endsWith('.db') || f.endsWith('.bundle')))
-    .forEach(f => {
-      const filePath = path.join(backupDir, f);
+  fs.readdirSync(backupDir).forEach(f => {
+    const filePath = path.join(backupDir, f);
+    try {
       const stats = fs.statSync(filePath);
-      if (now - stats.mtime.getTime() > RETENTION_MS) {
-        fs.unlinkSync(filePath);
-        db.prepare("DELETE FROM backup_metadata WHERE filename = ?").run(f);
-        console.log(`[DB] Pruned expired backup (older than ${retentionDays} days): ${f}`);
+      if ((f.startsWith('backup-') || f.startsWith('manual-backup-')) && (f.endsWith('.db') || f.endsWith('.bundle'))) {
+        if (now - stats.mtime.getTime() > RETENTION_MS) {
+          fs.unlinkSync(filePath);
+          db.prepare("DELETE FROM backup_metadata WHERE filename = ?").run(f);
+          console.log(`[DB] Pruned expired backup (older than ${retentionDays} days): ${f}`);
+        }
+      } else if (f.startsWith('temp-') && stats.isDirectory()) {
+        // Clean up orphan temporary backup directories older than 1 hour
+        if (now - stats.mtime.getTime() > 60 * 60 * 1000) {
+          fs.rmSync(filePath, { recursive: true, force: true });
+          console.log(`[DB] Pruned orphan temp backup folder: ${f}`);
+        }
       }
-    });
+    } catch {}
+  });
 }
 
 /**
@@ -1297,15 +1305,19 @@ export async function createApplicationBackupBundle(options: {
       }
     } catch {}
 
-    // 4. Copy entire /uploads directory recursively (including nested folders like ai-studio/)
+    // 4. Link entire /uploads directory recursively without duplicating files on disk
     const uploadsDir = getUploadsDir();
     let totalUploadsFiles = 0;
     let totalUploadsBytes = 0;
 
     if (fs.existsSync(uploadsDir)) {
       const destUploads = path.join(tempDir, 'uploads');
-      fs.mkdirSync(destUploads, { recursive: true });
-      fs.cpSync(uploadsDir, destUploads, { recursive: true, force: true });
+      try {
+        fs.symlinkSync(uploadsDir, destUploads, 'dir');
+      } catch (e) {
+        fs.mkdirSync(destUploads, { recursive: true });
+        fs.cpSync(uploadsDir, destUploads, { recursive: true, force: true });
+      }
 
       const countFiles = (dir: string) => {
         try {
@@ -1323,7 +1335,7 @@ export async function createApplicationBackupBundle(options: {
           }
         } catch {}
       };
-      countFiles(destUploads);
+      countFiles(uploadsDir);
     }
 
     // 5. Generate Manifest
@@ -1349,8 +1361,8 @@ export async function createApplicationBackupBundle(options: {
 
     fs.writeFileSync(path.join(tempDir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf-8');
 
-    // 6. Create Tarball Bundle (using level 6 compression for optimal speed & size)
-    await tar.c({ gzip: { level: 6 }, file: finalBackupPath, cwd: tempDir }, ['.']);
+    // 6. Create Tarball Bundle (using level 6 compression for optimal speed & size, following symlinks)
+    await tar.c({ gzip: { level: 6 }, follow: true, file: finalBackupPath, cwd: tempDir }, ['.']);
 
     // 7. Store label in backup_metadata if provided
     if (options.label) {
