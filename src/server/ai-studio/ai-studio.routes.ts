@@ -201,15 +201,15 @@ aiStudioRouter.get("/jobs/:id", (req: Request, res: Response) => {
 const createJobSchema = z.object({
   show_name: z.string().min(1, "Show name is required"),
   dj_name: z.string().min(1, "DJ name is required"),
-  dj_id: z.string().optional().nullable(),
+  dj_id: z.string().optional().nullable().transform(v => v?.trim() || undefined),
   source_type: z.enum(['live_stream', 'stream_url', 'podcast', 'upload', 'schedule_slot']),
-  source_url: z.string().optional().nullable(),
-  custom_prompt: z.string().optional().nullable(),
-  preset_id: z.string().optional().nullable(),
+  source_url: z.string().optional().nullable().transform(v => v?.trim() || undefined),
+  custom_prompt: z.string().optional().nullable().transform(v => v?.trim() || undefined),
+  preset_id: z.string().optional().nullable().transform(v => v?.trim() || undefined),
   template: z.enum(['neon_cyber', 'minimal_studio', 'retro_vinyl', 'waveform_pulse']).optional().default('neon_cyber'),
   aspect_ratio: z.enum(['9:16', '1:1', '16:9']).optional().default('9:16'),
-  target_reels_count: z.number().int().min(1).max(6).optional().default(3),
-  duration_seconds: z.number().int().min(15).max(300).optional().default(60)
+  target_reels_count: z.number().int().min(1).max(10).optional().default(3),
+  duration_seconds: z.number().int().min(10).max(86400).optional().default(60)
 });
 
 aiStudioRouter.post("/jobs", async (req: any, res: Response) => {
@@ -235,6 +235,12 @@ aiStudioRouter.post("/jobs", async (req: any, res: Response) => {
     logAction(req, 'CREATE', 'ai_job', job.id, { show: parsed.show_name, dj: parsed.dj_name });
     res.status(201).json({ success: true, job });
   } catch (err: any) {
+    if (err instanceof z.ZodError) {
+      console.error("[AI Studio] Error creating job:", err.format());
+      const firstIssue = err.issues?.[0];
+      const msg = firstIssue ? `${firstIssue.path.join('.')}: ${firstIssue.message}` : "Validation failed";
+      return res.status(400).json({ error: msg, details: err.issues });
+    }
     console.error("[AI Studio] Error creating job:", err);
     res.status(400).json({ error: err.message || "Failed to create AI Studio job" });
   }

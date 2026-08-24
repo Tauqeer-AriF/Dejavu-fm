@@ -5567,6 +5567,177 @@ apiRouter.delete("/admin/curated-tracks/:id", authMiddleware, authorizeRole(['ad
   }
 });
 
+// Audio Storage Stats & Cleanup Endpoints
+apiRouter.get("/admin/audio-storage/stats", authorizeRole('admin'), (req: Request, res: Response) => {
+  try {
+    let totalAudioFiles = 0;
+    let totalAudioBytes = 0;
+    const categoryBreakdown = {
+      ai_temp_captures: { count: 0, bytes: 0, formatted: '0 KB' },
+      stream_recordings: { count: 0, bytes: 0, formatted: '0 KB' },
+      orphaned_temp_uploads: { count: 0, bytes: 0, formatted: '0 KB' },
+      library_audio: { count: 0, bytes: 0, formatted: '0 KB' }
+    };
+
+    const scanDir = (dirPath: string, catKey: keyof typeof categoryBreakdown) => {
+      if (!fs.existsSync(dirPath)) return;
+      try {
+        const files = fs.readdirSync(dirPath);
+        for (const file of files) {
+          const fullPath = path.join(dirPath, file);
+          try {
+            const stat = fs.statSync(fullPath);
+            if (stat.isFile()) {
+              categoryBreakdown[catKey].count++;
+              categoryBreakdown[catKey].bytes += stat.size;
+              totalAudioFiles++;
+              totalAudioBytes += stat.size;
+            }
+          } catch (e) {}
+        }
+      } catch (e) {}
+    };
+
+    scanDir(path.join(process.cwd(), 'tmp', 'ai-studio'), 'ai_temp_captures');
+    scanDir(path.join(process.cwd(), 'public', 'uploads', 'ai-studio'), 'ai_temp_captures');
+    scanDir(path.join(process.cwd(), 'recordings'), 'stream_recordings');
+    scanDir(path.join(process.cwd(), 'public', 'uploads', 'temp'), 'orphaned_temp_uploads');
+    scanDir(path.join(process.cwd(), 'public', 'uploads', 'audio'), 'library_audio');
+
+    for (const key of Object.keys(categoryBreakdown) as (keyof typeof categoryBreakdown)[]) {
+      const b = categoryBreakdown[key].bytes;
+      categoryBreakdown[key].formatted = b > 1024 * 1024 ? `${(b / (1024 * 1024)).toFixed(2)} MB` : `${(b / 1024).toFixed(1)} KB`;
+    }
+
+    let staleTelemetryRows = 0;
+    try {
+      const row1 = db.prepare("SELECT COUNT(*) as c FROM analytics_events").get() as any;
+      if (row1) staleTelemetryRows += (row1.c || 0);
+    } catch (e) {}
+    try {
+      const row2 = db.prepare("SELECT COUNT(*) as c FROM site_stats").get() as any;
+      if (row2) staleTelemetryRows += (row2.c || 0);
+    } catch (e) {}
+
+    const dbPath = path.join(process.cwd(), 'dejavu.db');
+    const walPath = path.join(process.cwd(), 'dejavu.db-wal');
+    let dbSizeBytes = 0;
+    let walSizeBytes = 0;
+    if (fs.existsSync(dbPath)) dbSizeBytes = fs.statSync(dbPath).size;
+    if (fs.existsSync(walPath)) walSizeBytes = fs.statSync(walPath).size;
+
+    res.json({
+      total_audio_files: totalAudioFiles,
+      total_audio_bytes: totalAudioBytes,
+      total_audio_formatted: totalAudioBytes > 1024 * 1024 ? `${(totalAudioBytes / (1024 * 1024)).toFixed(2)} MB` : `${(totalAudioBytes / 1024).toFixed(1)} KB`,
+      categories: categoryBreakdown,
+      database: {
+        db_size_formatted: `${(dbSizeBytes / (1024 * 1024)).toFixed(2)} MB`,
+        wal_size_formatted: `${(walSizeBytes / 1024).toFixed(1)} KB`,
+        stale_telemetry_rows: staleTelemetryRows
+      }
+    });
+  } catch (error: any) {
+    console.error('Audio storage stats error:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch audio storage stats' });
+  }
+});
+
+apiRouter.post("/admin/audio-storage/cleanup", authorizeRole('admin'), (req: Request, res: Response) => {
+  try {
+    const {
+      retention_hours = 24,
+      clean_temp_captures = true,
+      clean_recordings = false,
+      clean_orphaned_audio = true,
+      prune_db_telemetry = true,
+      run_vacuum = true
+    } = req.body;
+
+    const cutoffMs = Date.now() - (Number(retention_hours) * 60 * 60 * 1000);
+    let deletedFiles = 0;
+    let freedBytes = 0;
+    let purgedDbRows = 0;
+    const details: string[] = [];
+
+    const cleanDirectory = (dirPath: string, label: string) => {
+      if (!fs.existsSync(dirPath)) return;
+      try {
+        const files = fs.readdirSync(dirPath);
+        for (const file of files) {
+          const fullPath = path.join(dirPath, file);
+          try {
+            const stat = fs.statSync(fullPath);
+            if (stat.isFile() && (Number(retention_hours) === 0 || stat.mtimeMs < cutoffMs)) {
+              fs.unlinkSync(fullPath);
+              deletedFiles++;
+              freedBytes += stat.size;
+            }
+          } catch (e) {}
+        }
+        details.push(`Cleaned ${label}`);
+      } catch (e) {}
+    };
+
+    if (clean_temp_captures) {
+      cleanDirectory(path.join(process.cwd(), 'tmp', 'ai-studio'), 'AI Studio temp capture audio and ffmpeg chunks');
+      cleanDirectory(path.join(process.cwd(), 'public', 'uploads', 'ai-studio'), 'Temporary preview clips');
+    }
+
+    if (clean_recordings) {
+      cleanDirectory(path.join(process.cwd(), 'recordings'), 'Stale radio show archive recordings');
+    }
+
+    if (clean_orphaned_audio) {
+      cleanDirectory(path.join(process.cwd(), 'public', 'uploads', 'temp'), 'Orphaned temporary audio uploads');
+    }
+
+    if (prune_db_telemetry) {
+      try {
+        const r1 = db.prepare("DELETE FROM analytics_events WHERE timestamp < datetime('now', '-' || ? || ' days')").run(String(Math.max(7, Math.ceil(retention_hours / 24))));
+        purgedDbRows += (r1.changes || 0);
+      } catch (e) {}
+      try {
+        const r2 = db.prepare("DELETE FROM audit_logs WHERE created_at < datetime('now', '-' || ? || ' days')").run(String(Math.max(7, Math.ceil(retention_hours / 24))));
+        purgedDbRows += (r2.changes || 0);
+      } catch (e) {}
+      details.push(`Purged ${purgedDbRows} obsolete telemetry/log records from SQLite`);
+    }
+
+    let dbSizeFormatted = 'N/A';
+    if (run_vacuum) {
+      try {
+        db.exec('PRAGMA wal_checkpoint(TRUNCATE);');
+        db.exec('VACUUM;');
+        const dbPath = path.join(process.cwd(), 'dejavu.db');
+        if (fs.existsSync(dbPath)) {
+          const newDbSize = fs.statSync(dbPath).size;
+          dbSizeFormatted = `${(newDbSize / (1024 * 1024)).toFixed(2)} MB`;
+        }
+        details.push('Executed SQLite VACUUM and WAL log truncation.');
+      } catch (e: any) {
+        details.push(`Vacuum notice: ${e.message}`);
+      }
+    }
+
+    logAction(req, 'AUDIO_STORAGE_CLEANUP', 'storage');
+
+    res.json({
+      success: true,
+      deleted_files_count: deletedFiles,
+      freed_bytes: freedBytes,
+      freed_formatted: freedBytes > 1024 * 1024 ? `${(freedBytes / (1024 * 1024)).toFixed(2)} MB` : `${(freedBytes / 1024).toFixed(1)} KB`,
+      purged_db_rows: purgedDbRows,
+      vacuum_executed: run_vacuum,
+      new_db_size: dbSizeFormatted,
+      details
+    });
+  } catch (error: any) {
+    console.error('Audio storage cleanup error:', error);
+    res.status(500).json({ error: error.message || 'Failed to execute audio cleanup task' });
+  }
+});
+
 // Gamification System Routes
 apiRouter.use(gamificationRouter);
 

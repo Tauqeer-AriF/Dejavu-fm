@@ -899,17 +899,18 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
   const safeShow = sanitizeForFont(options.showName || "LIVE SET", "LIVE SET", 38).toUpperCase();
   const safeCaption = sanitizeForFont(options.captionText || "Tune in live on DejavuFM radio", "Tune in live on DejavuFM radio", 55);
 
-  const fontStyle: FontStyle = theme === 'retro_vinyl' ? 'serif' : theme === 'minimal_studio' ? 'mono' : 'bold';
+  const fontStyle: FontStyle = theme === 'retro_vinyl' ? 'serif' : 'bold';
   const fontFile = getDynamicFontFile(fontStyle) || getSystemFontFile();
   const fontArg = fontFile ? `fontfile=${fontFile.replace(/\\/g, '/')}:` : '';
 
-  // Adaptive font sizing based on string length to prevent overflow
-  const djFontSize916 = safeDj.length > 22 ? 34 : safeDj.length > 16 ? 38 : 44;
-  const hookFontSize916 = safeHook.length > 28 ? 26 : safeHook.length > 18 ? 30 : 36;
-  const showFontSize916 = safeShow.length > 24 ? 20 : 24;
+  // Adaptive dynamic font sizing based on string length to guarantee crisp readability across all media backgrounds
+  const djFontSize916 = safeDj.length > 25 ? 30 : safeDj.length > 18 ? 34 : safeDj.length > 12 ? 38 : 44;
+  const hookFontSize916 = safeHook.length > 35 ? 24 : safeHook.length > 22 ? 28 : safeHook.length > 14 ? 32 : 36;
+  const showFontSize916 = safeShow.length > 28 ? 18 : safeShow.length > 18 ? 20 : 24;
 
-  const djFontSize11 = safeDj.length > 22 ? 28 : safeDj.length > 16 ? 32 : 36;
-  const hookFontSize11 = safeHook.length > 28 ? 22 : safeHook.length > 18 ? 26 : 28;
+  const djFontSize11 = safeDj.length > 25 ? 24 : safeDj.length > 18 ? 28 : safeDj.length > 12 ? 32 : 36;
+  const hookFontSize11 = safeHook.length > 35 ? 20 : safeHook.length > 22 ? 24 : safeHook.length > 14 ? 26 : 30;
+  const showFontSize11 = safeShow.length > 28 ? 16 : 20;
 
   let filterComplex = '';
 

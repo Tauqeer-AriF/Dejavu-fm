@@ -62,6 +62,8 @@ async function getGeminiClient(): Promise<any | null> {
 function normalizeGeminiModel(modelName?: string): string {
   if (!modelName) return 'gemini-2.5-flash';
   if (
+    modelName.includes('1.5') ||
+    modelName.includes('1.0') ||
     modelName.includes('3.7') ||
     modelName.includes('3.6') ||
     modelName.includes('3.1') ||
@@ -249,7 +251,7 @@ Return ONLY valid JSON matching this schema:
       const candidateModels = Array.from(new Set([
         primaryModel,
         'gemini-2.5-flash',
-        'gemini-1.5-flash'
+        'gemini-2.5-pro'
       ]));
 
       for (const modelToTry of candidateModels) {

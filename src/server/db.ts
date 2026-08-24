@@ -908,7 +908,7 @@ export function initDb() {
     CREATE INDEX IF NOT EXISTS idx_song_requests_status_votes ON song_requests(status, votes DESC);
   `);
   try {
-    db.exec("UPDATE settings SET value = 'gemini-2.5-flash' WHERE key = 'ai_gemini_model' AND (value LIKE '%3.%' OR value LIKE '%2.0%' OR value = 'gemini-3.6-flash' OR value = 'gemini-flash-latest');");
+    db.exec("UPDATE settings SET value = 'gemini-2.5-flash' WHERE key = 'ai_gemini_model' AND (value LIKE '%3.%' OR value LIKE '%2.0%' OR value LIKE '%1.5%' OR value LIKE '%1.0%' OR value = 'gemini-3.6-flash' OR value = 'gemini-flash-latest');");
   } catch (e) {}
   try {
     db.exec("UPDATE users SET email = username WHERE email IS NULL AND username LIKE '%@%'");

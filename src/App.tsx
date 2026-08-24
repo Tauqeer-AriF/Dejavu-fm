@@ -1654,7 +1654,7 @@ function MainLayout() {
         </Suspense>
       )}
       
-      <main className={`front-main-container ${location.pathname.includes('/studio') || isSplitActive ? "flex-1 w-full relative" : "flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 relative"}`}>
+      <main className={`front-main-container ${location.pathname.includes('/studio') || isSplitActive ? "flex-1 w-full relative" : "flex-1 w-full max-w-7xl mx-auto py-4 md:py-8 px-0 relative"}`}>
         {!isAdmin && !isSplitActive && <AdvertisementSliders position="top" />}
         <ErrorBoundary key={isAdmin ? 'admin' : location.pathname}>
           <AnimatedRoutes adminPath={adminPath} />
