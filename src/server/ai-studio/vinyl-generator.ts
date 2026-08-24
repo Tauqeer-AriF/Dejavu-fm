@@ -1,8 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 import { spawnSync } from 'child_process';
-import sharp from 'sharp';
-import { getFFmpegPath } from './ffmpeg.service.ts';
 
 export type VinylTheme = 'retro_vinyl' | 'gold_luxury' | 'neon_cyber' | 'minimal_studio' | 'waveform_pulse';
 
@@ -374,86 +372,59 @@ export function generateVinylSheenSVG(options: { size?: number }): string {
 /**
  * Renders both the rotating vinyl disc PNG AND the stationary light sheen overlay PNG assets.
  */
-export async function createVinylDiscPNG(options: {
+export function createVinylDiscPNG(options: {
   djName?: string;
   showName?: string;
   labelTheme?: VinylTheme;
   outputPngPath: string;
-}): Promise<{ discPath: string; sheenPath: string } | null> {
+}): { discPath: string; sheenPath: string } | null {
   try {
     const tempSvgPath = options.outputPngPath.replace(/\.png$/i, '.svg');
     const sheenPngPath = options.outputPngPath.replace(/\.png$/i, '_sheen.png');
     const tempSheenSvgPath = options.outputPngPath.replace(/\.png$/i, '_sheen.svg');
 
-    // 1. Generate Disc SVG & Sheen SVG
+    // 1. Generate Disc SVG
     const svgContent = generateVinylSVG({
       djName: options.djName,
       showName: options.showName,
       labelTheme: options.labelTheme,
       size: 600
     });
+    fs.writeFileSync(tempSvgPath, svgContent, 'utf-8');
+
+    // 2. Generate Sheen SVG
     const sheenSvgContent = generateVinylSheenSVG({ size: 600 });
+    fs.writeFileSync(tempSheenSvgPath, sheenSvgContent, 'utf-8');
 
-    let discDone = false;
-    let sheenDone = false;
+    // Convert both to PNG via FFmpeg Lanczos scaling
+    const resDisc = spawnSync('ffmpeg', [
+      '-y',
+      '-i', tempSvgPath,
+      '-vf', 'scale=600:600:flags=lanczos',
+      options.outputPngPath
+    ], { encoding: 'utf-8' });
 
-    // A. First attempt rendering with Sharp (high performance native SVG->PNG engine)
+    const resSheen = spawnSync('ffmpeg', [
+      '-y',
+      '-i', tempSheenSvgPath,
+      '-vf', 'scale=600:600:flags=lanczos',
+      sheenPngPath
+    ], { encoding: 'utf-8' });
+
+    // Clean up temporary SVG files
     try {
-      await sharp(Buffer.from(svgContent))
-        .resize(600, 600)
-        .png()
-        .toFile(options.outputPngPath);
-      discDone = fs.existsSync(options.outputPngPath);
-    } catch (sharpErr) {
-      console.warn('[Vinyl Generator] Sharp conversion for vinyl disc notice:', sharpErr);
-    }
+      if (fs.existsSync(tempSvgPath)) fs.unlinkSync(tempSvgPath);
+      if (fs.existsSync(tempSheenSvgPath)) fs.unlinkSync(tempSheenSvgPath);
+    } catch {}
 
-    try {
-      await sharp(Buffer.from(sheenSvgContent))
-        .resize(600, 600)
-        .png()
-        .toFile(sheenPngPath);
-      sheenDone = fs.existsSync(sheenPngPath);
-    } catch (sharpErr) {
-      console.warn('[Vinyl Generator] Sharp conversion for vinyl sheen notice:', sharpErr);
-    }
-
-    // B. Fallback to FFmpeg binary conversion if Sharp didn't complete
-    if (!discDone || !sheenDone) {
-      const ffmpegBin = getFFmpegPath();
-      fs.writeFileSync(tempSvgPath, svgContent, 'utf-8');
-      fs.writeFileSync(tempSheenSvgPath, sheenSvgContent, 'utf-8');
-
-      if (!discDone) {
-        const resDisc = spawnSync(ffmpegBin, [
-          '-y',
-          '-i', tempSvgPath,
-          '-vf', 'scale=600:600:flags=lanczos',
-          options.outputPngPath
-        ], { encoding: 'utf-8' });
-        discDone = resDisc.status === 0 && fs.existsSync(options.outputPngPath);
-      }
-
-      if (!sheenDone) {
-        const resSheen = spawnSync(ffmpegBin, [
-          '-y',
-          '-i', tempSheenSvgPath,
-          '-vf', 'scale=600:600:flags=lanczos',
-          sheenPngPath
-        ], { encoding: 'utf-8' });
-        sheenDone = resSheen.status === 0 && fs.existsSync(sheenPngPath);
-      }
-
-      // Clean up temp SVG files
-      try {
-        if (fs.existsSync(tempSvgPath)) fs.unlinkSync(tempSvgPath);
-        if (fs.existsSync(tempSheenSvgPath)) fs.unlinkSync(tempSheenSvgPath);
-      } catch {}
-    }
-
-    if (discDone && sheenDone) {
+    if (
+      resDisc.status === 0 &&
+      fs.existsSync(options.outputPngPath) &&
+      resSheen.status === 0 &&
+      fs.existsSync(sheenPngPath)
+    ) {
       return { discPath: options.outputPngPath, sheenPath: sheenPngPath };
-    } else if (discDone) {
+    } else if (fs.existsSync(options.outputPngPath)) {
       return { discPath: options.outputPngPath, sheenPath: options.outputPngPath };
     }
     return null;
