@@ -570,6 +570,8 @@ export function deleteSingleReel(reelId: string) {
   const reel = db.prepare('SELECT audio_url, video_url, thumbnail_url FROM ai_reels WHERE id = ?').get(reelId) as any;
   if (reel) {
     const uploadsDir = getUploadsDir();
+    
+    // 1. Delete standard mapped URLs
     ['audio_url', 'video_url', 'thumbnail_url'].forEach(k => {
       const u = reel[k];
       if (u && typeof u === 'string') {
@@ -580,6 +582,25 @@ export function deleteSingleReel(reelId: string) {
         } catch (e) {}
       }
     });
+
+    // 2. Scan and delete any other files starting with reelId in the storage directory to catch versioned/re-rendered files
+    try {
+      const storageDir = getAIStudioStorageDir();
+      if (fs.existsSync(storageDir)) {
+        const files = fs.readdirSync(storageDir);
+        files.forEach(file => {
+          if (file.startsWith(reelId)) {
+            const filePath = path.join(storageDir, file);
+            try {
+              if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+              }
+            } catch (err) {}
+          }
+        });
+      }
+    } catch (err) {}
+
     db.prepare('DELETE FROM ai_reels WHERE id = ?').run(reelId);
     emitJobUpdate('ai_reel_deleted', { reelId });
     return true;
