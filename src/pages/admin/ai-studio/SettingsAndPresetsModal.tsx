@@ -66,6 +66,32 @@ export const SettingsAndPresetsModal: React.FC<Props> = ({
   const [isPurgingReels, setIsPurgingReels] = useState(false);
   const [purgeReelsResult, setPurgeReelsResult] = useState<string | null>(null);
 
+  const [isCleaningDisk, setIsCleaningDisk] = useState(false);
+  const [diskCleanResult, setDiskCleanResult] = useState<string | null>(null);
+  const [cleanupAgeHours, setCleanupAgeHours] = useState<number>(24);
+
+  const handleCleanDiskNow = async () => {
+    const confirmed = await showConfirm({
+      title: "Clean Temporary Files",
+      message: `Clean orphaned raw audio buffers, FFmpeg temp render files, and clips older than ${cleanupAgeHours} hours from server storage?`,
+      style: "danger",
+      confirmText: `Clean Temp Files (> ${cleanupAgeHours}h)`,
+      cancelText: "Cancel"
+    });
+    if (!confirmed) return;
+
+    setIsCleaningDisk(true);
+    setDiskCleanResult(null);
+    try {
+      const res = await aiStudioApi.cleanupDisk(cleanupAgeHours);
+      setDiskCleanResult(`🧹 Cleaned ${res.deletedFilesCount} temporary file(s), freed ${res.freedMB} MB of disk space!`);
+    } catch (e: any) {
+      setDiskCleanResult(`Cleanup error: ${e.message}`);
+    } finally {
+      setIsCleaningDisk(false);
+    }
+  };
+
   const handlePurgeReelsNow = async () => {
     const hours = settings.ai_auto_delete_reels_hours || 48;
     const confirmed = await showConfirm({
@@ -274,8 +300,6 @@ export const SettingsAndPresetsModal: React.FC<Props> = ({
                 >
                   <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recommended - Fast & Powerful Multimodal Analysis)</option>
                   <option value="gemini-2.5-pro">Gemini 2.5 Pro (Deep Multimodal Reasoning & Analysis)</option>
-                  <option value="gemini-1.5-flash">Gemini 1.5 Flash (High Speed Fallback)</option>
-                  <option value="gemini-1.5-pro">Gemini 1.5 Pro (Complex Context Fallback)</option>
                 </select>
               </div>
 
@@ -629,6 +653,67 @@ export const SettingsAndPresetsModal: React.FC<Props> = ({
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Disk Storage & Temporary Files Cleanup */}
+            <div className={`p-4 rounded-2xl border space-y-4 ${
+              isLight ? "bg-slate-50 border-slate-200" : "bg-black/30 border-white/10"
+            }`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <HardDrive className="w-4 h-4 text-cyan-400" />
+                    <h4 className={`text-xs font-bold ${isLight ? "text-slate-900" : "text-white"}`}>
+                      Temporary Files & Cache Storage
+                    </h4>
+                  </div>
+                  <p className={`text-[11px] leading-relaxed ${isLight ? "text-slate-500" : "text-white/50"}`}>
+                    Clear orphaned audio stream captures, temporary FFmpeg render chunks, and cached waveforms from disk storage.
+                  </p>
+                </div>
+              </div>
+
+              <div className={`p-3.5 rounded-xl border text-xs space-y-3 ${
+                isLight ? "bg-white border-slate-200" : "bg-black/40 border-white/10"
+              }`}>
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[11px] font-mono ${isLight ? "text-slate-600" : "text-white/60"}`}>
+                      Delete temp files older than:
+                    </span>
+                    <select
+                      value={cleanupAgeHours}
+                      onChange={(e) => setCleanupAgeHours(parseInt(e.target.value, 10))}
+                      className={`px-2.5 py-1 rounded-lg border text-xs font-mono font-bold focus:outline-none focus:border-cyan-400 ${
+                        isLight ? "bg-white border-slate-300 text-slate-900" : "bg-black/60 border-white/20 text-white"
+                      }`}
+                    >
+                      <option value={1}>1 Hour (Aggressive)</option>
+                      <option value={6}>6 Hours</option>
+                      <option value={12}>12 Hours</option>
+                      <option value={24}>24 Hours (1 Day)</option>
+                      <option value={48}>48 Hours (2 Days)</option>
+                      <option value={168}>7 Days</option>
+                    </select>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleCleanDiskNow}
+                    disabled={isCleaningDisk}
+                    className="px-3.5 py-1.5 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-black font-black rounded-lg text-[11px] transition flex items-center gap-1.5 shadow-md shadow-cyan-500/20"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    {isCleaningDisk ? "Cleaning Disk..." : "Clean Temporary Files"}
+                  </button>
+                </div>
+
+                {diskCleanResult && (
+                  <div className="p-2.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-[11px] font-mono text-cyan-300">
+                    {diskCleanResult}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Automated Reel Retention & Expiry Policy */}

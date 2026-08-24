@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useModal } from '../../context/ModalContext';
 import { fetchAdmin } from './adminApi';
 import { useLogo } from '../../hooks/useLogo';
+import { AudioStorageCleanupCard } from './components/AudioStorageCleanupCard';
 import { 
   initAuthListener, 
   googleSignIn, 
@@ -717,6 +718,11 @@ export function AdminBackup() {
               <p className={`text-xs sm:text-sm ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Create snapshots and monitor station storage</p>
             </div>
           </div>
+        </div>
+
+        {/* Audio Storage & Database Reclaim Component */}
+        <div className="mb-8">
+          <AudioStorageCleanupCard onCleanupComplete={loadBackups} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

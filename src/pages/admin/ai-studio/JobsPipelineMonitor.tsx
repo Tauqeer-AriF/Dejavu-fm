@@ -159,88 +159,73 @@ export const JobsPipelineMonitor: React.FC<Props> = ({ jobs, onRefresh, onViewRe
 
   return (
     <div className="space-y-6">
-      {/* On-Air Live Broadcast Monitor Banner */}
-      {onAirStatus?.isOnAir ? (
-        <div className={`p-5 rounded-3xl border space-y-3 relative overflow-hidden ${
-          isLight 
-            ? "bg-gradient-to-r from-purple-50 via-indigo-50 to-slate-50 border-purple-200/80 shadow-xs" 
-            : "bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-black/60 border-purple-500/30"
-        }`}>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                ON AIR NOW
-              </span>
-              <span className={`text-xs font-mono ${isLight ? "text-slate-500" : "text-white/50"}`}>
-                Slot: {onAirStatus.startTime} – {onAirStatus.endTime}
-              </span>
+      {/* On-Air Live Broadcast Monitor Banner (Only displayed when auto-processing is enabled) */}
+      {onAirStatus?.autoProcessEnabled && (
+        onAirStatus?.isOnAir ? (
+          <div className={`p-5 rounded-3xl border space-y-3 relative overflow-hidden ${
+            isLight 
+              ? "bg-gradient-to-r from-purple-50 via-indigo-50 to-slate-50 border-purple-200/80 shadow-xs" 
+              : "bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-black/60 border-purple-500/30"
+          }`}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                  ON AIR NOW
+                </span>
+                <span className={`text-xs font-mono ${isLight ? "text-slate-500" : "text-white/50"}`}>
+                  Slot: {onAirStatus.startTime} – {onAirStatus.endTime}
+                </span>
+              </div>
+
+              <div className="text-xs font-mono text-cyan-400 flex items-center gap-1.5">
+                <Radio className="w-4 h-4 text-rose-400 animate-pulse" />
+                <span>Broadcast Elapsed: {onAirStatus.elapsedMins}m / {onAirStatus.totalMins}m ({onAirStatus.progressPercent}%)</span>
+              </div>
             </div>
 
-            <div className="text-xs font-mono text-cyan-400 flex items-center gap-1.5">
-              <Radio className="w-4 h-4 text-rose-400 animate-pulse" />
-              <span>Broadcast Elapsed: {onAirStatus.elapsedMins}m / {onAirStatus.totalMins}m ({onAirStatus.progressPercent}%)</span>
-            </div>
-          </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 className={`text-lg font-extrabold ${isLight ? "text-slate-900" : "text-white"}`}>
+                  {onAirStatus.showName}
+                </h3>
+                <p className={`text-xs font-semibold ${isLight ? "text-slate-600" : "text-cyan-300"}`}>
+                  Hosted by {onAirStatus.djName}
+                </p>
+              </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <h3 className={`text-lg font-extrabold ${isLight ? "text-slate-900" : "text-white"}`}>
-                {onAirStatus.showName}
-              </h3>
-              <p className={`text-xs font-semibold ${isLight ? "text-slate-600" : "text-cyan-300"}`}>
-                Hosted by {onAirStatus.djName}
-              </p>
+              <div className={`text-xs font-mono px-3 py-1.5 rounded-xl border ${
+                isLight ? "bg-white/80 border-purple-200 text-purple-900" : "bg-black/40 border-purple-500/30 text-purple-200"
+              }`}>
+                ⚡ Auto-Reels pipeline will automatically trigger when this show concludes at <strong>{onAirStatus.endTime}</strong> ({onAirStatus.remainingMins} mins remaining)
+              </div>
             </div>
 
-            <div className={`text-xs font-mono px-3 py-1.5 rounded-xl border ${
-              onAirStatus.autoProcessEnabled
-                ? (isLight ? "bg-white/80 border-purple-200 text-purple-900" : "bg-black/40 border-purple-500/30 text-purple-200")
-                : (isLight ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-amber-950/40 border-amber-500/30 text-amber-300")
-            }`}>
-              {onAirStatus.autoProcessEnabled ? (
-                <>⚡ Auto-Reels pipeline will automatically trigger when this show concludes at <strong>{onAirStatus.endTime}</strong> ({onAirStatus.remainingMins} mins remaining)</>
-              ) : (
-                <>⏸️ Auto-Process is OFF — Pipeline will not trigger automatically when show concludes (Enable in Settings)</>
-              )}
+            {/* On-Air Live Progress Bar */}
+            <div className="space-y-1 pt-1">
+              <div className="w-full h-2 rounded-full overflow-hidden bg-black/20 border border-white/10">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-rose-500 via-purple-500 to-cyan-400"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.max(3, onAirStatus.progressPercent || 0)}%` }}
+                  transition={{ duration: 1 }}
+                />
+              </div>
             </div>
           </div>
-
-          {/* On-Air Live Progress Bar */}
-          <div className="space-y-1 pt-1">
-            <div className="w-full h-2 rounded-full overflow-hidden bg-black/20 border border-white/10">
-              <motion.div
-                className="h-full bg-gradient-to-r from-rose-500 via-purple-500 to-cyan-400"
-                initial={{ width: 0 }}
-                animate={{ width: `${Math.max(3, onAirStatus.progressPercent || 0)}%` }}
-                transition={{ duration: 1 }}
-              />
+        ) : (
+          <div className={`p-4 rounded-2xl border flex items-center justify-between gap-3 text-xs font-mono ${
+            isLight ? "bg-slate-50 border-slate-200 text-slate-600" : "bg-black/30 border-white/10 text-white/60"
+          }`}>
+            <div className="flex items-center gap-2">
+              <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />
+              <span>📻 Schedule Monitor Active — No show currently broadcast on air</span>
             </div>
+            <span className="text-[11px] opacity-75">
+              Checking live timetable every 60s
+            </span>
           </div>
-        </div>
-      ) : (
-        <div className={`p-4 rounded-2xl border flex items-center justify-between gap-3 text-xs font-mono ${
-          onAirStatus?.autoProcessEnabled
-            ? (isLight ? "bg-slate-50 border-slate-200 text-slate-600" : "bg-black/30 border-white/10 text-white/60")
-            : (isLight ? "bg-amber-50/70 border-amber-200/80 text-amber-800" : "bg-amber-950/20 border-amber-500/20 text-amber-300/80")
-        }`}>
-          <div className="flex items-center gap-2">
-            {onAirStatus?.autoProcessEnabled ? (
-              <>
-                <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />
-                <span>📻 Schedule Monitor Active — No show currently broadcast on air</span>
-              </>
-            ) : (
-              <>
-                <Radio className="w-4 h-4 text-amber-500" />
-                <span>⏸️ Schedule Monitor Off — Auto-Process Completed DJ Shows is disabled in Settings</span>
-              </>
-            )}
-          </div>
-          <span className="text-[11px] opacity-75">
-            {onAirStatus?.autoProcessEnabled ? "Checking live timetable every 60s" : "Auto-processing paused"}
-          </span>
-        </div>
+        )
       )}
 
       {/* Control bar */}

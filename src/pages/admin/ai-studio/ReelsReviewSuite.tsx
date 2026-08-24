@@ -31,12 +31,15 @@ import {
   Layers,
   Palette,
   HardDrive,
-  Tv
+  Tv,
+  Sparkles as SparklesIcon
 } from "lucide-react";
 import { AIReel, ReelCategory, ReelStatus } from "./types";
 import { aiStudioApi } from "./aiStudioApi";
 import { useAIStudioTheme } from "./themeContext";
 import { useModal } from "../../../context/ModalContext";
+import { StudioPhonePreviewFrame } from "./StudioPhonePreviewFrame";
+import { ReelGalleryCard } from "./ReelGalleryCard";
 
 interface Props {
   reels: AIReel[];
@@ -709,111 +712,17 @@ export const ReelsReviewSuite: React.FC<Props> = ({ reels, onRefresh, onSelectJo
                 const isChecked = selectedIds.includes(reel.id);
 
                 return (
-                  <motion.div
+                  <ReelGalleryCard
                     key={reel.id}
-                    onClick={() => handleSelectReel(reel)}
-                    whileHover={{ scale: 1.01 }}
-                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative ${
-                      isSelected
-                        ? isLight
-                          ? "bg-neon-purple/10 border-neon-purple shadow-md shadow-neon-purple/10"
-                          : "bg-neon-purple/15 border-neon-purple shadow-lg shadow-neon-purple/10"
-                        : isLight
-                        ? "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/80 shadow-xs"
-                        : "bg-black/30 border-white/10 hover:border-white/25 hover:bg-white/5"
-                    }`}
-                  >
-                    {/* Checkbox selector */}
-                    <div
-                      onClick={(e) => toggleSelectId(reel.id, e)}
-                      className="absolute top-3 right-3 z-10 p-1 hover:scale-110 transition"
-                    >
-                      {isChecked ? (
-                        <CheckSquare className="w-4 h-4 text-neon-purple fill-neon-purple/20" />
-                      ) : (
-                        <Square className={`w-4 h-4 ${isLight ? "text-slate-400 hover:text-slate-600" : "text-white/40 hover:text-white"}`} />
-                      )}
-                    </div>
-
-                    <div className="flex gap-3.5">
-                      {/* Video Thumbnail Preview */}
-                      <div className={`w-20 h-32 rounded-xl border overflow-hidden relative flex-shrink-0 flex items-center justify-center group ${
-                        isLight ? "bg-slate-900 border-slate-200" : "bg-black/60 border-white/10"
-                      }`}>
-                        {reel.thumbnail_url ? (
-                          <img
-                            src={reel.thumbnail_url}
-                            alt={reel.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="text-[10px] font-mono text-white/40 text-center p-1">9:16 Preview</div>
-                        )}
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                          <Play className="w-6 h-6 text-white fill-white" />
-                        </div>
-                        <div className="absolute bottom-1 right-1 bg-black/80 px-1.5 py-0.5 rounded text-[10px] font-mono text-white/90">
-                          {Math.round(reel.duration_seconds)}s
-                        </div>
-                        {reel.aspect_ratio && reel.aspect_ratio !== '9:16' && (
-                          <div className="absolute top-1 left-1 bg-neon-purple/90 px-1 py-0.5 rounded text-[9px] font-mono font-bold text-white">
-                            {reel.aspect_ratio}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Reel Details */}
-                      <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5 pr-6">
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${getCategoryColor(reel.category)}`}>
-                              {reel.category}
-                            </span>
-                            {getStatusBadge(reel.status)}
-                          </div>
-
-                          <h4 className={`font-bold text-sm line-clamp-1 group-hover:text-neon-purple transition ${
-                            isLight ? "text-slate-900" : "text-white"
-                          }`}>
-                            {reel.title}
-                          </h4>
-
-                          {reel.hook && (
-                            <p className={`text-xs font-mono line-clamp-1 ${
-                              isLight ? "text-cyan-700 font-bold" : "text-neon-blue"
-                            }`}>
-                              "{reel.hook}"
-                            </p>
-                          )}
-
-                          <div className={`text-[11px] flex items-center gap-2 ${
-                            isLight ? "text-slate-500" : "text-white/40"
-                          }`}>
-                            <span>{reel.dj_name || "Resident DJ"}</span>
-                            <span>•</span>
-                            <span>{reel.start_seconds}s - {reel.end_seconds}s</span>
-                          </div>
-                        </div>
-
-                        {/* Virality Score Bar */}
-                        <div className={`mt-2 pt-2 border-t flex items-center justify-between ${
-                          isLight ? "border-slate-100" : "border-white/5"
-                        }`}>
-                          <div className={`flex items-center gap-1.5 text-xs font-bold ${
-                            isLight ? "text-amber-600" : "text-amber-400"
-                          }`}>
-                            <Flame className="w-3.5 h-3.5 fill-current" />
-                            <span>Virality: {reel.virality_score}%</span>
-                          </div>
-                          <span className={`text-[10px] font-mono ${
-                            isLight ? "text-slate-400" : "text-white/30"
-                          }`}>
-                            {new Date(reel.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
+                    reel={reel}
+                    isSelected={isSelected}
+                    isChecked={isChecked}
+                    onSelect={() => handleSelectReel(reel)}
+                    onToggleCheck={(e) => toggleSelectId(reel.id, e)}
+                    getCategoryColor={getCategoryColor}
+                    getStatusBadge={getStatusBadge}
+                    isLight={isLight}
+                  />
                 );
               })}
             </div>
@@ -890,66 +799,21 @@ export const ReelsReviewSuite: React.FC<Props> = ({ reels, onRefresh, onSelectJo
                 </div>
 
                 {/* Video Stage & Playback Controls */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-                  {/* Video Player Container */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+                  {/* Smartphone Preview Frame (5 cols) */}
                   <div className="md:col-span-5 flex justify-center">
-                    <div className={`${
-                      selectedAspect === '1:1' ? 'w-[300px] h-[300px]' :
-                      selectedAspect === '16:9' ? 'w-[360px] h-[202px]' :
-                      'w-[240px] h-[426px]'
-                    } bg-black rounded-2xl overflow-hidden border border-slate-800 relative shadow-2xl group flex flex-col justify-between transition-all duration-300`}>
-                      {selectedReel.video_url ? (
-                        <video
-                          key={selectedReel.video_url}
-                          ref={videoRef}
-                          src={selectedReel.video_url}
-                          poster={selectedReel.thumbnail_url || undefined}
-                          onTimeUpdate={() => {
-                            if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
-                          }}
-                          onLoadedMetadata={() => {
-                            if (videoRef.current) setDuration(videoRef.current.duration);
-                          }}
-                          onEnded={() => setIsPlaying(false)}
-                          playsInline
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-xs font-mono text-white/40 p-4 text-center">
-                          Video rendering in progress...
-                        </div>
-                      )}
-
-                      {/* Video Overlay Play Button */}
-                      <button
-                        onClick={togglePlay}
-                        className="absolute inset-0 w-full h-full flex items-center justify-center bg-black/20 hover:bg-black/40 transition group-hover:opacity-100 opacity-0"
-                      >
-                        <div className="w-14 h-14 rounded-full bg-neon-purple/90 text-white flex items-center justify-center shadow-lg shadow-neon-purple/40">
-                          {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 fill-white ml-0.5" />}
-                        </div>
-                      </button>
-
-                      {/* Bottom In-Player Scrubber */}
-                      <div className="absolute bottom-0 inset-x-0 bg-black/85 p-3 space-y-1.5 border-t border-white/10">
-                        <input
-                          type="range"
-                          min="0"
-                          max={duration || selectedReel.duration_seconds || 30}
-                          step="0.1"
-                          value={currentTime}
-                          onChange={handleSeek}
-                          className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-neon-purple"
-                        />
-                        <div className="flex items-center justify-between text-[10px] font-mono text-white/70">
-                          <span>{currentTime.toFixed(1)}s</span>
-                          <button onClick={toggleMute} className="hover:text-white">
-                            {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-                          </button>
-                          <span>{selectedReel.duration_seconds.toFixed(1)}s</span>
-                        </div>
-                      </div>
-                    </div>
+                    <StudioPhonePreviewFrame
+                      reel={selectedReel}
+                      videoRef={videoRef}
+                      isPlaying={isPlaying}
+                      onTogglePlay={togglePlay}
+                      isMuted={isMuted}
+                      onToggleMute={toggleMute}
+                      currentTime={currentTime}
+                      duration={duration || selectedReel.duration_seconds || 30}
+                      selectedAspect={selectedAspect}
+                      isLight={isLight}
+                    />
                   </div>
 
                   {/* Video Customizer & Precision Trim Panel */}
