@@ -60,18 +60,25 @@ async function getGeminiClient(): Promise<any | null> {
 }
 
 function normalizeGeminiModel(modelName?: string): string {
-  if (!modelName) return 'gemini-2.5-flash';
+  if (!modelName) return 'gemini-3.7-flash';
+  const clean = modelName.trim().toLowerCase();
+
   if (
-    modelName.includes('1.5') ||
-    modelName.includes('1.0') ||
-    modelName.includes('3.7') ||
-    modelName.includes('3.6') ||
-    modelName.includes('3.1') ||
-    modelName.includes('latest') ||
-    modelName === 'gemini-flash' ||
-    modelName === 'gemini-pro'
+    clean === 'gemini-3.7-flash' ||
+    clean === 'gemini-3.1-flash-lite' ||
+    clean === 'gemini-flash-latest' ||
+    clean === 'gemini-3.1-pro-preview'
   ) {
-    return 'gemini-2.5-flash';
+    return clean;
+  }
+  if (clean.includes('pro')) {
+    return 'gemini-3.1-pro-preview';
+  }
+  if (clean.includes('lite')) {
+    return 'gemini-3.1-flash-lite';
+  }
+  if (clean.includes('flash') || clean.includes('latest') || clean.includes('1.5') || clean.includes('2.0') || clean.includes('2.5')) {
+    return 'gemini-3.7-flash';
   }
   return modelName;
 }
@@ -135,7 +142,7 @@ export function getAIStudioSettingsFromDb() {
     console.error('[AI Studio] Failed to read settings from DB:', err);
     return {
       ai_studio_enabled: true,
-      ai_gemini_model: 'gemini-2.5-flash',
+      ai_gemini_model: 'gemini-3.7-flash',
       ai_default_reel_duration: 30,
       ai_brand_handle: '@dejavufm',
       ai_brand_hashtag: '#DejavuFM #LondonUnderground #DJSet #UKGarage #HouseMusic',
@@ -181,7 +188,7 @@ export async function analyzeShowWithGemini(params: AnalyzeShowParams): Promise<
 
   if (client) {
     try {
-      const primaryModel = settings.ai_gemini_model || 'gemini-2.5-flash';
+      const primaryModel = normalizeGeminiModel(settings.ai_gemini_model || 'gemini-3.7-flash');
       const showMins = Math.round(params.totalDurationSeconds / 60);
       const showHours = (params.totalDurationSeconds / 3600).toFixed(1);
 
@@ -250,8 +257,9 @@ Return ONLY valid JSON matching this schema:
       // Candidate models for fast, reliable response
       const candidateModels = Array.from(new Set([
         primaryModel,
-        'gemini-2.5-flash',
-        'gemini-2.5-pro'
+        'gemini-3.7-flash',
+        'gemini-3.1-flash-lite',
+        'gemini-flash-latest'
       ]));
 
       for (const modelToTry of candidateModels) {
@@ -285,6 +293,8 @@ Return ONLY valid JSON matching this schema:
         } catch (err: any) {
           const errMessage = String(err?.message || err);
           console.warn(`[AI Studio] Gemini model '${modelToTry}' attempt notice: ${errMessage}`);
+          // Brief backoff before attempting fallback model
+          await new Promise((res) => setTimeout(res, 800));
         }
       }
     } catch (err) {

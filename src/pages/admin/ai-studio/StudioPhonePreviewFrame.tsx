@@ -247,11 +247,38 @@ export const StudioPhonePreviewFrame: React.FC<PhonePreviewFrameProps> = ({
                     <span className="text-[9px] font-bold">2.4k</span>
                   </div>
 
-                  {/* Spinning Audio Vinyl Disc with DJ Label */}
-                  <div className={`w-7 h-7 rounded-full bg-zinc-950 border-2 border-amber-400/80 flex items-center justify-center shadow-lg ${
-                    isPlaying ? 'animate-spin' : ''
-                  }`} style={{ animationDuration: '3.5s' }}>
-                    <Disc3 className="w-3.5 h-3.5 text-neon-blue" />
+                  {/* Luxury Spinning Audio Vinyl Platter with DJ Station Label & Tonearm */}
+                  <div className="relative group/platter">
+                    {/* Audio-Reactive Ambient Backlight Halo */}
+                    <div className={`absolute -inset-1 rounded-full blur-sm opacity-80 transition-all ${
+                      isPlaying ? 'bg-gradient-to-r from-amber-400 via-rose-500 to-neon-purple animate-pulse' : 'bg-amber-500/30'
+                    }`} />
+                    
+                    {/* Rotating Vinyl Platter Body */}
+                    <div className={`relative w-8 h-8 rounded-full bg-zinc-950 border-[1.5px] border-amber-400/90 shadow-2xl flex items-center justify-center overflow-hidden ${
+                      isPlaying ? 'animate-spin' : ''
+                    }`} style={{ animationDuration: '3.33s' }}>
+                      {/* Concentric Grooves */}
+                      <div className="absolute inset-0.5 rounded-full border border-white/10" />
+                      <div className="absolute inset-1 rounded-full border border-white/20" />
+                      <div className="absolute inset-1.5 rounded-full border border-white/10" />
+                      
+                      {/* Butterfly Light Reflection Sheen */}
+                      <div className="absolute inset-0 bg-gradient-to-tr from-white/25 via-transparent to-amber-300/20 pointer-events-none" />
+
+                      {/* Center Label Badge */}
+                      <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-br from-amber-600 via-orange-600 to-black border border-amber-300 flex items-center justify-center shadow-inner">
+                        <span className="text-[5px] font-black text-amber-200 tracking-tighter select-none">
+                          92.3
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Miniature Metallic Tonearm Pivot & Stylus resting on Record */}
+                    <div className="absolute -top-1 -right-1 pointer-events-none drop-shadow-md">
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-300 border border-slate-600" />
+                      <div className="w-3 h-[1.5px] bg-gradient-to-r from-slate-200 to-amber-400 origin-top-right transform -rotate-45 translate-x-[-1px] translate-y-[2px]" />
+                    </div>
                   </div>
                 </div>
 

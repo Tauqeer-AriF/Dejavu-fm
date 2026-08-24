@@ -454,10 +454,11 @@ export const ReelsReviewSuite: React.FC<Props> = ({ reels, onRefresh, onSelectJo
   };
 
   const visualizerThemes = [
-    { id: "neon_cyber", label: "Neon Cyber", desc: "Cyan & Magenta Club Pulse", color: "from-cyan-500 to-fuchsia-500" },
-    { id: "minimal_studio", label: "Minimal Studio", desc: "Clean Monochrome & Gold", color: "from-amber-400 to-slate-200" },
-    { id: "retro_vinyl", label: "Retro Vinyl", desc: "Warm Amber & Orange", color: "from-amber-600 to-orange-500" },
-    { id: "waveform_pulse", label: "Waveform Pulse", desc: "Emerald & Mint Glow", color: "from-emerald-400 to-teal-500" },
+    { id: "gold_luxury", label: "24K Solid Gold Record", desc: "Polished 24K Gold Disc & Diamond Strobe Dots", color: "from-yellow-400 via-amber-500 to-yellow-600" },
+    { id: "retro_vinyl", label: "Spinning Vinyl Disc", desc: "Luxury Amber & Mahogany Grooves, 33⅓ RPM", color: "from-amber-600 to-orange-500" },
+    { id: "neon_cyber", label: "Neon Cyber Slipmat", desc: "Cyan & Magenta Glowing Record Platter", color: "from-cyan-500 to-fuchsia-500" },
+    { id: "minimal_studio", label: "Minimal Studio Platter", desc: "Monochrome Slate & Brushed Titanium Disc", color: "from-amber-400 to-slate-200" },
+    { id: "waveform_pulse", label: "Emerald Groove Disc", desc: "Deep Jade & Mint Frequency Radiance", color: "from-emerald-400 to-teal-500" },
   ];
 
   return (

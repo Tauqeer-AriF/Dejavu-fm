@@ -43,7 +43,7 @@ export const SettingsAndPresetsModal: React.FC<Props> = ({
   const [activeTab, setActiveTab] = useState<"general" | "presets" | "prompt">("general");
   const [settings, setSettings] = useState<AIStudioSettings>({
     ai_studio_enabled: true,
-    ai_gemini_model: "gemini-2.5-flash",
+    ai_gemini_model: "gemini-3.7-flash",
     ai_default_reel_duration: 30,
     ai_brand_handle: "@dejavufm",
     ai_brand_hashtag: "#DejavuFM #UKUnderground #DJSet #ElectronicMusic #RadioReels",
@@ -298,8 +298,9 @@ export const SettingsAndPresetsModal: React.FC<Props> = ({
                       : "bg-black/50 border-white/10 text-white"
                   }`}
                 >
-                  <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recommended - Fast & Powerful Multimodal Analysis)</option>
-                  <option value="gemini-2.5-pro">Gemini 2.5 Pro (Deep Multimodal Reasoning & Analysis)</option>
+                  <option value="gemini-3.7-flash">Gemini 3.7 Flash (Recommended - Ultra-Fast Multimodal & Music Highlight Analysis)</option>
+                  <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Deep Multimodal Reasoning & Complex Acoustic Analysis)</option>
+                  <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite (Lightweight & Low Latency)</option>
                 </select>
               </div>
 

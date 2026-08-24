@@ -540,9 +540,10 @@ export const NewJobModal: React.FC<Props> = ({ isOpen, onClose, onJobCreated, pr
                       : "bg-black/50 border-white/10 text-white"
                   }`}
                 >
+                  <option value="gold_luxury">24K Gold Record (Gold / Diamond)</option>
+                  <option value="retro_vinyl">Retro Vinyl (Amber / Mahogany)</option>
                   <option value="neon_cyber">Neon Cyber (Purple / Cyan)</option>
                   <option value="minimal_studio">Minimal Studio (Gold / Slate)</option>
-                  <option value="retro_vinyl">Retro Vinyl (Amber / Orange)</option>
                   <option value="waveform_pulse">Waveform Pulse (Emerald / Mint)</option>
                 </select>
               </div>

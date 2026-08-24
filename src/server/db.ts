@@ -876,7 +876,7 @@ export function initDb() {
   runMigration('ai_studio_settings_init', `
     INSERT OR IGNORE INTO settings (key, value) VALUES 
       ('ai_studio_enabled', '1'),
-      ('ai_gemini_model', 'gemini-2.5-flash'),
+      ('ai_gemini_model', 'gemini-3.7-flash'),
       ('ai_default_reel_duration', '30'),
       ('ai_brand_handle', '@dejavufm'),
       ('ai_brand_hashtag', '#DejavuFM #LondonUnderground #DJSet #UKGarage #HouseMusic #Grime'),
@@ -908,7 +908,7 @@ export function initDb() {
     CREATE INDEX IF NOT EXISTS idx_song_requests_status_votes ON song_requests(status, votes DESC);
   `);
   try {
-    db.exec("UPDATE settings SET value = 'gemini-2.5-flash' WHERE key = 'ai_gemini_model' AND (value LIKE '%3.%' OR value LIKE '%2.0%' OR value LIKE '%1.5%' OR value LIKE '%1.0%' OR value = 'gemini-3.6-flash' OR value = 'gemini-flash-latest');");
+    db.exec("UPDATE settings SET value = 'gemini-3.7-flash' WHERE key = 'ai_gemini_model' AND (value LIKE '%2.5%' OR value LIKE '%2.0%' OR value LIKE '%1.5%' OR value LIKE '%1.0%' OR value = 'gemini-flash' OR value = 'gemini-pro');");
   } catch (e) {}
   try {
     db.exec("UPDATE users SET email = username WHERE email IS NULL AND username LIKE '%@%'");

@@ -206,7 +206,7 @@ const createJobSchema = z.object({
   source_url: z.string().optional().nullable().transform(v => v?.trim() || undefined),
   custom_prompt: z.string().optional().nullable().transform(v => v?.trim() || undefined),
   preset_id: z.string().optional().nullable().transform(v => v?.trim() || undefined),
-  template: z.enum(['neon_cyber', 'minimal_studio', 'retro_vinyl', 'waveform_pulse']).optional().default('neon_cyber'),
+  template: z.enum(['neon_cyber', 'minimal_studio', 'retro_vinyl', 'waveform_pulse', 'gold_luxury']).optional().default('neon_cyber'),
   aspect_ratio: z.enum(['9:16', '1:1', '16:9']).optional().default('9:16'),
   target_reels_count: z.number().int().min(1).max(10).optional().default(3),
   duration_seconds: z.number().int().min(10).max(86400).optional().default(60)

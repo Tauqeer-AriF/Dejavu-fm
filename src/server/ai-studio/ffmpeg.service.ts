@@ -4,6 +4,7 @@ import fs from "fs";
 import http from "http";
 import https from "https";
 import { getUploadsDir } from "../db.ts";
+import { createVinylDiscPNG } from "./vinyl-generator.ts";
 
 const currentDirname = typeof __dirname !== "undefined" ? __dirname : process.cwd();
 
@@ -638,7 +639,7 @@ export async function sliceAudioChunk(
   return outputPath;
 }
 
-export type VisualizerTheme = 'neon_cyber' | 'minimal_studio' | 'retro_vinyl' | 'waveform_pulse';
+export type VisualizerTheme = 'neon_cyber' | 'minimal_studio' | 'retro_vinyl' | 'waveform_pulse' | 'gold_luxury';
 export type AspectRatioOption = '9:16' | '1:1' | '16:9';
 
 export interface RenderReelOptions {
@@ -904,65 +905,201 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
   const fontArg = fontFile ? `fontfile=${fontFile.replace(/\\/g, '/')}:` : '';
 
   // Adaptive dynamic font sizing based on string length to guarantee crisp readability across all media backgrounds
-  const djFontSize916 = safeDj.length > 25 ? 30 : safeDj.length > 18 ? 34 : safeDj.length > 12 ? 38 : 44;
-  const hookFontSize916 = safeHook.length > 35 ? 24 : safeHook.length > 22 ? 28 : safeHook.length > 14 ? 32 : 36;
+  const djFontSize916 = safeDj.length > 25 ? 30 : safeDj.length > 18 ? 34 : safeDj.length > 12 ? 38 : 42;
+  const hookFontSize916 = safeHook.length > 35 ? 22 : safeHook.length > 22 ? 26 : safeHook.length > 14 ? 30 : 34;
   const showFontSize916 = safeShow.length > 28 ? 18 : safeShow.length > 18 ? 20 : 24;
 
   const djFontSize11 = safeDj.length > 25 ? 24 : safeDj.length > 18 ? 28 : safeDj.length > 12 ? 32 : 36;
   const hookFontSize11 = safeHook.length > 35 ? 20 : safeHook.length > 22 ? 24 : safeHook.length > 14 ? 26 : 30;
   const showFontSize11 = safeShow.length > 28 ? 16 : 20;
 
-  let filterComplex = '';
+  // 1. Generate High-Luxury Vinyl Record PNG Asset for this Reel
+  let vinylAssets: { discPath: string; sheenPath: string } | null = null;
+  try {
+    const outputDir = path.dirname(options.outputVideoPath);
+    const reelBaseName = path.basename(options.outputVideoPath, path.extname(options.outputVideoPath));
+    const targetVinylPng = path.join(outputDir, `vinyl_${reelBaseName}.png`);
+    
+    const created = await createVinylDiscPNG({
+      djName: safeDj,
+      showName: safeShow,
+      labelTheme: theme,
+      outputPngPath: targetVinylPng
+    });
 
-  if (!fontFile) {
-    // If no font file is found, use pure visualizer to prevent Fontconfig errors
-    filterComplex = buildPureVisualizerFilter(theme, aspect, width, height, dur);
-  } else if (aspect === '9:16') {
-    if (theme === 'minimal_studio') {
-      // Clean Studio Minimalist: Dark luxury slate, clean gold/white frequency meters
+    if (created) {
+      if (typeof created === 'string') {
+        vinylAssets = { discPath: created, sheenPath: created };
+      } else {
+        vinylAssets = created;
+      }
+    }
+  } catch (err: any) {
+    console.warn(`[AI Studio FFmpeg] Vinyl PNG generation notice: ${err.message}. Falling back to dynamic spectrum visualizer.`);
+    vinylAssets = null;
+  }
+
+  let filterComplex = '';
+  let videoInputs: string[] = ["-i", options.audioPath];
+
+  if (vinylAssets && fs.existsSync(vinylAssets.discPath)) {
+    const hasSheen = fs.existsSync(vinylAssets.sheenPath) && vinylAssets.sheenPath !== vinylAssets.discPath;
+    
+    if (hasSheen) {
+      // Inputs: [0:a] audio, [1:v] vinyl disc, [2:v] stationary specular sheen overlay
+      videoInputs = ["-i", options.audioPath, "-loop", "1", "-i", vinylAssets.discPath, "-loop", "1", "-i", vinylAssets.sheenPath];
+    } else {
+      videoInputs = ["-i", options.audioPath, "-loop", "1", "-i", vinylAssets.discPath];
+    }
+
+    if (aspect === '9:16') {
+      const discSize = 480;
+      const discY = 480;
+
+      const overlaySheenStep = hasSheen
+        ? `[2:v]scale=${discSize}:${discSize}:flags=lanczos[sheen];[v_disc_base][sheen]overlay=x=(W-w)/2:y=${discY}[v_disc]`
+        : `[v_disc_base]null[v_disc]`;
+
+      if (theme === 'gold_luxury') {
+        // 24K Gold Record & Diamond Strobe Platter
+        filterComplex = [
+          `color=c=0x140d04:s=${width}x${height}:d=${dur}[bg]`,
+          `[1:v]scale=${discSize}:${discSize}:flags=lanczos,rotate=a=2*PI*t*(33.33/60):c=0x00000000:ow=${discSize}:oh=${discSize},format=rgba[spinning_disc]`,
+          `[0:a]showfreqs=s=640x220:mode=bar:colors=0xfacc15|0xfef08a:fscale=log:ascale=cbrt[freqs]`,
+          `[0:a]showwaves=s=640x140:mode=p2p:colors=0xfde047@0.85|0xca8a04@0.85:scale=cbrt[wave]`,
+          `[bg][freqs]overlay=x=(W-w)/2:y=760[v_aura]`,
+          `[v_aura][wave]overlay=x=(W-w)/2:y=970[v_wave]`,
+          `[v_wave][spinning_disc]overlay=x=(W-w)/2:y=${discY}[v_disc_base]`,
+          overlaySheenStep,
+          `[v_disc]drawtext=${fontArg}text='DEJAVUFM • 24K MASTER':fontcolor=0xfacc15:fontsize=28:x=(w-text_w)/2:y=140:box=1:boxcolor=0x000000@0.88:boxborderw=10[v1]`,
+          `[v1]drawtext=${fontArg}text='DIAMOND CUT BROADCAST':fontcolor=0xfef08a:fontsize=15:x=(w-text_w)/2:y=185[v2]`,
+          `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=${djFontSize916}:x=(w-text_w)/2:y=270[v3]`,
+          `[v3]drawtext=${fontArg}text='${safeShow}':fontcolor=0xfde047:fontsize=${showFontSize916}:x=(w-text_w)/2:y=325[v4]`,
+          `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0x140d04:fontsize=${hookFontSize916}:x=(w-text_w)/2:y=395:box=1:boxcolor=0xfacc15@0.95:boxborderw=14[v5]`,
+          `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=22:x=(w-text_w)/2:y=1140:box=1:boxcolor=0x000000@0.75:boxborderw=10,fps=30[v_out]`
+        ].join(";");
+      } else if (theme === 'retro_vinyl') {
+        // Luxury Gold & Warm Amber Grooves (Analog Pirate Heritage)
+        filterComplex = [
+          `color=c=0x0e0905:s=${width}x${height}:d=${dur}[bg]`,
+          `[1:v]scale=${discSize}:${discSize}:flags=lanczos,rotate=a=2*PI*t*(33.33/60):c=0x00000000:ow=${discSize}:oh=${discSize},format=rgba[spinning_disc]`,
+          `[0:a]showfreqs=s=640x220:mode=bar:colors=0xf59e0b|0xef4444:fscale=log:ascale=cbrt[freqs]`,
+          `[0:a]showwaves=s=640x140:mode=p2p:colors=0xf59e0b@0.8|0xef4444@0.8:scale=cbrt[wave]`,
+          `[bg][freqs]overlay=x=(W-w)/2:y=760[v_aura]`,
+          `[v_aura][wave]overlay=x=(W-w)/2:y=970[v_wave]`,
+          `[v_wave][spinning_disc]overlay=x=(W-w)/2:y=${discY}[v_disc_base]`,
+          overlaySheenStep,
+          `[v_disc]drawtext=${fontArg}text='DEJAVUFM • LONDON 92.3':fontcolor=0xf59e0b:fontsize=28:x=(w-text_w)/2:y=140:box=1:boxcolor=0x000000@0.85:boxborderw=10[v1]`,
+          `[v1]drawtext=${fontArg}text='ANALOG HERITAGE ARCHIVE':fontcolor=0xd97706:fontsize=15:x=(w-text_w)/2:y=185[v2]`,
+          `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=${djFontSize916}:x=(w-text_w)/2:y=270[v3]`,
+          `[v3]drawtext=${fontArg}text='${safeShow}':fontcolor=0xfbbf24:fontsize=${showFontSize916}:x=(w-text_w)/2:y=325[v4]`,
+          `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=${hookFontSize916}:x=(w-text_w)/2:y=395:box=1:boxcolor=0xd97706@0.9:boxborderw=14[v5]`,
+          `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=22:x=(w-text_w)/2:y=1140:box=1:boxcolor=0x000000@0.75:boxborderw=10,fps=30[v_out]`
+        ].join(";");
+      } else if (theme === 'minimal_studio') {
+        // Luxury Monochrome Slate & Titanium Platter
+        filterComplex = [
+          `color=c=0x080c14:s=${width}x${height}:d=${dur}[bg]`,
+          `[1:v]scale=${discSize}:${discSize}:flags=lanczos,rotate=a=2*PI*t*(33.33/60):c=0x00000000:ow=${discSize}:oh=${discSize},format=rgba[spinning_disc]`,
+          `[0:a]showfreqs=s=640x220:mode=bar:colors=0xf59e0b|0xffffff:fscale=log:ascale=cbrt[freqs]`,
+          `[bg][freqs]overlay=x=(W-w)/2:y=800[v_aura]`,
+          `[v_aura][spinning_disc]overlay=x=(W-w)/2:y=${discY}[v_disc_base]`,
+          overlaySheenStep,
+          `[v_disc]drawtext=${fontArg}text='DEJAVUFM STUDIO':fontcolor=0xf59e0b:fontsize=28:x=(w-text_w)/2:y=140:box=1:boxcolor=0x000000@0.85:boxborderw=10[v1]`,
+          `[v1]drawtext=${fontArg}text='BROADCAST MASTER':fontcolor=0x94a3b8:fontsize=15:x=(w-text_w)/2:y=185[v2]`,
+          `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=${djFontSize916}:x=(w-text_w)/2:y=270[v3]`,
+          `[v3]drawtext=${fontArg}text='${safeShow}':fontcolor=0xf59e0b:fontsize=${showFontSize916}:x=(w-text_w)/2:y=325[v4]`,
+          `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0x080c14:fontsize=${hookFontSize916}:x=(w-text_w)/2:y=395:box=1:boxcolor=0xffffff@0.95:boxborderw=14[v5]`,
+          `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=22:x=(w-text_w)/2:y=1140:box=1:boxcolor=0x000000@0.75:boxborderw=10,fps=30[v_out]`
+        ].join(";");
+      } else if (theme === 'waveform_pulse') {
+        // Emerald & Mint Deep Radiance Disc
+        filterComplex = [
+          `color=c=0x030f0c:s=${width}x${height}:d=${dur}[bg]`,
+          `[1:v]scale=${discSize}:${discSize}:flags=lanczos,rotate=a=2*PI*t*(33.33/60):c=0x00000000:ow=${discSize}:oh=${discSize},format=rgba[spinning_disc]`,
+          `[0:a]showwaves=s=640x200:mode=cline:colors=0x10b981|0x06b6d4:scale=sqrt[wave]`,
+          `[0:a]showfreqs=s=640x160:mode=line:colors=0x06b6d4|0x10b981:fscale=log[freqs]`,
+          `[bg][wave]overlay=x=(W-w)/2:y=760[v_aura]`,
+          `[v_aura][freqs]overlay=x=(W-w)/2:y=960[v_freqs]`,
+          `[v_freqs][spinning_disc]overlay=x=(W-w)/2:y=${discY}[v_disc_base]`,
+          overlaySheenStep,
+          `[v_disc]drawtext=${fontArg}text='DEJAVUFM LIVE':fontcolor=0x10b981:fontsize=28:x=(w-text_w)/2:y=140:box=1:boxcolor=0x000000@0.85:boxborderw=10[v1]`,
+          `[v1]drawtext=${fontArg}text='24/7 UNDERGROUND SESSIONS':fontcolor=0xa7f3d0:fontsize=15:x=(w-text_w)/2:y=185[v2]`,
+          `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=${djFontSize916}:x=(w-text_w)/2:y=270[v3]`,
+          `[v3]drawtext=${fontArg}text='${safeShow}':fontcolor=0x06b6d4:fontsize=${showFontSize916}:x=(w-text_w)/2:y=325[v4]`,
+          `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=${hookFontSize916}:x=(w-text_w)/2:y=395:box=1:boxcolor=0x059669@0.9:boxborderw=14[v5]`,
+          `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=22:x=(w-text_w)/2:y=1140:box=1:boxcolor=0x000000@0.75:boxborderw=10,fps=30[v_out]`
+        ].join(";");
+      } else {
+        // Neon Cyber Slipmat (Default: Cyan & Magenta Club Pulse)
+        filterComplex = [
+          `color=c=0x060711:s=${width}x${height}:d=${dur}[bg]`,
+          `[1:v]scale=${discSize}:${discSize}:flags=lanczos,rotate=a=2*PI*t*(33.33/60):c=0x00000000:ow=${discSize}:oh=${discSize},format=rgba[spinning_disc]`,
+          `[0:a]showwaves=s=640x200:mode=line:colors=0xb026ff|0x00f0ff:scale=cbrt[wave]`,
+          `[0:a]showfreqs=s=640x160:mode=bar:colors=0x00f0ff|0xb026ff:fscale=log[freqs]`,
+          `[bg][wave]overlay=x=(W-w)/2:y=760[v_aura]`,
+          `[v_aura][freqs]overlay=x=(W-w)/2:y=960[v_freqs]`,
+          `[v_freqs][spinning_disc]overlay=x=(W-w)/2:y=${discY}[v_disc_base]`,
+          overlaySheenStep,
+          `[v_disc]drawtext=${fontArg}text='DEJAVUFM':fontcolor=0xb026ff:fontsize=30:x=(w-text_w)/2:y=140:box=1:boxcolor=0x000000@0.85:boxborderw=10[v1]`,
+          `[v1]drawtext=${fontArg}text='THE SOUND OF LONDON 92.3':fontcolor=0x8892b0:fontsize=15:x=(w-text_w)/2:y=185[v2]`,
+          `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=${djFontSize916}:x=(w-text_w)/2:y=270[v3]`,
+          `[v3]drawtext=${fontArg}text='${safeShow}':fontcolor=0x00f0ff:fontsize=${showFontSize916}:x=(w-text_w)/2:y=325[v4]`,
+          `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=${hookFontSize916}:x=(w-text_w)/2:y=395:box=1:boxcolor=0xb026ff@0.88:boxborderw=14[v5]`,
+          `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=22:x=(w-text_w)/2:y=1140:box=1:boxcolor=0x000000@0.75:boxborderw=10,fps=30[v_out]`
+        ].join(";");
+      }
+    } else if (aspect === '1:1') {
+      // 1:1 Square
+      const discSize = 360;
+      const discY = 220;
+
+      const overlaySheenStep = hasSheen
+        ? `[2:v]scale=${discSize}:${discSize}:flags=lanczos[sheen];[v_disc_base][sheen]overlay=x=(W-w)/2:y=${discY}[v_disc]`
+        : `[v_disc_base]null[v_disc]`;
+
       filterComplex = [
-        `color=c=0x0b0f19:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showfreqs=s=640x240:mode=bar:colors=0xf59e0b|0xffffff:fscale=log:ascale=cbrt[freqs]`,
-        `[bg][freqs]overlay=x=(W-w)/2:y=760[v1]`,
-        `[v1]drawtext=${fontArg}text='DEJAVUFM STUDIO':fontcolor=0xf59e0b:fontsize=30:x=(w-text_w)/2:y=170:box=1:boxcolor=0x000000@0.8:boxborderw=10[v2]`,
-        `[v2]drawtext=${fontArg}text='BROADCAST ARCHIVE':fontcolor=0x94a3b8:fontsize=16:x=(w-text_w)/2:y=215[v3]`,
-        `[v3]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=${djFontSize916}:x=(w-text_w)/2:y=330[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeShow}':fontcolor=0xf59e0b:fontsize=${showFontSize916}:x=(w-text_w)/2:y=390[v5]`,
-        `[v5]drawtext=${fontArg}text='${safeHook}':fontcolor=0x0b0f19:fontsize=${hookFontSize916}:x=(w-text_w)/2:y=520:box=1:boxcolor=0xffffff@0.95:boxborderw=16[v6]`,
-        `[v6]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=22:x=(w-text_w)/2:y=1120:box=1:boxcolor=0x000000@0.7:boxborderw=10,fps=30[v_out]`
-      ].join(";");
-    } else if (theme === 'retro_vinyl') {
-      // Retro Vinyl / Warm Cassette aesthetic: Gold/amber glow, warm waves
-      filterComplex = [
-        `color=c=0x120c06:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showwaves=s=640x220:mode=p2p:colors=0xf59e0b|0xef4444:scale=cbrt[wave]`,
-        `[0:a]showfreqs=s=640x160:mode=bar:colors=0xef4444|0xf59e0b:fscale=log[freqs]`,
-        `[bg][wave]overlay=x=(W-w)/2:y=680[v1]`,
-        `[v1][freqs]overlay=x=(W-w)/2:y=940[v2]`,
-        `[v2]drawtext=${fontArg}text='DEJAVUFM - ANALOG SOUND':fontcolor=0xf59e0b:fontsize=30:x=(w-text_w)/2:y=160:box=1:boxcolor=0x000000@0.85:boxborderw=10[v3]`,
-        `[v3]drawtext=${fontArg}text='LONDON PIRATE HERITAGE 92.3':fontcolor=0xd97706:fontsize=16:x=(w-text_w)/2:y=210[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=${djFontSize916}:x=(w-text_w)/2:y=320[v5]`,
-        `[v5]drawtext=${fontArg}text='${safeShow}':fontcolor=0xfbbf24:fontsize=${showFontSize916}:x=(w-text_w)/2:y=380[v6]`,
-        `[v6]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=${hookFontSize916}:x=(w-text_w)/2:y=510:box=1:boxcolor=0xd97706@0.9:boxborderw=16[v7]`,
-        `[v7]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=22:x=(w-text_w)/2:y=1140:box=1:boxcolor=0x000000@0.65:boxborderw=8,fps=30[v_out]`
-      ].join(";");
-    } else if (theme === 'waveform_pulse') {
-      // Waveform Pulse: Multi-color kinetic spectrum wave
-      filterComplex = [
-        `color=c=0x050814:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showwaves=s=640x240:mode=cline:colors=0x10b981|0x06b6d4|0x6366f1:scale=sqrt[wave]`,
-        `[0:a]showfreqs=s=640x160:mode=line:colors=0x6366f1|0x10b981:fscale=log[freqs]`,
-        `[bg][wave]overlay=x=(W-w)/2:y=660[v1]`,
-        `[v1][freqs]overlay=x=(W-w)/2:y=960[v2]`,
-        `[v2]drawtext=${fontArg}text='DEJAVUFM LIVE':fontcolor=0x10b981:fontsize=32:x=(w-text_w)/2:y=160:box=1:boxcolor=0x000000@0.8:boxborderw=10[v3]`,
-        `[v3]drawtext=${fontArg}text='24/7 ELECTRONIC SESSIONS':fontcolor=0xa7f3d0:fontsize=16:x=(w-text_w)/2:y=210[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=${djFontSize916}:x=(w-text_w)/2:y=320[v5]`,
-        `[v5]drawtext=${fontArg}text='${safeShow}':fontcolor=0x06b6d4:fontsize=${showFontSize916}:x=(w-text_w)/2:y=380[v6]`,
-        `[v6]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=${hookFontSize916}:x=(w-text_w)/2:y=510:box=1:boxcolor=0x059669@0.9:boxborderw=16[v7]`,
-        `[v7]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=22:x=(w-text_w)/2:y=1140:box=1:boxcolor=0x000000@0.6:boxborderw=8,fps=30[v_out]`
+        `color=c=0x080914:s=${width}x${height}:d=${dur}[bg]`,
+        `[1:v]scale=${discSize}:${discSize}:flags=lanczos,rotate=a=2*PI*t*(33.33/60):c=0x00000000:ow=${discSize}:oh=${discSize},format=rgba[spinning_disc]`,
+        `[0:a]showfreqs=s=560x140:mode=bar:colors=0x00f0ff|0xb026ff:fscale=log[freqs]`,
+        `[bg][freqs]overlay=x=(W-w)/2:y=460[v_aura]`,
+        `[v_aura][spinning_disc]overlay=x=(W-w)/2:y=${discY}[v_disc_base]`,
+        overlaySheenStep,
+        `[v_disc]drawtext=${fontArg}text='DEJAVUFM RADIO':fontcolor=0xb026ff:fontsize=24:x=(w-text_w)/2:y=45:box=1:boxcolor=0x000000@0.85:boxborderw=8[v1]`,
+        `[v1]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=${djFontSize11}:x=(w-text_w)/2:y=95[v2]`,
+        `[v2]drawtext=${fontArg}text='${safeShow}':fontcolor=0x00f0ff:fontsize=20:x=(w-text_w)/2:y=140[v3]`,
+        `[v3]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=${hookFontSize11}:x=(w-text_w)/2:y=180:box=1:boxcolor=0xb026ff@0.85:boxborderw=10[v4]`,
+        `[v4]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=640:box=1:boxcolor=0x000000@0.75:boxborderw=8,fps=30[v_out]`
       ].join(";");
     } else {
-      // Default: neon_cyber
+      // 16:9 Landscape
+      const discSize = 420;
+      const discX = 80;
+      const discY = 150;
+
+      const overlaySheenStep = hasSheen
+        ? `[2:v]scale=${discSize}:${discSize}:flags=lanczos[sheen];[v_disc_base][sheen]overlay=x=${discX}:y=${discY}[v_disc]`
+        : `[v_disc_base]null[v_disc]`;
+
+      filterComplex = [
+        `color=c=0x080914:s=${width}x${height}:d=${dur}[bg]`,
+        `[1:v]scale=${discSize}:${discSize}:flags=lanczos,rotate=a=2*PI*t*(33.33/60):c=0x00000000:ow=${discSize}:oh=${discSize},format=rgba[spinning_disc]`,
+        `[0:a]showfreqs=s=460x140:mode=bar:colors=0x00f0ff|0xb026ff:fscale=log[freqs]`,
+        `[bg][freqs]overlay=x=${discX}:y=440[v_aura]`,
+        `[v_aura][spinning_disc]overlay=x=${discX}:y=${discY}[v_disc_base]`,
+        overlaySheenStep,
+        `[v_disc]drawtext=${fontArg}text='DEJAVUFM BROADCAST':fontcolor=0xb026ff:fontsize=24:x=560:y=100:box=1:boxcolor=0x000000@0.85:boxborderw=8[v1]`,
+        `[v1]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=36:x=560:y=170[v2]`,
+        `[v2]drawtext=${fontArg}text='${safeShow}':fontcolor=0x00f0ff:fontsize=24:x=560:y=225[v3]`,
+        `[v3]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=28:x=560:y=300:box=1:boxcolor=0xb026ff@0.88:boxborderw=12[v4]`,
+        `[v4]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=20:x=560:y=620:box=1:boxcolor=0x000000@0.75:boxborderw=8,fps=30[v_out]`
+      ].join(";");
+    }
+  } else {
+    // Fallback if vinyl asset could not be created
+    if (!fontFile) {
+      filterComplex = buildPureVisualizerFilter(theme, aspect, width, height, dur);
+    } else if (aspect === '9:16') {
       filterComplex = [
         `color=c=0x070810:s=${width}x${height}:d=${dur}[bg]`,
         `[0:a]showwaves=s=640x240:mode=line:colors=0xb026ff|0x00f0ff:scale=cbrt[wave]`,
@@ -976,108 +1113,14 @@ export async function renderVerticalSocialReel(options: RenderReelOptions): Prom
         `[v6]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=${hookFontSize916}:x=(w-text_w)/2:y=510:box=1:boxcolor=0xb026ff@0.85:boxborderw=16[v7]`,
         `[v7]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=22:x=(w-text_w)/2:y=1140:box=1:boxcolor=0x000000@0.6:boxborderw=8,fps=30[v_out]`
       ].join(";");
-    }
-  } else if (aspect === '1:1') {
-    // Square 720x720
-    if (theme === 'minimal_studio') {
-      filterComplex = [
-        `color=c=0x0b0f19:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showfreqs=s=600x180:mode=bar:colors=0xf59e0b|0xffffff:fscale=log:ascale=cbrt[freqs]`,
-        `[bg][freqs]overlay=x=(W-w)/2:y=390[v1]`,
-        `[v1]drawtext=${fontArg}text='DEJAVUFM STUDIO':fontcolor=0xf59e0b:fontsize=24:x=(w-text_w)/2:y=60:box=1:boxcolor=0x000000@0.8:boxborderw=8[v2]`,
-        `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=${djFontSize11}:x=(w-text_w)/2:y=140[v3]`,
-        `[v3]drawtext=${fontArg}text='${safeShow}':fontcolor=0xf59e0b:fontsize=20:x=(w-text_w)/2:y=190[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0x0b0f19:fontsize=${hookFontSize11}:x=(w-text_w)/2:y=280:box=1:boxcolor=0xffffff@0.95:boxborderw=12[v5]`,
-        `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=620:box=1:boxcolor=0x000000@0.7:boxborderw=8,fps=30[v_out]`
-      ].join(";");
-    } else if (theme === 'retro_vinyl') {
-      filterComplex = [
-        `color=c=0x120c06:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showwaves=s=600x160:mode=p2p:colors=0xf59e0b|0xef4444:scale=cbrt[wave]`,
-        `[bg][wave]overlay=x=(W-w)/2:y=390[v1]`,
-        `[v1]drawtext=${fontArg}text='DEJAVUFM - ANALOG SOUND':fontcolor=0xf59e0b:fontsize=24:x=(w-text_w)/2:y=60:box=1:boxcolor=0x000000@0.85:boxborderw=8[v2]`,
-        `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=${djFontSize11}:x=(w-text_w)/2:y=140[v3]`,
-        `[v3]drawtext=${fontArg}text='${safeShow}':fontcolor=0xfbbf24:fontsize=20:x=(w-text_w)/2:y=190[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=${hookFontSize11}:x=(w-text_w)/2:y=280:box=1:boxcolor=0xd97706@0.9:boxborderw=12[v5]`,
-        `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=620:box=1:boxcolor=0x000000@0.65:boxborderw=8,fps=30[v_out]`
-      ].join(";");
-    } else if (theme === 'waveform_pulse') {
-      filterComplex = [
-        `color=c=0x050814:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showwaves=s=600x180:mode=cline:colors=0x10b981|0x06b6d4|0x6366f1:scale=sqrt[wave]`,
-        `[bg][wave]overlay=x=(W-w)/2:y=390[v1]`,
-        `[v1]drawtext=${fontArg}text='DEJAVUFM LIVE SESSIONS':fontcolor=0x10b981:fontsize=24:x=(w-text_w)/2:y=60:box=1:boxcolor=0x000000@0.8:boxborderw=8[v2]`,
-        `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=${djFontSize11}:x=(w-text_w)/2:y=140[v3]`,
-        `[v3]drawtext=${fontArg}text='${safeShow}':fontcolor=0x06b6d4:fontsize=20:x=(w-text_w)/2:y=190[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=${hookFontSize11}:x=(w-text_w)/2:y=280:box=1:boxcolor=0x059669@0.9:boxborderw=12[v5]`,
-        `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=620:box=1:boxcolor=0x000000@0.6:boxborderw=8,fps=30[v_out]`
-      ].join(";");
     } else {
-      // Default: neon_cyber
-      filterComplex = [
-        `color=c=0x070810:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showwaves=s=600x160:mode=line:colors=0x00f0ff|0xb026ff:scale=cbrt[wave]`,
-        `[bg][wave]overlay=x=(W-w)/2:y=390[v1]`,
-        `[v1]drawtext=${fontArg}text='DEJAVUFM RADIO':fontcolor=0xb026ff:fontsize=26:x=(w-text_w)/2:y=60:box=1:boxcolor=0x000000@0.7:boxborderw=8[v2]`,
-        `[v2]drawtext=${fontArg}text='${safeDj}':fontcolor=0xffffff:fontsize=${djFontSize11}:x=(w-text_w)/2:y=140[v3]`,
-        `[v3]drawtext=${fontArg}text='${safeShow}':fontcolor=0x00f0ff:fontsize=22:x=(w-text_w)/2:y=190[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=${hookFontSize11}:x=(w-text_w)/2:y=280:box=1:boxcolor=0xb026ff@0.85:boxborderw=12[v5]`,
-        `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=620:box=1:boxcolor=0x000000@0.6:boxborderw=8,fps=30[v_out]`
-      ].join(";");
-    }
-  } else {
-    // 16:9 Landscape 1280x720
-    if (theme === 'minimal_studio') {
-      filterComplex = [
-        `color=c=0x0b0f19:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showfreqs=s=1000x200:mode=bar:colors=0xf59e0b|0xffffff:fscale=log:ascale=cbrt[freqs]`,
-        `[bg][freqs]overlay=x=(W-w)/2:y=420[v1]`,
-        `[v1]drawtext=${fontArg}text='DEJAVUFM STUDIO ARCHIVE':fontcolor=0xf59e0b:fontsize=24:x=80:y=60:box=1:boxcolor=0x000000@0.8:boxborderw=8[v2]`,
-        `[v2]drawtext=${fontArg}text='${safeDj} - ${safeShow}':fontcolor=0xffffff:fontsize=34:x=80:y=115[v3]`,
-        `[v3]drawtext=${fontArg}text='${safeHook}':fontcolor=0x0b0f19:fontsize=28:x=80:y=200:box=1:boxcolor=0xffffff@0.95:boxborderw=12[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=650:box=1:boxcolor=0x000000@0.7:boxborderw=8,fps=30[v_out]`
-      ].join(";");
-    } else if (theme === 'retro_vinyl') {
-      filterComplex = [
-        `color=c=0x120c06:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showwaves=s=1000x180:mode=p2p:colors=0xf59e0b|0xef4444:scale=cbrt[wave]`,
-        `[0:a]showfreqs=s=1000x120:mode=bar:colors=0xef4444|0xf59e0b:fscale=log[freqs]`,
-        `[bg][wave]overlay=x=(W-w)/2:y=340[v1]`,
-        `[v1][freqs]overlay=x=(W-w)/2:y=540[v2]`,
-        `[v2]drawtext=${fontArg}text='DEJAVUFM ANALOG SOUND 92.3':fontcolor=0xf59e0b:fontsize=24:x=80:y=60:box=1:boxcolor=0x000000@0.85:boxborderw=8[v3]`,
-        `[v3]drawtext=${fontArg}text='${safeDj} - ${safeShow}':fontcolor=0xffffff:fontsize=34:x=80:y=115[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=28:x=80:y=200:box=1:boxcolor=0xd97706@0.9:boxborderw=12[v5]`,
-        `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=650:box=1:boxcolor=0x000000@0.65:boxborderw=8,fps=30[v_out]`
-      ].join(";");
-    } else if (theme === 'waveform_pulse') {
-      filterComplex = [
-        `color=c=0x050814:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showwaves=s=1000x220:mode=cline:colors=0x10b981|0x06b6d4|0x6366f1:scale=sqrt[wave]`,
-        `[bg][wave]overlay=x=(W-w)/2:y=380[v1]`,
-        `[v1]drawtext=${fontArg}text='DEJAVUFM LIVE SESSIONS':fontcolor=0x10b981:fontsize=24:x=80:y=60:box=1:boxcolor=0x000000@0.8:boxborderw=8[v2]`,
-        `[v2]drawtext=${fontArg}text='${safeDj} - ${safeShow}':fontcolor=0xffffff:fontsize=34:x=80:y=115[v3]`,
-        `[v3]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=28:x=80:y=200:box=1:boxcolor=0x059669@0.9:boxborderw=12[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=650:box=1:boxcolor=0x000000@0.6:boxborderw=8,fps=30[v_out]`
-      ].join(";");
-    } else {
-      // Default: neon_cyber
-      filterComplex = [
-        `color=c=0x070810:s=${width}x${height}:d=${dur}[bg]`,
-        `[0:a]showwaves=s=1000x200:mode=line:colors=0x00f0ff|0xb026ff:scale=cbrt[wave]`,
-        `[0:a]showfreqs=s=1000x120:mode=bar:colors=0xb026ff|0x00f0ff:fscale=log[freqs]`,
-        `[bg][wave]overlay=x=(W-w)/2:y=340[v1]`,
-        `[v1][freqs]overlay=x=(W-w)/2:y=550[v2]`,
-        `[v2]drawtext=${fontArg}text='DEJAVUFM BROADCAST':fontcolor=0xb026ff:fontsize=26:x=80:y=60:box=1:boxcolor=0x000000@0.7:boxborderw=8[v3]`,
-        `[v3]drawtext=${fontArg}text='${safeDj} - ${safeShow}':fontcolor=0xffffff:fontsize=36:x=80:y=115[v4]`,
-        `[v4]drawtext=${fontArg}text='${safeHook}':fontcolor=0xffffff:fontsize=30:x=80:y=200:box=1:boxcolor=0xb026ff@0.85:boxborderw=12[v5]`,
-        `[v5]drawtext=${fontArg}text='${safeCaption}':fontcolor=0xffffff:fontsize=18:x=(w-text_w)/2:y=650:box=1:boxcolor=0x000000@0.6:boxborderw=6,fps=30[v_out]`
-      ].join(";");
+      filterComplex = buildPureVisualizerFilter(theme, aspect, width, height, dur);
     }
   }
 
   const videoArgs = [
     "-y",
-    "-i", options.audioPath,
+    ...videoInputs,
     "-filter_complex", filterComplex,
     "-map", "[v_out]",
     "-map", "0:a",
