@@ -561,6 +561,21 @@ aiStudioRouter.post("/reels/:id/re-render", async (req: any, res: Response) => {
     const newVideoUrl = `/uploads/ai-studio/${newVideoFile}`;
     const newThumbUrl = `/uploads/ai-studio/${newThumbFile}`;
 
+    // Clean up previous video and thumbnail files on successful re-render
+    const oldFiles = [reel.video_url, reel.thumbnail_url];
+    const baseUploads = getUploadsDir();
+    oldFiles.forEach(url => {
+      if (url && typeof url === 'string') {
+        const relative = url.replace(/^\/+uploads\//, '');
+        const fullPath = path.join(baseUploads, relative);
+        try {
+          if (fs.existsSync(fullPath)) {
+            fs.unlinkSync(fullPath);
+          }
+        } catch (e) {}
+      }
+    });
+
     db.prepare(`
       UPDATE ai_reels 
       SET start_seconds = ?, end_seconds = ?, duration_seconds = ?, 
