@@ -1,6 +1,6 @@
 {
   "name": "dejavufm",
-  "description": "Direct from the heart of London, DejavuFM is the heartbeat of the underground.",
+  "description": "Direct from the heart of London, dejavufm is the heartbeat of the underground.",
   "requestFramePermissions": ["microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

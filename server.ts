@@ -104,8 +104,8 @@ async function startServer() {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
     res.json({
-      name: "DejavuFM",
-      short_name: "Dejavu",
+      name: "dejavufm",
+      short_name: "dejavufm",
       theme_color: primaryColor,
       background_color: "#0a0a0f",
       display: "standalone"
@@ -331,14 +331,14 @@ async function startServer() {
     let html = indexHtmlCache;
     
     // Default meta tags
-    let title = "DejavuFM | The Sound of London";
-    let description = "Direct from the heart of the capital. Since 2005, DejavuFM has been the heartbeat of the underground.";
+    let title = "dejavufm | The Sound of London";
+    let description = "Direct from the heart of the capital. Since 2005, dejavufm has been the heartbeat of the underground.";
     let image = "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=1200";
 
     // Load admin SEO settings from database if available
     let customHeaderInject = "";
     let customCss = "";
-    let appName = "DejavuFM";
+    let appName = "dejavufm";
     try {
       const settingsRows = db.prepare("SELECT key, value FROM settings WHERE key IN ('seo_title','seo_description','seo_image','app_title','app_name','favicon','custom_header_inject','custom_css','admin_custom_path')").all() as { key: string; value: string }[];
       const settingsData = settingsRows.reduce<Record<string, string>>((acc, row) => {
@@ -409,7 +409,7 @@ async function startServer() {
       if (db.open) {
         const dj = db.prepare("SELECT * FROM djs WHERE id = ?").get(id) as any;
         if (dj) {
-          title = `${dj.name} | DejavuFM Resident`;
+          title = `${dj.name} | dejavufm Resident`;
           description = (dj.bio || description).substring(0, 160);
           image = dj.image_url || image;
         }
@@ -422,7 +422,7 @@ async function startServer() {
         try {
           const feature = db.prepare("SELECT * FROM features WHERE slug = ?").get(slug) as any;
           if (feature) {
-            title = `${feature.title} | DejavuFM Features`;
+            title = `${feature.title} | dejavufm Features`;
             description = (feature.excerpt || feature.content || description).substring(0, 160).replace(/<[^>]*>/g, '') + "...";
             image = feature.image_url || image;
           }
@@ -431,29 +431,29 @@ async function startServer() {
     }
     // Main Section Page overrides
     else if (reqPath === "/arch421") {
-      title = "ARCH 421: THE UNMUTED ARCHIVES. OPENING SOON. | DejavuFM";
-      description = "Unlock the exclusive archives of ARCH 421. Opening soon on DejavuFM. Be ready for the unmuted sound experience.";
+      title = "ARCH 421: THE UNMUTED ARCHIVES. OPENING SOON. | dejavufm";
+      description = "Unlock the exclusive archives of ARCH 421. Opening soon on dejavufm. Be ready for the unmuted sound experience.";
     } else if (reqPath === "/watch") {
-      title = "Watch Live Studio Feed | DejavuFM";
-      description = "Watch our resident DJs live from the DejavuFM broadcasting studio. Tune into underground sound, live chats, and visual feeds.";
+      title = "Watch Live Studio Feed | dejavufm";
+      description = "Watch our resident DJs live from the dejavufm broadcasting studio. Tune into underground sound, live chats, and visual feeds.";
     } else if (reqPath === "/schedule") {
-      title = "Radio Broadcast Schedule & Timetable | DejavuFM";
-      description = "Check out the full weekly broadcast timetable on DejavuFM. Find slot times for your favorite Resident DJs and never miss a live show.";
+      title = "Radio Broadcast Schedule & Timetable | dejavufm";
+      description = "Check out the full weekly broadcast timetable on dejavufm. Find slot times for your favorite Resident DJs and never miss a live show.";
     } else if (reqPath === "/djs") {
-      title = "Resident DJs, Hosts & Creators | DejavuFM";
-      description = "Meet the incredible resident DJs and hosts of DejavuFM. Discover bios, scheduled times, and dynamic audio archives from London's finest.";
+      title = "Resident DJs, Hosts & Creators | dejavufm";
+      description = "Meet the incredible resident DJs and hosts of dejavufm. Discover bios, scheduled times, and dynamic audio archives from London's finest.";
     } else if (reqPath === "/podcasts") {
-      title = "Podcasts & Audio Catch-Up Library | DejavuFM";
+      title = "Podcasts & Audio Catch-Up Library | dejavufm";
       description = "Missed a live set? Catch up with our comprehensive podcast archive containing past shows, guest mixes, and exclusive interviews on demand.";
     } else if (reqPath === "/features") {
-      title = "Features, News & Highlights | DejavuFM";
-      description = "Stay informed with the latest DejavuFM features, underground radio news, event highlights, and special announcement postings.";
+      title = "Features, News & Highlights | dejavufm";
+      description = "Stay informed with the latest dejavufm features, underground radio news, event highlights, and special announcement postings.";
     } else if (reqPath === "/about") {
-      title = "About Us & Station History | DejavuFM";
+      title = "About Us & Station History | dejavufm";
       description = "The heartbeat of London's underground since 2005. Read about our journey, culture, and our dedication to showcasing underground music.";
     } else if (reqPath === "/contact") {
-      title = "Contact Us & Request Studio Line | DejavuFM";
-      description = "Get in touch with the team at DejavuFM. Drop a line for inquiries, partnerships, resident bookings, or general suggestions.";
+      title = "Contact Us & Request Studio Line | dejavufm";
+      description = "Get in touch with the team at dejavufm. Drop a line for inquiries, partnerships, resident bookings, or general suggestions.";
     }
     // Custom Dynamic Pages (CMS-managed)
     else {
@@ -497,7 +497,7 @@ async function startServer() {
       schemaJson = {
         "@context": "https://schema.org",
         "@type": "RadioStation",
-        "name": "DejavuFM",
+        "name": "dejavufm",
         "url": requestOrigin,
         "image": image,
         "description": description,
@@ -517,12 +517,12 @@ async function startServer() {
               "@context": "https://schema.org",
               "@type": "Person",
               "name": dj.name,
-              "description": dj.bio || `${dj.name} is a Resident DJ at DejavuFM`,
+              "description": dj.bio || `${dj.name} is a Resident DJ at dejavufm`,
               "image": makeAbsoluteUrl(dj.image_url || image),
               "jobTitle": "Radio DJ / Host",
               "worksFor": {
                 "@type": "RadioStation",
-                "name": "DejavuFM",
+                "name": "dejavufm",
                 "url": requestOrigin
               }
             };
@@ -552,7 +552,7 @@ async function startServer() {
             },
             "partOfSeries": {
               "@type": "PodcastSeries",
-              "name": "DejavuFM Catch Up",
+              "name": "dejavufm Catch Up",
               "url": `${requestOrigin}/podcasts`
             }
           };
@@ -573,7 +573,7 @@ async function startServer() {
               "datePublished": feature.created_at,
               "publisher": {
                 "@type": "RadioStation",
-                "name": "DejavuFM",
+                "name": "dejavufm",
                 "url": requestOrigin
               }
             };
@@ -604,7 +604,7 @@ async function startServer() {
       <meta property="og:image" content="${image}" />
       <meta property="og:url" content="${currentUrl}" />
       <meta property="og:type" content="website" />
-      <meta property="og:site_name" content="DejavuFM" />
+      <meta property="og:site_name" content="dejavufm" />
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="${title}" />
       <meta name="twitter:description" content="${description}" />
@@ -616,7 +616,7 @@ async function startServer() {
     `;
 
     // Replace the default title or insert before </head>
-    html = html.replace("<title>DejavuFM</title>", metaTags);
+    html = html.replace("<title>dejavufm</title>", metaTags);
     if (!html.includes(metaTags)) {
       html = html.replace("</head>", `${metaTags}</head>`);
     }
