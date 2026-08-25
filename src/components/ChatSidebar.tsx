@@ -1915,8 +1915,10 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
               </div>
             )}
 
-            {/* Mobile Drag Handle Indicator */}
-            <div className={`absolute left-2 top-1/2 -translate-y-1/2 w-1 h-16 rounded-full md:hidden pointer-events-none ${isLightMode ? 'bg-black/10' : 'bg-white/10'}`} />
+            {/* Mobile Drag Handle Indicator (only on sliding sidebar drawer, never when embedded in chatroom) */}
+            {!embedded && (
+              <div className={`absolute left-2 top-1/2 -translate-y-1/2 w-1 h-16 rounded-full md:hidden pointer-events-none ${isLightMode ? 'bg-black/10' : 'bg-white/10'}`} />
+            )}
 
             <div className={`${embedded ? 'p-2.5 sm:p-3' : 'p-4 sm:p-6'} border-b shrink-0 flex items-center justify-between ${isLightMode ? 'border-black/10' : 'border-white/10'}`}>
               <div className="flex items-center space-x-2 sm:space-x-3">
@@ -2056,9 +2058,9 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
               {chatTab === 'public' ? (
                 // Public layout
                 visibleMessages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full opacity-20 text-center space-y-4">
-                    <Users className="w-16 h-16" />
-                    <p className={`text-sm font-bold uppercase tracking-widest ${isLightMode ? 'text-black' : 'text-white'}`}>{messages.length > 0 ? 'Messages are filtered' : 'The airwaves are quiet... say something!'}</p>
+                  <div className="flex flex-col items-center justify-center min-h-[80px] py-4 opacity-20 text-center space-y-3">
+                    <Users className="w-12 h-12" />
+                    <p className={`text-xs sm:text-sm font-bold uppercase tracking-widest ${isLightMode ? 'text-black' : 'text-white'}`}>{messages.length > 0 ? 'Messages are filtered' : 'The airwaves are quiet... say something!'}</p>
                   </div>
                 ) : (
                   visibleMessages.map((msg) => {

@@ -281,7 +281,7 @@ export default function WatchLive() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0 items-stretch">
             
             {/* Left Side: Video Player Section */}
-        <div className={`lg:col-span-8 flex flex-col h-full ${isLightMode ? 'bg-[#ffffff] border-black/10' : 'bg-black/40 border-white/5'} border rounded-3xl overflow-hidden shadow-2xl relative min-h-[450px] lg:min-h-0`}>
+        <div className={`lg:col-span-8 flex flex-col h-full ${isLightMode ? 'bg-[#ffffff] border-black/10' : 'bg-black/40 border-white/5'} border rounded-3xl overflow-hidden shadow-2xl relative min-h-0`}>
           {/* Top Control Bar of Video Section */}
           <div className={`flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3 border-b ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-[#0e0e11] border-white/5 text-white'} shrink-0`}>
             <div className="flex items-center gap-1.5 sm:gap-2">
@@ -324,12 +324,20 @@ export default function WatchLive() {
             </div>
           </div>
 
-          <div className="flex-1 w-full relative bg-black group flex items-center justify-center aspect-[4/3] sm:aspect-video lg:aspect-auto">
+          <div 
+            className="w-full relative bg-black group flex items-center justify-center aspect-video lg:aspect-auto lg:flex-1 overflow-hidden border-0 outline-none flex-none lg:flex-1"
+            style={{ width: '100%', minWidth: '100%', maxWidth: '100%', aspectRatio: '16 / 9', flexShrink: 0 }}
+          >
             {getEmbedUrl(studioVideoUrl) && !isSplitActive ? (
               <iframe 
                 key={`${playerKey}-${getEmbedUrl(studioVideoUrl) || 'empty'}`}
                 src={getEmbedUrl(studioVideoUrl) || undefined} 
-                className="w-full h-full border-none absolute inset-0 z-10" 
+                title="Live Studio Broadcast"
+                frameBorder={0}
+                scrolling="no"
+                tabIndex={-1}
+                className="w-full h-full border-0 outline-none ring-0 focus:outline-none focus:ring-0 focus-visible:outline-none absolute inset-0 z-10" 
+                style={{ border: 0, outline: 'none', boxShadow: 'none', width: '100%', height: '100%' }}
                 allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; clipboard-write; gyroscope"
                 allowFullScreen>
               </iframe>
@@ -512,7 +520,7 @@ export default function WatchLive() {
                 
                 <div className={`flex items-center gap-1.5 border-l pl-3 min-w-0 ${isLightMode ? 'border-zinc-200' : 'border-zinc-800'}`}>
                   <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue italic truncate pr-2 max-w-[100px] sm:max-w-[150px] md:max-w-[180px]">
-                    {onAirInfo?.djName || "DEJAVUFM"}
+                    {onAirInfo?.djName || "dejavufm"}
                   </span>
                   <span className={`hidden sm:inline text-[11px] truncate max-w-[150px] md:max-w-[250px] ${isLightMode ? 'text-zinc-600' : 'text-zinc-400'}`}>
                     — {onAirInfo?.showName || "Global Underground Stream"}
@@ -570,14 +578,25 @@ export default function WatchLive() {
             {/* Split Content Body */}
             <div className={`flex-1 min-h-0 w-full flex flex-col lg:flex-row transition-colors duration-300 overflow-hidden ${isLightMode ? 'bg-[#f4f4f5]' : 'bg-[#030406]'}`}>
               {/* Left Portion: Video Player Section */}
-              <div className="w-full lg:w-1/2 shrink-0 flex flex-col bg-black z-30 h-auto max-h-[28vh] sm:max-h-[35vh] lg:max-h-none lg:h-full border-b border-white/10 lg:border-b-0 sticky top-0 relative">
-                {/* On mobile, we enforce aspect-video; on desktop, it stretches to fill the left pane */}
-                <div className="w-full aspect-video lg:aspect-auto lg:flex-1 bg-black relative shrink-0 lg:shrink flex items-center justify-center max-h-[28vh] sm:max-h-[35vh] lg:max-h-none">
+              <div 
+                className="w-full lg:w-1/2 flex-none lg:flex-1 flex flex-col bg-black z-30 sticky top-0 relative border-0 outline-none"
+                style={{ flexShrink: 0 }}
+              >
+                {/* On mobile, we enforce aspect-video and 100% width so Twitch fits edge-to-edge and stays intact when keyboard opens */}
+                <div 
+                  className="w-full aspect-video lg:aspect-auto lg:flex-1 bg-black relative flex-none lg:flex-1 flex items-center justify-center border-0 outline-none overflow-hidden"
+                  style={{ width: '100%', minWidth: '100%', maxWidth: '100%', aspectRatio: '16 / 9', flexShrink: 0 }}
+                >
                   {getEmbedUrl(studioVideoUrl) ? (
                     <iframe 
                       key={`split-${playerKey}-${getEmbedUrl(studioVideoUrl)}`}
                       src={getEmbedUrl(studioVideoUrl) || undefined} 
-                      className="w-full h-full border-none absolute inset-0 z-10" 
+                      title="Live Studio Broadcast Split"
+                      frameBorder={0}
+                      scrolling="no"
+                      tabIndex={-1}
+                      className="w-full h-full border-0 outline-none ring-0 focus:outline-none focus:ring-0 focus-visible:outline-none absolute inset-0 z-10" 
+                      style={{ border: 0, outline: 'none', boxShadow: 'none', width: '100%', height: '100%' }}
                       allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; clipboard-write; gyroscope"
                       allowFullScreen>
                     </iframe>
