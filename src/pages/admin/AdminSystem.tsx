@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { useNavigate, Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
-import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles } from "lucide-react";
+import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, ChevronDown, RefreshCw, Sparkles } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { useModal } from "../../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
@@ -772,6 +772,7 @@ export function AdminSettings() {
   const [maintenanceText, setMaintenanceText] = useState("");
   const [maintenanceEndTime, setMaintenanceEndTime] = useState("");
   const [maintenanceShowPlayer, setMaintenanceShowPlayer] = useState(false);
+  const [isMaintenanceExpanded, setIsMaintenanceExpanded] = useState(false);
   const { showAlert } = useModal();
 
   useEffect(() => {
@@ -783,7 +784,9 @@ export function AdminSettings() {
       setRss(d.rss_feed_url || "");
       setStudioVideoUrl(d.studio_video_url || "");
       setIsOnAir(d.is_on_air === '1');
-      setMaintenanceMode(d.maintenance_mode === '1');
+      const isMaint = d.maintenance_mode === '1';
+      setMaintenanceMode(isMaint);
+      if (isMaint) setIsMaintenanceExpanded(true);
       setMaintenanceTitle(d.maintenance_title || "TEMPORARY CLOSED FOR MAINTENANCE");
       setMaintenanceText(d.maintenance_text || "Our sound engineers are performing essential system updates. We will be back on-air shortly with upgraded streams, podcasts, and archives.");
       setMaintenanceEndTime(d.maintenance_end_time || "");
@@ -901,138 +904,169 @@ export function AdminSettings() {
   return (
     <div className="space-y-8 pb-12">
       <h3 className={`text-xl sm:text-2xl font-bold border-b pb-4 transition-colors ${isLightMode ? 'text-black border-black/10' : 'text-white border-white/10'}`}>General Settings</h3>
-      
-      <div className={`p-5 sm:p-6 rounded-2xl border transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 max-w-2xl ${
-        isOnAir 
-          ? (isLightMode ? 'bg-neon-purple/5 border-neon-purple/20' : 'bg-neon-purple/10 border-neon-purple/30')
-          : (isLightMode ? 'bg-white border-black/10' : 'bg-white/5 border-white/10')
-      }`}>
-        <div className="flex items-center space-x-4">
-          <div className={`w-3.5 h-3.5 rounded-full shadow-lg ${isOnAir ? 'bg-neon-purple animate-pulse shadow-neon-purple/50' : (isLightMode ? 'bg-black/10' : 'bg-white/10')}`}></div>
-          <div>
-            <h4 className={`font-black uppercase tracking-widest text-[10px] sm:text-xs ${isLightMode ? 'text-black' : 'text-white'}`}>Live Station Status</h4>
-            <p className={`text-[10px] mt-1 ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>Toggles the global "ON AIR" banner across the station.</p>
-          </div>
-        </div>
-        <button 
-          onClick={() => setIsOnAir(!isOnAir)}
-          className={`w-14 h-7 rounded-full relative transition-all shadow-inner ${isOnAir ? 'bg-neon-purple' : (isLightMode ? 'bg-black/20' : 'bg-white/10')}`}
-        >
-          <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all shadow-md ${isOnAir ? 'left-8' : 'left-1'}`}></div>
-        </button>
-      </div>
 
-      {/* Maintenance / Coming Soon Mode Card */}
-      <div className={`p-5 sm:p-6 rounded-2xl border transition-all flex flex-col items-stretch gap-6 max-w-2xl ${
+      {/* Maintenance / Coming Soon Mode Card (Collapsible) */}
+      <div className={`rounded-2xl border transition-all overflow-hidden max-w-2xl ${
         maintenanceMode 
           ? (isLightMode ? 'bg-red-500/[0.03] border-red-500/30 shadow-lg shadow-red-500/5' : 'bg-red-500/10 border-red-500/30 shadow-lg shadow-red-500/5')
           : (isLightMode ? 'bg-white border-black/10' : 'bg-white/5 border-white/10')
       }`}>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div 
+          onClick={() => setIsMaintenanceExpanded(!isMaintenanceExpanded)}
+          className={`p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 cursor-pointer select-none transition-colors ${
+            isLightMode ? 'hover:bg-black/[0.02]' : 'hover:bg-white/[0.02]'
+          }`}
+        >
           <div className="flex items-center space-x-4">
-            <div className={`w-3.5 h-3.5 rounded-full shadow-lg ${maintenanceMode ? 'bg-red-500 animate-pulse shadow-red-500/50' : (isLightMode ? 'bg-black/10' : 'bg-white/10')}`}></div>
+            <div className={`w-3.5 h-3.5 rounded-full shadow-lg shrink-0 ${maintenanceMode ? 'bg-red-500 animate-pulse shadow-red-500/50' : (isLightMode ? 'bg-black/10' : 'bg-white/10')}`}></div>
             <div>
-              <h4 className={`font-black uppercase tracking-widest text-[10px] sm:text-xs ${isLightMode ? 'text-black' : 'text-white'}`}>Maintenance / Coming Soon Mode</h4>
-              <p className={`text-[10px] mt-1 ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
-                Activating this locks the public site under a beautiful "Coming Soon" screen. Admins still have full dashboard access.
-              </p>
-            </div>
-          </div>
-          <button 
-            type="button"
-            onClick={() => setMaintenanceMode(!maintenanceMode)}
-            className={`w-14 h-7 rounded-full relative transition-all shadow-inner shrink-0 ${maintenanceMode ? 'bg-red-500' : (isLightMode ? 'bg-black/20' : 'bg-white/10')}`}
-          >
-            <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all shadow-md ${maintenanceMode ? 'left-8' : 'left-1'}`}></div>
-          </button>
-        </div>
-
-        <div className="space-y-4 pt-4 border-t border-dashed border-red-500/20">
-          <div>
-            <label className={`block text-[10px] uppercase mb-1 font-black tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Coming Soon / Maintenance Title</label>
-            <input 
-              value={maintenanceTitle} 
-              onChange={e => setMaintenanceTitle(e.target.value)} 
-              className={`w-full rounded-xl px-4 py-3 text-sm focus:border-red-500 outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
-              placeholder="e.g. TEMPORARY CLOSED FOR MAINTENANCE"
-            />
-          </div>
-          <div>
-            <label className={`block text-[10px] uppercase mb-1 font-black tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Main Description Message</label>
-            <textarea 
-              value={maintenanceText} 
-              onChange={e => setMaintenanceText(e.target.value)} 
-              rows={3}
-              className={`w-full rounded-xl px-4 py-3 text-sm focus:border-red-500 outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
-              placeholder="Describe what is happening..."
-            />
-          </div>
-          <div>
-            <label className={`block text-[10px] uppercase mb-1 font-black tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Expected Back Time (Optional Countdown)</label>
-            <div className="relative">
-              <input 
-                type="datetime-local"
-                value={maintenanceEndTime} 
-                onChange={e => setMaintenanceEndTime(e.target.value)} 
-                onClick={(e) => {
-                  try {
-                    e.currentTarget.showPicker();
-                  } catch (err) {}
-                }}
-                style={{ colorScheme: isLightMode ? 'light' : 'dark' }}
-                className={`w-full rounded-xl pl-4 pr-10 py-3 text-sm focus:border-red-500 outline-none transition-all border [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
-              />
-              <div className={`absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>
-                <Calendar className="w-4.5 h-4.5" />
+              <div className="flex items-center gap-2">
+                <h4 className={`font-black uppercase tracking-widest text-[10px] sm:text-xs ${isLightMode ? 'text-black' : 'text-white'}`}>Maintenance / Coming Soon Mode</h4>
+                <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${
+                  maintenanceMode 
+                    ? 'bg-red-500/20 text-red-500 border border-red-500/30' 
+                    : (isLightMode ? 'bg-black/5 text-black/40' : 'bg-white/5 text-white/40')
+                }`}>
+                  {maintenanceMode ? 'Active' : 'Disabled'}
+                </span>
               </div>
-            </div>
-            <p className={`text-[10px] mt-1.5 ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>
-              If specified, a live countdown timer will be displayed to visitors. Click on the input or calendar icon to select a date and time.
-            </p>
-          </div>
-
-          <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-dashed border-red-500/20 bg-red-500/[0.01]">
-            <div>
-              <label className={`block text-[10px] uppercase font-black tracking-widest ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>Show Live Player on Maintenance Page</label>
               <p className={`text-[10px] mt-1 ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
-                Allows visitors to still play and stream your live radio broadcast while the site is under maintenance.
+                {isMaintenanceExpanded 
+                  ? 'Activating this locks the public site under a custom Coming Soon screen while admins keep full dashboard access.'
+                  : (maintenanceMode ? 'Public site is locked with Coming Soon screen. Click to manage.' : 'Locks public site under a Coming Soon screen. Click to expand settings.')
+                }
               </p>
             </div>
+          </div>
+
+          <div className="flex items-center space-x-3 self-end sm:self-center shrink-0" onClick={e => e.stopPropagation()}>
             <button 
               type="button"
-              onClick={() => setMaintenanceShowPlayer(!maintenanceShowPlayer)}
-              className={`w-14 h-7 rounded-full relative transition-all shadow-inner shrink-0 ${maintenanceShowPlayer ? 'bg-red-500' : (isLightMode ? 'bg-black/20' : 'bg-white/10')}`}
+              onClick={() => {
+                const next = !maintenanceMode;
+                setMaintenanceMode(next);
+                if (next) setIsMaintenanceExpanded(true);
+              }}
+              className={`w-14 h-7 rounded-full relative transition-all shadow-inner shrink-0 ${maintenanceMode ? 'bg-red-500' : (isLightMode ? 'bg-black/20' : 'bg-white/10')}`}
+              title={maintenanceMode ? "Disable Maintenance Mode" : "Enable Maintenance Mode"}
             >
-              <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all shadow-md ${maintenanceShowPlayer ? 'left-8' : 'left-1'}`}></div>
+              <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all shadow-md ${maintenanceMode ? 'left-8' : 'left-1'}`}></div>
             </button>
-          </div>
-
-          <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <span className={`text-[10px] font-bold ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
-              Status: {maintenanceMode ? (
-                <span className="text-red-500 font-black uppercase">Active (Locked Site)</span>
-              ) : (
-                <span className="text-green-500 font-black uppercase">Inactive (Live)</span>
-              )}
-            </span>
             <button
               type="button"
-              onClick={() => saveMaintenanceOnly()}
-              disabled={isSavingMaintenance}
-              className={`w-full sm:w-auto px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-md flex items-center justify-center gap-2 ${
-                maintenanceMode
-                  ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-600/15'
-                  : 'bg-black dark:bg-white text-white dark:text-black hover:opacity-90'
-              } disabled:opacity-50`}
+              onClick={() => setIsMaintenanceExpanded(!isMaintenanceExpanded)}
+              className={`p-2 rounded-xl border transition-all ${
+                isLightMode 
+                  ? 'border-black/10 hover:bg-black/5 text-black/60' 
+                  : 'border-white/10 hover:bg-white/5 text-white/60'
+              }`}
+              title={isMaintenanceExpanded ? "Collapse section" : "Expand section"}
             >
-              {isSavingMaintenance ? (
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <span>Save Maintenance Settings</span>
-              )}
+              <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isMaintenanceExpanded ? 'rotate-180' : ''}`} />
             </button>
           </div>
         </div>
+
+        <AnimatePresence initial={false}>
+          {isMaintenanceExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: "easeInOut" }}
+              className="overflow-hidden"
+            >
+              <div className="p-5 sm:p-6 pt-0 space-y-4">
+                <div className="pt-4 border-t border-dashed border-red-500/20 space-y-4">
+                  <div>
+                    <label className={`block text-[10px] uppercase mb-1 font-black tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Coming Soon / Maintenance Title</label>
+                    <input 
+                      value={maintenanceTitle} 
+                      onChange={e => setMaintenanceTitle(e.target.value)} 
+                      className={`w-full rounded-xl px-4 py-3 text-sm focus:border-red-500 outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
+                      placeholder="e.g. TEMPORARY CLOSED FOR MAINTENANCE"
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-[10px] uppercase mb-1 font-black tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Main Description Message</label>
+                    <textarea 
+                      value={maintenanceText} 
+                      onChange={e => setMaintenanceText(e.target.value)} 
+                      rows={3}
+                      className={`w-full rounded-xl px-4 py-3 text-sm focus:border-red-500 outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
+                      placeholder="Describe what is happening..."
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-[10px] uppercase mb-1 font-black tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>Expected Back Time (Optional Countdown)</label>
+                    <div className="relative">
+                      <input 
+                        type="datetime-local"
+                        value={maintenanceEndTime} 
+                        onChange={e => setMaintenanceEndTime(e.target.value)} 
+                        onClick={(e) => {
+                          try {
+                            e.currentTarget.showPicker();
+                          } catch (err) {}
+                        }}
+                        style={{ colorScheme: isLightMode ? 'light' : 'dark' }}
+                        className={`w-full rounded-xl pl-4 pr-10 py-3 text-sm focus:border-red-500 outline-none transition-all border [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
+                      />
+                      <div className={`absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>
+                        <Calendar className="w-4.5 h-4.5" />
+                      </div>
+                    </div>
+                    <p className={`text-[10px] mt-1.5 ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>
+                      If specified, a live countdown timer will be displayed to visitors. Click on the input or calendar icon to select a date and time.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-dashed border-red-500/20 bg-red-500/[0.01]">
+                    <div>
+                      <label className={`block text-[10px] uppercase font-black tracking-widest ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>Show Live Player on Maintenance Page</label>
+                      <p className={`text-[10px] mt-1 ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
+                        Allows visitors to still play and stream your live radio broadcast while the site is under maintenance.
+                      </p>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => setMaintenanceShowPlayer(!maintenanceShowPlayer)}
+                      className={`w-14 h-7 rounded-full relative transition-all shadow-inner shrink-0 ${maintenanceShowPlayer ? 'bg-red-500' : (isLightMode ? 'bg-black/20' : 'bg-white/10')}`}
+                    >
+                      <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all shadow-md ${maintenanceShowPlayer ? 'left-8' : 'left-1'}`}></div>
+                    </button>
+                  </div>
+
+                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <span className={`text-[10px] font-bold ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
+                      Status: {maintenanceMode ? (
+                        <span className="text-red-500 font-black uppercase">Active (Locked Site)</span>
+                      ) : (
+                        <span className="text-green-500 font-black uppercase">Inactive (Live)</span>
+                      )}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => saveMaintenanceOnly()}
+                      disabled={isSavingMaintenance}
+                      className={`w-full sm:w-auto px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-md flex items-center justify-center gap-2 ${
+                        maintenanceMode
+                          ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-600/15'
+                          : 'bg-black dark:bg-white text-white dark:text-black hover:opacity-90'
+                      } disabled:opacity-50`}
+                    >
+                      {isSavingMaintenance ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <span>Save Maintenance Settings</span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <div className="space-y-6 max-w-2xl">
