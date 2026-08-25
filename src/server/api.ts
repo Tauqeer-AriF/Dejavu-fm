@@ -1024,7 +1024,7 @@ apiRouter.post("/public/auth/register", (req, res) => {
     // Initialize listener gamification and award first daily login XP
     try {
       ensureUserGamification(cleanUsername);
-      awardXP(cleanUsername, 'daily_login', 'Welcome to Dejavu FM! Daily login bonus');
+      awardXP(cleanUsername, 'daily_login', 'Welcome to dejavufm! Daily login bonus');
     } catch (e) {
       console.error("[Gamification] Registration hook failed:", e);
     }

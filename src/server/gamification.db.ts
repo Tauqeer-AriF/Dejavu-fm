@@ -97,7 +97,7 @@ export const DEFAULT_BADGES: GamificationBadge[] = [
   {
     id: 'trendsetter',
     name: 'Trendsetter',
-    description: 'Shared Dejavu FM live stream with your friends',
+    description: 'Shared dejavufm live stream with your friends',
     icon: 'Share2',
     requirement: 2,
     requirement_type: 'share_show'

@@ -258,7 +258,7 @@ export function resolveGreeting(
       icon: 'Sparkles',
       badgeText: 'Welcome Listener',
       badgeType: 'welcome',
-      supportingInfo: 'Tune into live underground DJs & start your listening streak',
+      supportingInfo: 'Tune in to live underground DJs & start your listening streak',
       cta: {
         label: config.templates.ctas.listenNow,
         action: 'play_live',
@@ -290,7 +290,7 @@ export function resolveGreeting(
       type: 'favorite_dj_live',
       message,
       icon: 'Headphones',
-      badgeText: 'Followed DJ LIVE',
+      badgeText: 'Favourite DJ LIVE',
       badgeType: 'live',
       supportingInfo: liveShow?.showName || 'Broadcasting Live',
       cta: {
@@ -329,7 +329,7 @@ export function resolveGreeting(
       icon: 'Flame',
       badgeText: `1 Day to ${targetMilestone}D Milestone`,
       badgeType: 'streak',
-      supportingInfo: `Keep your ${streak}-day daily listening streak alive`,
+      supportingInfo: `Keep your ${streak}-day listening streak going`,
       cta: {
         label: config.templates.ctas.keepListening,
         action: 'play_live',
@@ -359,7 +359,7 @@ export function resolveGreeting(
       icon: 'Flame',
       badgeText: `${streak}-Day Streak`,
       badgeType: 'streak',
-      supportingInfo: gamification?.qualifiedToday ? 'Today’s streak session validated' : 'Listen for 10m to qualify today',
+      supportingInfo: gamification?.qualifiedToday ? "Today's streak session validated" : 'Listen for 10 mins to qualify today',
       cta: {
         label: config.templates.ctas.keepListening,
         action: 'play_live',
@@ -389,7 +389,7 @@ export function resolveGreeting(
       icon: 'Clock',
       badgeText: 'Welcome Back',
       badgeType: 'welcome',
-      supportingInfo: liveShow?.djName ? `${formatDjName(liveShow.djName)} is currently on air` : 'Check out what is live on DejavuFM',
+      supportingInfo: liveShow?.djName ? `${formatDjName(liveShow.djName)} is currently on air` : 'Check what is live on dejavufm',
       cta: {
         label: config.templates.ctas.listenNow,
         action: 'play_live',
@@ -423,7 +423,7 @@ export function resolveGreeting(
       icon: 'Music',
       badgeText: `${favoriteGenre} Vibes`,
       badgeType: 'music',
-      supportingInfo: `Curated for your ${favoriteGenre} listening taste`,
+      supportingInfo: `Curated for your ${favoriteGenre} taste`,
       genre: favoriteGenre,
       cta: {
         label: config.templates.ctas.listenNow,
@@ -483,7 +483,7 @@ export function resolveGreeting(
     type: 'fallback',
     message: config.templates.messages.fallback,
     icon: 'Radio',
-    badgeText: 'Dejavu FM',
+    badgeText: 'dejavufm',
     badgeType: 'music',
     supportingInfo: liveShow?.showName || 'London Underground Music',
     cta: {

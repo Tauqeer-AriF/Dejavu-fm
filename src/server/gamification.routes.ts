@@ -182,7 +182,7 @@ gamificationRouter.post('/public/gamification/share', requireUserAuth, (req: any
   try {
     const username = req.authenticatedUser.username;
     const { showName, url } = req.body;
-    const result = awardXP(username, 'share_show', `Shared live show ${showName || 'Dejavu FM'}`, { showName, url });
+    const result = awardXP(username, 'share_show', `Shared live show ${showName || 'dejavufm'}`, { showName, url });
     res.json(result);
   } catch (err: any) {
     res.status(500).json({ error: err.message });

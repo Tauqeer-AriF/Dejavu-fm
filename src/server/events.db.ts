@@ -258,7 +258,7 @@ export function seedSampleEventsIfEmpty(database: any, force = false) {
       title: 'Summer House Party 2026',
       slug: 'summer-house-party',
       short_description: '8 hours of euphoric deep house, vocal anthems, and sunset vibes streamed live from the rooftop studio.',
-      description: `### Summer Sounds on DejavuFM\n\nCelebrate the season with 8 uninterrupted hours of soulful and uplifting house music featuring special guest sets.\n\n* **2× XP Multiplier** during the whole 8-hour live session\n* Exclusive **Sun Chaser** limited-edition listener badge`,
+      description: `### Summer Sounds on dejavufm\n\nCelebrate the season with 8 uninterrupted hours of soulful and uplifting house music featuring special guest sets.\n\n* **2× XP Multiplier** during the whole 8-hour live session\n* Exclusive **Sun Chaser** limited-edition listener badge`,
       cover_image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80',
       start_time: event2Start.toISOString(),
       end_time: event2End.toISOString(),
@@ -336,7 +336,7 @@ export function seedSampleEventsIfEmpty(database: any, force = false) {
     // 4. Completed Event
     insertEvent.run({
       id: 'evt_anniversary_special',
-      title: 'DejavuFM 20th Anniversary Special',
+      title: 'dejavufm 20th Anniversary Special',
       slug: 'anniversary-special',
       short_description: 'A historic celebration commemorating two decades of London pirate radio heritage.',
       description: `Celebrating 20 years of pioneering underground music in the capital with legendary DJ sets and archival recordings.`,

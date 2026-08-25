@@ -36,6 +36,10 @@
 }
 
 /* Personalized Greeting Modal - Premium Glassmorphism Styling */
+#personalized-greeting-modal-backdrop {
+  z-index: 999999 !important;
+}
+
 :root.light #personalized-greeting-modal-backdrop,
 html.light #personalized-greeting-modal-backdrop,
 .light #personalized-greeting-modal-backdrop {

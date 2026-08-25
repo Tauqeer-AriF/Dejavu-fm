@@ -60,7 +60,7 @@ describe('Greeting System - Contextual Messages & Logic', () => {
       clientTime: { hour: 13 }
     });
     assert.strictEqual(result.type, 'new_user');
-    assert.strictEqual(result.message, 'Welcome to the party!');
+    assert.strictEqual(result.message, 'Welcome to dejavufm');
     assert.strictEqual(result.cta.label, 'Listen Now');
     assert.strictEqual(result.secondaryCta?.label, 'Explore Podcasts');
   });
@@ -100,7 +100,7 @@ describe('Greeting System - Contextual Messages & Logic', () => {
       clientTime: { hour: 16 }
     });
     assert.strictEqual(result.type, 'streak_milestone_near');
-    assert.strictEqual(result.message, 'One more day to reach your 7-day streak!');
+    assert.strictEqual(result.message, 'Just one more day to reach your 7-day streak!');
     assert.strictEqual(result.cta.label, 'Keep Listening');
   });
 
@@ -112,7 +112,7 @@ describe('Greeting System - Contextual Messages & Logic', () => {
       clientTime: { hour: 12 }
     });
     assert.strictEqual(result.type, 'extended_absence');
-    assert.strictEqual(result.message, 'Welcome back, we missed you');
+    assert.strictEqual(result.message, "Welcome back, we've missed you");
     assert.strictEqual(result.cta.label, 'Listen Now');
     assert.strictEqual(result.secondaryCta?.label, 'Explore Podcasts');
   });
@@ -126,7 +126,7 @@ describe('Greeting System - Contextual Messages & Logic', () => {
       clientTime: { hour: 14 }
     });
     assert.strictEqual(result.type, 'genre_recommendation');
-    assert.strictEqual(result.message, 'Ready for some House music?');
+    assert.strictEqual(result.message, 'Fancy some House music?');
     assert.strictEqual(result.cta.label, 'Listen Now');
   });
 
@@ -138,7 +138,7 @@ describe('Greeting System - Contextual Messages & Logic', () => {
       clientTime: { hour: 14 }
     });
     assert.strictEqual(result.type, 'returning_user');
-    assert.strictEqual(result.message, 'Welcome back! Ready for some music?');
+    assert.strictEqual(result.message, 'Welcome back! Ready for some tunes?');
     assert.strictEqual(result.cta.label, 'Listen Now');
   });
 
@@ -162,7 +162,7 @@ describe('Greeting System - Contextual Messages & Logic', () => {
     });
     assert.strictEqual(result.isAuthenticated, false);
     assert.strictEqual(result.type, 'guest');
-    assert.strictEqual(result.greeting, 'Welcome to Dejavu FM');
+    assert.strictEqual(result.greeting, 'Welcome to dejavufm');
     assert.strictEqual(result.cta.label, 'Listen Now');
   });
 });

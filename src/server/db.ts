@@ -922,6 +922,16 @@ export function initDb() {
     console.error("[DB Cleanup] Error trimming whitespaces on start:", e);
   }
 
+  // Update branding and app name to dejavufm if set to default variations
+  try {
+    db.exec(`
+      UPDATE settings SET value = 'dejavufm' WHERE key = 'app_name' AND (LOWER(value) = 'dejavufm' OR LOWER(value) = 'dejavu fm' OR value = 'DEJAVUFM' OR value = 'DejavuFM');
+      UPDATE settings SET value = 'dejavufm | THE SOUND OF LONDON' WHERE key = 'app_title' AND (LOWER(value) LIKE '%dejavu%sound of london%');
+      UPDATE settings SET value = 'dejavufm | THE SOUND OF LONDON' WHERE key = 'seo_title' AND (LOWER(value) LIKE '%dejavu%sound of london%');
+      UPDATE settings SET value = 'dejavufm is the underground radio station combining London beats with global energy.' WHERE key = 'seo_description' AND (LOWER(value) LIKE '%dejavufm is the underground%' OR LOWER(value) LIKE '%dejavu fm is the underground%');
+    `);
+  } catch (e) {}
+
   // Initialize hours
   const insertHour = db.prepare('INSERT OR IGNORE INTO hourly_stats (hour, peak_listeners) VALUES (?, 0)');
   for (let i = 0; i < 24; i++) {
@@ -947,11 +957,11 @@ export function initDb() {
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('stream_url_high', 'https://dejavufm.radioca.st/;');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('rss_feed_url', 'https://dejavufmpodcast.podomatic.com/rss2.xml');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('studio_video_url', 'https://www.twitch.tv/dejavufmlive');
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('app_name', 'DEJAVUFM');
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('app_title', 'DEJAVUFM | THE SOUND OF LONDON');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('app_name', 'dejavufm');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('app_title', 'dejavufm | THE SOUND OF LONDON');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('app_tagline', 'The Underground Worldwide');
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('seo_title', 'DEJAVUFM | THE SOUND OF LONDON');
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('seo_description', 'DejavuFM is the underground radio station combining London beats with global energy.');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('seo_title', 'dejavufm | THE SOUND OF LONDON');
+    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('seo_description', 'dejavufm is the underground radio station combining London beats with global energy.');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('seo_image', '/icon.svg');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('font_sans', 'Inter');
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('font_display', 'Inter');
@@ -1113,7 +1123,7 @@ export function initDb() {
           id: 'b1',
           type: 'header',
           title: 'Privacy Policy',
-          subtitle: 'Your privacy is paramount at DejavuFM',
+          subtitle: 'Your privacy is paramount at dejavufm',
           align: 'center'
         },
         {
@@ -1129,7 +1139,7 @@ export function initDb() {
         pageId, 
         'privacy-policy', 
         'Privacy Policy', 
-        'DejavuFM Privacy Policy and terms for user data protection', 
+        'dejavufm Privacy Policy and terms for user data protection', 
         JSON.stringify(sampleBlocks)
       );
       console.log("[DB] Seeded privacy-policy page in custom_pages table.");
@@ -1342,7 +1352,7 @@ export async function createApplicationBackupBundle(options: {
     const dbSize = fs.existsSync(dbBackupPath) ? fs.statSync(dbBackupPath).size : 0;
     const appSettingsRow = db.prepare("SELECT value FROM settings WHERE key = 'app_name'").get() as { value: string } | undefined;
     const manifest = {
-      app: appSettingsRow?.value || "DejavuFM",
+      app: appSettingsRow?.value || "dejavufm",
       version: "2.5.0",
       type: "full_application_bundle",
       createdAt: new Date().toISOString(),
