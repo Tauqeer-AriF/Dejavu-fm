@@ -128,6 +128,7 @@ export default function WatchLive() {
   const { onAirInfo, isPlaying, togglePlay, stopAudio } = useAudio();
 
   const studioVideoUrl = settings?.studio_video_url || studioVideoUrlState;
+  const embedVideoUrl = useMemo(() => getEmbedUrl(studioVideoUrl), [studioVideoUrl]);
   const featChat = settings?.feat_chat !== '0';
 
   const [isSplitActive, setIsSplitActive] = useState(false);
@@ -328,20 +329,21 @@ export default function WatchLive() {
             className="w-full relative bg-black group flex items-center justify-center aspect-video lg:aspect-auto lg:flex-1 overflow-hidden border-0 outline-none flex-none lg:flex-1"
             style={{ width: '100%', minWidth: '100%', maxWidth: '100%', aspectRatio: '16 / 9', flexShrink: 0 }}
           >
-            {getEmbedUrl(studioVideoUrl) && !isSplitActive ? (
+            {embedVideoUrl && !isSplitActive ? (
               <iframe 
-                key={`${playerKey}-${getEmbedUrl(studioVideoUrl) || 'empty'}`}
-                src={getEmbedUrl(studioVideoUrl) || undefined} 
+                key={`${playerKey}-${embedVideoUrl || 'empty'}`}
+                src={embedVideoUrl || undefined} 
                 title="Live Studio Broadcast"
                 frameBorder={0}
                 scrolling="no"
                 tabIndex={-1}
+                loading="eager"
                 className="w-full h-full border-0 outline-none ring-0 focus:outline-none focus:ring-0 focus-visible:outline-none absolute inset-0 z-10" 
                 style={{ border: 0, outline: 'none', boxShadow: 'none', width: '100%', height: '100%' }}
                 allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; clipboard-write; gyroscope"
                 allowFullScreen>
               </iframe>
-            ) : getEmbedUrl(studioVideoUrl) && isSplitActive ? (
+            ) : embedVideoUrl && isSplitActive ? (
               <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/95 text-center p-6">
                 <Radio className="w-12 h-12 text-neon-blue animate-pulse mb-3" />
                 <p className="text-xs font-black uppercase tracking-[0.25em] text-white/50">Playing in Full Screen Mode</p>
@@ -587,14 +589,15 @@ export default function WatchLive() {
                   className="w-full aspect-video lg:aspect-auto lg:flex-1 bg-black relative flex-none lg:flex-1 flex items-center justify-center border-0 outline-none overflow-hidden"
                   style={{ width: '100%', minWidth: '100%', maxWidth: '100%', aspectRatio: '16 / 9', flexShrink: 0 }}
                 >
-                  {getEmbedUrl(studioVideoUrl) ? (
+                  {embedVideoUrl ? (
                     <iframe 
-                      key={`split-${playerKey}-${getEmbedUrl(studioVideoUrl)}`}
-                      src={getEmbedUrl(studioVideoUrl) || undefined} 
+                      key={`split-${playerKey}-${embedVideoUrl}`}
+                      src={embedVideoUrl || undefined} 
                       title="Live Studio Broadcast Split"
                       frameBorder={0}
                       scrolling="no"
                       tabIndex={-1}
+                      loading="eager"
                       className="w-full h-full border-0 outline-none ring-0 focus:outline-none focus:ring-0 focus-visible:outline-none absolute inset-0 z-10" 
                       style={{ border: 0, outline: 'none', boxShadow: 'none', width: '100%', height: '100%' }}
                       allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; clipboard-write; gyroscope"
