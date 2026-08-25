@@ -685,19 +685,6 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                     {appName.split(' ').slice(1).join(' ')}
                   </span>
                 </span>
-                {isOnAir && (
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="front-live-badge px-2 py-0.5 bg-red-500 rounded-full flex items-center space-x-1 shadow-[0_0_15px_rgba(239,68,68,0.55)] border border-red-400/20"
-                  >
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
-                    </span>
-                    <span className="text-[8px] font-black uppercase text-white tracking-[0.15em]">Live</span>
-                  </motion.div>
-                )}
               </div>
             </div>
           )}
