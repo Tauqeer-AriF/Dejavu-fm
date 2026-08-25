@@ -2483,6 +2483,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       { id: 'instagram', name: 'Instagram Direct', icon: Instagram, color: isStudioLight ? 'text-pink-700' : 'text-pink-400', bg: isStudioLight ? 'bg-pink-50 border-pink-300' : 'bg-pink-500/10 border-pink-500/20' },
       { id: 'facebook', name: 'Facebook Messenger', icon: Facebook, color: isStudioLight ? 'text-blue-700' : 'text-blue-400', bg: isStudioLight ? 'bg-blue-50 border-blue-300' : 'bg-blue-500/10 border-blue-500/20' },
       { id: 'twitch', name: 'Twitch Chat', icon: Twitch, color: 'text-neon-purple', bg: 'bg-neon-purple/10 border-neon-purple/20' },
+      { id: 'tiktok', name: 'TikTok Live Chat', icon: Video, color: 'text-cyan-400', bg: 'bg-cyan-500/10 border-cyan-500/20' },
     ];
 
     const toggleChannel = (id: string) => {
@@ -3019,7 +3020,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
               Studio Desk Settings
             </h2>
             <p className={`text-xs ${isStudioLight ? 'text-slate-500' : 'text-white/50'}`}>
-              Manage system alerts, customize quick-response templates, and configure automated purge timers.
+              Manage system alerts, customise quick-response templates, and configure automated purge timers.
             </p>
           </div>
 
@@ -3851,7 +3852,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           <div className={`text-[10px] uppercase font-mono tracking-widest hidden sm:block ${
             studioTheme === 'light' ? 'text-slate-500' : 'text-white/40'
           }`}>
-            PIPELINES: <span className="text-emerald-500 font-bold">{Object.values(connectedPlatforms).filter(Boolean).length} ACTIVE</span>
+            PIPELINES: <span className="text-emerald-500 font-bold">{2 + Object.values(connectedPlatforms).filter(Boolean).length} ACTIVE</span>
           </div>
         </div>
       </div>
@@ -4672,7 +4673,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                   <p className={`text-xs max-w-sm mx-auto leading-relaxed ${
                     isStudioLight ? 'text-slate-500' : 'text-white/40'
                   }`}>
-                    This is your centralized hub for listener interaction and stream telemetry. Select an active thread from the left pane to initialize a high-fidelity connection pipeline.
+                    This is your centralised hub for listener interaction and stream telemetry. Select an active thread from the left pane to initialise a high-fidelity connection pipeline.
                   </p>
                 </div>
 
@@ -4694,7 +4695,10 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                     <div className="space-y-1">
                       <span className={`block text-[9px] uppercase tracking-wider ${isStudioLight ? 'text-slate-400' : 'text-white/30'}`}>Active Pipelines</span>
                       <span className={`font-bold ${isStudioLight ? 'text-slate-800' : 'text-white/90'}`}>
-                        {Object.values(connectedPlatforms).filter(Boolean).length} Platform Channels
+                        {2 + Object.values(connectedPlatforms).filter(Boolean).length} Active Channels
+                      </span>
+                      <span className={`block text-[8px] font-mono leading-tight ${isStudioLight ? 'text-slate-500' : 'text-white/40'}`}>
+                        Chatroom, Shoutouts{Object.values(connectedPlatforms).filter(Boolean).length > 0 ? ` + ${Object.values(connectedPlatforms).filter(Boolean).length} External` : ''}
                       </span>
                     </div>
 
