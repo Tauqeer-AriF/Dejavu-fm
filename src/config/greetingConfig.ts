@@ -67,15 +67,15 @@ export const DEFAULT_GREETING_CONFIG: GreetingConfig = {
       evening: 'Good evening, {name}',
       night: 'Good night, {name}'
     },
-    guestGreeting: 'Welcome to Dejavu FM',
+    guestGreeting: 'Welcome to dejavufm',
     messages: {
-      newUser: 'Welcome to the party!',
+      newUser: 'Welcome to dejavufm',
       favoriteDjLive: '{djName} is live on air now',
       streakActive: 'You are on a {streak}-day listening streak',
-      streakMilestoneNear: 'One more day to reach your {milestone}-day streak!',
-      extendedAbsence: 'Welcome back, we missed you',
-      genreRecommendation: 'Ready for some {genre} music?',
-      returningUser: 'Welcome back! Ready for some music?',
+      streakMilestoneNear: 'Just one more day to reach your {milestone}-day streak!',
+      extendedAbsence: "Welcome back, we've missed you",
+      genreRecommendation: 'Fancy some {genre} music?',
+      returningUser: 'Welcome back! Ready for some tunes?',
       fallback: 'Discover something new today',
       guest: 'Live underground sets, resident DJ shows & programmes 24/7.'
     },

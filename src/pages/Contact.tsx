@@ -19,9 +19,9 @@ export default function Contact() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="front-page-contact max-w-4xl mx-auto space-y-16 pb-20 py-12"
+      className="front-page-contact max-w-4xl mx-auto space-y-16 pb-20 py-12 px-4 sm:px-6"
     >
-      <div className="relative text-center space-y-6 max-w-4xl mx-auto px-4 mb-20">
+      <div className="relative text-center space-y-6 max-w-4xl mx-auto mb-20">
         <motion.div
            initial={{ scale: 0.9, opacity: 0 }}
            animate={{ scale: 1, opacity: 0.1 }}
@@ -42,7 +42,7 @@ export default function Contact() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 px-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <motion.div whileHover="hover" className={`glass-panel p-8 rounded-3xl space-y-6 flex flex-col items-center text-center relative overflow-hidden transition-colors ${
           isLightMode ? 'bg-white border-black/10' : 'border-white/5 bg-black/40'
         }`}>

@@ -54,7 +54,7 @@ export default function Arch421() {
 
   const infoItems = [
     {
-      title: "31 Years of Dejavu FM History.",
+      title: "31 Years of dejavufm History.",
       textColor: "text-neon-purple",
       bgColor: "bg-neon-purple/10 border-neon-purple/20"
     },

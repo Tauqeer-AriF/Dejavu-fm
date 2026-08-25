@@ -256,8 +256,8 @@ export function AdminBranding() {
   }, [fontDisplay]);
 
   const DEFAULTS = {
-    appName: "DEJAVUFM",
-    appTitle: "DEJAVUFM | THE SOUND OF LONDON",
+    appName: "dejavufm",
+    appTitle: "dejavufm | THE SOUND OF LONDON",
     appTagline: "The Underground Worldwide",
     logo_url: "",
     logo_dark: "",
@@ -511,7 +511,7 @@ export function AdminBranding() {
                 value={appName} 
                 onChange={e=>setAppName(e.target.value)} 
                 className={`w-full rounded-xl px-4 py-3 text-sm focus:border-neon-purple outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
-                placeholder="DEJAVUFM"
+                placeholder="dejavufm"
               />
             </div>
           </div>

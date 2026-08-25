@@ -86,7 +86,7 @@ export function Events() {
   );
 
   return (
-    <div className={`min-h-screen py-8 sm:py-12 space-y-12 transition-colors duration-300 bg-transparent ${
+    <div className={`min-h-screen py-8 sm:py-12 space-y-12 transition-colors duration-300 bg-transparent px-4 sm:px-6 lg:px-8 ${
       isLightMode ? 'text-black' : 'text-white'
     }`}>
       {/* Header Title Section */}

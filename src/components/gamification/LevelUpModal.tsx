@@ -139,7 +139,7 @@ export function LevelUpModal() {
           <p className={`text-sm font-medium mb-6 leading-relaxed ${
             isLightMode ? 'text-slate-600' : 'text-white/70'
           }`}>
-            You just reached <span className={`font-bold ${isLightMode ? 'text-neon-purple' : 'text-neon-blue'}`}>Level {levelUpModalData.level}</span> on Dejavu FM! Keep listening and interacting to unlock legendary status.
+            You just reached <span className={`font-bold ${isLightMode ? 'text-neon-purple' : 'text-neon-blue'}`}>Level {levelUpModalData.level}</span> on dejavufm! Keep listening and interacting to unlock legendary status.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3">

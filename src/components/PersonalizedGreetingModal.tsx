@@ -105,7 +105,7 @@ export function PersonalizedGreetingModal() {
       {!isDismissed && (
         <div
           id="personalized-greeting-modal-backdrop"
-          className={`fixed inset-0 z-[999] flex items-center justify-center p-3 sm:p-6 backdrop-blur-md select-none overflow-y-auto overscroll-contain transition-colors duration-300 ${
+          className={`fixed inset-0 z-[999999] flex items-center justify-center p-3 sm:p-6 backdrop-blur-md select-none overflow-y-auto overscroll-contain transition-colors duration-300 ${
             isLightMode ? 'bg-slate-950/20' : 'bg-black/75'
           }`}
           onClick={(e) => {
@@ -174,7 +174,7 @@ export function PersonalizedGreetingModal() {
                 >
                   <img
                     src={faviconSrc}
-                    alt="Dejavu FM"
+                    alt="dejavufm"
                     className="w-full h-full object-contain rounded-xl drop-shadow-sm"
                     onError={(e) => {
                       (e.currentTarget as HTMLImageElement).src = '/favicon.svg';

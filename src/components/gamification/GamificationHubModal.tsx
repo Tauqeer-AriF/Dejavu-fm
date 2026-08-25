@@ -204,16 +204,16 @@ export function GamificationHubModal() {
   const handleShareShow = async () => {
     const shareUrl = window.location.origin;
     const shareData = {
-      title: 'Dejavu FM | London Underground Radio',
-      text: 'Listen live to Underground House, Garage, Jungle & Grime on Dejavu FM!',
+      title: 'dejavufm | London Underground Radio',
+      text: 'Listen live to Underground House, Garage, Jungle & Grime on dejavufm!',
       url: shareUrl
     };
 
     if (navigator.share) {
       try {
         await navigator.share(shareData);
-        await claimShareXp('Dejavu FM Live', shareUrl);
-        toast.success('Thanks for sharing Dejavu FM! +25 XP');
+        await claimShareXp('dejavufm Live', shareUrl);
+        toast.success('Thanks for sharing dejavufm! +25 XP');
       } catch (err) {
         // User canceled share
       }
@@ -222,7 +222,7 @@ export function GamificationHubModal() {
         await navigator.clipboard.writeText(shareUrl);
         setCopiedLink(true);
         setTimeout(() => setCopiedLink(false), 2000);
-        await claimShareXp('Dejavu FM Live', shareUrl);
+        await claimShareXp('dejavufm Live', shareUrl);
         toast.success('Link copied to clipboard! +25 XP');
       } catch (e) {
         toast.error('Could not copy link');
@@ -825,7 +825,7 @@ export function GamificationHubModal() {
                             playRadio();
                           }
                           closeHub();
-                          toast.success("Streaming Dejavu FM Live! Keep listening to build your daily streak.");
+                          toast.success("Streaming dejavufm Live! Keep listening to build your daily streak.");
                         }}
                         className={`w-full py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl font-bold text-[11px] sm:text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
                           isLightMode

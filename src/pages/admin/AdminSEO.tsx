@@ -86,8 +86,8 @@ export function AdminSEO() {
       if (!settingsRes.ok) throw new Error('Failed to load global settings');
       const settingsData = await settingsRes.json();
       
-      setSeoTitle(settingsData.seo_title || settingsData.app_title || settingsData.app_name || 'DejavuFM');
-      setSeoDescription(settingsData.seo_description || 'DejavuFM is the heartbeat of London\'s underground radio scene.');
+      setSeoTitle(settingsData.seo_title || settingsData.app_title || settingsData.app_name || 'dejavufm');
+      setSeoDescription(settingsData.seo_description || 'dejavufm is the heartbeat of London\'s underground radio scene.');
       setSeoImage(settingsData.seo_image || settingsData.logo_url || settingsData.favicon || '/icon.svg');
       setCustomHeaderInject(settingsData.custom_header_inject || '');
       setRobotsTxt(settingsData.robots_txt || '');
@@ -556,7 +556,7 @@ export function AdminSEO() {
                 <span className={`text-[9px] uppercase tracking-widest font-black px-2 py-0.5 rounded bg-neon-purple/10 text-neon-purple`}>Active SEO Indexing Protocol</span>
                 <h3 className={`text-lg font-display font-black uppercase tracking-tight ${isLightMode ? 'text-black' : 'text-white'}`}>Instant Sitemap Verification Ping</h3>
                 <p className={`text-xs leading-relaxed ${isLightMode ? 'text-black/60' : 'text-white/50'}`}>
-                  Whenever you create custom pages, modify podcast settings, or add resident profiles, you can broadcast an updated sitemap map to search engine engines. This signals web crawlers to instantly schedule re-crawling of DejavuFM pages.
+                  Whenever you create custom pages, modify podcast settings, or add resident profiles, you can broadcast an updated sitemap map to search engine engines. This signals web crawlers to instantly schedule re-crawling of dejavufm pages.
                 </p>
               </div>
 
@@ -650,11 +650,11 @@ export function AdminSEO() {
               <div className={`border rounded-3xl p-5 sm:p-6 transition-colors ${isLightMode ? 'bg-white border-black/10 shadow-sm text-black' : 'bg-dark-bg/50 border-white/10 text-white'}`}>
                 <p className={`text-[10px] uppercase tracking-[0.2em] font-bold mb-6 ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Google Preview</p>
                 <div className="space-y-1.5">
-                  <p className="text-neon-purple text-base font-semibold hover:underline cursor-pointer truncate">{seoTitle || 'DejavuFM | The Sound of London'}</p>
+                  <p className="text-neon-purple text-base font-semibold hover:underline cursor-pointer truncate">{seoTitle || 'dejavufm | The Sound of London'}</p>
                   <p className={`text-xs ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>
                     {typeof window !== 'undefined' ? window.location.origin : 'https://dejavufm.com'}
                   </p>
-                  <p className={`text-sm leading-relaxed mt-2 ${isLightMode ? 'text-black/70' : 'text-white/70'}`}>{seoDescription || 'DejavuFM is the underground radio station combining London beats with global energy.'}</p>
+                  <p className={`text-sm leading-relaxed mt-2 ${isLightMode ? 'text-black/70' : 'text-white/70'}`}>{seoDescription || 'dejavufm is the underground radio station combining London beats with global energy.'}</p>
                 </div>
               </div>
 
@@ -671,9 +671,9 @@ export function AdminSEO() {
                     )}
                   </div>
                   <div className="space-y-1.5">
-                    <p className={`text-[10px] uppercase tracking-widest font-black ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>DEJAVUFM</p>
-                    <p className={`text-lg font-bold tracking-tight leading-tight ${isLightMode ? 'text-black' : 'text-white'}`}>{seoTitle || 'DejavuFM | The Sound of London'}</p>
-                    <p className={`text-xs leading-relaxed line-clamp-2 ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>{seoDescription || 'DejavuFM is the underground radio station combining London beats with global energy.'}</p>
+                    <p className={`text-[10px] uppercase tracking-widest font-black ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>dejavufm</p>
+                    <p className={`text-lg font-bold tracking-tight leading-tight ${isLightMode ? 'text-black' : 'text-white'}`}>{seoTitle || 'dejavufm | The Sound of London'}</p>
+                    <p className={`text-xs leading-relaxed line-clamp-2 ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>{seoDescription || 'dejavufm is the underground radio station combining London beats with global energy.'}</p>
                   </div>
                 </div>
               </div>

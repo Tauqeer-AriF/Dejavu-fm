@@ -23,7 +23,7 @@ function DjDiskPlayButton({
   const { settings } = useLogo();
 
   const stationName = useMemo(() => {
-    return settings?.station_name || settings?.site_title || settings?.app_name || "DEJAVU FM";
+    return settings?.station_name || settings?.site_title || settings?.app_name || "dejavufm";
   }, [settings]);
 
   return (

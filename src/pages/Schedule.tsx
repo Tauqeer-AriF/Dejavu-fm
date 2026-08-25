@@ -159,10 +159,10 @@ export default function Schedule() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="front-page-schedule space-y-10 pb-20 mt-8"
+      className="front-page-schedule space-y-10 pb-20 mt-8 px-4 sm:px-6 lg:px-8"
     >
       {/* Header section */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-6 px-4">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-6">
         <div className="text-center lg:text-left">
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}

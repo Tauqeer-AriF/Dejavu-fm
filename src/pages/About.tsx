@@ -9,9 +9,9 @@ export default function About() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="front-page-about max-w-4xl mx-auto space-y-16 pb-20 py-12"
+      className="front-page-about max-w-4xl mx-auto space-y-16 pb-20 py-12 px-4 sm:px-6"
     >
-      <div className="relative text-center space-y-6 max-w-4xl mx-auto px-4 mb-20">
+      <div className="relative text-center space-y-6 max-w-4xl mx-auto mb-20">
         <motion.div
            initial={{ scale: 0.9, opacity: 0 }}
            animate={{ scale: 1, opacity: 0.1 }}
@@ -23,7 +23,7 @@ export default function About() {
         <h1 className={`text-4xl sm:text-6xl md:text-8xl font-display font-black uppercase tracking-tighter relative z-10 drop-shadow-2xl ${
           isLightMode ? 'text-slate-900' : 'text-white'
         }`}>
-          About <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue">DejavuFM</span>
+          About <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-purple to-neon-blue">dejavufm</span>
         </h1>
         <p className={`text-base md:text-lg font-light tracking-wide relative z-10 max-w-2xl mx-auto border-t pt-8 transition-colors ${
           isLightMode ? 'border-black/5 text-slate-500' : 'border-white/5 text-white/50'
