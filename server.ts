@@ -8,6 +8,8 @@ import { apiRouter, performMediaAutoDeleteCleanup, getActivePresenceList } from 
 import { webhookRouter } from "./src/server/meta/webhook.routes.ts";
 import { MetaService } from "./src/server/meta/meta.service.ts";
 import { TwitchService } from "./src/server/twitch.service.ts";
+import { TikTokService } from "./src/server/tiktok.service.ts";
+import { tiktokRouter } from "./src/server/tiktok.routes.ts";
 import { initDb, db, backupDatabase, getUploadsDir, pruneHistoricalData } from "./src/server/db.ts";
 import { awardXP, calculateLevelProgression } from "./src/server/gamification.service.ts";
 import { getReactionsForMessagesBulk, toggleMessageReaction, deleteMessageReactions, clearAllMessageReactions } from "./src/server/reactions.service.ts";
@@ -301,6 +303,7 @@ async function startServer() {
   app.set('io', io);
   setSocketIOInstance(io);
   await TwitchService.initialize(io);
+  await TikTokService.initialize(io);
 
   // Helper for meta tag injection
   let indexHtmlCache: string | null = null;
@@ -1696,6 +1699,7 @@ async function startServer() {
 
   // API Routes
   app.use("/api", apiRouter);
+  app.use("/api/tiktok", tiktokRouter);
   app.use("/webhook", webhookRouter);
 
   app.get("/api/health", (req, res) => {
