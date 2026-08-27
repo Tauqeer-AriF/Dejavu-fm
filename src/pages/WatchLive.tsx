@@ -279,10 +279,10 @@ export default function WatchLive() {
           exit={{ opacity: 0, y: -20 }}
           className="max-w-7xl mx-auto px-4 pt-4 pb-6 lg:h-[calc(100vh-140px)] lg:min-h-[650px] flex flex-col"
         >
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0 items-stretch">
+          <div className={featChat ? "grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0 items-stretch" : "flex flex-col items-center justify-center flex-1 min-h-0 w-full"}>
             
             {/* Left Side: Video Player Section */}
-        <div className={`lg:col-span-8 flex flex-col h-full ${isLightMode ? 'bg-[#ffffff] border-black/10' : 'bg-black/40 border-white/5'} border rounded-3xl overflow-hidden shadow-2xl relative min-h-0`}>
+            <div className={`${featChat ? 'lg:col-span-8' : 'w-full max-w-5xl'} flex flex-col h-full ${isLightMode ? 'bg-[#ffffff] border-black/10' : 'bg-black/40 border-white/5'} border rounded-3xl overflow-hidden shadow-2xl relative min-h-0`}>
           {/* Top Control Bar of Video Section */}
           <div className={`flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3 border-b ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-[#0e0e11] border-white/5 text-white'} shrink-0`}>
             <div className="flex items-center gap-1.5 sm:gap-2">
@@ -464,21 +464,14 @@ export default function WatchLive() {
           </div>
         </div>
 
-        {/* Right Side: Chat Room Section */}
-        <div className={`lg:col-span-4 flex flex-col h-[550px] sm:h-[600px] lg:h-full ${isLightMode ? 'bg-[#ffffff] border-black/10' : 'bg-black/40 border-white/5'} border rounded-3xl overflow-hidden shadow-2xl relative`}>
-          {!featChat ? (
-            <div className={`flex flex-col items-center justify-center h-full opacity-20 text-center space-y-4 py-12 ${isLightMode ? 'text-black' : 'text-white'}`}>
-              <MessageSquare className="w-12 h-12" />
-              <p className="text-xs font-bold uppercase tracking-widest">
-                Live Chat is currently offline
-              </p>
-            </div>
-          ) : (
+        {/* Right Side: Chat Room Section - Only visible when Chat Room feature is enabled */}
+        {featChat && (
+          <div className={`lg:col-span-4 flex flex-col h-[550px] sm:h-[600px] lg:h-full ${isLightMode ? 'bg-[#ffffff] border-black/10' : 'bg-black/40 border-white/5'} border rounded-3xl overflow-hidden shadow-2xl relative`}>
             <div className="flex-1 w-full relative flex flex-col min-h-0">
               <ChatSidebar embedded={true} />
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
       </div>
         </motion.div>
