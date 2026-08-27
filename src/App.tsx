@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { NavLink } from 'react-router-dom';
-import { Radio, Calendar, Podcast, Shield as AdminIcon, Headphones, Menu, X, Video, MessageSquare, Sun, Moon, FileText, ChevronDown, ExternalLink, Info, Instagram, Twitter, Facebook, Youtube, Cloud, Music, Share2, Layers, Globe, ShieldAlert, Power, Sparkles, Ticket } from 'lucide-react';
+import { Radio, Calendar, Podcast, Shield as AdminIcon, Headphones, Menu, X, Video, MessageSquare, Sun, Moon, FileText, ChevronDown, ExternalLink, Info, Instagram, Twitter, Facebook, Youtube, Cloud, Music, Share2, Layers, Globe, ShieldAlert, Power, Sparkles, Ticket, Apple, Smartphone } from 'lucide-react';
 import { PlayerBar } from './components/PlayerBar';
 import { NotificationManager } from './components/NotificationManager';
 import { GlobalRequestAlerts } from './components/GlobalRequestAlerts';
@@ -1652,132 +1652,184 @@ function MainLayout() {
 
       {!isAdmin && !isSplitActive && (
         <footer className={`front-footer w-full max-w-7xl mx-auto p-4 md:p-8 pt-24 border-t relative flex flex-col gap-10 text-sm mb-40 md:mb-32 ${isLightMode ? 'border-black/10 text-black/60' : 'border-white/5 text-white/40'}`}>
-          <div className="flex flex-col md:flex-row items-center justify-between gap-10 w-full">
-            <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-4 w-full md:w-auto">
-              <button 
-                onClick={handleShare} 
-                className={`front-footer-share-btn flex items-center justify-center gap-2.5 px-6 py-3 md:p-0 md:w-10 md:h-10 rounded-full transition-all shadow-md hover:shadow-xl cursor-pointer order-first md:order-last w-full max-w-[240px] md:max-w-none md:w-10 mb-[10px] md:mb-0 border ${
-                  isLightMode 
-                    ? 'bg-black/[0.03] border-black/10 text-black/70 hover:text-neon-purple hover:border-neon-purple/50 hover:bg-neon-purple/5' 
-                    : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-neon-purple/50 hover:bg-neon-purple/10'
-                }`}
-                title="Share Website"
-              >
-                <Share2 className="w-4 h-4 text-neon-purple animate-pulse" />
-                <span className="md:hidden text-[10px] font-black uppercase tracking-[0.2em] text-neon-purple">Share Station</span>
-              </button>
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8 w-full">
+            {/* Left Column: Social Channels + Apps Underneath */}
+            <div className="flex flex-col items-center md:items-start gap-4 w-full md:w-auto">
+              {/* Row 1: Social Icons & Share Button on the right */}
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 w-full sm:w-auto">
+                <div className="front-footer-socials flex flex-wrap justify-center items-center gap-3">
+                  {settings?.social_instagram && (
+                    <a 
+                      href={settings.social_instagram} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-md hover:shadow-xl ${
+                        isLightMode 
+                          ? 'bg-black/[0.03] border-black/10 text-black/60 hover:text-black hover:border-black/30 hover:bg-black/10' 
+                          : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
+                      }`} 
+                      title="Instagram"
+                    >
+                      <Instagram className="w-4 h-4" />
+                    </a>
+                  )}
+                  {settings?.social_twitter && (
+                    <a 
+                      href={settings.social_twitter} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-md hover:shadow-xl ${
+                        isLightMode 
+                          ? 'bg-black/[0.03] border-black/10 text-black/60 hover:text-black hover:border-black/30 hover:bg-black/10' 
+                          : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
+                      }`} 
+                      title="Twitter / X"
+                    >
+                      <Twitter className="w-4 h-4" />
+                    </a>
+                  )}
+                  {settings?.social_facebook && (
+                    <a 
+                      href={settings.social_facebook} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-md hover:shadow-xl ${
+                        isLightMode 
+                          ? 'bg-black/[0.03] border-black/10 text-black/60 hover:text-black hover:border-black/30 hover:bg-black/10' 
+                          : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
+                      }`} 
+                      title="Facebook"
+                    >
+                      <Facebook className="w-4 h-4" />
+                    </a>
+                  )}
+                  {settings?.social_youtube && (
+                    <a 
+                      href={settings.social_youtube} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-md hover:shadow-xl ${
+                        isLightMode 
+                          ? 'bg-black/[0.03] border-black/10 text-black/60 hover:text-black hover:border-black/30 hover:bg-black/10' 
+                          : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
+                      }`} 
+                      title="YouTube"
+                    >
+                      <Youtube className="w-4 h-4" />
+                    </a>
+                  )}
+                  {settings?.social_soundcloud && (
+                    <a 
+                      href={settings.social_soundcloud} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-md hover:shadow-xl ${
+                        isLightMode 
+                          ? 'bg-black/[0.03] border-black/10 text-black/60 hover:text-black hover:border-black/30 hover:bg-black/10' 
+                          : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
+                      }`} 
+                      title="SoundCloud"
+                    >
+                      <Cloud className="w-4 h-4" />
+                    </a>
+                  )}
+                  {settings?.social_mixcloud && (
+                    <a 
+                      href={settings.social_mixcloud} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-md hover:shadow-xl ${
+                        isLightMode 
+                          ? 'bg-black/[0.03] border-black/10 text-black/60 hover:text-black hover:border-black/30 hover:bg-black/10' 
+                          : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
+                      }`} 
+                      title="Mixcloud"
+                    >
+                      <MixcloudIcon className="w-5 h-5" />
+                    </a>
+                  )}
+                  {settings?.social_tiktok && (
+                    <a 
+                      href={settings.social_tiktok} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-md hover:shadow-xl ${
+                        isLightMode 
+                          ? 'bg-black/[0.03] border-black/10 text-black/60 hover:text-black hover:border-black/30 hover:bg-black/10' 
+                          : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
+                      }`} 
+                      title="TikTok"
+                    >
+                      <TikTokIcon className="w-4 h-4" />
+                    </a>
+                  )}
+                  {!settings?.social_instagram && !settings?.social_twitter && !settings?.social_facebook && !settings?.social_youtube && !settings?.social_soundcloud && !settings?.social_mixcloud && !settings?.social_tiktok && (
+                    <span className={`text-[10px] uppercase tracking-[0.2em] ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>Social profiles not configured</span>
+                  )}
+                </div>
 
-              <div className="front-footer-socials flex flex-wrap justify-center items-center gap-4">
-                {settings?.social_instagram && (
-                  <a 
-                    href={settings.social_instagram} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-md hover:shadow-xl ${
-                      isLightMode 
-                        ? 'bg-black/[0.03] border-black/10 text-black/60 hover:text-black hover:border-black/30 hover:bg-black/10' 
-                        : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
-                    }`} 
-                    title="Instagram"
-                  >
-                    <Instagram className="w-4 h-4" />
-                  </a>
-                )}
-                {settings?.social_twitter && (
-                  <a 
-                    href={settings.social_twitter} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-md hover:shadow-xl ${
-                      isLightMode 
-                        ? 'bg-black/[0.03] border-black/10 text-black/60 hover:text-black hover:border-black/30 hover:bg-black/10' 
-                        : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
-                    }`} 
-                    title="Twitter / X"
-                  >
-                    <Twitter className="w-4 h-4" />
-                  </a>
-                )}
-                {settings?.social_facebook && (
-                  <a 
-                    href={settings.social_facebook} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-md hover:shadow-xl ${
-                      isLightMode 
-                        ? 'bg-black/[0.03] border-black/10 text-black/60 hover:text-black hover:border-black/30 hover:bg-black/10' 
-                        : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
-                    }`} 
-                    title="Facebook"
-                  >
-                    <Facebook className="w-4 h-4" />
-                  </a>
-                )}
-                {settings?.social_youtube && (
-                  <a 
-                    href={settings.social_youtube} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-md hover:shadow-xl ${
-                      isLightMode 
-                        ? 'bg-black/[0.03] border-black/10 text-black/60 hover:text-black hover:border-black/30 hover:bg-black/10' 
-                        : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
-                    }`} 
-                    title="YouTube"
-                  >
-                    <Youtube className="w-4 h-4" />
-                  </a>
-                )}
-                {settings?.social_soundcloud && (
-                  <a 
-                    href={settings.social_soundcloud} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-md hover:shadow-xl ${
-                      isLightMode 
-                        ? 'bg-black/[0.03] border-black/10 text-black/60 hover:text-black hover:border-black/30 hover:bg-black/10' 
-                        : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
-                    }`} 
-                    title="SoundCloud"
-                  >
-                    <Cloud className="w-4 h-4" />
-                  </a>
-                )}
-                {settings?.social_mixcloud && (
-                  <a 
-                    href={settings.social_mixcloud} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-md hover:shadow-xl ${
-                      isLightMode 
-                        ? 'bg-black/[0.03] border-black/10 text-black/60 hover:text-black hover:border-black/30 hover:bg-black/10' 
-                        : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
-                    }`} 
-                    title="Mixcloud"
-                  >
-                    <MixcloudIcon className="w-5 h-5" />
-                  </a>
-                )}
-                {settings?.social_tiktok && (
-                  <a 
-                    href={settings.social_tiktok} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-md hover:shadow-xl ${
-                      isLightMode 
-                        ? 'bg-black/[0.03] border-black/10 text-black/60 hover:text-black hover:border-black/30 hover:bg-black/10' 
-                        : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
-                    }`} 
-                    title="TikTok"
-                  >
-                    <TikTokIcon className="w-4 h-4" />
-                  </a>
-                )}
-                {!settings?.social_instagram && !settings?.social_twitter && !settings?.social_facebook && !settings?.social_youtube && !settings?.social_soundcloud && !settings?.social_mixcloud && !settings?.social_tiktok && (
-                  <span className={`text-[10px] uppercase tracking-[0.2em] ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>Social profiles not configured</span>
-                )}
+                <button 
+                  onClick={handleShare} 
+                  className={`front-footer-share-btn flex items-center justify-center gap-2.5 w-10 h-10 rounded-full transition-all shadow-md hover:shadow-xl cursor-pointer border ${
+                    isLightMode 
+                      ? 'bg-black/[0.03] border-black/10 text-black/70 hover:text-neon-purple hover:border-neon-purple/50 hover:bg-neon-purple/5' 
+                      : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-neon-purple/50 hover:bg-neon-purple/10'
+                  }`}
+                  title="Share Website"
+                  aria-label="Share Website"
+                >
+                  <Share2 className="w-4 h-4 text-neon-purple animate-pulse" />
+                </button>
               </div>
+
+              {/* Row 2: Apps Directly Under Social Icons */}
+              {(settings?.app_ios_url || settings?.app_android_url) && (
+                <div className="front-footer-apps flex flex-wrap items-center justify-center md:justify-start gap-2 pt-1">
+                  {settings?.app_ios_url && (
+                    <a 
+                      href={settings.app_ios_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all shadow-sm hover:shadow-md ${
+                        isLightMode 
+                          ? 'bg-black/[0.03] border-black/10 text-black hover:border-black/30 hover:bg-black/5' 
+                          : 'bg-white/5 border-white/10 text-white hover:border-white/30 hover:bg-white/10'
+                      }`} 
+                      title="Download on Apple App Store (iOS)"
+                      aria-label="Apple App Store"
+                    >
+                      <Apple className="w-4 h-4 text-current shrink-0" />
+                      <div className="flex flex-col text-left leading-tight">
+                        <span className="text-[7px] font-bold uppercase tracking-wider opacity-60">App Store</span>
+                        <span className="text-[10px] font-black tracking-tight">iOS</span>
+                      </div>
+                    </a>
+                  )}
+                  {settings?.app_android_url && (
+                    <a 
+                      href={settings.app_android_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all shadow-sm hover:shadow-md ${
+                        isLightMode 
+                          ? 'bg-black/[0.03] border-black/10 text-black hover:border-black/30 hover:bg-black/5' 
+                          : 'bg-white/5 border-white/10 text-white hover:border-white/30 hover:bg-white/10'
+                      }`} 
+                      title="Get it on Google Play (Android)"
+                      aria-label="Google Play Store"
+                    >
+                      <Smartphone className="w-4 h-4 text-neon-blue shrink-0" />
+                      <div className="flex flex-col text-left leading-tight">
+                        <span className="text-[7px] font-bold uppercase tracking-wider opacity-60">Google Play</span>
+                        <span className="text-[10px] font-black tracking-tight">Android</span>
+                      </div>
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
+
+            {/* Right Column: Copyright, Tagline & Privacy Policy */}
             <div className="flex flex-col items-center md:items-end space-y-2 text-center md:text-right">
               <p className={`front-footer-copyright font-black tracking-[0.2em] text-[10px] ${isLightMode ? 'text-black/70' : 'text-white/60'}`}>© {new Date().getFullYear()} dejavufm.com. All rights reserved.</p>
               <p className="front-footer-tagline text-[10px] uppercase tracking-[0.3em] font-bold italic text-center md:text-right text-[#7a7878]">
@@ -1787,7 +1839,7 @@ function MainLayout() {
             </div>
           </div>
 
-          <div className={`front-footer-credits w-[500px] max-w-full mx-auto border-t pt-6 flex justify-center ${isLightMode ? 'border-black/10' : 'border-white/[0.05]'}`}>
+          <div className={`front-footer-credits w-[400px] max-w-full mx-auto border-t pt-6 flex justify-center ${isLightMode ? 'border-black/10' : 'border-white/[0.05]'}`}>
             <p className={`text-[9px] md:text-[10px] uppercase tracking-[0.25em] text-center ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>
               Developed by{" "}
               <a 

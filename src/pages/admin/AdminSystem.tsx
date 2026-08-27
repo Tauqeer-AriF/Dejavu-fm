@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { useNavigate, Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
-import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, ChevronDown, RefreshCw, Sparkles } from "lucide-react";
+import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, ChevronDown, RefreshCw, Sparkles, Smartphone, Apple } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { useModal } from "../../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
@@ -233,6 +233,8 @@ export function AdminBranding() {
   const [socialSoundcloud, setSocialSoundcloud] = useState("");
   const [socialMixcloud, setSocialMixcloud] = useState("");
   const [socialTiktok, setSocialTiktok] = useState("");
+  const [appAndroidUrl, setAppAndroidUrl] = useState("");
+  const [appIosUrl, setAppIosUrl] = useState("");
   const [underHeaderText, setUnderHeaderText] = useState("");
   const [underHeaderAlign, setUnderHeaderAlign] = useState("center");
   const { showAlert, showConfirm } = useModal();
@@ -269,6 +271,15 @@ export function AdminBranding() {
     font_sans: "Inter",
     font_display: "Inter",
     default_theme: "dark",
+    social_instagram: "",
+    social_twitter: "",
+    social_facebook: "",
+    social_youtube: "",
+    social_soundcloud: "",
+    social_mixcloud: "",
+    social_tiktok: "",
+    app_android_url: "",
+    app_ios_url: "",
     under_header_text: "",
     under_header_align: "center"
   };
@@ -313,6 +324,8 @@ export function AdminBranding() {
       setSocialSoundcloud(serverSettings.social_soundcloud || "");
       setSocialMixcloud(serverSettings.social_mixcloud || "");
       setSocialTiktok(serverSettings.social_tiktok || "");
+      setAppAndroidUrl(serverSettings.app_android_url || "");
+      setAppIosUrl(serverSettings.app_ios_url || "");
       setUnderHeaderText(serverSettings.under_header_text || "");
       setUnderHeaderAlign(serverSettings.under_header_align || "center");
     }
@@ -380,6 +393,8 @@ export function AdminBranding() {
           social_soundcloud: "",
           social_mixcloud: "",
           social_tiktok: "",
+          app_android_url: "",
+          app_ios_url: "",
           under_header_text: "",
           under_header_align: "center"
         })
@@ -407,6 +422,8 @@ export function AdminBranding() {
         setSocialSoundcloud("");
         setSocialMixcloud("");
         setSocialTiktok("");
+        setAppAndroidUrl("");
+        setAppIosUrl("");
         setUnderHeaderText("");
         setUnderHeaderAlign("center");
       }
@@ -443,6 +460,8 @@ export function AdminBranding() {
           social_soundcloud: socialSoundcloud,
           social_mixcloud: socialMixcloud,
           social_tiktok: socialTiktok,
+          app_android_url: appAndroidUrl,
+          app_ios_url: appIosUrl,
           under_header_text: underHeaderText,
           under_header_align: underHeaderAlign
         })
@@ -725,6 +744,42 @@ export function AdminBranding() {
                   onChange={e=>setSocialTiktok(e.target.value)} 
                   className={`w-full rounded-xl px-4 py-3 text-sm focus:border-neon-purple outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
                   placeholder="https://tiktok.com/@..."
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className={`space-y-4 pt-4 border-t transition-colors ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
+            <div>
+              <h4 className={`text-xs font-black uppercase tracking-[0.2em] mb-1 ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>Mobile Applications (iOS & Android)</h4>
+              <p className={`text-[10px] leading-relaxed ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>
+                Add the store URLs for your official mobile apps. Store icons will automatically appear in the website footer for listeners to download.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={`flex items-center gap-1.5 text-[10px] uppercase mb-1 font-bold tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>
+                  <Apple className="w-3.5 h-3.5 text-neon-purple shrink-0" />
+                  <span>Apple App Store (iOS) URL</span>
+                </label>
+                <input 
+                  value={appIosUrl} 
+                  onChange={e=>setAppIosUrl(e.target.value)} 
+                  className={`w-full rounded-xl px-4 py-3 text-sm focus:border-neon-purple outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
+                  placeholder="https://apps.apple.com/app/id..."
+                />
+              </div>
+              <div>
+                <label className={`flex items-center gap-1.5 text-[10px] uppercase mb-1 font-bold tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>
+                  <Smartphone className="w-3.5 h-3.5 text-neon-blue shrink-0" />
+                  <span>Google Play Store (Android) URL</span>
+                </label>
+                <input 
+                  value={appAndroidUrl} 
+                  onChange={e=>setAppAndroidUrl(e.target.value)} 
+                  className={`w-full rounded-xl px-4 py-3 text-sm focus:border-neon-purple outline-none transition-all border ${isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg border-white/10 text-white'}`} 
+                  placeholder="https://play.google.com/store/apps/details?id=..."
                 />
               </div>
             </div>
