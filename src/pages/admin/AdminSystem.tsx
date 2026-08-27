@@ -1249,7 +1249,7 @@ function AdminSecretSettings() {
           Update Secret
         </button>
       </div>
-      <p className={`text-[10px] leading-relaxed mt-2 ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>This is the answer required to access the admin login page from the public site.</p>
+      <p className={`text-[10px] leading-relaxed mt-2 ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>This is the general staff answer required to access the admin login page from the public site. (Owner authorised name is managed exclusively in the Owner Control Panel).</p>
     </div>
   );
 }

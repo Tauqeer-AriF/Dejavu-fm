@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { fetchAdmin } from "./adminApi";
-import { ShieldAlert, Power, Radio, RefreshCw, AlertOctagon, Mail, Lock, CheckCircle, Eye, EyeOff, Sliders, Ghost } from "lucide-react";
+import { ShieldAlert, Power, Radio, RefreshCw, AlertOctagon, Mail, Lock, CheckCircle, Eye, EyeOff, Sliders, Ghost, Shield, KeyRound } from "lucide-react";
 import { useLogo } from "../../hooks/useLogo";
 import { safeFetchJson } from "../../utils/safeFetch";
 import { motion } from "motion/react";
@@ -29,6 +29,13 @@ export default function AdminOwnerControl() {
   const [credSuccess, setCredSuccess] = useState<string | null>(null);
   const [credError, setCredError] = useState<string | null>(null);
   const [showPass, setShowPass] = useState<boolean>(false);
+
+  // Owner Security Check Authorized Name State
+  const [ownerSecret, setOwnerSecret] = useState<string>("");
+  const [ownerSecretUpdating, setOwnerSecretUpdating] = useState<boolean>(false);
+  const [ownerSecretSuccess, setOwnerSecretSuccess] = useState<string | null>(null);
+  const [ownerSecretError, setOwnerSecretError] = useState<string | null>(null);
+  const [showOwnerSecret, setShowOwnerSecret] = useState<boolean>(false);
 
   // Advanced Feature Visibility State (hidden = true means owner hid it from Advanced Tab)
   const [hiddenFeatures, setHiddenFeatures] = useState<Record<string, boolean>>({});
@@ -116,6 +123,13 @@ export default function AdminOwnerControl() {
         const profileData = await profileRes.json();
         setEmail(profileData.email || "");
       }
+
+      // Fetch owner security check authorized name
+      const secretRes = await fetchAdmin("/api/admin/owner/secret");
+      if (secretRes.ok) {
+        const secretData = await secretRes.json();
+        setOwnerSecret(secretData.secret || "owner");
+      }
     } catch (err) {
       setError("An unexpected error occurred while loading settings.");
     } finally {
@@ -157,6 +171,44 @@ export default function AdminOwnerControl() {
       toast.error("Failed to toggle system power state");
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleUpdateOwnerSecret = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setOwnerSecretError(null);
+    setOwnerSecretSuccess(null);
+
+    const trimmed = ownerSecret.trim();
+    if (!trimmed) {
+      setOwnerSecretError("Owner authorized name cannot be empty.");
+      return;
+    }
+    if (trimmed.length < 2) {
+      setOwnerSecretError("Owner authorized name must be at least 2 characters long.");
+      return;
+    }
+
+    try {
+      setOwnerSecretUpdating(true);
+      const res = await fetchAdmin("/api/admin/owner/secret", {
+        method: "POST",
+        body: JSON.stringify({ secret: trimmed }),
+      });
+
+      if (res.ok) {
+        setOwnerSecretSuccess("Owner security check authorized name has been updated successfully!");
+        toast.success("Owner authorized security name updated!");
+      } else {
+        const data = await res.json();
+        setOwnerSecretError(data.error || "Failed to update owner security name.");
+        toast.error(data.error || "Failed to update owner security name.");
+      }
+    } catch (err) {
+      setOwnerSecretError("An unexpected error occurred while updating owner security name.");
+      toast.error("Failed to update owner security name.");
+    } finally {
+      setOwnerSecretUpdating(false);
     }
   };
 
@@ -406,6 +458,85 @@ export default function AdminOwnerControl() {
               >
                 {credUpdating && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
                 <span>Save Owner Profile</span>
+              </motion.button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      {/* Owner Security Check Authorised Name Card */}
+      <div className={`rounded-3xl p-6 sm:p-10 border transition-all duration-300 relative overflow-hidden shadow-xl ${
+        isLightMode
+          ? 'bg-white/80 backdrop-blur-xl border-slate-200/90 text-slate-800'
+          : 'bg-[#0f1115]/80 backdrop-blur-xl border-white/10 text-white'
+      }`}>
+        <div className="space-y-6 max-w-xl">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <Shield className="w-5 h-5 text-neon-purple shrink-0" />
+              <h3 className="text-lg font-black uppercase tracking-tight">Security Check Authorised Name (Owner)</h3>
+            </div>
+            <p className={`text-xs mt-1.5 leading-relaxed ${isLightMode ? 'text-slate-500' : 'text-slate-400'}`}>
+              Set the exclusive Owner identity answer for the initial <strong>Security Check</strong> gate. Entering either the standard Admin name or this Owner name will pass the gate to reach the login screen. <strong>This passphrase can only be modified here in the Owner Control Panel.</strong>
+            </p>
+          </div>
+
+          {ownerSecretSuccess && (
+            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center gap-3 text-xs font-semibold animate-fadeIn">
+              <CheckCircle className="w-5 h-5 shrink-0" />
+              <span>{ownerSecretSuccess}</span>
+            </div>
+          )}
+
+          {ownerSecretError && (
+            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center gap-3 text-xs font-semibold animate-fadeIn">
+              <AlertOctagon className="w-5 h-5 shrink-0" />
+              <span>{ownerSecretError}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleUpdateOwnerSecret} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className={`block text-[10px] uppercase font-black tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>
+                Owner Authorised Name (Secret Word)
+              </label>
+              <div className="relative">
+                <KeyRound className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 ${isLightMode ? 'text-black/40' : 'text-white/30'}`} />
+                <input
+                  type={showOwnerSecret ? "text" : "password"}
+                  required
+                  value={ownerSecret}
+                  onChange={(e) => setOwnerSecret(e.target.value)}
+                  className={`w-full text-sm border rounded-xl pl-11 pr-12 py-3.5 focus:border-neon-purple focus:outline-none transition-all ${
+                    isLightMode ? 'bg-black/5 border-black/15 text-slate-900' : 'bg-black/40 border-white/10 text-white'
+                  }`}
+                  placeholder="e.g. owner"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowOwnerSecret(!showOwnerSecret)}
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors ${
+                    isLightMode ? 'hover:bg-black/5 text-black/40' : 'hover:bg-white/5 text-white/30'
+                  }`}
+                >
+                  {showOwnerSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className={`text-[10px] ${isLightMode ? 'text-slate-400' : 'text-white/30'}`}>
+                Default value: <code className="px-1.5 py-0.5 rounded bg-neon-purple/10 text-neon-purple font-mono font-bold">owner</code> (case-insensitive).
+              </p>
+            </div>
+
+            <div className="pt-2">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                type="submit"
+                disabled={ownerSecretUpdating}
+                className="px-6 py-3 rounded-xl bg-neon-purple text-white font-black text-xs uppercase tracking-widest hover:bg-neon-purple/90 hover:shadow-lg hover:shadow-neon-purple/20 transition-all cursor-pointer disabled:opacity-50 select-none flex items-center gap-2"
+              >
+                {ownerSecretUpdating && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                <span>Save Owner Security Name</span>
               </motion.button>
             </div>
           </form>

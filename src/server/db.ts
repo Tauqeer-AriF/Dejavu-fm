@@ -1023,6 +1023,24 @@ export function initDb() {
     db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run('admin_secret', fallback);
   }
 
+  // Ensure owner authorized secret exists
+  const envOwnerSecret = process.env.OWNER_SECRET;
+  try {
+    const currentOwnerSecretRow = db.prepare("SELECT value FROM settings WHERE key = ?").get('owner_secret') as any;
+    const currentOwnerSecret = currentOwnerSecretRow?.value;
+    
+    if (!currentOwnerSecret || currentOwnerSecret === "") {
+      const targetOwnerSecret = (envOwnerSecret && envOwnerSecret.length < 50) ? envOwnerSecret : 'owner';
+      db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run('owner_secret', targetOwnerSecret);
+    } else {
+      console.log(`[DB] owner_secret is already set in database. Preserving existing value.`);
+    }
+  } catch (err) {
+    const fallbackOwner = envOwnerSecret || 'owner';
+    console.error("[DB] Failed to check owner_secret, falling back to:", fallbackOwner, err);
+    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run('owner_secret', fallbackOwner);
+  }
+
   const countDjs = db.prepare('SELECT COUNT(*) as count FROM djs').get() as {count: number};
   if (countDjs.count === 0) {
     const djs = [

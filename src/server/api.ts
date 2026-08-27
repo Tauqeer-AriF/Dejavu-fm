@@ -81,19 +81,24 @@ apiRouter.post("/public/admin-challenge/verify", (req, res) => {
   const { answer } = req.body;
   const secretRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_secret') as any;
   const storedSecret = (secretRow?.value || "waynee").toString();
+
+  const ownerSecretRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('owner_secret') as any;
+  const storedOwnerSecret = (ownerSecretRow?.value || "owner").toString();
   
   const normalizedAnswer = (answer || "").toLowerCase().trim();
   const normalizedSecret = storedSecret.toLowerCase().trim();
-  const isMatch = normalizedAnswer === normalizedSecret;
+  const normalizedOwnerSecret = storedOwnerSecret.toLowerCase().trim();
+
+  const isMatch = normalizedAnswer.length > 0 && (normalizedAnswer === normalizedSecret || normalizedAnswer === normalizedOwnerSecret);
   
   if (isMatch) {
-    res.json({ success: true });
+    res.json({ success: true, isOwnerPassphrase: normalizedAnswer === normalizedOwnerSecret });
   } else {
     res.status(401).json({ error: "Incorrect answer" });
   }
 });
 
-// Admin only update
+// Admin only update (for standard admin authorized secret name)
 apiRouter.get("/admin/settings/secret", authMiddleware, authorizeRole('admin'), (req, res) => {
   const secretRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_secret') as any;
   res.json({ secret: secretRow?.value || "waynee" });
@@ -102,9 +107,37 @@ apiRouter.get("/admin/settings/secret", authMiddleware, authorizeRole('admin'), 
 apiRouter.post("/admin/settings/secret", authMiddleware, authorizeRole('admin'), (req, res) => {
   const { secret } = req.body;
   if (!secret) return res.status(400).json({ error: "Secret required" });
-  db.prepare('UPDATE settings SET value = ? WHERE key = ?').run(secret, 'admin_secret');
+  db.prepare("INSERT INTO settings (key, value) VALUES ('admin_secret', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(secret.trim());
   logAction(req, 'UPDATE', 'admin_secret');
   res.json({ success: true });
+});
+
+// Owner ONLY update for Owner Security Check Secret / Authorised Name
+apiRouter.get("/admin/owner/secret", authMiddleware, authorizeRole('owner'), (req, res) => {
+  try {
+    const secretRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('owner_secret') as any;
+    res.json({ secret: secretRow?.value || "owner" });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.post("/admin/owner/secret", authMiddleware, authorizeRole('owner'), (req, res) => {
+  try {
+    const { secret } = req.body;
+    if (!secret || !secret.trim()) {
+      return res.status(400).json({ error: "Owner authorized name / secret is required" });
+    }
+    const trimmedSecret = secret.trim();
+    if (trimmedSecret.length < 2) {
+      return res.status(400).json({ error: "Owner authorized name must be at least 2 characters" });
+    }
+    db.prepare("INSERT INTO settings (key, value) VALUES ('owner_secret', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(trimmedSecret);
+    logAction(req, 'UPDATE', 'owner_secret', null, { message: "Owner updated security check authorized name" });
+    res.json({ success: true, message: "Owner security check passphrase updated successfully" });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 apiRouter.get("/admin/studio-settings", authMiddleware, authorizeRole(['admin', 'dj']), (req, res) => {
@@ -365,7 +398,7 @@ const FeatureSchema = z.object({
 // ------ PUBLIC ROUTES ------
 
 apiRouter.get("/public/settings", (req, res) => {
-  const rows = db.prepare("SELECT key, value FROM settings").all() as {key: string, value: string}[];
+  const rows = db.prepare("SELECT key, value FROM settings WHERE key NOT IN ('admin_secret', 'owner_secret')").all() as {key: string, value: string}[];
   const settings = rows.reduce((acc, row) => ({ ...acc, [row.key]: row.value }), {});
   res.json(settings);
 });
