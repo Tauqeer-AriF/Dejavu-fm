@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { useNavigate, Routes, Route, Link, useLocation, Navigate } from "react-router-dom";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
-import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, ChevronDown, RefreshCw, Sparkles, Smartphone, Apple } from "lucide-react";
+import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, ChevronDown, RefreshCw, Sparkles, Smartphone, Apple, Zap } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { useModal } from "../../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
@@ -828,7 +828,7 @@ export function AdminSettings() {
   const [maintenanceEndTime, setMaintenanceEndTime] = useState("");
   const [maintenanceShowPlayer, setMaintenanceShowPlayer] = useState(false);
   const [isMaintenanceExpanded, setIsMaintenanceExpanded] = useState(false);
-  const { showAlert } = useModal();
+  const { showAlert, showConfirm } = useModal();
 
   useEffect(() => {
     fetch("/api/public/settings").then(r=>r.json()).then(d => {

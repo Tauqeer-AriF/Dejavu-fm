@@ -1,7 +1,9 @@
 import React, { useState, useEffect, Suspense, lazy } from "react";
 import { useNavigate, Routes, Route, useLocation, Navigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { Sun, Moon, Radio, LogOut, Home as HomeIcon, Sparkles } from "lucide-react";
+import { Sun, Moon, Radio, LogOut, Home as HomeIcon, Sparkles, Zap } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useModal } from "../context/ModalContext";
 import { fetchAdmin } from "./admin/adminApi";
 import { LoadingFallback } from "./admin/LoadingFallback";
 import { AdminSecretGate } from "./admin/AdminAuth";
@@ -693,6 +695,78 @@ export default function Admin() {
     verifySession();
   }, []);
 
+  const [isPurgingCache, setIsPurgingCache] = useState(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const { showAlert, showConfirm } = useModal();
+  const queryClient = useQueryClient();
+
+  // Cooldown timer interval
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return;
+    const interval = setInterval(() => {
+      setCooldownSeconds(prev => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [cooldownSeconds]);
+
+  const handlePurgeCache = async () => {
+    if (cooldownSeconds > 0) {
+      showAlert({
+        title: "Cooldown Active",
+        message: `Please wait ${cooldownSeconds} second${cooldownSeconds > 1 ? 's' : ''} before initiating another cache purge.`,
+        style: "info"
+      });
+      return;
+    }
+
+    const confirmed = await showConfirm({
+      title: "Purge System & Browser Cache",
+      message: "This will flush server memory caches, refresh podcast RSS feeds, and broadcast an immediate cache-invalidation version to all active and returning visitors' browsers. Proceed?",
+      style: "warning",
+      confirmText: "Purge All Caches",
+    });
+    if (!confirmed) return;
+
+    setIsPurgingCache(true);
+    try {
+      const res = await fetchAdmin("/api/admin/system/purge-cache", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scope: 'all' })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to purge cache");
+
+      if ('caches' in window) {
+        try {
+          const names = await caches.keys();
+          await Promise.all(names.map(name => caches.delete(name)));
+        } catch (e) {}
+      }
+
+      // Check service worker
+      if ('serviceWorker' in navigator) {
+        try {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const reg of regs) reg.update().catch(() => {});
+        } catch (e) {}
+      }
+
+      showAlert({
+        title: "Cache Purged Successfully",
+        message: `System cache flushed. Version: ${data.version || "updated"}.${data.clientsNotified ? ` Reached ${data.clientsNotified} connected visitor${data.clientsNotified > 1 ? 's' : ''}.` : ''}`,
+        style: "success",
+      });
+      
+      setCooldownSeconds(15);
+      queryClient.invalidateQueries();
+    } catch (err: any) {
+      showAlert({ title: "Error", message: err.message || "Failed to purge cache.", style: "danger" });
+    } finally {
+      setIsPurgingCache(false);
+    }
+  };
+
   const handleLogout = () => {
     fetchAdmin("/api/admin/logout", { method: "POST" }).then(() => {
       localStorage.removeItem("admin_token");
@@ -808,84 +882,143 @@ export default function Admin() {
         animate={{ opacity: 1 }}
         className="max-w-7xl mx-auto px-4 py-8 md:py-16 admin-page-wrapper"
       >
-        <div className="mb-10 md:mb-16 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="mb-8 md:mb-12 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
             className="flex-1"
           >
-            <h1 className={`text-5xl md:text-5xl lg:text-5xl font-display font-black uppercase tracking-tighter leading-none ${userRole === 'admin' ? 'text-[var(--theme-text)]' : 'text-white'}`}>
+            <div className="flex items-center gap-2.5 mb-2.5">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-neon-blue/15 text-[var(--color-neon-blue)] border border-neon-blue/30 shadow-sm shadow-neon-blue/10">
+                <span className="w-1.5 h-1.5 rounded-full bg-neon-blue animate-pulse" />
+                Live Broadcast Hub
+              </span>
+            </div>
+            <h1 className={`text-4xl md:text-5xl lg:text-5xl font-display font-black uppercase tracking-tighter leading-none ${userRole === 'admin' ? 'text-[var(--theme-text)]' : 'text-white'}`}>
               Creator <span className="text-neon-purple">Dashboard</span>
             </h1>
-            <div className="flex items-center space-x-4 mt-4">
-              <div className="h-px w-12 bg-neon-purple" />
-              <p className={`text-xs md:text-sm font-mono uppercase tracking-[0.3em] ${location.pathname.includes('admin') ? 'text-[var(--theme-text)] opacity-40' : 'text-white/40'}`}>
-                Control centre for DejavuFM station
+            <div className="flex items-center space-x-4 mt-3">
+              <div className="h-px w-10 bg-neon-purple" />
+              <p className={`text-xs md:text-sm font-mono uppercase tracking-[0.25em] ${location.pathname.includes('admin') ? 'text-[var(--theme-text)] opacity-50' : 'text-white/40'}`}>
+                Control centre for station broadcasts & creators
               </p>
             </div>
           </motion.div>
  
-          <div className="flex items-center gap-3">
-            {(userRole === 'admin' || userRole === 'owner') && settings?.feat_ai_studio !== '0' && settings?.ai_studio_enabled !== '0' && (
-              <Link
-                to={`${adminBasePath}/social-studio`}
-                className="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-full border border-neon-purple/30 bg-neon-purple/10 text-[var(--color-neon-purple)] font-bold uppercase text-xs tracking-widest transition hover:bg-neon-purple hover:text-white hover:shadow-lg hover:shadow-neon-purple/20 relative"
-                title="Open AI Automatic Social Content Studio"
-              >
-                <Sparkles className="w-4 h-4" />
-                AI Content Studio
-              </Link>
-            )}
-            {(userRole === 'admin' || userRole === 'dj' || userRole === 'owner') && isStudioEnabled && (
-              <Link
-                to={`${adminBasePath}/studio`}
-                className="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-full border border-neon-purple/30 bg-neon-purple/10 text-[var(--color-neon-purple)] font-bold uppercase text-xs tracking-widest transition hover:bg-neon-purple hover:text-[#ffffff] hover:shadow-lg hover:shadow-neon-purple/20 relative"
-                title="Go to Studio Inbox"
-              >
-                <Radio className="w-4 h-4" />
-                Studio Inbox
-                {totalUnread > 0 && (
-                  <span 
-                    className="absolute -top-1.5 -right-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-black font-mono leading-none text-[#ffffff] border border-[#0A0C16]/40 shadow-[0_2px_10px_-1px_var(--color-neon-purple)]"
-                    style={{ background: 'linear-gradient(135deg, var(--color-neon-purple), var(--color-neon-blue))' }}
-                  >
-                    {totalUnread}
+          {/* Unified Premium Command Dock */}
+          <div className="flex items-center gap-2 self-start lg:self-auto flex-wrap sm:flex-nowrap">
+            <div className={`p-1.5 rounded-2xl border flex items-center gap-1 sm:gap-1.5 backdrop-blur-xl shadow-lg transition-all ${
+              dashboardTheme === 'light'
+                ? 'bg-white/90 border-black/10 shadow-black/5'
+                : 'bg-[#0E101E]/80 border-white/10 shadow-black/40'
+            }`}>
+              {/* Studio Inbox */}
+              {(userRole === 'admin' || userRole === 'dj' || userRole === 'owner') && isStudioEnabled && (
+                <Link
+                  to={`${adminBasePath}/studio`}
+                  className="group relative inline-flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 border border-transparent hover:border-neon-purple/40 hover:bg-neon-purple/15 text-[var(--color-neon-purple)] hover:text-white"
+                  title="Go to Live Studio Inbox"
+                  aria-label="Studio Inbox"
+                >
+                  <span className="relative flex h-2 w-2 shrink-0">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-purple opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-neon-purple" />
                   </span>
-                )}
+                  <Radio className="w-3.5 h-3.5 shrink-0" />
+                  <span className="hidden sm:inline font-display tracking-widest text-[11px]">Studio Inbox</span>
+                  {totalUnread > 0 && (
+                    <span 
+                      className="flex h-4 min-w-[18px] items-center justify-center rounded-full px-1 text-[9px] font-black font-mono leading-none text-white border border-[#0A0C16]/40 shadow-sm"
+                      style={{ background: 'linear-gradient(135deg, var(--color-neon-purple), var(--color-neon-blue))' }}
+                    >
+                      {totalUnread}
+                    </span>
+                  )}
+                </Link>
+              )}
+
+              {/* AI Content Studio */}
+              {(userRole === 'admin' || userRole === 'owner') && settings?.feat_ai_studio !== '0' && settings?.ai_studio_enabled !== '0' && (
+                <Link
+                  to={`${adminBasePath}/social-studio`}
+                  className="inline-flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 border border-transparent hover:border-neon-blue/40 hover:bg-neon-blue/15 text-[var(--color-neon-blue)] hover:text-white"
+                  title="Open AI Automatic Social Content Studio"
+                  aria-label="AI Content Studio"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-[var(--color-neon-blue)] shrink-0" />
+                  <span className="hidden sm:inline font-display tracking-widest text-[11px]">AI Studio</span>
+                </Link>
+              )}
+
+              {/* Purge Cache Quick Trigger */}
+              {(userRole === 'admin' || userRole === 'owner') && (
+                <button
+                  type="button"
+                  onClick={handlePurgeCache}
+                  disabled={isPurgingCache || cooldownSeconds > 0}
+                  className={`inline-flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 border border-transparent ${
+                    cooldownSeconds > 0
+                      ? 'opacity-60 cursor-not-allowed text-emerald-400'
+                      : 'hover:border-emerald-500/40 hover:bg-emerald-500/15 text-emerald-400 hover:text-white'
+                  }`}
+                  title={cooldownSeconds > 0 ? `Purge Cooldown: ${cooldownSeconds}s` : "Purge All Server & Browser Caches"}
+                  aria-label="Purge Cache"
+                >
+                  <Zap className={`w-3.5 h-3.5 shrink-0 ${isPurgingCache ? 'animate-pulse text-emerald-300' : 'text-emerald-400'}`} />
+                  <span className="hidden sm:inline font-display tracking-widest text-[11px]">
+                    {isPurgingCache 
+                      ? "Purging..." 
+                      : cooldownSeconds > 0 
+                        ? `Purged (${cooldownSeconds}s)` 
+                        : "Purge Cache"}
+                  </span>
+                </button>
+              )}
+
+              {/* Subtle Divider */}
+              <div className={`h-5 w-px mx-0.5 sm:mx-1 ${dashboardTheme === 'light' ? 'bg-black/10' : 'bg-white/10'}`} />
+
+              {/* Homepage */}
+              <Link
+                to="/"
+                className={`inline-flex items-center justify-center h-8 w-8 rounded-xl transition ${
+                  dashboardTheme === 'light'
+                    ? 'text-black/60 hover:text-black hover:bg-black/5'
+                    : 'text-white/60 hover:text-white hover:bg-white/10'
+                }`}
+                title="Go to Station Homepage"
+                aria-label="Station Homepage"
+              >
+                <HomeIcon className="w-4 h-4" />
               </Link>
-            )}
-            <Link
-              to="/"
-              className={`inline-flex items-center justify-center h-12 w-12 rounded-full border transition admin-home-btn ${
-                dashboardTheme === 'light'
-                  ? 'border-black/10 bg-black/5 text-black/80 hover:bg-black/10 hover:text-black'
-                  : 'border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white'
-              }`}
-              title="Go to Homepage"
-            >
-              <HomeIcon className="w-5 h-5" />
-            </Link>
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="inline-flex items-center justify-center min-h-[3rem] min-w-[3rem] rounded-full border border-white/10 bg-white/5 text-white/80 transition hover:bg-white/10 hover:text-white admin-theme-toggle-btn"
-              title="Toggle theme"
-            >
-              {dashboardTheme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-            </button>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className={`inline-flex items-center justify-center h-12 w-12 rounded-full border transition duration-200 ${
-                dashboardTheme === 'light'
-                  ? 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 shadow-sm'
-                  : 'border-red-500/20 bg-red-500/10 text-red-400/90 hover:bg-red-500/20 hover:text-red-400'
-              }`}
-              title="Logout"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
+
+              {/* Theme Toggle */}
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className={`inline-flex items-center justify-center h-8 w-8 rounded-xl transition ${
+                  dashboardTheme === 'light'
+                    ? 'text-black/60 hover:text-black hover:bg-black/5'
+                    : 'text-white/60 hover:text-white hover:bg-white/10'
+                }`}
+                title="Toggle Theme"
+                aria-label="Toggle Theme"
+              >
+                {dashboardTheme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+              </button>
+
+              {/* Logout */}
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="inline-flex items-center justify-center h-8 w-8 rounded-xl text-red-400 hover:text-red-300 hover:bg-red-500/10 transition"
+                title="Logout"
+                aria-label="Logout"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -928,7 +1061,7 @@ export default function Admin() {
                         <Route path="/branding" element={isAdmin ? <AdminBranding /> : <Navigate to={defaultDjPath} replace />} />
                         <Route path="/users" element={isAdmin ? <AdminUsers isAdminUser={isAdmin} userRole={userRole} currentUsername={adminUsername} /> : <Navigate to={defaultDjPath} replace />} />
                         <Route path="/chat-users" element={isAdmin && isChatEnabled ? <AdminChatUsers isAdminUser={isAdmin} /> : <Navigate to={isAdmin ? adminBasePath : defaultDjPath} replace />} />
-                        <Route path="/chat-room-setting" element={isAdmin && isChatEnabled ? <AdminChatRoomSettings /> : <Navigate to={isAdmin ? adminBasePath : defaultDjPath} replace />} />
+                        <Route path="/chat-room-setting" element={isAdmin ? <AdminChatRoomSettings /> : <Navigate to={defaultDjPath} replace />} />
                         <Route path="/audit-logs" element={isAdmin ? <AdminAuditLogs /> : <Navigate to={defaultDjPath} replace />} />
                         <Route path="/backup" element={isAdmin && isBackupEnabled ? <AdminBackup /> : <Navigate to={isAdmin ? adminBasePath : defaultDjPath} replace />} />
                         <Route path="/meta-integrations" element={isAdmin && isMetaEnabled ? <AdminMetaIntegrations /> : <Navigate to={isAdmin ? adminBasePath : defaultDjPath} replace />} />

@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import Database from './sqlite.ts';
-import { db, dbPath, backupDir, pruneBackups, backupDatabase, createApplicationBackupBundle, reopenDatabaseConnection, initDb, getUploadsDir, pruneHistoricalData } from "./db.ts";
+import { db, dbPath, backupDir, pruneBackups, backupDatabase, createApplicationBackupBundle, reopenDatabaseConnection, initDb, getUploadsDir, pruneHistoricalData, clearStatementCache } from "./db.ts";
 import { request as httpRequest } from "http";
 import { request as httpsRequest } from "https";
 import { URL } from "url";
@@ -3171,7 +3171,8 @@ apiRouter.put("/admin/settings", authMiddleware, authorizeRole(['admin', 'dj']),
     "features_slider_enabled", "features_slider_pages", "admin_custom_path",
     "menu_order", "menu_item_labels", "menu_item_visibility", "menu_item_paths", "menu_sub_items", "menu_item_page_titles",
     "maintenance_mode", "maintenance_title", "maintenance_text", "maintenance_end_time", "maintenance_show_player",
-    "custom_header_inject", "robots_txt", "seo_last_ping_time", "seo_last_ping_status", "seo_last_ping_details", "custom_css"
+    "custom_header_inject", "robots_txt", "seo_last_ping_time", "seo_last_ping_status", "seo_last_ping_details", "custom_css",
+    "auto_purge_cache_on_save"
   ]);
   
   for (const [key, rawVal] of Object.entries(req.body)) {
@@ -3195,6 +3196,17 @@ apiRouter.put("/admin/settings", authMiddleware, authorizeRole(['admin', 'dj']),
         clearPodcastCache();
       }
     }
+  }
+
+  // Smart Cache Invalidation on Settings Save if enabled
+  try {
+    const autoPurgeRow = db.prepare("SELECT value FROM settings WHERE key = 'auto_purge_cache_on_save'").get() as { value: string } | undefined;
+    const shouldAutoPurge = autoPurgeRow ? autoPurgeRow.value !== '0' : true;
+    if (shouldAutoPurge) {
+      executeCachePurge('visitor_ui', (req as any).user?.username || 'admin', true, req.app.get('io'));
+    }
+  } catch (e) {
+    console.warn("[Settings] Auto cache purge check skipped:", e);
   }
 
   logAction(req, 'UPDATE', 'settings', null, req.body);
@@ -3408,7 +3420,7 @@ apiRouter.get("/admin/seo/metrics", authMiddleware, authorizeRole(['admin', 'dj'
 apiRouter.get("/admin/chat-room-settings", authMiddleware, authorizeRole('admin'), (req, res) => {
   const settingsRows = db.prepare(`
     SELECT key, value FROM settings
-    WHERE key IN ('chat_auto_delete_enabled', 'chat_auto_delete_hours', 'chat_auto_delete_last_run', 'data_prune_enabled', 'data_prune_days', 'data_prune_last_run')
+    WHERE key IN ('chat_auto_delete_enabled', 'chat_auto_delete_hours', 'chat_auto_delete_last_run', 'data_prune_enabled', 'data_prune_days', 'data_prune_last_run', 'system_cache_version', 'system_cache_last_purged', 'auto_purge_cache_on_save')
   `).all() as { key: string; value: string }[];
   const settings = settingsRows.reduce<Record<string, string>>((acc, row) => {
     acc[row.key] = row.value;
@@ -3434,6 +3446,32 @@ apiRouter.get("/admin/chat-room-settings", authMiddleware, authorizeRole('admin'
       (SELECT COUNT(*) FROM shoutouts WHERE videoUrl IS NOT NULL OR replyVideoUrl IS NOT NULL) as videos
   `).get() as { images: number; audios: number; videos: number };
 
+  // Fetch recent purge history (last 10 records)
+  let purgeHistory: any[] = [];
+  try {
+    const historyRows = db.prepare(`
+      SELECT id, username, role, action, resource, resource_id as scope, details, timestamp
+      FROM audit_logs
+      WHERE resource = 'system_cache'
+      ORDER BY timestamp DESC
+      LIMIT 10
+    `).all() as any[];
+    purgeHistory = historyRows.map(row => {
+      let parsed = {};
+      try { parsed = row.details ? JSON.parse(row.details) : {}; } catch (e) {}
+      return {
+        id: row.id,
+        username: row.username,
+        role: row.role,
+        scope: row.scope || 'all',
+        timestamp: row.timestamp,
+        ...parsed
+      };
+    });
+  } catch (e) {
+    console.warn("[PurgeHistory] Failed to query purge history:", e);
+  }
+
   res.json({
     enabled: settings.chat_auto_delete_enabled === '1',
     hours: parseInt(settings.chat_auto_delete_hours || "24", 10) || 24,
@@ -3450,7 +3488,13 @@ apiRouter.get("/admin/chat-room-settings", authMiddleware, authorizeRole('admin'
     dataPruneDays: (settings.data_prune_days !== undefined && !isNaN(parseInt(settings.data_prune_days, 10))) ? parseInt(settings.data_prune_days, 10) : 90,
     dataPruneLastRun: settings.data_prune_last_run || "",
     auditCount: auditCount?.count || 0,
-    analyticsCount: analyticsCount?.count || 0
+    analyticsCount: analyticsCount?.count || 0,
+
+    // Cache management status
+    systemCacheVersion: settings.system_cache_version || "1.0.0",
+    systemCacheLastPurged: settings.system_cache_last_purged || "",
+    autoPurgeOnSave: settings.auto_purge_cache_on_save !== '0',
+    purgeHistory
   });
 });
 
@@ -3489,6 +3533,12 @@ apiRouter.put("/admin/chat-room-settings", authMiddleware, authorizeRole('admin'
       return res.status(400).json({ error: "Retention days must be between 0 and 3650 days." });
     }
     updateStmt.run('data_prune_days', dataPruneDays.toString());
+  }
+
+  // Auto purge toggle
+  if (req.body.autoPurgeOnSave !== undefined) {
+    const autoPurge = req.body.autoPurgeOnSave === true || req.body.autoPurgeOnSave === '1' || req.body.autoPurgeOnSave === 1;
+    updateStmt.run('auto_purge_cache_on_save', autoPurge ? '1' : '0');
   }
 
   logAction(req, 'UPDATE', 'system_operations_settings', null, req.body);
@@ -3543,6 +3593,147 @@ apiRouter.delete("/admin/chat-room-settings/data", authMiddleware, authorizeRole
 apiRouter.post("/admin/podcasts/refresh", (req, res) => {
   clearPodcastCache();
   res.json({ success: true });
+});
+
+// Centralized cache purge utility
+export function executeCachePurge(
+  scope: 'all' | 'podcasts' | 'visitor_ui' | 'audio_meta' = 'all',
+  initiator: string = 'system',
+  isAuto: boolean = false,
+  ioInstance?: any
+) {
+  const newVersion = Date.now().toString();
+  const purgedAt = new Date().toISOString();
+
+  if (scope === 'all' || scope === 'podcasts') {
+    clearPodcastCache();
+  }
+
+  if (scope === 'all' || scope === 'audio_meta') {
+    presenceUserMetaCache.clear();
+    clearStatementCache();
+  }
+
+  if (scope === 'all' || scope === 'visitor_ui') {
+    clearStatementCache();
+  }
+
+  // 1. Update settings table with new cache version and purge timestamp
+  const updateStmt = db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value");
+  updateStmt.run('system_cache_version', newVersion);
+  updateStmt.run('system_cache_last_purged', purgedAt);
+
+  // 2. Broadcast via socket.io to all connected listener and admin browser instances
+  let clientsNotified = 0;
+  if (ioInstance) {
+    try {
+      clientsNotified = ioInstance.engine?.clientsCount || ioInstance.sockets?.sockets?.size || 0;
+      ioInstance.emit('system_cache_purged', {
+        version: newVersion,
+        scope,
+        timestamp: Date.now(),
+        purgedAt,
+        initiator
+      });
+
+      // Broadcast settings updated so all clients receive the new cache version immediately
+      const rows = db.prepare("SELECT key, value FROM settings WHERE key NOT IN ('admin_secret', 'owner_secret')").all() as {key: string, value: string}[];
+      const settings = rows.reduce((acc, row) => ({ ...acc, [row.key]: row.value }), {});
+      ioInstance.emit('settings_updated', settings);
+    } catch (e) {
+      console.warn("[SystemCache] Socket broadcast issue:", e);
+    }
+  }
+
+  // 3. Log into audit_logs table
+  try {
+    if (db.open) {
+      const detailsStr = JSON.stringify({
+        scope,
+        version: newVersion,
+        purgedAt,
+        clientsNotified,
+        auto: isAuto,
+        initiatedBy: initiator
+      });
+      db.prepare(`
+        INSERT INTO audit_logs (username, role, action, resource, resource_id, details)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(initiator, isAuto ? 'system' : 'admin', 'PURGE', 'system_cache', scope, detailsStr);
+    }
+  } catch (err) {
+    console.error("[AuditLog] Failed to record purge log:", err);
+  }
+
+  return {
+    version: newVersion,
+    purgedAt,
+    scope,
+    clientsNotified
+  };
+}
+
+apiRouter.get("/admin/system/purge-history", authMiddleware, authorizeRole('admin'), (req, res) => {
+  try {
+    const historyRows = db.prepare(`
+      SELECT id, username, role, action, resource, resource_id as scope, details, timestamp
+      FROM audit_logs
+      WHERE resource = 'system_cache'
+      ORDER BY timestamp DESC
+      LIMIT 15
+    `).all() as any[];
+    
+    const purgeHistory = historyRows.map(row => {
+      let parsed = {};
+      try { parsed = row.details ? JSON.parse(row.details) : {}; } catch (e) {}
+      return {
+        id: row.id,
+        username: row.username,
+        role: row.role,
+        scope: row.scope || 'all',
+        timestamp: row.timestamp,
+        ...parsed
+      };
+    });
+    res.json(purgeHistory);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to fetch purge history" });
+  }
+});
+
+apiRouter.delete("/admin/system/purge-history", authMiddleware, authorizeRole('admin'), (req, res) => {
+  try {
+    db.prepare("DELETE FROM audit_logs WHERE resource = 'system_cache'").run();
+    logAction(req, 'DELETE', 'system_cache_history', null, { clearedAt: new Date().toISOString() });
+    res.json({ success: true, message: "Purge history cleared" });
+  } catch (err: any) {
+    console.error("[PurgeHistory] Failed to delete purge history:", err);
+    res.status(500).json({ error: err.message || "Failed to clear purge history" });
+  }
+});
+
+apiRouter.post("/admin/system/purge-cache", authMiddleware, authorizeRole('admin'), (req, res) => {
+  try {
+    const scope = (req.body?.scope as 'all' | 'podcasts' | 'visitor_ui' | 'audio_meta') || 'all';
+    const initiator = (req as any).user?.username || 'admin';
+    const io = req.app.get('io');
+    
+    const result = executeCachePurge(scope, initiator, false, io);
+
+    // Set Clear-Site-Data header to instruct browser to clear cache if full or visitor UI
+    if (scope === 'all' || scope === 'visitor_ui') {
+      res.setHeader("Clear-Site-Data", '"cache"');
+    }
+    
+    res.json({
+      success: true,
+      ...result,
+      message: `System cache (${scope}) purged successfully`
+    });
+  } catch (err: any) {
+    console.error("[System] Failed to purge system cache:", err);
+    res.status(500).json({ error: err.message || "Failed to purge cache" });
+  }
 });
 
 function checkScheduleOverlap(day_of_week: number, start_time: string, end_time: string, exclude_id?: string | number): string | null {
@@ -3607,6 +3798,12 @@ apiRouter.post("/admin/schedule", (req, res) => {
     normalized_dj_id, day_of_week, start_time, end_time, show_name, image_url || null
   );
   logAction(req, 'CREATE', 'schedule', info.lastInsertRowid, { show_name });
+  try {
+    const autoPurgeRow = db.prepare("SELECT value FROM settings WHERE key = 'auto_purge_cache_on_save'").get() as { value: string } | undefined;
+    if (!autoPurgeRow || autoPurgeRow.value !== '0') {
+      executeCachePurge('visitor_ui', (req as any).user?.username || 'admin', true, req.app.get('io'));
+    }
+  } catch (e) {}
   res.json({ id: info.lastInsertRowid });
 });
 
@@ -3631,12 +3828,24 @@ apiRouter.put("/admin/schedule/:id", (req, res) => {
     normalized_dj_id, day_of_week, start_time, end_time, show_name, image_url || null, req.params.id
   );
   logAction(req, 'UPDATE', 'schedule', req.params.id, { show_name });
+  try {
+    const autoPurgeRow = db.prepare("SELECT value FROM settings WHERE key = 'auto_purge_cache_on_save'").get() as { value: string } | undefined;
+    if (!autoPurgeRow || autoPurgeRow.value !== '0') {
+      executeCachePurge('visitor_ui', (req as any).user?.username || 'admin', true, req.app.get('io'));
+    }
+  } catch (e) {}
   res.json({ success: true });
 });
 
 apiRouter.delete("/admin/schedule/:id", (req, res) => {
   db.prepare("DELETE FROM schedule WHERE id=?").run(req.params.id);
   logAction(req, 'DELETE', 'schedule', req.params.id);
+  try {
+    const autoPurgeRow = db.prepare("SELECT value FROM settings WHERE key = 'auto_purge_cache_on_save'").get() as { value: string } | undefined;
+    if (!autoPurgeRow || autoPurgeRow.value !== '0') {
+      executeCachePurge('visitor_ui', (req as any).user?.username || 'admin', true, req.app.get('io'));
+    }
+  } catch (e) {}
   res.json({ success: true });
 });
 

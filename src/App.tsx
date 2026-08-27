@@ -147,6 +147,58 @@ if (typeof window !== 'undefined') {
     queryClient.invalidateQueries({ queryKey: ['settings'] });
   });
 
+  socketInstance.on('system_cache_purged', async (data: any) => {
+    console.log("[Cache] System cache purged notification received from server:", data);
+    const scope = data?.scope || 'all';
+
+    // 1. Flush browser CacheStorage if full or UI purge
+    if (scope === 'all' || scope === 'visitor_ui') {
+      try {
+        if ('caches' in window) {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map(name => caches.delete(name)));
+        }
+      } catch (e) {
+        console.warn("[Cache] CacheStorage clear warning:", e);
+      }
+    }
+
+    // 2. Trigger progressive Service Worker / PWA update check
+    try {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+          for (const reg of registrations) {
+            reg.update().catch(() => {});
+          }
+        }).catch(() => {});
+      }
+    } catch (e) {
+      console.warn("[Cache] Service worker update check error:", e);
+    }
+
+    // 3. Update local cache version token
+    if (data?.version) {
+      localStorage.setItem('app_cache_version', data.version);
+    }
+
+    // 4. Targeted or full React Query cache invalidation
+    if (scope === 'podcasts') {
+      queryClient.invalidateQueries({ queryKey: ['podcasts'] });
+      queryClient.invalidateQueries({ queryKey: ['podcast-feed'] });
+    } else if (scope === 'audio_meta') {
+      queryClient.invalidateQueries({ queryKey: ['now-playing'] });
+      queryClient.invalidateQueries({ queryKey: ['stream-metadata'] });
+      queryClient.invalidateQueries({ queryKey: ['curated-tracks'] });
+    } else if (scope === 'visitor_ui') {
+      queryClient.invalidateQueries({ queryKey: ['settings'] });
+      queryClient.invalidateQueries({ queryKey: ['schedule'] });
+      queryClient.invalidateQueries({ queryKey: ['pages'] });
+      queryClient.invalidateQueries({ queryKey: ['ads'] });
+    } else {
+      queryClient.invalidateQueries();
+    }
+  });
+
   socketInstance.on('force_logout', async (data: any) => {
     console.warn("[Socket] Force logout event triggered by Administrator:", data);
 
@@ -1413,6 +1465,23 @@ function MainLayout() {
       setQualityUrls(urls);
     }
   }, [settings, setStreamUrl, setQualityUrls]);
+
+  // Synchronize system cache invalidation version with client storage
+  useEffect(() => {
+    if (settings?.system_cache_version) {
+      const currentStored = localStorage.getItem('app_cache_version');
+      if (currentStored && currentStored !== settings.system_cache_version) {
+        console.log("[Cache] Server cache version bump detected:", settings.system_cache_version);
+        if ('caches' in window) {
+          caches.keys().then(names => Promise.all(names.map(name => caches.delete(name)))).catch(() => {});
+        }
+        localStorage.setItem('app_cache_version', settings.system_cache_version);
+        queryClient.invalidateQueries();
+      } else if (!currentStored) {
+        localStorage.setItem('app_cache_version', settings.system_cache_version);
+      }
+    }
+  }, [settings?.system_cache_version]);
 
   const adminPath = (settings?.admin_custom_path || '/admin').trim().replace(/\/+$/, '') || '/admin';
   const isAdmin = location.pathname.startsWith('/admin') || (adminPath !== '/admin' && location.pathname.startsWith(adminPath));

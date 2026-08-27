@@ -55,7 +55,7 @@ export function AdminSidebar({ onLogout, isAdminUser, userRole }: { onLogout: ()
     { name: "Schedule", path: `${adminBasePath}/schedule`, icon: Calendar },
     { name: "Staff Users", path: `${adminBasePath}/users`, icon: UserCog },
     { name: "Chat Users", path: `${adminBasePath}/chat-users`, icon: MessageSquare },
-    { name: "Data Operations", path: `${adminBasePath}/chat-room-setting`, icon: Settings },
+    { name: "Data Operations", path: `${adminBasePath}/chat-room-setting`, icon: RefreshCw },
     { name: "Backup", path: `${adminBasePath}/backup`, icon: Database },
     { name: "Audit Logs", path: `${adminBasePath}/audit-logs`, icon: Shield },
     { name: "Meta Integrations", path: `${adminBasePath}/meta-integrations`, icon: Facebook },
@@ -87,7 +87,7 @@ export function AdminSidebar({ onLogout, isAdminUser, userRole }: { onLogout: ()
   }
 
   if (features.feat_chat === '0' || (!isOwner && features.owner_hide_feat_chat === '1')) {
-    navs = navs.filter(n => n.name !== 'Chat Users' && n.name !== 'Data Operations');
+    navs = navs.filter(n => n.name !== 'Chat Users');
   }
 
   if (features.feat_meta === '0' || (!isOwner && features.owner_hide_feat_meta === '1')) {
@@ -200,7 +200,7 @@ export function AdminSidebar({ onLogout, isAdminUser, userRole }: { onLogout: ()
                   }}
                   className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all duration-300 shadow-sm group ${
                     isLightMode 
-                      ? 'bg-cyan-50 border-cyan-200 text-cyan-700 hover:bg-cyan-600 hover:text-white' 
+                      ? 'bg-neon-blue/10 border-neon-blue/30 text-[var(--color-neon-blue)] hover:bg-neon-blue hover:text-white' 
                       : 'bg-neon-blue/10 border-neon-blue/30 text-neon-blue hover:bg-neon-blue hover:text-dark-bg'
                   }`}
                 >
@@ -209,8 +209,8 @@ export function AdminSidebar({ onLogout, isAdminUser, userRole }: { onLogout: ()
                     <span className="font-bold text-xs uppercase tracking-wider">Station View</span>
                   </div>
                   <span className="relative flex h-2 w-2">
-                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isLightMode ? 'bg-cyan-400' : 'bg-neon-blue'}`}></span>
-                    <span className={`relative inline-flex rounded-full h-2 w-2 ${isLightMode ? 'bg-cyan-500' : 'bg-neon-blue'}`}></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-neon-blue"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-neon-blue"></span>
                   </span>
                 </button>
 
@@ -263,7 +263,11 @@ export function AdminSidebar({ onLogout, isAdminUser, userRole }: { onLogout: ()
                 // Clear any saved admin path so the new tab opens the true home page
                 window.open('/', '_blank', 'noopener,noreferrer');
               }}
-              className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0' : 'justify-between px-4'} py-3 rounded-xl border transition-all duration-300 shadow-sm group mb-2 ${isLightMode ? 'bg-cyan-50 border-cyan-200 text-cyan-700 hover:bg-cyan-600 hover:text-white' : 'bg-neon-blue/10 border-neon-blue/30 text-neon-blue hover:bg-neon-blue hover:text-dark-bg shadow-[0_0_15px_rgba(0,210,255,0.1)]'}`}
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0' : 'justify-between px-4'} py-3 rounded-xl border transition-all duration-300 shadow-sm group mb-2 ${
+                isLightMode 
+                  ? 'bg-neon-blue/10 border-neon-blue/30 text-[var(--color-neon-blue)] hover:bg-neon-blue hover:text-white' 
+                  : 'bg-neon-blue/10 border-neon-blue/30 text-neon-blue hover:bg-neon-blue hover:text-dark-bg shadow-[0_0_15px_rgba(0,210,255,0.1)]'
+              }`}
               title={isCollapsed ? "Station View" : ""}
             >
               <div className={`flex items-center ${isCollapsed ? '' : 'space-x-3'}`}>
@@ -271,8 +275,8 @@ export function AdminSidebar({ onLogout, isAdminUser, userRole }: { onLogout: ()
                 {!isCollapsed && <span className="font-bold text-sm">Station View</span>}
               </div>
               {!isCollapsed && <span className="relative flex h-2 w-2">
-                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isLightMode ? 'bg-cyan-400 group-hover:bg-white' : 'bg-neon-blue group-hover:bg-dark-bg'}`}></span>
-                <span className={`relative inline-flex rounded-full h-2 w-2 ${isLightMode ? 'bg-cyan-500 group-hover:bg-white' : 'bg-neon-blue group-hover:bg-dark-bg'}`}></span>
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isLightMode ? 'bg-neon-blue group-hover:bg-white' : 'bg-neon-blue group-hover:bg-dark-bg'}`}></span>
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${isLightMode ? 'bg-neon-blue group-hover:bg-white' : 'bg-neon-blue group-hover:bg-dark-bg'}`}></span>
               </span>}
             </button>
             <button onClick={onLogout} title={isCollapsed ? "Logout" : ""} className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0' : 'space-x-3 px-4'} py-3 rounded-lg transition-colors ${isLightMode ? 'text-black/40 hover:text-red-600 hover:bg-red-50 hover:border-red-100' : 'text-white/50 hover:text-red-500 hover:bg-red-500/10'}`}>
