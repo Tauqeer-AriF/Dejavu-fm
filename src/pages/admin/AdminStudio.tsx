@@ -4690,57 +4690,59 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                   </p>
                 </div>
 
-                {/* Highly structured, clean system telemetry grid */}
-                <div className={`p-4 rounded-xl border text-left space-y-3.5 ${
-                  isStudioLight ? 'bg-white border-slate-200/80 shadow-2xs' : 'bg-[#0A0C16]/50 border-white/5'
-                }`}>
-                  <div className="flex items-center justify-between border-b border-dashed pb-2 border-white/10">
-                    <span className={`text-[10px] font-bold uppercase tracking-wider font-mono ${isStudioLight ? 'text-slate-500' : 'text-white/40'}`}>
-                      Telemetry Feed
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest font-mono bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20">
-                      <span className="w-1 h-1 rounded-full bg-emerald-400 animate-ping" />
-                      Live Ready
-                    </span>
+                {/* Highly structured, clean system telemetry grid (Hidden for DJ role, visible for Admin/Owner) */}
+                {isAdmin && (
+                  <div className={`p-4 rounded-xl border text-left space-y-3.5 ${
+                    isStudioLight ? 'bg-white border-slate-200/80 shadow-2xs' : 'bg-[#0A0C16]/50 border-white/5'
+                  }`}>
+                    <div className="flex items-center justify-between border-b border-dashed pb-2 border-white/10">
+                      <span className={`text-[10px] font-bold uppercase tracking-wider font-mono ${isStudioLight ? 'text-slate-500' : 'text-white/40'}`}>
+                        Telemetry Feed
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest font-mono bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                        <span className="w-1 h-1 rounded-full bg-emerald-400 animate-ping" />
+                        Live Ready
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 text-xs font-mono">
+                      <div className="space-y-1">
+                        <span className={`block text-[9px] uppercase tracking-wider ${isStudioLight ? 'text-slate-400' : 'text-white/30'}`}>Active Pipelines</span>
+                        <span className={`font-bold ${isStudioLight ? 'text-slate-800' : 'text-white/90'}`}>
+                          {2 + Object.values(connectedPlatforms).filter(Boolean).length} Active Channels
+                        </span>
+                        <span className={`block text-[8px] font-mono leading-tight ${isStudioLight ? 'text-slate-500' : 'text-white/40'}`}>
+                          Chatroom, Shoutouts{Object.values(connectedPlatforms).filter(Boolean).length > 0 ? ` + ${Object.values(connectedPlatforms).filter(Boolean).length} External` : ''}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className={`block text-[9px] uppercase tracking-wider ${isStudioLight ? 'text-slate-400' : 'text-white/30'}`}>Total Queue</span>
+                        <span className={`font-bold ${isStudioLight ? 'text-slate-800' : 'text-white/90'}`}>
+                          {Object.keys(threads).length} Active Threads
+                        </span>
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className={`block text-[9px] uppercase tracking-wider ${isStudioLight ? 'text-slate-400' : 'text-white/30'}`}>Action Required</span>
+                        <span className={`font-bold ${
+                          Object.values(threads).filter((t: any) => t.unreadCount > 0).length > 0 
+                            ? 'text-amber-500' 
+                            : (isStudioLight ? 'text-slate-800' : 'text-white/90')
+                        }`}>
+                          {Object.values(threads).filter((t: any) => t.unreadCount > 0).length} Unread Messages
+                        </span>
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className={`block text-[9px] uppercase tracking-wider ${isStudioLight ? 'text-slate-400' : 'text-white/30'}`}>Automated Purge</span>
+                        <span className={`font-bold ${isStudioLight ? 'text-slate-800' : 'text-white/90'}`}>
+                          {autoDeleteEnabled ? `Every ${autoDeleteHours}h` : 'Disabled'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4 text-xs font-mono">
-                    <div className="space-y-1">
-                      <span className={`block text-[9px] uppercase tracking-wider ${isStudioLight ? 'text-slate-400' : 'text-white/30'}`}>Active Pipelines</span>
-                      <span className={`font-bold ${isStudioLight ? 'text-slate-800' : 'text-white/90'}`}>
-                        {2 + Object.values(connectedPlatforms).filter(Boolean).length} Active Channels
-                      </span>
-                      <span className={`block text-[8px] font-mono leading-tight ${isStudioLight ? 'text-slate-500' : 'text-white/40'}`}>
-                        Chatroom, Shoutouts{Object.values(connectedPlatforms).filter(Boolean).length > 0 ? ` + ${Object.values(connectedPlatforms).filter(Boolean).length} External` : ''}
-                      </span>
-                    </div>
-
-                    <div className="space-y-1">
-                      <span className={`block text-[9px] uppercase tracking-wider ${isStudioLight ? 'text-slate-400' : 'text-white/30'}`}>Total Queue</span>
-                      <span className={`font-bold ${isStudioLight ? 'text-slate-800' : 'text-white/90'}`}>
-                        {Object.keys(threads).length} Active Threads
-                      </span>
-                    </div>
-
-                    <div className="space-y-1">
-                      <span className={`block text-[9px] uppercase tracking-wider ${isStudioLight ? 'text-slate-400' : 'text-white/30'}`}>Action Required</span>
-                      <span className={`font-bold ${
-                        Object.values(threads).filter((t: any) => t.unreadCount > 0).length > 0 
-                          ? 'text-amber-500' 
-                          : (isStudioLight ? 'text-slate-800' : 'text-white/90')
-                      }`}>
-                        {Object.values(threads).filter((t: any) => t.unreadCount > 0).length} Unread Messages
-                      </span>
-                    </div>
-
-                    <div className="space-y-1">
-                      <span className={`block text-[9px] uppercase tracking-wider ${isStudioLight ? 'text-slate-400' : 'text-white/30'}`}>Automated Purge</span>
-                      <span className={`font-bold ${isStudioLight ? 'text-slate-800' : 'text-white/90'}`}>
-                        {autoDeleteEnabled ? `Every ${autoDeleteHours}h` : 'Disabled'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           )}
