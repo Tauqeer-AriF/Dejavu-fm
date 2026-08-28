@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles, Database, Video, Key, Facebook, Layers, Mic, Music, Power, Ticket, Megaphone } from "lucide-react";
@@ -124,115 +125,118 @@ export function AdminSidebar({ onLogout, isAdminUser, userRole }: { onLogout: ()
       </div>
 
       {/* Mobile Sliding Drawer Overlay */}
-      <AnimatePresence>
-        {isOpen && (
-          <div className="md:hidden fixed inset-0 z-[200] flex">
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsOpen(false)}
-              className="fixed inset-0 bg-black/70"
-            />
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {isOpen && (
+            <div className="md:hidden fixed inset-0 z-[200] flex">
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsOpen(false)}
+                className="fixed inset-0 bg-black/70"
+              />
 
-            {/* Sliding Menu Panel */}
-            <motion.div
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 220 }}
-              className={`fixed top-0 bottom-0 left-0 w-[290px] h-full flex flex-col p-6 shadow-2xl overflow-y-auto z-10 ${
-                isLightMode 
-                  ? 'bg-[#ffffff] text-black border-r border-black/10' 
-                  : 'bg-[#0b0c10] text-white border-r border-white/10'
-              }`}
-            >
-              {/* Drawer Header */}
-              <div className="flex items-center justify-between pb-4 mb-4 border-b border-dashed border-neon-purple/20">
-                <div className="flex flex-col">
-                  <span className="font-black uppercase tracking-wider text-neon-purple text-base font-display">Dashboard</span>
-                  <span className={`text-[10px] uppercase tracking-widest ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Control Center</span>
-                </div>
-                <button 
-                  onClick={() => setIsOpen(false)} 
-                  className={`p-2 rounded-xl border transition-all ${
-                    isLightMode 
-                      ? 'border-black/10 hover:bg-black/5 text-black' 
-                      : 'border-white/10 hover:bg-white/5 text-white'
-                  }`}
-                  aria-label="Close menu"
-                >
-                  <X className="w-5 h-5 text-neon-purple" />
-                </button>
-              </div>
-
-              {/* Navigation Tabs List */}
-              <div className="flex-1 space-y-1.5 py-2 overflow-y-auto scrollbar-none">
-                {navs.map(n => {
-                  const active = location.pathname === n.path;
-                  return (
-                    <Link
-                      key={n.name}
-                      to={n.path}
-                      onClick={() => setIsOpen(false)}
-                      className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                        active 
-                          ? 'bg-neon-purple/20 text-neon-purple font-bold shadow-[inset_0_0_12px_rgba(176,38,255,0.15)]' 
-                          : isLightMode 
-                            ? 'hover:bg-black/5 text-black/70 hover:text-black' 
-                            : 'hover:bg-white/5 text-white/70 hover:text-white'
-                      }`}
-                    >
-                      <n.icon className={`w-5 h-5 flex-shrink-0 ${active ? 'text-neon-purple' : ''}`} />
-                      <span className="text-sm font-semibold truncate">{n.name}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-
-              {/* Footer Actions */}
-              <div className="pt-4 mt-4 border-t border-dashed border-neon-purple/20 space-y-2">
-                <button
-                  onClick={() => {
-                    window.open('/', '_blank', 'noopener,noreferrer');
-                    setIsOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all duration-300 shadow-sm group ${
-                    isLightMode 
-                      ? 'bg-neon-blue/10 border-neon-blue/30 text-[var(--color-neon-blue)] hover:bg-neon-blue hover:text-white' 
-                      : 'bg-neon-blue/10 border-neon-blue/30 text-neon-blue hover:bg-neon-blue hover:text-dark-bg'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <Globe className="w-4 h-4 flex-shrink-0 group-hover:rotate-12 transition-transform" />
-                    <span className="font-bold text-xs uppercase tracking-wider">Station View</span>
+              {/* Sliding Menu Panel */}
+              <motion.div
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 220 }}
+                className={`fixed top-0 bottom-0 left-0 w-[290px] h-full flex flex-col p-6 shadow-2xl overflow-y-auto z-10 ${
+                  isLightMode 
+                    ? 'bg-[#ffffff] text-black border-r border-black/10' 
+                    : 'bg-[#0b0c10] text-white border-r border-white/10'
+                }`}
+              >
+                {/* Drawer Header */}
+                <div className="flex items-center justify-between pb-4 mb-4 border-b border-dashed border-neon-purple/20">
+                  <div className="flex flex-col">
+                    <span className="font-black uppercase tracking-wider text-neon-purple text-base font-display">Dashboard</span>
+                    <span className={`text-[10px] uppercase tracking-widest ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>Control Center</span>
                   </div>
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-neon-blue"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-neon-blue"></span>
-                  </span>
-                </button>
+                  <button 
+                    onClick={() => setIsOpen(false)} 
+                    className={`p-2 rounded-xl border transition-all ${
+                      isLightMode 
+                        ? 'border-black/10 hover:bg-black/5 text-black' 
+                        : 'border-white/10 hover:bg-white/5 text-white'
+                    }`}
+                    aria-label="Close menu"
+                  >
+                    <X className="w-5 h-5 text-neon-purple" />
+                  </button>
+                </div>
 
-                <button 
-                  onClick={() => {
-                    setIsOpen(false);
-                    onLogout();
-                  }} 
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors text-left ${
-                    isLightMode 
-                      ? 'text-black/50 hover:text-red-600 hover:bg-red-50' 
-                      : 'text-white/50 hover:text-red-500 hover:bg-red-500/10'
-                  }`}
-                >
-                  <LogOut className="w-4 h-4 flex-shrink-0" />
-                  <span className="font-semibold text-xs uppercase tracking-wider">Logout</span>
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+                {/* Navigation Tabs List */}
+                <div className="flex-1 space-y-1.5 py-2 overflow-y-auto scrollbar-none">
+                  {navs.map(n => {
+                    const active = location.pathname === n.path;
+                    return (
+                      <Link
+                        key={n.name}
+                        to={n.path}
+                        onClick={() => setIsOpen(false)}
+                        className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                          active 
+                            ? 'bg-neon-purple/20 text-neon-purple font-bold shadow-[inset_0_0_12px_rgba(176,38,255,0.15)]' 
+                            : isLightMode 
+                              ? 'hover:bg-black/5 text-black/70 hover:text-black' 
+                              : 'hover:bg-white/5 text-white/70 hover:text-white'
+                        }`}
+                      >
+                        <n.icon className={`w-5 h-5 flex-shrink-0 ${active ? 'text-neon-purple' : ''}`} />
+                        <span className="text-sm font-semibold truncate">{n.name}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+
+                {/* Footer Actions */}
+                <div className="pt-4 mt-4 border-t border-dashed border-neon-purple/20 space-y-2">
+                  <button
+                    onClick={() => {
+                      window.open('/', '_blank', 'noopener,noreferrer');
+                      setIsOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all duration-300 shadow-sm group ${
+                      isLightMode 
+                        ? 'bg-neon-blue/10 border-neon-blue/30 text-[var(--color-neon-blue)] hover:bg-neon-blue hover:text-white' 
+                        : 'bg-neon-blue/10 border-neon-blue/30 text-neon-blue hover:bg-neon-blue hover:text-dark-bg'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <Globe className="w-4 h-4 flex-shrink-0 group-hover:rotate-12 transition-transform" />
+                      <span className="font-bold text-xs uppercase tracking-wider">Station View</span>
+                    </div>
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-neon-blue"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-neon-blue"></span>
+                    </span>
+                  </button>
+
+                  <button 
+                    onClick={() => {
+                      setIsOpen(false);
+                      onLogout();
+                    }} 
+                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors text-left ${
+                      isLightMode 
+                        ? 'text-black/50 hover:text-red-600 hover:bg-red-50' 
+                        : 'text-white/50 hover:text-red-500 hover:bg-red-500/10'
+                    }`}
+                  >
+                    <LogOut className="w-4 h-4 flex-shrink-0" />
+                    <span className="font-semibold text-xs uppercase tracking-wider">Logout</span>
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Desktop Sidebar (Structural precision intact, beautifully styled) */}
       <div className={`hidden md:flex flex-col w-full ${isCollapsed ? 'md:w-20' : 'md:w-64'} border-b md:border-b-0 md:border-r relative z-10 transition-all duration-300 ease-in-out ${isLightMode ? 'bg-[#fcfcfc] border-black/10' : 'bg-dark-bg/50 border-white/10'} admin-sidebar`}>
