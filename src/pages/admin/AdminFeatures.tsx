@@ -479,8 +479,8 @@ export function AdminFeatures() {
         </>
       ) : (
         <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="space-y-1 min-w-0 max-w-xl">
               <h4 className={`text-sm font-black uppercase tracking-[0.25em] transition-colors ${isLightMode ? 'text-slate-400' : 'text-white/40'}`}>
                 Comments Moderation Board
               </h4>
@@ -489,8 +489,8 @@ export function AdminFeatures() {
               </p>
             </div>
 
-            {/* Filter Buttons */}
-            <div className={`flex flex-wrap gap-1 p-1 rounded-xl border transition-colors ${
+            {/* Filter Buttons in a Single Row */}
+            <div className={`flex items-center flex-nowrap shrink-0 overflow-x-auto gap-1 p-1 rounded-xl border transition-colors ${
               isLightMode ? 'bg-black/[0.02] border-black/10' : 'bg-white/5 border-white/5'
             }`}>
               {(['all', 'pending', 'approved', 'rejected'] as const).map((filter) => {
@@ -503,7 +503,7 @@ export function AdminFeatures() {
                   <button
                     key={filter}
                     onClick={() => setCommentFilter(filter)}
-                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                       isActive
                         ? 'bg-neon-purple text-white shadow-lg shadow-neon-purple/20 font-black'
                         : (isLightMode 
