@@ -907,21 +907,7 @@ async function startServer() {
 
 
   const getUniqueConnectionCount = () => {
-    const ips = new Set<string>();
-    io.sockets.sockets.forEach((s) => {
-      const forwarded = s.handshake.headers['x-forwarded-for'];
-      let ip = '';
-      if (typeof forwarded === 'string') {
-        ip = forwarded.split(',')[0].trim();
-      } else if (Array.isArray(forwarded) && forwarded.length > 0) {
-        ip = forwarded[0].trim();
-      }
-      if (!ip) {
-        ip = s.handshake.address || s.conn.remoteAddress || s.id;
-      }
-      ips.add(ip);
-    });
-    return ips.size || io.sockets.sockets.size || 0;
+    return io.sockets.sockets.size || 0;
   };
   app.set('getUniqueConnectionCount', getUniqueConnectionCount);
 
