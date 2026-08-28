@@ -415,23 +415,26 @@ export function AdminMenu() {
                       : 'bg-black/30 border-white/5'
                   }`}
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4">
-                    <div className="flex items-center gap-3">
-                      <span className={`text-xs font-mono w-6 text-center ${isLightMode ? 'text-slate-400' : 'text-white/20'}`}>
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-4">
+                    {/* Left Column: Index, Key Name, Path */}
+                    <div className="flex items-center gap-3 min-w-0 lg:w-48 xl:w-56 shrink-0">
+                      <span className={`text-xs font-mono w-5 text-center shrink-0 ${isLightMode ? 'text-slate-400' : 'text-white/20'}`}>
                         {index + 1}
                       </span>
-                      <div className="flex flex-col">
-                        <span className="text-xs font-black uppercase tracking-widest font-mono text-neon-blue">
-                          {item.key}
-                        </span>
+                      <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-black uppercase tracking-wider font-mono text-neon-blue truncate">
+                            {item.key}
+                          </span>
+                        </div>
                         {item.key.startsWith('custom_') ? (
-                          <div className="flex items-center gap-1.5 mt-1.5">
-                            <span className={`text-[10px] font-bold ${isLightMode ? 'text-slate-400' : 'text-white/40'}`}>Path:</span>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <span className={`text-[10px] font-bold shrink-0 ${isLightMode ? 'text-slate-400' : 'text-white/40'}`}>Path:</span>
                             <input
                               type="text"
                               value={item.path}
                               onChange={(e) => handlePathChange(item.key, e.target.value)}
-                              className={`px-2 py-1 rounded-lg text-[10px] font-mono outline-none border transition-all ${
+                              className={`px-2 py-0.5 rounded text-[10px] font-mono outline-none border transition-all w-28 ${
                                 isLightMode 
                                   ? 'bg-white border-black/10 text-black focus:border-neon-purple' 
                                   : 'bg-black/50 border-white/5 text-white focus:border-neon-purple'
@@ -439,30 +442,40 @@ export function AdminMenu() {
                             />
                           </div>
                         ) : (
-                          <span className={`text-[10px] ${isLightMode ? 'text-slate-400' : 'text-white/40'}`}>
+                          <span className={`text-[10px] truncate ${isLightMode ? 'text-slate-400' : 'text-white/40'}`}>
                             Path: {item.path}
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 max-w-xl w-full justify-end ml-auto">
+                    {/* Right Column: Dropdown Toggle, Label Input, Page Title Input, Action Buttons */}
+                    <div className="flex flex-wrap sm:flex-nowrap items-end sm:items-center gap-3 min-w-0 flex-1 justify-start lg:justify-end">
                       {/* Sub-menu Toggle Button */}
                       <button
                         type="button"
                         onClick={() => setExpandedSubMenu(isExpanded ? null : item.key)}
-                        className={`px-3 py-2 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-1 ${
+                        title={`Manage nested dropdown links for "${currentLabel || item.defaultLabel}"`}
+                        className={`px-3 py-2 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 shrink-0 ${
                           subItemsCount > 0
-                            ? isLightMode ? 'bg-indigo-50 border-indigo-100 text-indigo-600 hover:bg-indigo-100' : 'bg-neon-purple/10 border-neon-purple/20 text-neon-purple hover:bg-neon-purple/20'
+                            ? isLightMode ? 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 shadow-xs' : 'bg-neon-purple/15 border-neon-purple/30 text-neon-purple hover:bg-neon-purple/25 shadow-xs'
                             : isLightMode ? 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100' : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'
                         }`}
                       >
-                        Dropdown ({subItemsCount})
-                        <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                        <Layers className="w-3.5 h-3.5 shrink-0 opacity-80" />
+                        <span className="whitespace-nowrap">Dropdown</span>
+                        <span className={`px-1.5 py-0.5 text-[9px] rounded-full font-black ${
+                          subItemsCount > 0 
+                            ? isLightMode ? 'bg-indigo-200 text-indigo-800' : 'bg-neon-purple/30 text-white' 
+                            : isLightMode ? 'bg-slate-200 text-slate-600' : 'bg-white/10 text-white/40'
+                        }`}>
+                          {subItemsCount}
+                        </span>
+                        <ChevronDown className={`w-3 h-3 shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                       </button>
 
-                      {/* Stacked Inputs */}
-                      <div className="flex-1 min-w-[150px] flex flex-col gap-1.5">
+                      {/* Menu Label Input */}
+                      <div className="flex-1 min-w-[130px] max-w-[200px] flex flex-col gap-1">
                         <label className={`text-[9px] font-black uppercase tracking-wider ${isLightMode ? 'text-slate-400' : 'text-white/40'}`}>Menu Label</label>
                         <input
                           type="text"
@@ -477,7 +490,8 @@ export function AdminMenu() {
                         />
                       </div>
 
-                      <div className="flex-1 min-w-[150px] flex flex-col gap-1.5">
+                      {/* Page Title Input */}
+                      <div className="flex-1 min-w-[130px] max-w-[200px] flex flex-col gap-1">
                         <label className={`text-[9px] font-black uppercase tracking-wider ${isLightMode ? 'text-slate-400' : 'text-white/40'}`}>Page Title</label>
                         <input
                           type="text"
@@ -492,58 +506,61 @@ export function AdminMenu() {
                         />
                       </div>
 
-                      {/* Visibility Toggle */}
-                      <button
-                        type="button"
-                        onClick={() => toggleVisibility(item.key)}
-                        title={isVisible ? "Hide Tab from Front View" : "Show Tab in Front View"}
-                        className={`p-2 rounded-xl border transition-colors flex items-center justify-center shrink-0 ${
-                          isVisible
-                            ? isLightMode ? 'bg-cyan-50 border-cyan-100 text-cyan-600' : 'bg-neon-blue/10 border-neon-blue/20 text-neon-blue'
-                            : isLightMode ? 'bg-slate-100 border-slate-200 text-slate-400' : 'bg-white/5 border-white/5 text-white/20'
-                        }`}
-                      >
-                        {isVisible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                      </button>
-
-                      {/* Delete Custom Link */}
-                      {item.key.startsWith('custom_') && (
+                      {/* Action buttons (Visibility, Delete, Move) */}
+                      <div className="flex items-center gap-1.5 shrink-0 pt-3 sm:pt-0">
+                        {/* Visibility Toggle */}
                         <button
                           type="button"
-                          onClick={() => removeCustomItem(item.key)}
-                          title="Delete Custom Link"
-                          className="p-2 rounded-xl border border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors flex items-center justify-center shrink-0"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-
-                      {/* Ordering Buttons */}
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          type="button"
-                          disabled={index === 0}
-                          onClick={() => moveItem(index, 'up')}
-                          className={`p-1.5 rounded-xl border transition-colors flex items-center justify-center ${
-                            index === 0
-                              ? 'opacity-30 cursor-not-allowed border-transparent'
-                              : isLightMode ? 'border-slate-200 text-slate-600 hover:bg-slate-100' : 'border-white/10 text-white/60 hover:bg-white/5'
+                          onClick={() => toggleVisibility(item.key)}
+                          title={isVisible ? "Hide Tab from Front View" : "Show Tab in Front View"}
+                          className={`p-2 rounded-xl border transition-colors flex items-center justify-center shrink-0 ${
+                            isVisible
+                              ? isLightMode ? 'bg-cyan-50 border-cyan-100 text-cyan-600' : 'bg-neon-blue/10 border-neon-blue/20 text-neon-blue'
+                              : isLightMode ? 'bg-slate-100 border-slate-200 text-slate-400' : 'bg-white/5 border-white/5 text-white/20'
                           }`}
                         >
-                          <ArrowUp className="w-4 h-4" />
+                          {isVisible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                         </button>
-                        <button
-                          type="button"
-                          disabled={index === menuItems.length - 1}
-                          onClick={() => moveItem(index, 'down')}
-                          className={`p-1.5 rounded-xl border transition-colors flex items-center justify-center ${
-                            index === menuItems.length - 1
-                              ? 'opacity-30 cursor-not-allowed border-transparent'
-                              : isLightMode ? 'border-slate-200 text-slate-600 hover:bg-slate-100' : 'border-white/10 text-white/60 hover:bg-white/5'
-                          }`}
-                        >
-                          <ArrowDown className="w-4 h-4" />
-                        </button>
+
+                        {/* Delete Custom Link */}
+                        {item.key.startsWith('custom_') && (
+                          <button
+                            type="button"
+                            onClick={() => removeCustomItem(item.key)}
+                            title="Delete Custom Link"
+                            className="p-2 rounded-xl border border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors flex items-center justify-center shrink-0"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+
+                        {/* Ordering Buttons */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            disabled={index === 0}
+                            onClick={() => moveItem(index, 'up')}
+                            className={`p-1.5 rounded-xl border transition-colors flex items-center justify-center ${
+                              index === 0
+                                ? 'opacity-30 cursor-not-allowed border-transparent'
+                                : isLightMode ? 'border-slate-200 text-slate-600 hover:bg-slate-100' : 'border-white/10 text-white/60 hover:bg-white/5'
+                            }`}
+                          >
+                            <ArrowUp className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={index === menuItems.length - 1}
+                            onClick={() => moveItem(index, 'down')}
+                            className={`p-1.5 rounded-xl border transition-colors flex items-center justify-center ${
+                              index === menuItems.length - 1
+                                ? 'opacity-30 cursor-not-allowed border-transparent'
+                                : isLightMode ? 'border-slate-200 text-slate-600 hover:bg-slate-100' : 'border-white/10 text-white/60 hover:bg-white/5'
+                            }`}
+                          >
+                            <ArrowDown className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -552,11 +569,13 @@ export function AdminMenu() {
                   {isExpanded && (
                     <div className={`border-t p-4 space-y-4 transition-colors ${isLightMode ? 'bg-slate-100/50 border-slate-200' : 'bg-black/40 border-white/5'}`}>
                       <div className="flex justify-between items-center">
-                        <h5 className="text-[11px] font-black uppercase tracking-wider text-neon-blue flex items-center gap-1">
-                          <Layers className="w-3.5 h-3.5" /> Nested Dropdown Items
+                        <h5 className="text-[11px] font-black uppercase tracking-wider text-neon-blue flex items-center gap-1.5">
+                          <Layers className="w-3.5 h-3.5 text-neon-purple" />
+                          <span>Nested Dropdown Items for:</span>
+                          <span className="text-neon-purple font-bold">"{currentLabel || item.defaultLabel}"</span>
                         </h5>
-                        <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase ${isLightMode ? 'bg-slate-200 text-slate-600' : 'bg-white/10 text-white/50'}`}>
-                          {subItemsCount} items
+                        <span className={`text-[9px] px-2.5 py-0.5 rounded-full font-bold uppercase ${isLightMode ? 'bg-slate-200 text-slate-600' : 'bg-white/10 text-white/50'}`}>
+                          {subItemsCount} {subItemsCount === 1 ? 'item' : 'items'}
                         </span>
                       </div>
 
@@ -565,54 +584,113 @@ export function AdminMenu() {
                         {subItemsCount === 0 ? (
                           <p className={`text-[10px] italic ${isLightMode ? 'text-slate-400' : 'text-white/30'}`}>No nested sub-menu items configured. This will act as a direct link tab.</p>
                         ) : (
-                          (menuSubItems[item.key] || []).map((sub, sIdx) => (
-                            <div key={sIdx} className={`flex items-center justify-between p-2.5 rounded-xl border text-[11px] ${isLightMode ? 'bg-white border-slate-200/60' : 'bg-black/30 border-white/5'}`}>
-                              <div className="flex flex-col">
-                                <span className="font-bold">{sub.label}</span>
-                                <span className={`text-[9px] font-mono ${isLightMode ? 'text-slate-400' : 'text-white/40'}`}>{sub.path}</span>
+                          (menuSubItems[item.key] || []).map((sub, sIdx) => {
+                            // Compute display name fallback for sub item if empty
+                            const fallbackName = sub.label?.trim() || (() => {
+                              const cleanPath = (sub.path || '').replace(/^\//, '').split('?')[0];
+                              if (!cleanPath) return 'Direct Link';
+                              return cleanPath.charAt(0).toUpperCase() + cleanPath.slice(1);
+                            })();
+
+                            return (
+                              <div key={sIdx} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl border text-[11px] ${isLightMode ? 'bg-white border-slate-200/80 shadow-xs' : 'bg-black/40 border-white/10'}`}>
+                                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2 min-w-0">
+                                  <div className="flex flex-col gap-1">
+                                    <label className={`text-[9px] font-black uppercase tracking-wider ${isLightMode ? 'text-slate-400' : 'text-white/40'}`}>Dropdown Item Name</label>
+                                    <input
+                                      type="text"
+                                      value={sub.label}
+                                      placeholder={fallbackName}
+                                      onChange={(e) => {
+                                        const subCopy = [...(menuSubItems[item.key] || [])];
+                                        subCopy[sIdx] = { ...subCopy[sIdx], label: e.target.value };
+                                        setMenuSubItems(prev => ({ ...prev, [item.key]: subCopy }));
+                                      }}
+                                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold outline-none border transition-all ${
+                                        isLightMode 
+                                          ? 'bg-slate-50 border-black/10 text-black placeholder:text-black/30 focus:border-neon-purple focus:bg-white' 
+                                          : 'bg-black/50 border-white/5 text-white placeholder:text-white/20 focus:border-neon-purple'
+                                      }`}
+                                    />
+                                  </div>
+                                  <div className="flex flex-col gap-1">
+                                    <label className={`text-[9px] font-black uppercase tracking-wider ${isLightMode ? 'text-slate-400' : 'text-white/40'}`}>Target Path / URL</label>
+                                    <input
+                                      type="text"
+                                      value={sub.path}
+                                      placeholder="/path or https://..."
+                                      onChange={(e) => {
+                                        const subCopy = [...(menuSubItems[item.key] || [])];
+                                        const pVal = e.target.value;
+                                        subCopy[sIdx] = { 
+                                          ...subCopy[sIdx], 
+                                          path: pVal, 
+                                          isExternal: pVal.startsWith('http://') || pVal.startsWith('https://') 
+                                        };
+                                        setMenuSubItems(prev => ({ ...prev, [item.key]: subCopy }));
+                                      }}
+                                      className={`px-2.5 py-1 rounded-lg text-xs font-mono outline-none border transition-all ${
+                                        isLightMode 
+                                          ? 'bg-slate-50 border-black/10 text-black placeholder:text-black/30 focus:border-neon-purple focus:bg-white' 
+                                          : 'bg-black/50 border-white/5 text-white placeholder:text-white/20 focus:border-neon-purple'
+                                      }`}
+                                    />
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+                                  <button
+                                    type="button"
+                                    title="Move Up"
+                                    disabled={sIdx === 0}
+                                    onClick={() => {
+                                      const subCopy = [...(menuSubItems[item.key] || [])];
+                                      const temp = subCopy[sIdx];
+                                      subCopy[sIdx] = subCopy[sIdx - 1];
+                                      subCopy[sIdx - 1] = temp;
+                                      setMenuSubItems(prev => ({ ...prev, [item.key]: subCopy }));
+                                    }}
+                                    className={`p-1.5 rounded-lg border transition-colors ${
+                                      sIdx === 0
+                                        ? 'opacity-25 cursor-not-allowed border-transparent'
+                                        : isLightMode ? 'border-slate-200 text-slate-600 hover:bg-slate-100' : 'border-white/10 text-white/60 hover:text-white hover:bg-white/5'
+                                    }`}
+                                  >
+                                    <ArrowUp className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    title="Move Down"
+                                    disabled={sIdx === subItemsCount - 1}
+                                    onClick={() => {
+                                      const subCopy = [...(menuSubItems[item.key] || [])];
+                                      const temp = subCopy[sIdx];
+                                      subCopy[sIdx] = subCopy[sIdx + 1];
+                                      subCopy[sIdx + 1] = temp;
+                                      setMenuSubItems(prev => ({ ...prev, [item.key]: subCopy }));
+                                    }}
+                                    className={`p-1.5 rounded-lg border transition-colors ${
+                                      sIdx === subItemsCount - 1
+                                        ? 'opacity-25 cursor-not-allowed border-transparent'
+                                        : isLightMode ? 'border-slate-200 text-slate-600 hover:bg-slate-100' : 'border-white/10 text-white/60 hover:text-white hover:bg-white/5'
+                                    }`}
+                                  >
+                                    <ArrowDown className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    title="Delete dropdown item"
+                                    onClick={() => {
+                                      const filtered = (menuSubItems[item.key] || []).filter((_, i) => i !== sIdx);
+                                      setMenuSubItems(prev => ({ ...prev, [item.key]: filtered }));
+                                    }}
+                                    className="p-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20 transition-all"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-1.5">
-                                <button
-                                  type="button"
-                                  disabled={sIdx === 0}
-                                  onClick={() => {
-                                    const subCopy = [...(menuSubItems[item.key] || [])];
-                                    const temp = subCopy[sIdx];
-                                    subCopy[sIdx] = subCopy[sIdx - 1];
-                                    subCopy[sIdx - 1] = temp;
-                                    setMenuSubItems(prev => ({ ...prev, [item.key]: subCopy }));
-                                  }}
-                                  className="p-1 rounded bg-white/5 text-white/60 hover:text-white disabled:opacity-30 disabled:pointer-events-none"
-                                >
-                                  <ArrowUp className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={sIdx === subItemsCount - 1}
-                                  onClick={() => {
-                                    const subCopy = [...(menuSubItems[item.key] || [])];
-                                    const temp = subCopy[sIdx];
-                                    subCopy[sIdx] = subCopy[sIdx + 1];
-                                    subCopy[sIdx + 1] = temp;
-                                    setMenuSubItems(prev => ({ ...prev, [item.key]: subCopy }));
-                                  }}
-                                  className="p-1 rounded bg-white/5 text-white/60 hover:text-white disabled:opacity-30 disabled:pointer-events-none"
-                                >
-                                  <ArrowDown className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const filtered = (menuSubItems[item.key] || []).filter((_, i) => i !== sIdx);
-                                    setMenuSubItems(prev => ({ ...prev, [item.key]: filtered }));
-                                  }}
-                                  className="p-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </div>
-                          ))
+                            );
+                          })
                         )}
                       </div>
 
