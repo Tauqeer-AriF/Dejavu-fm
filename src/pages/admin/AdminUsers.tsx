@@ -786,7 +786,11 @@ export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdmin
             </button>
           </div>
 
-          <form onSubmit={handleCreateUser} className="space-y-6">
+          <form onSubmit={handleCreateUser} className="space-y-6" autoComplete="off" id="create-staff-member-form">
+            {/* Hidden dummy inputs to prevent browser autofill hijack */}
+            <input type="text" name="fakeusernameremembered" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+            <input type="password" name="fakepasswordremembered" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className={`block text-[10px] uppercase font-black tracking-widest mb-2 ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>
@@ -795,7 +799,11 @@ export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdmin
                 <div className="relative">
                   <User className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isLightMode ? 'text-black/40' : 'text-white/30'}`} />
                   <input
+                    id="create-staff-username-input"
+                    name="new_staff_username_field"
                     type="text"
+                    autoComplete="off"
+                    data-lpignore="true"
                     value={newUsername}
                     onChange={(e) => setNewUsername(e.target.value)}
                     className={`w-full border rounded-xl pl-10 pr-4 py-3 focus:border-neon-purple focus:outline-none transition-all ${isLightMode ? 'bg-black/5 border-black/15 text-slate-900 placeholder-black/40' : 'bg-black/40 border-white/10 text-white placeholder-white/30'}`}
@@ -812,7 +820,11 @@ export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdmin
                 <div className="relative">
                   <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isLightMode ? 'text-black/40' : 'text-white/30'}`} />
                   <input
+                    id="create-staff-email-input"
+                    name="new_staff_email_field"
                     type="email"
+                    autoComplete="off"
+                    data-lpignore="true"
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
                     className={`w-full border rounded-xl pl-10 pr-4 py-3 focus:border-neon-purple focus:outline-none transition-all ${isLightMode ? 'bg-black/5 border-black/15 text-slate-900 placeholder-black/40' : 'bg-black/40 border-white/10 text-white placeholder-white/30'}`}
@@ -829,7 +841,12 @@ export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdmin
                 <div className="relative">
                   <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isLightMode ? 'text-black/40' : 'text-white/30'}`} />
                   <input
+                    id="create-staff-password-input"
+                    name="new_staff_password_field"
                     type={showNewPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     className={`w-full border rounded-xl pl-10 pr-12 py-3 focus:border-neon-purple focus:outline-none transition-all ${isLightMode ? 'bg-black/5 border-black/15 text-slate-900 placeholder-black/40' : 'bg-black/40 border-white/10 text-white placeholder-white/30'}`}
@@ -902,7 +919,16 @@ export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdmin
             <div className="relative">
               <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isLightMode ? 'text-black/40' : 'text-white/30'}`} />
               <input 
-                type="text"
+                id="staff-search-filter-input"
+                name="staff_search_filter_query_prevent_autofill"
+                type="search"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                data-lpignore="true"
+                data-1p-ignore="true"
+                data-form-type="other"
                 placeholder="Search name or username..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -912,6 +938,7 @@ export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdmin
               />
               {searchQuery && (
                 <button
+                  id="staff-search-clear-btn"
                   type="button"
                   onClick={() => setSearchQuery("")}
                   className={`absolute right-2.5 top-1/2 -translate-y-1/2 transition-colors ${
@@ -1128,12 +1155,26 @@ export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdmin
                 className={`p-6 flex flex-col transition-all ${isLightMode ? 'hover:bg-black/[0.01]' : 'hover:bg-white/[0.01]'}`}
               >
                 {editingStaff === user.username ? (
-                  <div className="space-y-4 w-full" id={`edit-staff-${user.username}`}>
+                  <form
+                    id={`edit-staff-form-${user.username}`}
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleSaveStaffEdit(user.username);
+                    }}
+                    autoComplete="off"
+                    className="space-y-4 w-full"
+                  >
+                    {/* Hidden dummy inputs to prevent browser autofill hijack */}
+                    <input type="text" name="fakeusernameremembered" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+                    <input type="password" name="fakepasswordremembered" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+
                     <div className="flex items-center justify-between">
                       <h4 className={`text-sm font-black uppercase tracking-widest flex items-center gap-2 ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
                         <Edit className="w-4 h-4 text-neon-purple" /> Editing Staff Member: <span className="text-neon-purple">{user.username}</span>
                       </h4>
                       <button
+                        id={`cancel-edit-staff-header-btn-${user.username}`}
+                        type="button"
                         onClick={() => setEditingStaff(null)}
                         className={`p-1.5 rounded-lg transition-colors ${isLightMode ? 'text-black/40 hover:text-black hover:bg-black/5' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
                       >
@@ -1150,7 +1191,11 @@ export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdmin
                         <div className="relative">
                           <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${isLightMode ? 'text-black/40' : 'text-white/30'}`} />
                           <input
+                            id={`edit-staff-email-${user.username}`}
+                            name={`edit_staff_email_${user.username}`}
                             type="email"
+                            autoComplete="off"
+                            data-lpignore="true"
                             value={editStaffEmail}
                             onChange={(e) => setEditStaffEmail(e.target.value)}
                             className={`w-full text-xs border rounded-xl pl-9 pr-3 py-2.5 focus:border-neon-purple focus:outline-none transition-all ${isLightMode ? 'bg-black/5 border-black/15 text-slate-900 placeholder-black/40' : 'bg-black/40 border-white/10 text-white placeholder-white/30'}`}
@@ -1165,6 +1210,8 @@ export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdmin
                           System Role
                         </label>
                         <select
+                          id={`edit-staff-role-${user.username}`}
+                          name={`edit_staff_role_${user.username}`}
                           value={editStaffRole}
                           onChange={(e) => setEditStaffRole(e.target.value as "admin" | "dj")}
                           disabled={user.username === "admin" || user.role === "owner"}
@@ -1181,6 +1228,8 @@ export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdmin
                           Linked DJ Profile
                         </label>
                         <select
+                          id={`edit-staff-dj-${user.username}`}
+                          name={`edit_staff_dj_${user.username}`}
                           value={editStaffDjProfileId}
                           onChange={(e) => setEditStaffDjProfileId(e.target.value)}
                           className={`w-full text-xs border rounded-xl px-3 py-2.5 focus:border-neon-purple focus:outline-none transition-all ${isLightMode ? 'bg-black/5 border-black/15 text-slate-900' : 'bg-black/40 border-white/10 text-white'}`}
@@ -1202,13 +1251,19 @@ export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdmin
                         <div className="relative">
                           <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${isLightMode ? 'text-black/40' : 'text-white/30'}`} />
                           <input
+                            id={`edit-staff-password-${user.username}`}
+                            name={`edit_staff_password_${user.username}`}
                             type={showEditStaffPass ? "text" : "password"}
+                            autoComplete="new-password"
+                            data-lpignore="true"
+                            data-1p-ignore="true"
                             value={editStaffPass}
                             onChange={(e) => setEditStaffPass(e.target.value)}
                             placeholder="Leave blank to keep current"
                             className={`w-full text-xs border rounded-xl pl-9 pr-8 py-2.5 focus:border-neon-purple focus:outline-none transition-all ${isLightMode ? 'bg-black/5 border-black/15 text-slate-900 placeholder-black/40' : 'bg-black/40 border-white/10 text-white placeholder-white/30'}`}
                           />
                           <button
+                            id={`toggle-edit-staff-pass-btn-${user.username}`}
                             type="button"
                             onClick={() => setShowEditStaffPass(!showEditStaffPass)}
                             className={`absolute right-2.5 top-1/2 -translate-y-1/2 transition-colors focus:outline-none ${isLightMode ? 'text-black/40 hover:text-black' : 'text-white/30 hover:text-white'}`}
@@ -1221,19 +1276,22 @@ export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdmin
 
                     <div className="flex justify-end gap-2 pt-2 border-t border-white/5">
                       <button
+                        id={`cancel-edit-staff-btn-${user.username}`}
+                        type="button"
                         onClick={() => setEditingStaff(null)}
                         className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${isLightMode ? 'bg-black/5 hover:bg-black/10 text-slate-800' : 'bg-white/5 hover:bg-white/10 text-white'}`}
                       >
                         Cancel
                       </button>
                       <button
-                        onClick={() => handleSaveStaffEdit(user.username)}
+                        id={`save-edit-staff-btn-${user.username}`}
+                        type="submit"
                         className="px-4 py-2 bg-neon-purple hover:bg-neon-blue text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all"
                       >
                         Save Changes
                       </button>
                     </div>
-                  </div>
+                  </form>
                 ) : (
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
                     {/* Checkbox + User Info Container */}
@@ -1331,7 +1389,7 @@ export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdmin
                                 </span>
                                 <span className={`px-2 py-0.5 rounded-md text-[11px] font-black uppercase ${
                                   isLightMode ? 'bg-neon-purple/5 text-neon-purple' : 'bg-neon-purple/15 text-neon-purple'
-                                }`}>
+                                }}`}>
                                   {user.current_page || "Dashboard Overview"}
                                 </span>
                                 {user.socket_count > 1 && (
@@ -1368,6 +1426,7 @@ export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdmin
                     {/* Account Controls */}
                     <div className="flex flex-wrap items-center gap-3">
                       <button
+                        id={`edit-staff-btn-${user.username}`}
                         onClick={() => startEditingStaff(user)}
                         className={`inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all ${isLightMode ? 'bg-black/5 hover:bg-black/10 text-slate-800' : 'bg-white/5 hover:bg-white/10 text-white'}`}
                       >
@@ -1375,16 +1434,34 @@ export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdmin
                       </button>
 
                       {editingUsername === user.username ? (
-                        <div className={`flex items-center gap-2 border p-1.5 rounded-xl ${isLightMode ? 'bg-black/5 border-black/15' : 'bg-black/40 border-white/10'}`}>
+                        <form
+                          id={`inline-reset-password-form-${user.username}`}
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            handleUpdatePassword(user.username);
+                          }}
+                          autoComplete="off"
+                          className={`flex items-center gap-2 border p-1.5 rounded-xl ${isLightMode ? 'bg-black/5 border-black/15' : 'bg-black/40 border-white/10'}`}
+                        >
+                          {/* Hidden dummy inputs to prevent browser autofill hijack */}
+                          <input type="text" name="fakeusernameremembered" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+                          <input type="password" name="fakepasswordremembered" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+
                           <div className="relative w-44">
                             <input
+                              id={`inline-reset-password-input-${user.username}`}
+                              name={`reset_password_field_${user.username}`}
                               type={showEditPassword ? "text" : "password"}
+                              autoComplete="new-password"
+                              data-lpignore="true"
+                              data-1p-ignore="true"
                               placeholder="New Password"
                               value={editPassword}
                               onChange={(e) => setEditPassword(e.target.value)}
                               className={`bg-transparent text-sm pl-3 pr-8 py-1.5 outline-none focus:outline-none w-full ${isLightMode ? 'text-slate-900 placeholder-black/40' : 'text-white placeholder-white/30'}`}
                             />
                             <button
+                              id={`toggle-reset-password-visibility-btn-${user.username}`}
                               type="button"
                               onClick={() => setShowEditPassword(!showEditPassword)}
                               className={`absolute right-2 top-1/2 -translate-y-1/2 transition-colors focus:outline-none ${isLightMode ? 'text-black/40 hover:text-black' : 'text-white/30 hover:text-white'}`}
@@ -1393,13 +1470,16 @@ export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdmin
                             </button>
                           </div>
                           <button
-                            onClick={() => handleUpdatePassword(user.username)}
+                            id={`save-reset-password-btn-${user.username}`}
+                            type="submit"
                             className={`p-2 rounded-lg transition-all ${isLightMode ? 'bg-green-500/10 text-green-600 hover:bg-green-500/20' : 'p-2 bg-green-500/20 text-green-400 hover:bg-green-500/30'}`}
                             title="Save Password"
                           >
                             <Check className="w-4 h-4" />
                           </button>
                           <button
+                            id={`cancel-reset-password-btn-${user.username}`}
+                            type="button"
                             onClick={() => {
                               setEditingUsername(null);
                               setEditPassword("");
@@ -1410,10 +1490,11 @@ export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdmin
                           >
                             <X className="w-4 h-4" />
                           </button>
-                        </div>
+                        </form>
                       ) : (
                         (isAdminUser || userRole === "admin" || userRole === "owner" || currentUsername === user.username) && (
                           <button
+                            id={`reset-password-btn-${user.username}`}
                             onClick={() => {
                               setEditingUsername(user.username);
                               setEditPassword("");
@@ -1428,6 +1509,7 @@ export function AdminUsers({ isAdminUser, userRole, currentUsername }: { isAdmin
 
                       {user.username !== "admin" && user.role !== "owner" && (
                         <button
+                          id={`delete-staff-btn-${user.username}`}
                           onClick={() => handleDeleteUser(user.username)}
                           className="p-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl transition-all"
                           title="Delete Staff Member"
