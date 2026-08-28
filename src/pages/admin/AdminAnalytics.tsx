@@ -259,7 +259,12 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
     try {
       const resp = await fetch('/api/admin/analytics/live-locations');
       const data = await resp.json();
-      setLiveLocations(data);
+      if (Array.isArray(data)) {
+        setLiveLocations(data);
+        setStats((prev: any) => prev ? { ...prev, realtimeListeners: data.length } : prev);
+      } else {
+        setLiveLocations([]);
+      }
     } catch (e) {
       console.error(e);
       setLiveLocations([]);
