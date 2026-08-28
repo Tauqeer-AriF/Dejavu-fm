@@ -411,13 +411,19 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                       </div>
                       {subItems.map((sub, subIdx) => {
                         const isExt = sub.isExternal || sub.path.startsWith('http://') || sub.path.startsWith('https://');
+                        const displaySubLabel = sub.label?.trim() || (() => {
+                          const cleanPath = (sub.path || '').replace(/^\//, '').split('?')[0];
+                          if (!cleanPath) return 'Direct Link';
+                          return cleanPath.charAt(0).toUpperCase() + cleanPath.slice(1);
+                        })();
+
                         if (isExt) {
                           return (
                             <a 
                               key={subIdx}
                               href={sub.path} 
                               target="_blank" 
-                              rel="noopener noreferrer"
+                              rel="noopener noreferrer" 
                               className={`flex items-center justify-between px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all group/item ${
                                 isLightMode
                                   ? 'text-black/70 hover:text-black hover:bg-black/5'
@@ -429,7 +435,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                                 <div className="w-8 h-8 rounded-lg bg-neon-blue/10 flex items-center justify-center group-hover/item:bg-neon-blue/20 transition-colors">
                                   <Radio className="w-4 h-4 text-neon-blue" />
                                 </div>
-                                {sub.label}
+                                {displaySubLabel}
                               </div>
                               <ExternalLink className={`w-3 h-3 ${isLightMode ? 'text-black/30' : 'text-white/30'}`} />
                             </a>
@@ -449,7 +455,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
                               <div className="w-8 h-8 rounded-lg bg-neon-purple/10 flex items-center justify-center group-hover/item:bg-neon-purple/20 transition-colors">
                                 <FileText className="w-4 h-4 text-neon-purple" />
                               </div>
-                              {sub.label}
+                              {displaySubLabel}
                             </Link>
                           );
                         }
@@ -577,12 +583,20 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
           matchPrefix,
           isOpen: openMobileDropdownKey === key,
           setOpen: (open: boolean) => setOpenMobileDropdownKey(open ? key : null),
-          subItems: subItems.map(sub => ({
-            path: sub.path,
-            label: sub.label,
-            isExternal: sub.isExternal || sub.path.startsWith('http://') || sub.path.startsWith('https://'),
-            icon: <Globe className="w-4 h-4" />
-          }))
+          subItems: subItems.map(sub => {
+            const displaySubLabel = sub.label?.trim() || (() => {
+              const cleanPath = (sub.path || '').replace(/^\//, '').split('?')[0];
+              if (!cleanPath) return 'Direct Link';
+              return cleanPath.charAt(0).toUpperCase() + cleanPath.slice(1);
+            })();
+
+            return {
+              path: sub.path,
+              label: displaySubLabel,
+              isExternal: sub.isExternal || sub.path.startsWith('http://') || sub.path.startsWith('https://'),
+              icon: <Globe className="w-4 h-4" />
+            };
+          })
         };
       }
 
