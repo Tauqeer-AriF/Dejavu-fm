@@ -47,6 +47,11 @@ export function LiveLocationsModal({ isOpen, onClose, locations }: LiveLocations
               <div className="flex items-center gap-2 text-red-500">
                 <MapPin className="w-5 h-5 animate-pulse" />
                 <span className="text-[11px] font-black uppercase tracking-[0.2em]">Live Connections</span>
+                {locations.length > 0 && (
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 border border-red-500/20">
+                    {locations.length} Active
+                  </span>
+                )}
               </div>
               <button
                 onClick={onClose}
