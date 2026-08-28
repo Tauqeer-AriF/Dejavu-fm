@@ -1,8 +1,6 @@
 import crypto from 'crypto';
 import { db } from './db.ts';
-import * as tiktokPkg from 'tiktok-live-connector';
-
-const WebcastPushConnection: any = (tiktokPkg as any).WebcastPushConnection || (tiktokPkg as any).default?.WebcastPushConnection || (tiktokPkg as any).default || tiktokPkg;
+import { TikTokLiveConnection, WebcastEvent, ControlEvent } from 'tiktok-live-connector';
 
 export interface TikTokStatus {
   isConnected: boolean;
@@ -107,7 +105,7 @@ export class TikTokService {
     this.sessionToken = token;
     this.statusText = `Connecting to @${cleanUsername}...`;
 
-    if (!WebcastPushConnection) {
+    if (!TikTokLiveConnection) {
       this.statusText = "Connector library ready (Standby for Live Stream Webhook)";
       this.isConnected = true;
       this.broadcastStatus();
@@ -133,7 +131,7 @@ export class TikTokService {
         options.sessionId = token;
       }
 
-      const connection = new WebcastPushConnection(cleanUsername, options);
+      const connection = new TikTokLiveConnection(cleanUsername, options);
       this.connection = connection;
 
       // Handle successful room connection
@@ -151,7 +149,7 @@ export class TikTokService {
       });
 
       // 1. Live Chat Comments
-      connection.on('chat', (data: any) => {
+      connection.on(WebcastEvent.CHAT, (data: any) => {
         this.handleIncomingComment({
           user: data.uniqueId ? `@${data.uniqueId}` : (data.nickname || 'TikTok Listener'),
           nickname: data.nickname || data.uniqueId || 'TikTok Listener',
@@ -161,7 +159,7 @@ export class TikTokService {
       });
 
       // 2. Gift Alerts
-      connection.on('gift', (data: any) => {
+      connection.on(WebcastEvent.GIFT, (data: any) => {
         if (data.giftType === 1 && !data.repeatEnd) {
           // Streak in progress, wait for streak end
           return;
@@ -179,13 +177,13 @@ export class TikTokService {
       });
 
       // 3. Like Events
-      connection.on('like', (data: any) => {
+      connection.on(WebcastEvent.LIKE, (data: any) => {
         this.totalLikes = data.totalLikeCount || (this.totalLikes + (data.likeCount || 1));
         this.broadcastStatus();
       });
 
       // 4. Room Member / Join
-      connection.on('roomUser', (data: any) => {
+      connection.on(WebcastEvent.ROOM_USER, (data: any) => {
         if (typeof data.viewerCount === 'number') {
           this.viewerCount = data.viewerCount;
           this.broadcastStatus();
@@ -193,14 +191,14 @@ export class TikTokService {
       });
 
       // 5. Stream Ended
-      connection.on('streamEnd', () => {
+      connection.on(WebcastEvent.STREAM_END, () => {
         console.log(`[TikTok Service] TikTok Live stream ended for ${this.username}`);
         this.statusText = `Live stream ended for ${this.username}`;
         this.broadcastStatus();
       });
 
       // 6. Errors
-      connection.on('error', (err: any) => {
+      connection.on(ControlEvent.ERROR, (err: any) => {
         console.error(`[TikTok Service] Connection error:`, err?.message || err);
       });
 
