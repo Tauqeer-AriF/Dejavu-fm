@@ -280,13 +280,15 @@ export function AdminAnalytics({ isAdminUser }: { isAdminUser?: boolean }) {
             </p>
           </div>
           
-          <div 
-            onClick={fetchLiveLocations}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-full h-fit shrink-0 border cursor-pointer hover:opacity-80 transition-all ${
-              isLightMode ? 'bg-red-500/10 border-red-500/20 text-red-600' : 'bg-red-500/5 border-red-500/20 text-red-500'
-            }`}>
-            <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-widest">{stats.realtimeListeners} Live</span>
+          <div className="flex justify-end w-full sm:w-auto sm:ml-auto">
+            <div 
+              onClick={fetchLiveLocations}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-full h-fit shrink-0 border cursor-pointer hover:opacity-80 transition-all ${
+                isLightMode ? 'bg-red-500/10 border-red-500/20 text-red-600' : 'bg-red-500/5 border-red-500/20 text-red-500'
+              }`}>
+              <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-widest">{stats.realtimeListeners} Live</span>
+            </div>
           </div>
         </div>
         
