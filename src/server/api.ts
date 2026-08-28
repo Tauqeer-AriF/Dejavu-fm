@@ -27,7 +27,16 @@ import { toggleMessageReaction, getReactionsForMessage } from "./reactions.servi
 // `sharp` is optional at runtime; dynamically import when needed to avoid startup failure
 
 async function processImage(file: any): Promise<string> {
-  if (!file.mimetype.startsWith("image/") || file.mimetype.includes("gif")) {
+  if (!file || !file.mimetype) {
+    return file ? file.filename : "";
+  }
+
+  // Only optimize standard bitmap formats. Skip SVG, ICO, and GIF.
+  const ext = path.extname(file.originalname || file.filename || '').toLowerCase();
+  const isSupportedSharpFormat = ['.png', '.jpg', '.jpeg', '.webp'].includes(ext) || 
+                                 ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.mimetype);
+
+  if (!isSupportedSharpFormat || file.mimetype.includes("gif") || file.mimetype.includes("svg") || file.mimetype.includes("icon")) {
     return file.filename;
   }
   
@@ -56,8 +65,8 @@ async function processImage(file: any): Promise<string> {
       
       return processedFilename;
     }
-  } catch (err) {
-    console.error("[API] Image processing error:", err);
+  } catch (err: any) {
+    console.warn(`[API] Image optimization skipped for ${file.filename} (falling back to original):`, err?.message || err);
   }
   
   return file.filename;
