@@ -115,7 +115,7 @@ export function AdminSidebar({ onLogout, isAdminUser, userRole }: { onLogout: ()
   return (
     <>
       {/* Mobile top bar */}
-      <div className={`md:hidden flex items-center justify-between p-4 border-b w-full transition-colors ${isLightMode ? 'bg-white border-black/10' : 'bg-dark-bg/50 border-white/10'}`}>
+      <div className={`md:hidden flex items-center justify-between p-4 border-b w-full transition-colors ${isLightMode ? 'bg-white border-black/10' : 'bg-[#0f0b15] border-white/10'}`}>
         <span className="font-bold uppercase tracking-widest text-neon-purple font-display">Creator Station</span>
         <button onClick={() => setIsOpen(true)} className={`${isLightMode ? 'text-black hover:bg-black/5' : 'text-white hover:bg-white/5'} p-2 rounded-xl transition-all flex items-center gap-2 text-xs font-bold uppercase tracking-wider`}>
           <Menu className="w-5 h-5 text-neon-purple" />
@@ -133,7 +133,7 @@ export function AdminSidebar({ onLogout, isAdminUser, userRole }: { onLogout: ()
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsOpen(false)}
-              className="fixed inset-0 bg-black/70 backdrop-blur-md"
+              className="fixed inset-0 bg-black/70"
             />
 
             {/* Sliding Menu Panel */}

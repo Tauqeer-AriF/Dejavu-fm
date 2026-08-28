@@ -19,14 +19,17 @@ export function PersonalizedGreetingModal() {
   const { greetingData, isLoading, handleCtaClick, isPlaying } = useGreeting();
   const { settings, isLightMode } = useLogo();
 
-  // Check if dismissed in this browser session
-  const [isDismissed, setIsDismissed] = useState<boolean>(() => {
+  // Reset dismissal state so the greeting modal opens immediately in preview
+  const [isDismissed, setIsDismissed] = useState<boolean>(false);
+
+  useEffect(() => {
     try {
-      return sessionStorage.getItem(SESSION_STORAGE_KEY) === 'true';
+      sessionStorage.removeItem(SESSION_STORAGE_KEY);
+      localStorage.removeItem('dejavu_greeting_dismissed_at');
     } catch {
-      return false;
+      // ignore
     }
-  });
+  }, []);
 
   // Listen for manual re-trigger event if needed
   useEffect(() => {
@@ -70,31 +73,29 @@ export function PersonalizedGreetingModal() {
     if (isLightMode) {
       switch (badgeType) {
         case 'live':
-          return 'bg-red-50 text-red-600 border-red-200';
+          return 'bg-red-50 text-red-600 border-red-200 font-semibold';
         case 'streak':
-          return 'bg-neon-purple/10 text-neon-purple border-neon-purple/30';
         case 'welcome':
-          return 'bg-neon-purple/10 text-neon-purple border-neon-purple/30';
+          return 'bg-neon-purple/10 text-neon-purple border-neon-purple/30 font-semibold';
         case 'vip':
-          return 'bg-neon-blue/10 text-neon-blue border-neon-blue/30';
+          return 'bg-neon-blue/10 text-neon-blue border-neon-blue/30 font-semibold';
         case 'music':
         default:
-          return 'bg-neon-purple/5 text-neon-purple border-neon-purple/20';
+          return 'bg-neon-purple/10 text-neon-purple border-neon-purple/25 font-semibold';
       }
     }
 
     switch (badgeType) {
       case 'live':
-        return 'bg-red-500/15 text-red-300 border-red-500/30';
+        return 'bg-red-500/15 text-red-300 border-red-500/30 shadow-[0_0_12px_rgba(239,68,68,0.2)] font-semibold';
       case 'streak':
-        return 'bg-neon-purple/15 text-neon-purple border-neon-purple/30 shadow-[0_0_12px_rgba(176,38,255,0.2)]';
       case 'welcome':
-        return 'bg-neon-purple/15 text-neon-purple border-neon-purple/30 shadow-[0_0_12px_rgba(176,38,255,0.2)]';
+        return 'bg-neon-purple/15 text-neon-purple border-neon-purple/30 shadow-[0_0_12px_rgba(176,38,255,0.25)] font-semibold';
       case 'vip':
-        return 'bg-neon-blue/15 text-neon-blue border-neon-blue/30 shadow-[0_0_12px_rgba(0,210,255,0.2)]';
+        return 'bg-neon-blue/15 text-neon-blue border-neon-blue/30 shadow-[0_0_12px_rgba(0,210,255,0.25)] font-semibold';
       case 'music':
       default:
-        return 'bg-neon-purple/10 text-neon-purple border-neon-purple/20';
+        return 'bg-neon-purple/15 text-neon-purple border-neon-purple/25 font-semibold';
     }
   };
 
@@ -137,12 +138,12 @@ export function PersonalizedGreetingModal() {
               {/* Ambient Frosted Light Blooms inside the Glass Container */}
               <div
                 className={`pointer-events-none absolute -top-20 -left-20 w-64 h-64 rounded-full blur-3xl ${
-                  isLightMode ? 'bg-purple-300/30 opacity-50' : 'bg-neon-purple/25 opacity-70'
+                  isLightMode ? 'bg-neon-purple/20 opacity-60' : 'bg-neon-purple/25 opacity-70'
                 }`}
               />
               <div
                 className={`pointer-events-none absolute -bottom-20 -right-20 w-64 h-64 rounded-full blur-3xl ${
-                  isLightMode ? 'bg-sky-200/30 opacity-50' : 'bg-neon-blue/20 opacity-70'
+                  isLightMode ? 'bg-neon-blue/20 opacity-60' : 'bg-neon-blue/25 opacity-70'
                 }`}
               />
 
@@ -154,8 +155,8 @@ export function PersonalizedGreetingModal() {
                 aria-label="Close"
                 className={`absolute top-4 right-4 sm:top-5 sm:right-5 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full border flex items-center justify-center transition-all duration-200 active:scale-90 cursor-pointer backdrop-blur-xl ${
                   isLightMode
-                    ? 'bg-slate-100/80 hover:bg-white border-slate-200/90 text-slate-600 hover:text-neon-purple shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_1px_#ffffff]'
-                    : 'bg-white/[0.07] hover:bg-white/[0.14] border-white/15 text-neutral-300 hover:text-white shadow-[0_2px_8px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2)]'
+                    ? 'bg-slate-100/80 hover:bg-white border-slate-200/90 text-slate-600 hover:text-neon-purple hover:border-neon-purple/40 shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_1px_#ffffff]'
+                    : 'bg-white/[0.07] hover:bg-white/[0.14] border-white/15 text-neutral-300 hover:text-neon-blue hover:border-neon-blue/40 shadow-[0_2px_8px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2)]'
                 }`}
               >
                 <X className="w-4 h-4" />
@@ -168,8 +169,8 @@ export function PersonalizedGreetingModal() {
                   id="greeting-modal-favicon-container"
                   className={`w-13 h-13 sm:w-15 sm:h-15 rounded-2xl flex items-center justify-center p-2 sm:p-2.5 transition-all duration-300 backdrop-blur-xl overflow-hidden ${
                     isLightMode
-                      ? 'bg-gradient-to-b from-white to-slate-50/90 border border-slate-200/80 shadow-[0_6px_18px_rgba(0,0,0,0.04),inset_0_1px_2px_#ffffff]'
-                      : 'bg-white/[0.08] border border-white/20 shadow-[0_8px_25px_rgba(0,0,0,0.4),inset_0_1px_1.5px_rgba(255,255,255,0.25),0_0_20px_rgba(176,38,255,0.18)]'
+                      ? 'bg-gradient-to-b from-white to-slate-50/90 border border-slate-200/80 shadow-[0_6px_18px_rgba(0,0,0,0.04),0_0_15px_rgba(176,38,255,0.08),inset_0_1px_2px_#ffffff]'
+                      : 'bg-white/[0.08] border border-white/20 shadow-[0_8px_25px_rgba(0,0,0,0.4),inset_0_1px_1.5px_rgba(255,255,255,0.25),0_0_20px_rgba(176,38,255,0.2),0_0_15px_rgba(0,210,255,0.15)]'
                   }`}
                 >
                   <img
@@ -238,11 +239,7 @@ export function PersonalizedGreetingModal() {
                         id="greeting-modal-primary-cta"
                         type="button"
                         onClick={() => onExecuteCta(greetingData.cta)}
-                        className={`w-full sm:w-auto flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 sm:px-6 sm:py-3.5 rounded-full font-bold text-xs sm:text-sm transition-all duration-200 active:scale-95 cursor-pointer min-h-[44px] sm:min-h-[48px] ${
-                          isLightMode
-                            ? 'bg-gradient-to-r from-neon-purple to-purple-600 hover:brightness-105 text-white shadow-[0_8px_24px_-4px_rgba(176,38,255,0.4),inset_0_1px_1px_rgba(255,255,255,0.35)]'
-                            : 'bg-gradient-to-r from-neon-purple via-[#8f24ea] to-neon-blue hover:brightness-110 text-white shadow-[0_0_24px_rgba(176,38,255,0.4),inset_0_1px_1px_rgba(255,255,255,0.35)] hover:shadow-[0_0_30px_rgba(176,38,255,0.6)]'
-                        }`}
+                        className="w-full sm:w-auto flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 sm:px-6 sm:py-3.5 rounded-full font-bold text-xs sm:text-sm cursor-pointer min-h-[44px] sm:min-h-[48px]"
                       >
                         {greetingData.cta.action === 'play_live' ? (
                           isPlaying ? (
@@ -257,29 +254,21 @@ export function PersonalizedGreetingModal() {
                       </button>
                     )}
 
-                    {/* Secondary CTA: Frosted Glass Button */}
+                    {/* Secondary CTA: Frosted Glass Button with Secondary Theme Colors */}
                     {greetingData.secondaryCta && (
                       <button
                         id="greeting-modal-secondary-cta"
                         type="button"
                         onClick={() => onExecuteCta(greetingData.secondaryCta)}
-                        className={`w-full sm:w-auto flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 sm:px-6 sm:py-3.5 rounded-full text-xs sm:text-sm font-semibold border transition-all duration-200 active:scale-95 cursor-pointer backdrop-blur-xl min-h-[44px] sm:min-h-[48px] ${
+                        className={`w-full sm:w-auto flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 sm:px-6 sm:py-3.5 rounded-full text-xs sm:text-sm font-semibold border border-transparent transition-all duration-200 active:scale-95 cursor-pointer backdrop-blur-xl min-h-[44px] sm:min-h-[48px] ${
                           isLightMode
-                            ? 'text-slate-800 hover:text-neon-purple bg-white/60 hover:bg-white/85 border-white/80 hover:border-neon-purple/40 shadow-[0_4px_14px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)]'
-                            : 'text-neutral-100 hover:text-white bg-white/[0.07] hover:bg-white/[0.13] border-white/15 hover:border-neon-purple/40 shadow-[0_4px_16px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.2)]'
+                            ? 'text-slate-800 hover:text-slate-900 bg-white shadow-[0_4px_14px_rgba(0,0,0,0.05)]'
+                            : 'text-neutral-100 hover:text-white bg-white/[0.07] hover:bg-white/[0.13] shadow-[0_4px_16px_rgba(0,0,0,0.15)]'
                         }`}
                       >
-                        <Radio
-                          className={`w-3.5 h-3.5 ${
-                            isLightMode ? 'text-slate-700' : 'text-neutral-300'
-                          }`}
-                        />
+                        <Radio className="w-4 h-4 text-neon-blue shrink-0" />
                         <span>{greetingData.secondaryCta.label}</span>
-                        <ArrowRight
-                          className={`w-3.5 h-3.5 ${
-                            isLightMode ? 'text-slate-500' : 'text-neutral-400'
-                          }`}
-                        />
+                        <ArrowRight className="w-3.5 h-3.5 text-neon-blue shrink-0" />
                       </button>
                     )}
                   </div>
@@ -292,8 +281,8 @@ export function PersonalizedGreetingModal() {
                       onClick={handleDismiss}
                       className={`text-xs font-medium transition-colors cursor-pointer py-1.5 ${
                         isLightMode
-                          ? 'text-slate-500 hover:text-slate-900'
-                          : 'text-neutral-400 hover:text-neutral-100'
+                          ? 'text-slate-500 hover:text-neon-purple'
+                          : 'text-neutral-400 hover:text-neon-purple'
                       }`}
                     >
                       Dismiss

@@ -79,67 +79,58 @@ video:fullscreen {
 :root.light #personalized-greeting-modal-backdrop,
 html.light #personalized-greeting-modal-backdrop,
 .light #personalized-greeting-modal-backdrop {
-  background-color: rgba(15, 23, 42, 0.25) !important;
-  backdrop-filter: blur(12px) saturate(150%) !important;
-  -webkit-backdrop-filter: blur(12px) saturate(150%) !important;
+  background-color: rgba(15, 23, 42, 0.3) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
 }
 
 :root.light #personalized-greeting-modal-card,
 html.light #personalized-greeting-modal-card,
 .light #personalized-greeting-modal-card {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.90) 100%) !important;
-  backdrop-filter: blur(36px) saturate(210%) !important;
-  -webkit-backdrop-filter: blur(36px) saturate(210%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.95) !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(226, 232, 240, 0.9) !important;
   color: #0f172a !important;
-  box-shadow: 
-    0 30px 65px -15px rgba(15, 23, 42, 0.08),
-    0 15px 35px -10px rgba(176, 38, 255, 0.07),
-    0 6px 16px -4px rgba(15, 23, 42, 0.04),
-    inset 0 2px 3px 0 #ffffff,
-    inset 0 -3px 8px 0 rgba(15, 23, 42, 0.02),
-    inset 0 0 28px 0 rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.03) !important;
 }
 
 :root.light #personalized-greeting-modal-card h2,
 html.light #personalized-greeting-modal-card h2,
 .light #personalized-greeting-modal-card h2 {
   color: #0f172a !important;
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  -webkit-text-fill-color: initial !important;
 }
 
 :root.light #personalized-greeting-modal-card p,
 html.light #personalized-greeting-modal-card p,
 .light #personalized-greeting-modal-card p {
-  color: #334155 !important;
+  color: #475569 !important;
 }
 
 :root.light #personalized-greeting-modal-card .greeting-support-text,
 html.light #personalized-greeting-modal-card .greeting-support-text,
 .light #personalized-greeting-modal-card .greeting-support-text {
   color: #64748b !important;
+  font-weight: 500 !important;
 }
 
 :root.light #greeting-modal-close-btn,
 html.light #greeting-modal-close-btn,
 .light #greeting-modal-close-btn {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(241, 245, 249, 0.8)) !important;
-  backdrop-filter: blur(14px) !important;
-  -webkit-backdrop-filter: blur(14px) !important;
-  border-color: rgba(255, 255, 255, 0.95) !important;
-  color: #475569 !important;
-  box-shadow: 
-    0 4px 10px rgba(15, 23, 42, 0.04),
-    inset 0 1.5px 1.5px #ffffff,
-    inset 0 -1.5px 3px rgba(15, 23, 42, 0.02) !important;
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #64748b !important;
+  box-shadow: none !important;
 }
 
 :root.light #greeting-modal-close-btn:hover,
 html.light #greeting-modal-close-btn:hover,
 .light #greeting-modal-close-btn:hover {
-  background-color: #ffffff !important;
+  background-color: #f1f5f9 !important;
   color: #0f172a !important;
-  border-color: rgba(176, 38, 255, 0.4) !important;
-  box-shadow: 0 6px 16px rgba(176, 38, 255, 0.12), inset 0 1.5px 1.5px #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: none !important;
 }
 
 #greeting-modal-favicon-container {
@@ -155,48 +146,72 @@ html.light #greeting-modal-close-btn:hover,
 :root.light #greeting-modal-favicon-container,
 html.light #greeting-modal-favicon-container,
 .light #greeting-modal-favicon-container {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.92)) !important;
-  backdrop-filter: blur(18px) !important;
-  -webkit-backdrop-filter: blur(18px) !important;
-  border-color: rgba(255, 255, 255, 0.95) !important;
-  box-shadow: 
-    0 10px 24px -4px rgba(15, 23, 42, 0.06),
-    0 4px 12px -2px rgba(176, 38, 255, 0.06),
-    inset 0 2px 3px 0 #ffffff,
-    inset 0 -2px 5px 0 rgba(15, 23, 42, 0.03) !important;
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Primary CTA ("Listen Now") Button - Dynamic Premium Glassmorphism Effect */
+#greeting-modal-primary-cta {
+  background: color-mix(in srgb, var(--color-neon-purple, #b026ff) 35%, rgba(255, 255, 255, 0.08)) !important;
+  backdrop-filter: blur(16px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
+  color: #ffffff !important;
+  border: 1px solid color-mix(in srgb, var(--color-neon-purple, #b026ff) 40%, rgba(255, 255, 255, 0.25)) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2) !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+#greeting-modal-primary-cta:hover {
+  background: color-mix(in srgb, var(--color-neon-purple, #b026ff) 45%, rgba(255, 255, 255, 0.12)) !important;
+  box-shadow: 0 12px 40px 0 color-mix(in srgb, var(--color-neon-purple, #b026ff) 30%, rgba(0, 0, 0, 0.4)), inset 0 1px 1px rgba(255, 255, 255, 0.3) !important;
+  transform: translateY(-1px) !important;
+  border-color: color-mix(in srgb, var(--color-neon-purple, #b026ff) 60%, rgba(255, 255, 255, 0.35)) !important;
+}
+
+#greeting-modal-primary-cta:active {
+  transform: translateY(1px) scale(0.97) !important;
+  filter: brightness(0.9) !important;
+}
+
+#greeting-modal-primary-cta svg {
+  color: #ffffff !important;
 }
 
 :root.light #greeting-modal-primary-cta,
 html.light #greeting-modal-primary-cta,
 .light #greeting-modal-primary-cta {
-  background: linear-gradient(135deg, #b026ff, #7928ca) !important;
-  color: #ffffff !important;
-  box-shadow: 0 8px 24px -4px rgba(176, 38, 255, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.4) !important;
+  background: color-mix(in srgb, var(--color-neon-purple, #b026ff) 18%, rgba(255, 255, 255, 0.7)) !important;
+  backdrop-filter: blur(16px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
+  color: var(--color-neon-purple, #b026ff) !important;
+  border: 1px solid color-mix(in srgb, var(--color-neon-purple, #b026ff) 35%, rgba(255, 255, 255, 0.5)) !important;
+  box-shadow: 0 8px 32px 0 rgba(15, 23, 42, 0.06), inset 0 1px 1px rgba(255, 255, 255, 0.8) !important;
 }
 
 :root.light #greeting-modal-primary-cta:hover,
 html.light #greeting-modal-primary-cta:hover,
 .light #greeting-modal-primary-cta:hover {
-  filter: brightness(1.08) !important;
-  box-shadow: 0 10px 28px -2px rgba(176, 38, 255, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.4) !important;
+  background: color-mix(in srgb, var(--color-neon-purple, #b026ff) 26%, rgba(255, 255, 255, 0.6)) !important;
+  box-shadow: 0 12px 36px 0 color-mix(in srgb, var(--color-neon-purple, #b026ff) 20%, rgba(15, 23, 42, 0.1)), inset 0 1px 1px rgba(255, 255, 255, 0.9) !important;
+  border-color: color-mix(in srgb, var(--color-neon-purple, #b026ff) 50%, rgba(255, 255, 255, 0.6)) !important;
+  transform: translateY(-1px) !important;
 }
 
 :root.light #greeting-modal-primary-cta svg,
 html.light #greeting-modal-primary-cta svg,
 .light #greeting-modal-primary-cta svg {
-  color: #ffffff !important;
-  fill: #ffffff !important;
+  color: var(--color-neon-purple, #b026ff) !important;
+  fill: none !important;
 }
 
 :root.light #greeting-modal-secondary-cta,
 html.light #greeting-modal-secondary-cta,
 .light #greeting-modal-secondary-cta {
-  background-color: rgba(241, 245, 249, 0.8) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
+  background-color: #f8fafc !important;
   color: #334155 !important;
-  border-color: rgba(226, 232, 240, 0.9) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03), inset 0 1px 1px #ffffff !important;
+  border: none !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
 }
 
 :root.light #greeting-modal-secondary-cta:hover,
@@ -204,13 +219,21 @@ html.light #greeting-modal-secondary-cta:hover,
 .light #greeting-modal-secondary-cta:hover {
   background-color: #ffffff !important;
   color: #0f172a !important;
-  border-color: rgba(176, 38, 255, 0.3) !important;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+}
+
+:root.light #greeting-modal-secondary-cta svg,
+html.light #greeting-modal-secondary-cta svg,
+.light #greeting-modal-secondary-cta svg {
+  color: var(--color-neon-blue, #00d2ff) !important;
 }
 
 :root.light #greeting-modal-dismiss-btn,
 html.light #greeting-modal-dismiss-btn,
 .light #greeting-modal-dismiss-btn {
   color: #64748b !important;
+  font-weight: 500 !important;
 }
 
 :root.light #greeting-modal-dismiss-btn:hover,
