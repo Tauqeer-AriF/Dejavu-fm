@@ -223,7 +223,7 @@ export default function FeatureDetail() {
 
   if (isLoading) {
     return (
-      <div className="py-12 space-y-8">
+      <div className="py-12 px-4 sm:px-6 md:px-8 space-y-8">
         <div className={`h-10 w-36 rounded-xl animate-pulse ${isLightMode ? 'bg-black/5' : 'bg-white/5'}`} />
         <div className={`aspect-[16/7] rounded-3xl animate-pulse ${isLightMode ? 'bg-black/5' : 'bg-white/5'}`} />
         <div className="max-w-3xl mx-auto space-y-4">
@@ -237,7 +237,7 @@ export default function FeatureDetail() {
 
   if (isError || !post) {
     return (
-      <div className="py-24 text-center space-y-6">
+      <div className="py-24 px-4 sm:px-6 md:px-8 text-center space-y-6">
         <FileText className={`w-14 h-14 mx-auto ${isLightMode ? 'text-slate-300' : 'text-white/10'}`} />
         <h1 className={`text-3xl font-display font-black uppercase ${isLightMode ? 'text-slate-900' : 'text-white'}`}>Post not found</h1>
         <Link to="/features" className={`inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest ${
@@ -254,7 +254,7 @@ export default function FeatureDetail() {
     <motion.article
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="py-10 md:py-14 space-y-10"
+      className="py-10 md:py-14 px-4 sm:px-6 md:px-8 space-y-10"
     >
       <Link to="/features" className={`inline-flex items-center gap-2 transition-colors text-[10px] font-black uppercase tracking-[0.25em] ${
         isLightMode ? 'text-slate-400 hover:text-slate-900' : 'text-white/40 hover:text-white'
