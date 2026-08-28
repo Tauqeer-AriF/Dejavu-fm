@@ -2196,58 +2196,98 @@ apiRouter.post("/admin/media/auto-delete/run-now", authMiddleware, authorizeRole
   }
 });
 
+const liveGeoIpCache = new Map<string, { city: string; region: string; location: string; isp: string }>();
+
 apiRouter.get("/admin/analytics/live-locations", async (req: any, res: any) => {
   const io = req.app.get('io');
   if (!io) return res.status(500).json({ error: "Socket.IO not initialized" });
 
-  const ips = new Set<string>();
+  const rawSockets: any[] = [];
   io.sockets.sockets.forEach((s: any) => {
-    const forwarded = s.handshake.headers['x-forwarded-for'];
+    rawSockets.push(s);
+  });
+
+  const locations: any[] = [];
+  const ipBrowserTracker = new Map<string, number>();
+
+  for (const s of rawSockets) {
+    const forwarded = s.handshake?.headers?.['x-forwarded-for'];
     let ip = '';
-    if (typeof forwarded === 'string') {
+    if (typeof forwarded === 'string' && forwarded.length > 0) {
       ip = forwarded.split(',')[0].trim();
     } else if (Array.isArray(forwarded) && forwarded.length > 0) {
       ip = forwarded[0].trim();
     }
     if (!ip) {
-      ip = s.handshake.address || s.conn.remoteAddress || s.id;
+      ip = s.handshake?.address || s.conn?.remoteAddress || '127.0.0.1';
     }
-    
-    // Parse User Agent
-    const ua = s.handshake.headers['user-agent'] || '';
+    if (ip.startsWith('::ffff:')) {
+      ip = ip.replace('::ffff:', '');
+    }
+
+    const ua = s.handshake?.headers?.['user-agent'] || (s as any).userAgent || '';
     const parser = new UAParser(ua);
     const result = parser.getResult();
-    
-    ips.add(JSON.stringify({
-      ip,
-      browser: `${result.browser.name || 'Unknown'} ${result.browser.version || ''}`,
-      device: `${result.os.name || 'Unknown'} ${result.device.type || 'Desktop'}`
-    }));
-  });
+    const browserName = result.browser.name || 'Web Client';
+    const browserVersion = result.browser.version ? result.browser.version.split('.')[0] : '';
+    const browser = `${browserName} ${browserVersion}`.trim();
+    const device = `${result.os.name || 'Desktop'} ${result.device.type ? `(${result.device.type})` : ''}`.trim();
 
-  const locations = [];
-  for (const item of ips) {
-    const { ip, browser, device } = JSON.parse(item);
-    // Basic IP lookup
-    let locationInfo = { ip, browser, device, location: 'Unknown', isp: 'Unknown', region: 'Unknown', city: 'Unknown' };
-    try {
-      const resp = await fetch(`http://ip-api.com/json/${ip}`);
-      const data = await resp.json();
-      if (data && data.status === 'success') {
-        locationInfo = {
-            ip,
-            browser,
-            device,
-            location: `${data.city}, ${data.regionName}, ${data.country}`,
-            isp: data.isp,
-            region: data.regionName,
-            city: data.city
+    const trackKey = `${ip}_${browser}`;
+    const sessionNum = (ipBrowserTracker.get(trackKey) || 0) + 1;
+    ipBrowserTracker.set(trackKey, sessionNum);
+
+    let geo = liveGeoIpCache.get(ip);
+    if (!geo) {
+      if (ip === '127.0.0.1' || ip === '::1' || ip.startsWith('10.') || ip.startsWith('192.168.') || ip.startsWith('172.16.') || ip === 'localhost') {
+        geo = {
+          city: 'Studio / Local',
+          region: 'Station Server',
+          location: 'Studio / Local Network',
+          isp: 'Direct Stream'
         };
+        liveGeoIpCache.set(ip, geo);
+      } else {
+        try {
+          const resp = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,regionName,city,isp`);
+          const data = await resp.json();
+          if (data && data.status === 'success') {
+            geo = {
+              city: data.city || 'Active City',
+              region: data.regionName || data.country || 'Global',
+              location: `${data.city || 'City'}, ${data.regionName || ''} ${data.country || ''}`.trim(),
+              isp: data.isp || 'Broadband ISP'
+            };
+            liveGeoIpCache.set(ip, geo);
+          } else {
+            geo = {
+              city: 'Live Listener',
+              region: 'Global',
+              location: 'Live Stream Connection',
+              isp: 'Web Stream'
+            };
+          }
+        } catch {
+          geo = {
+            city: 'Live Listener',
+            region: 'Global',
+            location: 'Live Stream Connection',
+            isp: 'Web Stream'
+          };
+        }
       }
-    } catch (e) {
-      console.error(`Failed to resolve IP ${ip}`);
     }
-    locations.push(locationInfo);
+
+    locations.push({
+      id: s.id,
+      ip,
+      browser: sessionNum > 1 ? `${browser} (Tab ${sessionNum})` : browser,
+      device,
+      city: geo.city,
+      region: geo.region,
+      location: geo.location,
+      isp: geo.isp
+    });
   }
 
   res.json(locations);
