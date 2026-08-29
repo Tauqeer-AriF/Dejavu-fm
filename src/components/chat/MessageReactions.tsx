@@ -80,7 +80,7 @@ export const MessageReactions: React.FC<MessageReactionsProps> = ({
   const pickerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  // Position the 2-row reaction picker shifted slightly left of center in the chat room container via Portal
+  // Position the 2-row reaction picker directly above the trigger button with viewport edge clamping
   const updatePlacement = useCallback(() => {
     if (!pickerRef.current) return;
     const triggerRect = pickerRef.current.getBoundingClientRect();
@@ -91,19 +91,14 @@ export const MessageReactions: React.FC<MessageReactionsProps> = ({
       setShowPicker(false);
       return;
     }
-    
-    // Find closest bounded chat container (like ChatSidebar or Admin Chat)
-    const container = pickerRef.current.closest('.front-chat-sidebar') || 
-                      pickerRef.current.closest('.admin-chat-container') ||
-                      pickerRef.current.closest('[class*="chat"]') ||
-                      document.body;
-    
-    const containerRect = container ? container.getBoundingClientRect() : { left: 0, right: viewportWidth, width: viewportWidth, top: 0, bottom: viewportHeight };
 
-    // Calculate horizontal placement shifted slightly to the left (-32px from container center)
-    let targetX = (containerRect.left + containerRect.width / 2) - 32;
-    // Safety clamp: keep within viewport with padding for the ~200px wide popover
-    targetX = Math.max(110, Math.min(viewportWidth - 110, targetX));
+    // Anchor directly above the trigger button (centered on the smile icon)
+    let targetX = triggerRect.left + (triggerRect.width / 2);
+    
+    // Safety clamp: keep the ~200px wide popover cleanly within the viewport edges
+    const minX = 110;
+    const maxX = Math.max(minX, viewportWidth - 110);
+    targetX = Math.max(minX, Math.min(maxX, targetX));
 
     // Vertical placement for 2-row container (~84px height)
     let topY = triggerRect.top - 94;
@@ -156,7 +151,7 @@ export const MessageReactions: React.FC<MessageReactionsProps> = ({
   const currentUsernameLower = (currentUser || '').trim().toLowerCase();
 
   return (
-    <div className={`relative flex flex-wrap items-center gap-1.5 pt-1.5 select-none ${className}`}>
+    <div className={`relative flex flex-wrap items-center gap-1.5 pt-1.5 select-none ${align === 'right' ? 'justify-end' : 'justify-start'} ${className}`}>
       {/* Existing Reaction Badges */}
       <AnimatePresence mode="popLayout">
         {activeReactions.map(([emoji, users]) => {
