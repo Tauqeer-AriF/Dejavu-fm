@@ -629,11 +629,11 @@ export const AIAuditLogsVault: React.FC<Props> = ({ onNavigateToReels, onNavigat
         </div>
 
         {/* Filter Pills */}
-        <div className={`flex flex-wrap items-center justify-between gap-3 pt-2 border-t ${
+        <div className={`flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t ${
           isLight ? "border-slate-200/60" : "border-white/5"
         }`}>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className={`text-[10px] font-mono font-bold uppercase mr-1 flex items-center gap-1 ${
+          <div className="flex items-center gap-1.5 overflow-x-auto max-w-full no-scrollbar pb-1">
+            <span className={`text-[10px] font-mono font-bold uppercase mr-1 flex items-center gap-1 shrink-0 ${
               isLight ? "text-slate-500" : "text-white/40"
             }`}>
               <Filter className="w-3 h-3" /> Category:
@@ -652,7 +652,7 @@ export const AIAuditLogsVault: React.FC<Props> = ({ onNavigateToReels, onNavigat
                   setCategoryFilter(cat.id);
                   setCurrentPage(1);
                 }}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition whitespace-nowrap shrink-0 ${
                   categoryFilter === cat.id
                     ? "bg-neon-purple text-white shadow-xs"
                     : isLight

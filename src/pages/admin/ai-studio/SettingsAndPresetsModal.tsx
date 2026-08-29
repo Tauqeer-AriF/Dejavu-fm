@@ -201,37 +201,37 @@ export const SettingsAndPresetsModal: React.FC<Props> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/70 backdrop-blur-md overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className={`w-full max-w-3xl rounded-3xl border p-6 md:p-8 space-y-6 max-h-[90vh] overflow-y-auto shadow-2xl relative my-8 transition-colors ${
+        className={`w-full max-w-3xl rounded-3xl border p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6 max-h-[92vh] overflow-y-auto shadow-2xl relative my-auto transition-colors ${
           isLight
             ? "bg-white border-slate-200 text-slate-900"
             : "bg-[#0D0F1D] border-white/20 text-white"
         }`}
       >
         {/* Header */}
-        <div className={`flex items-center justify-between border-b pb-4 ${
+        <div className={`flex items-center justify-between border-b pb-3.5 ${
           isLight ? "border-slate-200" : "border-white/10"
         }`}>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-neon-purple flex items-center justify-center shadow-lg shadow-neon-purple/30">
-              <Settings className="w-5 h-5 text-white" />
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-neon-purple flex items-center justify-center shadow-lg shadow-neon-purple/30 shrink-0">
+              <Settings className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
             <div>
-              <h3 className={`text-xl font-bold ${isLight ? "text-slate-900" : "text-white"}`}>
+              <h3 className={`text-base sm:text-xl font-bold ${isLight ? "text-slate-900" : "text-white"}`}>
                 AI Social Studio Configuration
               </h3>
-              <p className={`text-xs font-mono ${isLight ? "text-slate-500" : "text-white/50"}`}>
-                Gemini model settings, prompt templates, presets & branding
+              <p className={`text-[11px] sm:text-xs font-mono ${isLight ? "text-slate-500" : "text-white/50"}`}>
+                Gemini model settings & presets
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className={`p-2 rounded-xl transition ${
+            className={`p-1.5 sm:p-2 rounded-xl transition shrink-0 ${
               isLight
                 ? "text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200"
                 : "text-white/50 hover:text-white bg-white/5 hover:bg-white/10"

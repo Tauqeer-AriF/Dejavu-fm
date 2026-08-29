@@ -126,15 +126,15 @@ const AdminAIContentStudioInner: React.FC<Props> = ({ onLogout }) => {
       isLight ? "bg-[#F8FAFC] text-slate-900" : "bg-[#0A0C16] text-white"
     }`}>
       {/* Top Banner Navigation */}
-      <header className={`border-b backdrop-blur-xl sticky top-0 z-40 px-4 md:px-8 py-3.5 flex items-center justify-between gap-4 transition-colors ${
+      <header className={`border-b backdrop-blur-xl sticky top-0 z-40 px-3 sm:px-6 md:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-4 transition-colors ${
         isLight
           ? "bg-white/90 border-slate-200/90 text-slate-900 shadow-xs"
           : "bg-black/40 border-white/10 text-white"
       }`}>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           <Link
             to="/admin"
-            className={`p-2 rounded-xl border transition flex items-center gap-1.5 text-xs font-bold ${
+            className={`p-1.5 sm:p-2 rounded-xl border transition flex items-center gap-1.5 text-xs font-bold shrink-0 ${
               isLight
                 ? "bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border-slate-200"
                 : "bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border-white/10"
@@ -144,17 +144,17 @@ const AdminAIContentStudioInner: React.FC<Props> = ({ onLogout }) => {
             <span className="hidden sm:inline">Back to Dashboard</span>
           </Link>
 
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-neon-purple flex items-center justify-center shadow-lg shadow-neon-purple/30">
-              <Sparkles className="w-5 h-5 text-white" />
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-neon-purple flex items-center justify-center shadow-lg shadow-neon-purple/30 shrink-0">
+              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="text-base md:text-lg font-black tracking-tight uppercase font-display">
-                  AI Social <span className="text-neon-purple">Content Studio</span>
+                <h1 className="text-xs sm:text-base md:text-lg font-black tracking-tight uppercase font-display truncate">
+                  AI Social <span className="text-neon-purple">Studio</span>
                 </h1>
               </div>
-              <p className={`text-[11px] font-mono hidden md:block ${
+              <p className={`text-[10px] sm:text-[11px] font-mono hidden md:block truncate ${
                 isLight ? "text-slate-500" : "text-white/40"
               }`}>
                 Auto-Analysis & 9:16 Social Reel Generation Suite
@@ -164,12 +164,12 @@ const AdminAIContentStudioInner: React.FC<Props> = ({ onLogout }) => {
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
           {/* Light / Dark Mode Toggle */}
           <button
             type="button"
             onClick={toggleTheme}
-            className={`p-2 rounded-xl border transition flex items-center justify-center ${
+            className={`p-1.5 sm:p-2 rounded-xl border transition flex items-center justify-center ${
               isLight
                 ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 hover:text-slate-900"
                 : "bg-white/5 hover:bg-white/10 text-white/80 border-white/10 hover:text-white"
@@ -182,7 +182,7 @@ const AdminAIContentStudioInner: React.FC<Props> = ({ onLogout }) => {
 
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className={`px-3.5 py-2 rounded-xl border text-xs font-bold transition flex items-center gap-2 ${
+            className={`px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 ${
               isLight
                 ? "bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-800"
                 : "bg-white/5 hover:bg-white/10 border-white/10 text-white/80 hover:text-white"
@@ -194,16 +194,17 @@ const AdminAIContentStudioInner: React.FC<Props> = ({ onLogout }) => {
 
           <button
             onClick={() => setIsNewJobOpen(true)}
-            className="px-4 py-2 rounded-xl bg-neon-purple hover:bg-neon-purple/90 text-white text-xs font-bold shadow-lg shadow-neon-purple/30 transition flex items-center gap-2"
+            className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-neon-purple hover:bg-neon-purple/90 text-white text-xs font-bold shadow-lg shadow-neon-purple/30 transition flex items-center gap-1.5 sm:gap-2"
           >
             <Plus className="w-4 h-4" />
-            <span>Generate Reels</span>
+            <span className="hidden sm:inline">Generate Reels</span>
+            <span className="inline sm:hidden">Generate</span>
           </button>
 
           {onLogout && (
             <button
               onClick={onLogout}
-              className={`p-2 rounded-xl border transition ${
+              className={`p-1.5 sm:p-2 rounded-xl border transition ${
                 isLight
                   ? "bg-red-50 hover:bg-red-100 text-red-600 border-red-200"
                   : "bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20"
@@ -217,88 +218,88 @@ const AdminAIContentStudioInner: React.FC<Props> = ({ onLogout }) => {
       </header>
 
       {/* Main Workspace Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-6 md:py-8 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 md:px-8 py-4 sm:py-6 md:py-8 space-y-4 sm:space-y-6 overflow-hidden">
         {/* KPI Stats Ribbon */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
-          <div className={`p-4 rounded-2xl border space-y-1 transition-all ${
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
+          <div className={`p-3 sm:p-4 rounded-2xl border space-y-1 transition-all ${
             isLight
               ? "bg-white border-slate-200/90 shadow-[0_2px_12px_rgba(0,0,0,0.03)]"
               : "glass-panel border-white/10 bg-black/30"
           }`}>
-            <div className={`flex items-center justify-between text-xs ${
+            <div className={`flex items-center justify-between text-[11px] sm:text-xs ${
               isLight ? "text-slate-500" : "text-white/50"
             }`}>
-              <span className="font-mono uppercase">Total Social Clips</span>
-              <Film className="w-4 h-4 text-neon-purple" />
+              <span className="font-mono uppercase truncate">Total Clips</span>
+              <Film className="w-4 h-4 text-neon-purple shrink-0" />
             </div>
-            <div className={`text-2xl font-black font-display ${isLight ? "text-slate-900" : "text-white"}`}>
+            <div className={`text-xl sm:text-2xl font-black font-display ${isLight ? "text-slate-900" : "text-white"}`}>
               {stats.totalReels}
             </div>
-            <div className={`text-[11px] ${isLight ? "text-slate-500" : "text-white/40"}`}>
-              From {stats.totalJobs} show analysis jobs
+            <div className={`text-[10px] sm:text-[11px] truncate ${isLight ? "text-slate-500" : "text-white/40"}`}>
+              From {stats.totalJobs} jobs
             </div>
           </div>
 
-          <div className={`p-4 rounded-2xl border space-y-1 transition-all ${
+          <div className={`p-3 sm:p-4 rounded-2xl border space-y-1 transition-all ${
             isLight
               ? "bg-white border-slate-200/90 shadow-[0_2px_12px_rgba(0,0,0,0.03)]"
               : "glass-panel border-white/10 bg-black/30"
           }`}>
-            <div className={`flex items-center justify-between text-xs ${
+            <div className={`flex items-center justify-between text-[11px] sm:text-xs ${
               isLight ? "text-slate-500" : "text-white/50"
             }`}>
-              <span className="font-mono uppercase">Pending Review</span>
-              <Clock className="w-4 h-4 text-amber-500" />
+              <span className="font-mono uppercase truncate">Pending</span>
+              <Clock className="w-4 h-4 text-amber-500 shrink-0" />
             </div>
-            <div className="text-2xl font-black font-display text-amber-500">{stats.pendingReview}</div>
-            <div className={`text-[11px] ${isLight ? "text-slate-500" : "text-white/40"}`}>
-              {stats.approvedReels} approved for export
+            <div className="text-xl sm:text-2xl font-black font-display text-amber-500">{stats.pendingReview}</div>
+            <div className={`text-[10px] sm:text-[11px] truncate ${isLight ? "text-slate-500" : "text-white/40"}`}>
+              {stats.approvedReels} approved
             </div>
           </div>
 
-          <div className={`p-4 rounded-2xl border space-y-1 transition-all ${
+          <div className={`p-3 sm:p-4 rounded-2xl border space-y-1 transition-all ${
             isLight
               ? "bg-white border-slate-200/90 shadow-[0_2px_12px_rgba(0,0,0,0.03)]"
               : "glass-panel border-white/10 bg-black/30"
           }`}>
-            <div className={`flex items-center justify-between text-xs ${
+            <div className={`flex items-center justify-between text-[11px] sm:text-xs ${
               isLight ? "text-slate-500" : "text-white/50"
             }`}>
-              <span className="font-mono uppercase">Avg Virality</span>
-              <Flame className="w-4 h-4 text-rose-500" />
+              <span className="font-mono uppercase truncate">Virality</span>
+              <Flame className="w-4 h-4 text-rose-500 shrink-0" />
             </div>
-            <div className="text-2xl font-black font-display text-rose-500">{stats.avgViralityScore}%</div>
-            <div className={`text-[11px] ${isLight ? "text-slate-500" : "text-white/40"}`}>
-              AI hook & transition rating
+            <div className="text-xl sm:text-2xl font-black font-display text-rose-500">{stats.avgViralityScore}%</div>
+            <div className={`text-[10px] sm:text-[11px] truncate ${isLight ? "text-slate-500" : "text-white/40"}`}>
+              Hook & rating score
             </div>
           </div>
 
-          <div className={`p-4 rounded-2xl border space-y-1 transition-all ${
+          <div className={`p-3 sm:p-4 rounded-2xl border space-y-1 transition-all ${
             isLight
               ? "bg-white border-slate-200/90 shadow-[0_2px_12px_rgba(0,0,0,0.03)]"
               : "glass-panel border-white/10 bg-black/30"
           }`}>
-            <div className={`flex items-center justify-between text-xs ${
+            <div className={`flex items-center justify-between text-[11px] sm:text-xs ${
               isLight ? "text-slate-500" : "text-white/50"
             }`}>
-              <span className="font-mono uppercase">Active Pipeline</span>
-              <Activity className="w-4 h-4 text-neon-blue" />
+              <span className="font-mono uppercase truncate">Pipeline</span>
+              <Activity className="w-4 h-4 text-neon-blue shrink-0" />
             </div>
-            <div className="text-2xl font-black font-display text-neon-blue">{stats.activeJobs}</div>
-            <div className={`text-[11px] ${isLight ? "text-slate-500" : "text-white/40"}`}>
-              Real-time background tasks
+            <div className="text-xl sm:text-2xl font-black font-display text-neon-blue">{stats.activeJobs}</div>
+            <div className={`text-[10px] sm:text-[11px] truncate ${isLight ? "text-slate-500" : "text-white/40"}`}>
+              Background tasks
             </div>
           </div>
         </div>
 
         {/* Workspace Tab Switcher */}
-        <div className={`flex items-center justify-between border-b pb-4 ${
+        <div className={`flex items-center justify-between border-b pb-3 sm:pb-4 gap-2 ${
           isLight ? "border-slate-200" : "border-white/10"
         }`}>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 overflow-x-auto max-w-full pb-1 flex-nowrap shrink scrollbar-none">
             <button
               onClick={() => setActiveTab("reels")}
-              className={`px-5 py-2.5 rounded-2xl text-xs font-bold transition flex items-center gap-2 ${
+              className={`px-3 sm:px-5 py-2 sm:py-2.5 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 shrink-0 ${
                 activeTab === "reels"
                   ? "bg-neon-purple text-white shadow-lg shadow-neon-purple/20"
                   : isLight
@@ -306,9 +307,10 @@ const AdminAIContentStudioInner: React.FC<Props> = ({ onLogout }) => {
                   : "bg-black/30 text-white/60 hover:text-white border border-white/10"
               }`}
             >
-              <Film className="w-4 h-4" />
-              <span>Social Reels Review Suite</span>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+              <Film className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline">Social Reels Review Suite</span>
+              <span className="inline sm:hidden">Reels</span>
+              <span className={`px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] font-mono ${
                 activeTab === "reels" ? "bg-white/20 text-white" : isLight ? "bg-slate-100 text-slate-700" : "bg-white/10 text-white/70"
               }`}>
                 {reels.length}
@@ -317,7 +319,7 @@ const AdminAIContentStudioInner: React.FC<Props> = ({ onLogout }) => {
 
             <button
               onClick={() => setActiveTab("jobs")}
-              className={`px-5 py-2.5 rounded-2xl text-xs font-bold transition flex items-center gap-2 relative ${
+              className={`px-3 sm:px-5 py-2 sm:py-2.5 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 shrink-0 relative ${
                 activeTab === "jobs"
                   ? "bg-neon-purple text-white shadow-lg shadow-neon-purple/20"
                   : isLight
@@ -325,10 +327,11 @@ const AdminAIContentStudioInner: React.FC<Props> = ({ onLogout }) => {
                   : "bg-black/30 text-white/60 hover:text-white border border-white/10"
               }`}
             >
-              <Activity className="w-4 h-4" />
-              <span>Jobs & Processing Pipeline</span>
+              <Activity className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline">Jobs & Processing Pipeline</span>
+              <span className="inline sm:hidden">Jobs</span>
               {stats.activeJobs > 0 && (
-                <span className="px-2 py-0.5 rounded-full bg-neon-blue text-black text-[10px] font-black font-mono animate-pulse">
+                <span className="px-1.5 py-0.5 rounded-full bg-neon-blue text-black text-[10px] font-black font-mono animate-pulse">
                   {stats.activeJobs} active
                 </span>
               )}
@@ -336,7 +339,7 @@ const AdminAIContentStudioInner: React.FC<Props> = ({ onLogout }) => {
 
             <button
               onClick={() => setActiveTab("audit")}
-              className={`px-5 py-2.5 rounded-2xl text-xs font-bold transition flex items-center gap-2 ${
+              className={`px-3 sm:px-5 py-2 sm:py-2.5 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 shrink-0 ${
                 activeTab === "audit"
                   ? "bg-neon-purple text-white shadow-lg shadow-neon-purple/20"
                   : isLight
@@ -344,15 +347,16 @@ const AdminAIContentStudioInner: React.FC<Props> = ({ onLogout }) => {
                   : "bg-black/30 text-white/60 hover:text-white border border-white/10"
               }`}
             >
-              <Shield className="w-4 h-4 text-neon-blue" />
-              <span>Security & Audit Vault</span>
+              <Shield className="w-4 h-4 text-neon-blue shrink-0" />
+              <span className="hidden sm:inline">Security & Audit Vault</span>
+              <span className="inline sm:hidden">Audit</span>
             </button>
           </div>
 
           <button
             onClick={() => loadAllData(true)}
             disabled={isLoading}
-            className={`px-3.5 py-2.5 rounded-2xl border transition flex items-center gap-2 text-xs font-bold ${
+            className={`px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-2xl border transition flex items-center gap-1.5 sm:gap-2 text-xs font-bold shrink-0 ${
               isLight
                 ? "bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border-slate-200/90 shadow-xs"
                 : "bg-white/5 hover:bg-white/10 text-white/80 hover:text-white border-white/10"

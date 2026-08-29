@@ -214,14 +214,14 @@ export const JobsPipelineMonitor: React.FC<Props> = ({ jobs, onRefresh, onViewRe
             </div>
           </div>
         ) : (
-          <div className={`p-4 rounded-2xl border flex items-center justify-between gap-3 text-xs font-mono ${
+          <div className={`p-3 sm:p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs font-mono ${
             isLight ? "bg-slate-50 border-slate-200 text-slate-600" : "bg-black/30 border-white/10 text-white/60"
           }`}>
             <div className="flex items-center gap-2">
-              <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />
+              <Radio className="w-4 h-4 text-emerald-400 animate-pulse shrink-0" />
               <span>📻 Schedule Monitor Active — No show currently broadcast on air</span>
             </div>
-            <span className="text-[11px] opacity-75">
+            <span className="text-[11px] opacity-75 shrink-0">
               Checking live timetable every 60s
             </span>
           </div>
@@ -229,17 +229,17 @@ export const JobsPipelineMonitor: React.FC<Props> = ({ jobs, onRefresh, onViewRe
       )}
 
       {/* Control bar */}
-      <div className={`p-4 rounded-2xl border flex flex-wrap items-center justify-between gap-4 transition-colors ${
+      <div className={`p-3 sm:p-4 rounded-2xl border flex items-center justify-between gap-3 transition-colors ${
         isLight
           ? "bg-white border-slate-200/90 shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
           : "glass-panel border-white/10"
       }`}>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto max-w-full no-scrollbar pb-0.5">
           {["ALL", "ACTIVE", "COMPLETED", "FAILED"].map((st) => (
             <button
               key={st}
               onClick={() => setFilterStatus(st)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
+              className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition whitespace-nowrap shrink-0 ${
                 filterStatus === st
                   ? "bg-neon-purple text-white shadow-md shadow-neon-purple/30"
                   : isLight

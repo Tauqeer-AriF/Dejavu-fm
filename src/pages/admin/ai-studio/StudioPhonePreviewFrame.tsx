@@ -67,12 +67,12 @@ export const StudioPhonePreviewFrame: React.FC<PhonePreviewFrameProps> = ({
   };
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex flex-col items-center gap-3 sm:gap-4 w-full">
       {/* Studio Stage Controls & Visual FX Selector */}
-      <div className="flex flex-wrap items-center justify-center gap-2">
+      <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 max-w-full">
         <button
           onClick={() => setShowSocialUI(!showSocialUI)}
-          className={`px-3 py-1 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition ${
+          className={`px-2.5 sm:px-3 py-1 rounded-xl text-[11px] sm:text-xs font-bold border flex items-center gap-1 sm:gap-1.5 transition ${
             showSocialUI
               ? "bg-neon-purple text-white border-neon-purple shadow-sm shadow-neon-purple/30"
               : isLight
@@ -86,7 +86,7 @@ export const StudioPhonePreviewFrame: React.FC<PhonePreviewFrameProps> = ({
 
         <button
           onClick={() => setShowSafeZones(!showSafeZones)}
-          className={`px-3 py-1 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition ${
+          className={`px-2.5 sm:px-3 py-1 rounded-xl text-[11px] sm:text-xs font-bold border flex items-center gap-1 sm:gap-1.5 transition ${
             showSafeZones
               ? "bg-amber-500 text-black border-amber-400 shadow-sm"
               : isLight
@@ -99,14 +99,14 @@ export const StudioPhonePreviewFrame: React.FC<PhonePreviewFrameProps> = ({
         </button>
 
         {/* Visual Grading Presets */}
-        <div className={`flex items-center gap-1 p-1 rounded-xl border ${
+        <div className={`flex items-center gap-0.5 p-0.5 sm:p-1 rounded-xl border ${
           isLight ? "bg-slate-100 border-slate-200" : "bg-black/40 border-white/10"
         }`}>
           {(["clean", "cyberpunk", "vhs", "analog"] as StudioVisualFX[]).map((fx) => (
             <button
               key={fx}
               onClick={() => setActiveFX(fx)}
-              className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold uppercase transition ${
+              className={`px-2 sm:px-2.5 py-0.5 rounded-lg text-[9px] sm:text-[10px] font-bold uppercase transition ${
                 activeFX === fx
                   ? "bg-neon-blue text-black font-black shadow-xs"
                   : isLight
@@ -121,7 +121,7 @@ export const StudioPhonePreviewFrame: React.FC<PhonePreviewFrameProps> = ({
       </div>
 
       {/* Outer Studio Glow + Phone Bezel */}
-      <div className="relative group">
+      <div className="relative group max-w-full flex justify-center">
         {/* Dynamic Backstage Ambient Glow */}
         <div className={`absolute -inset-4 rounded-[3rem] blur-2xl transition-all duration-700 pointer-events-none ${
           activeFX === 'cyberpunk'
@@ -133,10 +133,10 @@ export const StudioPhonePreviewFrame: React.FC<PhonePreviewFrameProps> = ({
 
         {/* Realistic Smartphone Chassis */}
         <div className={`relative ${
-          selectedAspect === '1:1' ? 'w-[320px] h-[320px] rounded-3xl' :
-          selectedAspect === '16:9' ? 'w-[380px] h-[214px] rounded-3xl' :
-          'w-[280px] h-[540px] sm:w-[300px] sm:h-[580px] rounded-[2.5rem]'
-        } p-2 bg-gradient-to-b from-slate-700 via-slate-900 to-black border-[3px] border-slate-600/80 shadow-[0_25px_60px_rgba(0,0,0,0.8),inset_0_1px_2px_rgba(255,255,255,0.4)] flex flex-col justify-between overflow-hidden`}>
+          selectedAspect === '1:1' ? 'w-[260px] h-[260px] xs:w-[300px] xs:h-[300px] sm:w-[320px] sm:h-[320px] rounded-3xl' :
+          selectedAspect === '16:9' ? 'w-[290px] h-[163px] xs:w-[340px] xs:h-[191px] sm:w-[380px] sm:h-[214px] rounded-3xl' :
+          'w-[250px] h-[480px] xs:w-[275px] xs:h-[530px] sm:w-[300px] sm:h-[580px] rounded-[2.2rem] sm:rounded-[2.5rem]'
+        } p-2 bg-gradient-to-b from-slate-700 via-slate-900 to-black border-[3px] border-slate-600/80 shadow-[0_25px_60px_rgba(0,0,0,0.8),inset_0_1px_2px_rgba(255,255,255,0.4)] flex flex-col justify-between overflow-hidden shrink-0`}>
           
           {/* Inner Phone Screen */}
           <div className="relative w-full h-full bg-black rounded-[2rem] overflow-hidden flex items-center justify-center select-none">
