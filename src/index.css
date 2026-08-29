@@ -39,6 +39,15 @@ video:fullscreen {
   -webkit-focus-ring-color: transparent !important;
 }
 
+/* Global Mobile Tap Polish & Touch Optimization */
+*, *::before, *::after {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a, button, input, select, textarea, [role="button"], [tabindex="0"] {
+  touch-action: manipulation;
+}
+
 *:fullscreen,
 *:-webkit-full-screen,
 *:-moz-full-screen,
@@ -2398,6 +2407,30 @@ div#root:nth-of-type(1) > div:nth-of-type(1) > main:nth-of-type(1) > div:nth-of-
 div#root:nth-of-type(1) > div:nth-of-type(1) > main:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > main:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(1) {
   margin-left: 10px !important;
 }
+
+/* Mobile Footer Share Station Button Light Mode */
+:root.light #front-mobile-footer-share-btn,
+html.light #front-mobile-footer-share-btn,
+.light #front-mobile-footer-share-btn,
+:root.light .front-mobile-share-btn,
+html.light .front-mobile-share-btn,
+.light .front-mobile-share-btn {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06) !important;
+}
+
+:root.light #front-mobile-footer-share-btn:hover,
+html.light #front-mobile-footer-share-btn:hover,
+.light #front-mobile-footer-share-btn:hover,
+:root.light .front-mobile-share-btn:hover,
+html.light .front-mobile-share-btn:hover,
+.light .front-mobile-share-btn:hover {
+  background-color: #f4f4f5 !important;
+  color: #000000 !important;
+}
+
 
 
 

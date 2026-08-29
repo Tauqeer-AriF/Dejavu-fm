@@ -58,6 +58,7 @@ import glitchLogoUrl from './assets/images/dejavufm_glitch_logo_1784796255055.pn
 import { ThemeAccessibilityDropdown } from './components/ThemeAccessibilityDropdown';
 import { ShareModal } from './components/ShareModal';
 import { PremiumRingLoader } from './components/PremiumRingLoader';
+import { triggerHaptic } from './lib/hapticHelper';
 import { suppressAccessibilityForAdmin, applyFrontAccessibilityOptions } from './utils/accessibility';
 import { GamificationProvider } from './context/GamificationContext';
 import { GamificationNavBadge } from './components/gamification/GamificationNavBadge';
@@ -1053,6 +1054,7 @@ function MobileBottomBar({ featLiveTools, featBooth }: { featLiveTools: boolean;
             <NavLink 
               key={item.to}
               to={item.to} 
+              onClick={() => triggerHaptic('selection')}
               className={({isActive}) => {
                 const isMatch = item.active !== undefined ? item.active : isActive;
                 return `relative flex-1 flex items-center justify-center rounded-[1.5rem] transition-all duration-500 h-[52px] z-10 pointer-events-auto ${isMatch ? 'text-neon-purple active-bottom-glow' : isLightMode ? 'text-black/40 hover:text-black/70' : 'text-white/40 hover:text-white/70'}`
@@ -1738,7 +1740,27 @@ function MainLayout() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-8 w-full">
             {/* Left Column: Social Channels + Apps Underneath */}
             <div className="flex flex-col items-center md:items-start gap-4 w-full md:w-auto">
-              {/* Row 1: Social Icons & Share Button on the right */}
+              {/* Dedicated Mobile Share Button (Appears above social icons on mobile only) */}
+              <div className="w-full flex md:hidden justify-center items-center">
+                <button
+                  id="front-mobile-footer-share-btn"
+                  onClick={() => {
+                    triggerHaptic('selection');
+                    handleShare();
+                  }}
+                  className={`front-mobile-share-btn w-full max-w-[260px] flex items-center justify-center gap-2.5 px-5 py-2.5 rounded-full font-bold text-xs uppercase tracking-wider transition-all duration-300 shadow-md active:scale-95 border cursor-pointer ${
+                    isLightMode
+                      ? '!bg-[#ffffff] !text-[#000000] hover:!bg-[#f4f4f5] !border-black/10 shadow-[0_2px_12px_rgba(0,0,0,0.06)]'
+                      : 'bg-white/10 text-white border-white/15 hover:bg-white/15 shadow-[0_4px_20px_rgba(0,0,0,0.4)]'
+                  }`}
+                  aria-label="Share Website"
+                >
+                  <Share2 className="w-4 h-4 text-neon-purple animate-pulse shrink-0" />
+                  <span>Share Station</span>
+                </button>
+              </div>
+
+              {/* Row 1: Social Icons & Desktop Share Button on the right */}
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 w-full sm:w-auto">
                 <div className="front-footer-socials flex flex-wrap justify-center items-center gap-3">
                   {settings?.social_instagram && (
@@ -1852,8 +1874,11 @@ function MainLayout() {
                 </div>
 
                 <button 
-                  onClick={handleShare} 
-                  className={`front-footer-share-btn flex items-center justify-center gap-2.5 w-10 h-10 rounded-full transition-all shadow-md hover:shadow-xl cursor-pointer border ${
+                  onClick={() => {
+                    triggerHaptic('selection');
+                    handleShare();
+                  }} 
+                  className={`hidden md:flex front-footer-share-btn items-center justify-center gap-2.5 w-10 h-10 rounded-full transition-all shadow-md hover:shadow-xl cursor-pointer border ${
                     isLightMode 
                       ? 'bg-black/[0.03] border-black/10 text-black/70 hover:text-neon-purple hover:border-neon-purple/50 hover:bg-neon-purple/5' 
                       : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-neon-purple/50 hover:bg-neon-purple/10'
