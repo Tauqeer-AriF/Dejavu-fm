@@ -80,6 +80,46 @@ a, button, input, select, textarea, [role="button"], [tabindex="0"] {
   box-shadow: 0 32px 64px -16px rgba(0, 0, 0, 0.1);
 }
 
+/* Swipe Navigation Light Mode Glass Effect */
+:root.light #swipe-nav-indicator,
+html.light #swipe-nav-indicator,
+.light #swipe-nav-indicator,
+.contrast-high-light #swipe-nav-indicator,
+#swipe-nav-indicator[data-light="true"] {
+  background: rgba(255, 255, 255, 0.94) !important;
+  color: #1e293b !important;
+  border-color: rgba(0, 210, 255, 0.35) !important;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 0 15px rgba(0, 210, 255, 0.15) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+}
+
+:root.light #swipe-nav-indicator[data-ready="true"],
+html.light #swipe-nav-indicator[data-ready="true"],
+.light #swipe-nav-indicator[data-ready="true"],
+.contrast-high-light #swipe-nav-indicator[data-ready="true"],
+#swipe-nav-indicator[data-light="true"][data-ready="true"] {
+  background: #ffffff !important;
+  border-color: var(--color-neon-blue, #00d2ff) !important;
+  box-shadow: 0 12px 36px -4px rgba(0, 0, 0, 0.12), 0 0 24px rgba(0, 210, 255, 0.3) !important;
+}
+
+:root.light #swipe-nav-indicator .swipe-nav-text,
+html.light #swipe-nav-indicator .swipe-nav-text,
+.light #swipe-nav-indicator .swipe-nav-text,
+.contrast-high-light #swipe-nav-indicator .swipe-nav-text,
+#swipe-nav-indicator[data-light="true"] .swipe-nav-text {
+  color: #334155 !important;
+}
+
+:root.light #swipe-nav-indicator[data-ready="true"] .swipe-nav-text,
+html.light #swipe-nav-indicator[data-ready="true"] .swipe-nav-text,
+.light #swipe-nav-indicator[data-ready="true"] .swipe-nav-text,
+.contrast-high-light #swipe-nav-indicator[data-ready="true"] .swipe-nav-text,
+#swipe-nav-indicator[data-light="true"][data-ready="true"] .swipe-nav-text {
+  color: var(--color-neon-blue, #00d2ff) !important;
+}
+
 /* Personalized Greeting Modal - Premium Glassmorphism Styling */
 #personalized-greeting-modal-backdrop {
   z-index: 999999 !important;
