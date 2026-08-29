@@ -19,21 +19,23 @@ export function PersonalizedGreetingModal() {
   const { greetingData, isLoading, handleCtaClick, isPlaying } = useGreeting();
   const { settings, isLightMode } = useLogo();
 
-  // Reset dismissal state so the greeting modal opens immediately in preview
-  const [isDismissed, setIsDismissed] = useState<boolean>(false);
-
-  useEffect(() => {
+  // Initialize dismissal state from sessionStorage so dismissed state persists until tab/session is closed
+  const [isDismissed, setIsDismissed] = useState<boolean>(() => {
     try {
-      sessionStorage.removeItem(SESSION_STORAGE_KEY);
-      localStorage.removeItem('dejavu_greeting_dismissed_at');
+      return sessionStorage.getItem(SESSION_STORAGE_KEY) === 'true';
     } catch {
-      // ignore
+      return false;
     }
-  }, []);
+  });
 
-  // Listen for manual re-trigger event if needed
+  // Listen for manual re-trigger event if needed (e.g. from user clicking a greeting button)
   useEffect(() => {
-    const handleOpen = () => setIsDismissed(false);
+    const handleOpen = () => {
+      try {
+        sessionStorage.removeItem(SESSION_STORAGE_KEY);
+      } catch {}
+      setIsDismissed(false);
+    };
     window.addEventListener('open-greeting', handleOpen);
     return () => window.removeEventListener('open-greeting', handleOpen);
   }, []);
