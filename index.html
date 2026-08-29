@@ -27,26 +27,79 @@
     <link rel="dns-prefetch" href="https://player.twitch.tv" />
     <link rel="dns-prefetch" href="https://static.twitchcdn.net" />
     <script>
-      const savedTheme = localStorage.getItem('theme');
-      const defaultThemeFallback = localStorage.getItem('default_theme_fallback');
-      const activeTheme = savedTheme || defaultThemeFallback || 'dark';
-      
-      if (activeTheme === 'light') {
-        document.documentElement.classList.add('light');
-        document.documentElement.style.backgroundColor = '#f8f9fa';
-      } else {
-        document.documentElement.style.backgroundColor = '#0a0a0f';
-      }
+      (function() {
+        let cachedSettings = null;
+        try {
+          const raw = localStorage.getItem('dejavufm_cached_public_settings');
+          if (raw) {
+            cachedSettings = JSON.parse(raw);
+          }
+        } catch (e) {}
 
-      // Synchronize dynamic branding primary color for browser header / theme-color meta tag
-      const savedPrimaryColor = localStorage.getItem('branding_primary_color');
-      if (savedPrimaryColor) {
-        document.documentElement.style.setProperty('--color-neon-purple', savedPrimaryColor);
-        const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-        if (metaThemeColor) {
-          metaThemeColor.setAttribute('content', savedPrimaryColor);
+        const savedTheme = localStorage.getItem('theme');
+        const defaultThemeFallback = (cachedSettings && cachedSettings.default_theme) || localStorage.getItem('default_theme_fallback');
+        const activeTheme = savedTheme || defaultThemeFallback || 'dark';
+        
+        if (activeTheme === 'light') {
+          document.documentElement.classList.add('light');
+          document.documentElement.style.backgroundColor = '#f8f9fa';
+        } else {
+          document.documentElement.style.backgroundColor = '#0a0a0f';
         }
-      }
+
+        if (cachedSettings) {
+          // 1. Primary & Secondary Colors
+          if (cachedSettings.primary_color) {
+            document.documentElement.style.setProperty('--color-neon-purple', cachedSettings.primary_color);
+            const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+            if (metaThemeColor) {
+              metaThemeColor.setAttribute('content', cachedSettings.primary_color);
+            }
+          }
+          if (cachedSettings.secondary_color) {
+            document.documentElement.style.setProperty('--color-neon-blue', cachedSettings.secondary_color);
+          }
+
+          // 2. Dynamic Typography
+          if (cachedSettings.font_sans) {
+            const sansVal = '"' + cachedSettings.font_sans + '", ui-sans-serif, system-ui, sans-serif';
+            document.documentElement.style.setProperty('--font-sans', sansVal);
+            document.documentElement.style.setProperty('--font-mono', sansVal);
+          }
+          if (cachedSettings.font_display) {
+            let displayFallback = ', sans-serif';
+            if (cachedSettings.font_display === 'Playfair Display') displayFallback = ', serif';
+            if (cachedSettings.font_display === 'JetBrains Mono') displayFallback = ', monospace';
+            document.documentElement.style.setProperty('--font-display', '"' + cachedSettings.font_display + '"' + displayFallback);
+          }
+
+          // 3. Dynamic Favicon
+          if (cachedSettings.favicon) {
+            const link = document.querySelector("link[rel~='icon']");
+            if (link) {
+              link.href = cachedSettings.favicon;
+            }
+          }
+
+          // 4. Dynamic Page Title
+          const title = cachedSettings.site_title || cachedSettings.app_title || cachedSettings.station_name || cachedSettings.app_name;
+          if (title) {
+            document.title = title;
+            const appleTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+            if (appleTitle) appleTitle.setAttribute('content', title);
+          }
+        } else {
+          // Fallback legacy primary color
+          const savedPrimaryColor = localStorage.getItem('branding_primary_color');
+          if (savedPrimaryColor) {
+            document.documentElement.style.setProperty('--color-neon-purple', savedPrimaryColor);
+            const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+            if (metaThemeColor) {
+              metaThemeColor.setAttribute('content', savedPrimaryColor);
+            }
+          }
+        }
+      })();
     </script>
     <style>
       html.light body, html.light #loading-splash {
@@ -63,6 +116,22 @@
     <div id="loading-splash" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; background-color: #0a0a0f; z-index: 99999; margin: 0; padding: 0; transition: opacity 0.4s ease;">
       <img id="splash-logo" src="/icon.svg" alt="dejavufm" style="width: 320px; max-width: 80vw; height: auto; object-fit: contain;" />
     </div>
+    <script>
+      (function() {
+        try {
+          const raw = localStorage.getItem('dejavufm_cached_public_settings');
+          if (raw) {
+            const s = JSON.parse(raw);
+            const isLight = document.documentElement.classList.contains('light');
+            const customLogo = isLight ? (s.logo_light || s.logo_url) : (s.logo_dark || s.logo_url);
+            if (customLogo) {
+              const img = document.getElementById('splash-logo');
+              if (img) img.src = customLogo;
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
     <div id="root"></div>
     <script>
       window.dismissSplash = function() {
