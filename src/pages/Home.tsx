@@ -30,7 +30,7 @@ function DjDiskPlayButton({
     <button 
       onClick={onClick}
       title={isPlaying ? "Pause Live Radio" : "Play Live Radio"}
-      className="absolute top-[40%] sm:top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 group/djbtn active:scale-95 transition-all duration-300 focus:outline-none"
+      className="dj-disk-play-btn exempt-contrast-btn absolute top-[40%] sm:top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 group/djbtn active:scale-95 transition-all duration-300 focus:outline-none !bg-transparent !border-0 !p-0 !shadow-none rounded-full"
     >
       {/* 1. Atmospheric Ambient Aura driven dynamically by brand colors (Pulsation enabled on all devices using lightweight, hardware-accelerated rendering) */}
       <div 
@@ -418,14 +418,14 @@ export default function Home() {
             <div className={`now-playing-panel absolute bottom-4 left-4 right-4 md:bottom-10 md:left-10 md:right-10 z-10 p-4 md:p-6 rounded-2xl md:rounded-3xl border flex flex-col space-y-1.5 md:space-y-2 translate-y-0 group-hover:-translate-y-2 transition-transform duration-500 backdrop-blur-xl ${
               isLightMode ? 'bg-white border-black/10 shadow-[0_20px_50px_rgba(0,0,0,0.1)]' : 'bg-black/40 border-white/10 shadow-2xl'
             }`}>
-              <div className={`flex justify-between items-center text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] ${
+              <div className={`now-playing-schedule-bar flex justify-between items-center text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] min-h-[1.25rem] ${
                 isLightMode ? 'text-black/50' : 'text-white/50'
               }`}>
                 <span className="flex items-center space-x-2">
                   <div className={`w-1.5 h-1.5 rounded-full ${onAirInfo ? 'bg-neon-pink animate-pulse' : (isLightMode ? 'bg-black/40' : 'bg-white/40')}`}></div>
-                  <span>{onAirInfo?.startTime ? `START: ${onAirInfo.startTime}` : 'HD Feed'}</span>
+                  <span className="now-playing-schedule-start">{onAirInfo?.startTime ? `START: ${onAirInfo.startTime}` : 'HD Feed'}</span>
                 </span>
-                <span className="text-neon-blue drop-shadow-[0_0_5px_rgba(0,210,255,0.5)]">
+                <span className="now-playing-schedule-end text-neon-blue drop-shadow-[0_0_5px_rgba(0,210,255,0.5)]">
                   {onAirInfo?.endTime ? `END: ${onAirInfo.endTime}` : 'LIVE / 320K'}
                 </span>
               </div>

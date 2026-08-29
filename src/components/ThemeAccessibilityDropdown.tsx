@@ -195,7 +195,7 @@ export function ThemeAccessibilityDropdown() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center justify-center p-2.5 rounded-full border transition-all duration-200 focus:outline-none shrink-0 ${
+        className={`w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center p-0 rounded-full border transition-all duration-200 focus:outline-none shrink-0 ${
           mode === "neon"
             ? "bg-black font-bold"
             : mode === "high-dark"
@@ -227,7 +227,7 @@ export function ThemeAccessibilityDropdown() {
               borderColor: mode === "neon" ? "var(--color-neon-blue)" : undefined,
               boxShadow: mode === "neon" ? "0 0 20px var(--color-neon-blue)" : undefined
             }}
-            className={`absolute right-[-56px] sm:right-0 top-[calc(100%+12px)] w-[calc(100vw-32px)] sm:w-80 rounded-3xl p-5 border shadow-2xl flex flex-col gap-4 backdrop-blur-3xl z-50 ${
+            className={`absolute right-[-48px] sm:right-0 top-[calc(100%+12px)] w-[calc(100vw-32px)] sm:w-80 max-w-[340px] rounded-3xl p-5 border shadow-2xl flex flex-col gap-4 backdrop-blur-3xl z-50 ${
               mode === "high-light"
                 ? "bg-[#ffffff] text-black border-black"
                 : mode === "high-dark"

@@ -708,7 +708,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
         </div>
       </div>
 
-      <nav className={`front-navbar flex items-center justify-between p-4 md:p-8 max-w-[100rem] mx-auto w-full relative z-[1000] gap-4 transition-colors duration-300 ${
+      <nav className={`front-navbar flex items-center justify-between p-4 md:p-8 max-w-[100rem] mx-auto w-full relative z-[1000] gap-3 md:gap-4 transition-colors duration-300 ${
         isMobileMenuOpen 
           ? isLightMode 
             ? 'bg-[#ffffff] border-b border-black/10' 
@@ -727,7 +727,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
               
               {/* Core container with ultra-premium borders and subtle inner/outer shadows */}
               <div className={`${
-                logoShape === 'rectangle' ? 'w-32 sm:w-36 md:w-40 h-14 sm:h-15 md:h-16 px-3' : 'w-14 h-14 sm:w-16 sm:h-16 md:w-18 md:h-18 p-1.5'
+                logoShape === 'rectangle' ? 'w-32 sm:w-36 md:w-40 h-13 sm:h-15 md:h-16 px-3' : 'w-14 h-14 sm:w-16 sm:h-16 md:w-18 md:h-18 p-1.5'
               } relative z-10 flex items-center justify-center overflow-hidden shrink-0 transition-all duration-300 rounded-xl md:rounded-2xl ${
                 isLightMode 
                   ? 'bg-black border border-black/10 shadow-[0_8px_32px_rgba(0,0,0,0.12)] group-hover:shadow-[0_12px_40px_rgba(0,0,0,0.2)]' 
@@ -770,13 +770,13 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
           {renderedMenuItems}
         </div>
 
-        <div className="front-nav-actions flex items-center space-x-2 md:space-x-4 xl:space-x-6 z-40">
+        <div className="front-nav-actions flex items-center gap-2 sm:gap-3 md:gap-4 xl:gap-6 z-40 shrink-0">
            {featChat !== false && (
              <motion.button 
               id="toggle-chat-button"
               onClick={onOpenChat}
               whileHover="hover"
-              className="front-chat-btn flex items-center space-x-2 xl:space-x-3 px-4 xl:px-6 py-3 rounded-2xl bg-white/5 hover:bg-neon-purple/20 border border-white/10 hover:border-neon-purple/50 transition-all group whitespace-nowrap shrink-0 relative overflow-hidden"
+              className="front-chat-btn flex items-center space-x-2 xl:space-x-3 px-3.5 sm:px-4 xl:px-6 py-2.5 sm:py-3 rounded-2xl bg-white/5 hover:bg-neon-purple/20 border border-white/10 hover:border-neon-purple/50 transition-all group whitespace-nowrap shrink-0 relative overflow-hidden"
             >
               <motion.div
                 className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 z-0"

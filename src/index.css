@@ -1344,8 +1344,8 @@ body::-webkit-scrollbar {
   box-shadow: none !important;
 }
 
-:root:not(.in-admin-view).contrast-high-dark button:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
-:root:not(.in-admin-view).contrast-high-dark a.button-style:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-dark button:not(.admin-page-wrapper *):not(.admin-dashboard-container *):not(.vote-btn-elem):not(.dj-disk-play-btn):not(.exempt-contrast-btn),
+:root:not(.in-admin-view).contrast-high-dark a.button-style:not(.admin-page-wrapper *):not(.admin-dashboard-container *):not(.dj-disk-play-btn):not(.exempt-contrast-btn),
 :root:not(.in-admin-view).contrast-high-dark input:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
 :root:not(.in-admin-view).contrast-high-dark select:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
 :root:not(.in-admin-view).contrast-high-dark textarea:not(.admin-page-wrapper *):not(.admin-dashboard-container *) {
@@ -1355,8 +1355,8 @@ body::-webkit-scrollbar {
   text-shadow: none !important;
 }
 
-:root:not(.in-admin-view).contrast-high-dark button:not(.admin-page-wrapper *):not(.admin-dashboard-container *):hover,
-:root:not(.in-admin-view).contrast-high-dark a.button-style:not(.admin-page-wrapper *):not(.admin-dashboard-container *):hover {
+:root:not(.in-admin-view).contrast-high-dark button:not(.admin-page-wrapper *):not(.admin-dashboard-container *):not(.vote-btn-elem):not(.dj-disk-play-btn):not(.exempt-contrast-btn):hover,
+:root:not(.in-admin-view).contrast-high-dark a.button-style:not(.admin-page-wrapper *):not(.admin-dashboard-container *):not(.dj-disk-play-btn):not(.exempt-contrast-btn):hover {
   background-color: #ffffff !important;
   color: #000000 !important;
 }
@@ -1425,8 +1425,8 @@ body::-webkit-scrollbar {
   box-shadow: none !important;
 }
 
-:root:not(.in-admin-view).contrast-high-light button:not(.admin-page-wrapper *):not(.admin-dashboard-container *):not(.vote-btn-elem),
-:root:not(.in-admin-view).contrast-high-light a.button-style:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-high-light button:not(.admin-page-wrapper *):not(.admin-dashboard-container *):not(.vote-btn-elem):not(.dj-disk-play-btn):not(.exempt-contrast-btn),
+:root:not(.in-admin-view).contrast-high-light a.button-style:not(.admin-page-wrapper *):not(.admin-dashboard-container *):not(.dj-disk-play-btn):not(.exempt-contrast-btn),
 :root:not(.in-admin-view).contrast-high-light input:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
 :root:not(.in-admin-view).contrast-high-light select:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
 :root:not(.in-admin-view).contrast-high-light textarea:not(.admin-page-wrapper *):not(.admin-dashboard-container *) {
@@ -1436,8 +1436,8 @@ body::-webkit-scrollbar {
   text-shadow: none !important;
 }
 
-:root:not(.in-admin-view).contrast-high-light button:not(.admin-page-wrapper *):not(.admin-dashboard-container *):not(.vote-btn-elem):hover,
-:root:not(.in-admin-view).contrast-high-light a.button-style:not(.admin-page-wrapper *):not(.admin-dashboard-container *):hover {
+:root:not(.in-admin-view).contrast-high-light button:not(.admin-page-wrapper *):not(.admin-dashboard-container *):not(.vote-btn-elem):not(.dj-disk-play-btn):not(.exempt-contrast-btn):hover,
+:root:not(.in-admin-view).contrast-high-light a.button-style:not(.admin-page-wrapper *):not(.admin-dashboard-container *):not(.dj-disk-play-btn):not(.exempt-contrast-btn):hover {
   background-color: #000000 !important;
   color: #ffffff !important;
 }
@@ -1504,8 +1504,8 @@ body::-webkit-scrollbar {
   box-shadow: 0 0 15px color-mix(in srgb, var(--color-neon-blue) 25%, transparent) !important;
 }
 
-:root:not(.in-admin-view).contrast-neon button:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
-:root:not(.in-admin-view).contrast-neon a.button-style:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
+:root:not(.in-admin-view).contrast-neon button:not(.admin-page-wrapper *):not(.admin-dashboard-container *):not(.vote-btn-elem):not(.dj-disk-play-btn):not(.exempt-contrast-btn),
+:root:not(.in-admin-view).contrast-neon a.button-style:not(.admin-page-wrapper *):not(.admin-dashboard-container *):not(.dj-disk-play-btn):not(.exempt-contrast-btn),
 :root:not(.in-admin-view).contrast-neon input:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
 :root:not(.in-admin-view).contrast-neon select:not(.admin-page-wrapper *):not(.admin-dashboard-container *),
 :root:not(.in-admin-view).contrast-neon textarea:not(.admin-page-wrapper *):not(.admin-dashboard-container *) {
@@ -1514,12 +1514,46 @@ body::-webkit-scrollbar {
   color: #ffffff !important;
 }
 
-:root:not(.in-admin-view).contrast-neon button:not(.admin-page-wrapper *):not(.admin-dashboard-container *):hover,
-:root:not(.in-admin-view).contrast-neon a.button-style:not(.admin-page-wrapper *):not(.admin-dashboard-container *):hover {
+:root:not(.in-admin-view).contrast-neon button:not(.admin-page-wrapper *):not(.admin-dashboard-container *):not(.vote-btn-elem):not(.dj-disk-play-btn):not(.exempt-contrast-btn):hover,
+:root:not(.in-admin-view).contrast-neon a.button-style:not(.admin-page-wrapper *):not(.admin-dashboard-container *):not(.dj-disk-play-btn):not(.exempt-contrast-btn):hover {
   background-color: var(--color-neon-blue) !important;
   color: #000000 !important;
   border-color: var(--color-neon-blue) !important;
   box-shadow: 0 0 10px color-mix(in srgb, var(--color-neon-blue) 50%, transparent) !important;
+}
+
+/* Exempted elements / DJ Turntable Button in All Contrast Modes - guarantee zero background box or border overlay */
+:root .dj-disk-play-btn,
+:root .exempt-contrast-btn,
+:root:not(.in-admin-view).contrast-high-dark .dj-disk-play-btn,
+:root:not(.in-admin-view).contrast-high-light .dj-disk-play-btn,
+:root:not(.in-admin-view).contrast-neon .dj-disk-play-btn,
+.contrast-high-dark .dj-disk-play-btn,
+.contrast-high-light .dj-disk-play-btn,
+.contrast-neon .dj-disk-play-btn {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+  outline: none !important;
+  border-radius: 9999px !important;
+}
+
+:root .dj-disk-play-btn:hover,
+:root .exempt-contrast-btn:hover,
+:root:not(.in-admin-view).contrast-high-dark .dj-disk-play-btn:hover,
+:root:not(.in-admin-view).contrast-high-light .dj-disk-play-btn:hover,
+:root:not(.in-admin-view).contrast-neon .dj-disk-play-btn:hover,
+.contrast-high-dark .dj-disk-play-btn:hover,
+.contrast-high-light .dj-disk-play-btn:hover,
+.contrast-neon .dj-disk-play-btn:hover {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 /* 4. Font Size Scaler classes */
@@ -1529,6 +1563,64 @@ body::-webkit-scrollbar {
 
 :root:not(.in-admin-view).text-size-extra {
   font-size: 125%; /* Scale up document scale even more for front view */
+}
+
+/* Hide START & END schedule info under Large and Huge Text Scale while keeping the container height intact */
+:root.text-size-large .now-playing-schedule-bar,
+:root.text-size-extra .now-playing-schedule-bar,
+.text-size-large .now-playing-schedule-bar,
+.text-size-extra .now-playing-schedule-bar {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Fluid Mobile Header Safeguards: prevent overflow under large/huge text scale while keeping normal scale full-sized */
+.front-navbar {
+  box-sizing: border-box;
+  max-width: 100vw;
+}
+
+@media (max-width: 639px) {
+  :root.text-size-large .front-navbar,
+  :root.text-size-extra .front-navbar {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+    gap: 0.5rem !important;
+  }
+
+  :root.text-size-large .front-nav-actions,
+  :root.text-size-extra .front-nav-actions {
+    gap: 0.35rem !important;
+    flex-shrink: 0 !important;
+  }
+
+  :root.text-size-large .front-mobile-menu-toggle,
+  :root.text-size-extra .front-mobile-menu-toggle {
+    width: 2.75rem !important;
+    height: 2.75rem !important;
+    flex-shrink: 0 !important;
+  }
+
+  :root.text-size-large #theme-accessibility-trigger,
+  :root.text-size-extra #theme-accessibility-trigger {
+    width: 2.75rem !important;
+    height: 2.75rem !important;
+    padding: 0 !important;
+    flex-shrink: 0 !important;
+  }
+
+  :root.text-size-large .front-chat-btn,
+  :root.text-size-extra .front-chat-btn {
+    padding: 0.5rem 0.75rem !important;
+    flex-shrink: 0 !important;
+  }
+
+  :root.text-size-large .front-logo-wrapper > div,
+  :root.text-size-extra .front-logo-wrapper > div {
+    max-width: 8rem !important;
+    max-height: 3rem !important;
+  }
 }
 
 /* 5. Dyslexic-Friendly Font Override */
