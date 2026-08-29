@@ -271,59 +271,173 @@ export function SwipeNavigation() {
 
   const isBackward = swipeState.direction === 'backward';
   const clampedProgress = Math.min(1, Math.max(0, swipeState.progress));
-  const pullDistance = Math.min(76, swipeState.distance * 0.65);
+  const pullDistance = Math.min(92, swipeState.distance * 0.75);
+  const radius = 12;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - clampedProgress * circumference;
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-[99999] select-none overflow-hidden">
-      {/* Side Edge Visual Indicator Pill */}
+    <div className="fixed inset-0 pointer-events-none z-[99999] select-none overflow-hidden font-display">
+      {/* Subtle Specular Edge Refraction Arc (Minimalist Glass Horizon) */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{
+          opacity: clampedProgress * (swipeState.isReady ? 0.9 : 0.4),
+          scaleY: 0.8 + clampedProgress * 0.4,
+        }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.12 }}
+        style={{
+          top: `clamp(70px, ${swipeState.startY}px, calc(100vh - 140px))`,
+          background: isLightMode
+            ? isBackward
+              ? 'radial-gradient(ellipse at 0% 50%, rgba(0, 210, 255, 0.18) 0%, rgba(0, 0, 0, 0.04) 40%, rgba(255, 255, 255, 0) 75%)'
+              : 'radial-gradient(ellipse at 100% 50%, rgba(0, 210, 255, 0.18) 0%, rgba(0, 0, 0, 0.04) 40%, rgba(255, 255, 255, 0) 75%)'
+            : isBackward
+            ? 'radial-gradient(ellipse at 0% 50%, rgba(0, 210, 255, 0.22) 0%, rgba(255, 255, 255, 0.05) 35%, rgba(0, 0, 0, 0) 75%)'
+            : 'radial-gradient(ellipse at 100% 50%, rgba(0, 210, 255, 0.22) 0%, rgba(255, 255, 255, 0.05) 35%, rgba(0, 0, 0, 0) 75%)',
+        }}
+        className={`absolute -translate-y-1/2 w-16 h-56 blur-md ${
+          isBackward ? 'left-0' : 'right-0'
+        }`}
+      />
+
+      {/* Floating Minimal Luxury Glass Pill */}
       <motion.div
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{
           opacity: clampedProgress * 0.95 + 0.05,
-          scale: 0.85 + clampedProgress * 0.25,
+          scale: 0.88 + clampedProgress * 0.15 + (swipeState.isReady ? 0.05 : 0),
           x: isBackward ? pullDistance : -pullDistance,
         }}
         exit={{ opacity: 0, scale: 0.8 }}
-        transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+        transition={{ type: 'spring', stiffness: 520, damping: 28 }}
         style={{
-          top: `clamp(100px, ${swipeState.startY}px, calc(100vh - 160px))`,
+          top: `clamp(90px, ${swipeState.startY}px, calc(100vh - 140px))`,
         }}
         className={`absolute -translate-y-1/2 flex items-center justify-center ${
-          isBackward ? 'left-2' : 'right-2'
+          isBackward ? 'left-3 sm:left-5' : 'right-3 sm:right-5'
         }`}
       >
         <div
-          className={`relative flex items-center gap-2 px-3.5 py-2.5 rounded-full shadow-2xl backdrop-blur-2xl transition-all duration-200 border ${
-            swipeState.isReady
-              ? isLightMode
-                ? 'bg-[#000000] text-white border-black scale-105 shadow-[0_0_24px_rgba(0,0,0,0.35)]'
-                : 'bg-neon-purple text-white border-neon-purple scale-105 shadow-[0_0_25px_var(--color-neon-purple)]'
-              : isLightMode
-              ? 'bg-[#ffffff]/90 text-black/80 border-black/15 shadow-[0_4px_16px_rgba(0,0,0,0.12)]'
-              : 'bg-[#12131a]/90 text-white/80 border-white/15 shadow-[0_4px_20px_rgba(0,0,0,0.6)]'
+          className={`relative flex items-center gap-2.5 px-3.5 py-2 rounded-full backdrop-blur-2xl transition-all duration-200 border overflow-hidden shadow-2xl ${
+            isLightMode
+              ? swipeState.isReady
+                ? 'bg-white/90 text-neutral-950 border-[var(--color-neon-blue,#00d2ff)]/60 shadow-[0_12px_36px_rgba(0,0,0,0.12),0_0_20px_rgba(0,210,255,0.22)]'
+                : 'bg-white/70 text-neutral-800 border-[var(--color-neon-blue,#00d2ff)]/25 shadow-[0_6px_24px_rgba(0,0,0,0.06)]'
+              : swipeState.isReady
+              ? 'bg-[#0b0d14]/85 text-white border-[var(--color-neon-blue,#00d2ff)]/60 shadow-[0_12px_40px_rgba(0,0,0,0.65),0_0_24px_rgba(0,210,255,0.25)]'
+              : 'bg-[#0b0d14]/65 text-neutral-200 border-[var(--color-neon-blue,#00d2ff)]/25 shadow-[0_6px_28px_rgba(0,0,0,0.45)]'
           }`}
         >
+          {/* Specular Inner Glare Top Highlight */}
+          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/35 to-transparent pointer-events-none" />
+
           {isBackward ? (
             <>
-              <ChevronLeft
-                className={`w-5 h-5 transition-transform duration-200 ${
-                  swipeState.isReady ? '-translate-x-0.5 scale-110' : ''
-                }`}
-              />
-              <span className="text-[11px] font-black uppercase tracking-wider">
-                {swipeState.isReady ? 'Release for Back' : 'Back'}
+              {/* Minimalist Circular Progress Indicator with Secondary Color */}
+              <div className="relative flex items-center justify-center w-6 h-6 flex-shrink-0">
+                <svg className="w-6 h-6 -rotate-90" viewBox="0 0 30 30">
+                  <circle
+                    cx="15"
+                    cy="15"
+                    r={radius}
+                    className={isLightMode ? 'stroke-[var(--color-neon-blue,#00d2ff)]/15' : 'stroke-[var(--color-neon-blue,#00d2ff)]/20'}
+                    strokeWidth="2.2"
+                    fill="transparent"
+                  />
+                  <circle
+                    cx="15"
+                    cy="15"
+                    r={radius}
+                    style={{
+                      stroke: 'var(--color-neon-blue, #00d2ff)',
+                    }}
+                    className={`transition-all duration-75 ${
+                      swipeState.isReady ? 'filter drop-shadow-[0_0_5px_var(--color-neon-blue,#00d2ff)]' : ''
+                    }`}
+                    strokeWidth="2.2"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={strokeDashoffset}
+                    strokeLinecap="round"
+                    fill="transparent"
+                  />
+                </svg>
+                <ChevronLeft
+                  style={{
+                    color: swipeState.isReady ? 'var(--color-neon-blue, #00d2ff)' : undefined,
+                  }}
+                  className={`w-3.5 h-3.5 absolute inset-0 m-auto transition-transform duration-200 ${
+                    swipeState.isReady
+                      ? '-translate-x-0.5 scale-110'
+                      : isLightMode
+                      ? 'text-neutral-800'
+                      : 'text-neutral-200'
+                  }`}
+                />
+              </div>
+
+              {/* Minimalist Label */}
+              <span className="text-[11px] font-semibold tracking-wider uppercase pr-0.5 select-none">
+                {swipeState.isReady ? (
+                  <span style={{ color: 'var(--color-neon-blue, #00d2ff)' }}>Release</span>
+                ) : (
+                  'Back'
+                )}
               </span>
             </>
           ) : (
             <>
-              <span className="text-[11px] font-black uppercase tracking-wider">
-                {swipeState.isReady ? 'Release for Next' : 'Forward'}
+              {/* Minimalist Label */}
+              <span className="text-[11px] font-semibold tracking-wider uppercase pl-0.5 select-none">
+                {swipeState.isReady ? (
+                  <span style={{ color: 'var(--color-neon-blue, #00d2ff)' }}>Release</span>
+                ) : (
+                  'Forward'
+                )}
               </span>
-              <ChevronRight
-                className={`w-5 h-5 transition-transform duration-200 ${
-                  swipeState.isReady ? 'translate-x-0.5 scale-110' : ''
-                }`}
-              />
+
+              {/* Minimalist Circular Progress Indicator with Secondary Color */}
+              <div className="relative flex items-center justify-center w-6 h-6 flex-shrink-0">
+                <svg className="w-6 h-6 -rotate-90" viewBox="0 0 30 30">
+                  <circle
+                    cx="15"
+                    cy="15"
+                    r={radius}
+                    className={isLightMode ? 'stroke-[var(--color-neon-blue,#00d2ff)]/15' : 'stroke-[var(--color-neon-blue,#00d2ff)]/20'}
+                    strokeWidth="2.2"
+                    fill="transparent"
+                  />
+                  <circle
+                    cx="15"
+                    cy="15"
+                    r={radius}
+                    style={{
+                      stroke: 'var(--color-neon-blue, #00d2ff)',
+                    }}
+                    className={`transition-all duration-75 ${
+                      swipeState.isReady ? 'filter drop-shadow-[0_0_5px_var(--color-neon-blue,#00d2ff)]' : ''
+                    }`}
+                    strokeWidth="2.2"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={strokeDashoffset}
+                    strokeLinecap="round"
+                    fill="transparent"
+                  />
+                </svg>
+                <ChevronRight
+                  style={{
+                    color: swipeState.isReady ? 'var(--color-neon-blue, #00d2ff)' : undefined,
+                  }}
+                  className={`w-3.5 h-3.5 absolute inset-0 m-auto transition-transform duration-200 ${
+                    swipeState.isReady
+                      ? 'translate-x-0.5 scale-110'
+                      : isLightMode
+                      ? 'text-neutral-800'
+                      : 'text-neutral-200'
+                  }`}
+                />
+              </div>
             </>
           )}
         </div>
