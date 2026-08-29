@@ -1,12 +1,11 @@
 export type ContrastMode = "standard" | "high-dark" | "high-light" | "neon";
-export type TextSize = "normal" | "large" | "extra";
+export type TextSize = "normal" | "large";
 
 export const ACCESSIBILITY_CLASSES = [
   "contrast-high-dark",
   "contrast-high-light",
   "contrast-neon",
   "text-size-large",
-  "text-size-extra",
   "accessibility-dyslexic",
 ];
 
@@ -38,11 +37,13 @@ export function applyFrontAccessibilityOptions() {
 
   // Apply saved Text Size
   html.classList.remove("text-size-large", "text-size-extra");
-  const textSize = (localStorage.getItem("accessibility_text_size") as TextSize) || "normal";
+  let textSize = (localStorage.getItem("accessibility_text_size") as any) || "normal";
+  if (textSize === "extra") {
+    textSize = "large";
+    localStorage.setItem("accessibility_text_size", "large");
+  }
   if (textSize === "large") {
     html.classList.add("text-size-large");
-  } else if (textSize === "extra") {
-    html.classList.add("text-size-extra");
   }
 
   // Apply saved Dyslexia-friendly font

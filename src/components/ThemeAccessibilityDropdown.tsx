@@ -16,7 +16,7 @@ import {
 import { useLogo } from "../hooks/useLogo";
 
 export type ContrastMode = "standard" | "high-dark" | "high-light" | "neon";
-export type TextSize = "normal" | "large" | "extra";
+export type TextSize = "normal" | "large";
 
 export function ThemeAccessibilityDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -38,7 +38,11 @@ export function ThemeAccessibilityDropdown() {
       applyContrastMode(savedMode);
     }
 
-    const savedTextSize = localStorage.getItem("accessibility_text_size") as TextSize;
+    let savedTextSize = localStorage.getItem("accessibility_text_size") as any;
+    if (savedTextSize === "extra") {
+      savedTextSize = "large";
+      localStorage.setItem("accessibility_text_size", "large");
+    }
     if (savedTextSize) {
       setTextSize(savedTextSize);
       applyTextSize(savedTextSize);
@@ -100,8 +104,6 @@ export function ThemeAccessibilityDropdown() {
     html.classList.remove("text-size-normal", "text-size-large", "text-size-extra");
     if (size === "large") {
       html.classList.add("text-size-large");
-    } else if (size === "extra") {
-      html.classList.add("text-size-extra");
     } else {
       html.classList.add("text-size-normal");
     }
@@ -415,21 +417,6 @@ export function ThemeAccessibilityDropdown() {
                   style={textSize === "large" && isWidgetLight ? { backgroundColor: '#ffffff', color: '#0f172a' } : undefined}
                 >
                   <ZoomIn className={`w-3 h-3 ${textSize === "large" && isWidgetLight ? "text-slate-900" : ""}`} /> <span className={textSize === "large" && isWidgetLight ? "text-slate-900" : ""}>Large</span>
-                </button>
-                <button
-                  onClick={() => handleTextSizeChange("extra")}
-                  className={`flex-1 py-1.5 rounded-lg text-center text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
-                    textSize === "extra"
-                      ? isWidgetLight
-                        ? "shadow-sm font-bold border border-slate-200/50"
-                        : "bg-white/10 text-white shadow-sm"
-                      : isWidgetLight
-                      ? "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-                      : "text-white/50 hover:text-white"
-                  }`}
-                  style={textSize === "extra" && isWidgetLight ? { backgroundColor: '#ffffff', color: '#0f172a' } : undefined}
-                >
-                  <ZoomIn className={`w-3.5 h-3.5 ${textSize === "extra" && isWidgetLight ? "text-slate-900" : ""}`} /> <span className={textSize === "extra" && isWidgetLight ? "text-slate-900" : ""}>Huge</span>
                 </button>
               </div>
             </div>
