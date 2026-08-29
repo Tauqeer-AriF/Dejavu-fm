@@ -373,37 +373,40 @@ export function AdminBranding() {
     if (!confirmed) return;
 
     try {
+      const defaultSettingsObj = { 
+        app_name: DEFAULTS.appName,
+        app_title: DEFAULTS.appTitle,
+        app_tagline: DEFAULTS.appTagline,
+        logo_url: DEFAULTS.logo_url,
+        logo_dark: DEFAULTS.logo_dark,
+        logo_light: DEFAULTS.logo_light,
+        logo_shape: DEFAULTS.logo_shape,
+        favicon: DEFAULTS.favicon,
+        primary_color: DEFAULTS.primary_color,
+        secondary_color: DEFAULTS.secondary_color,
+        font_sans: DEFAULTS.font_sans,
+        font_display: DEFAULTS.font_display,
+        default_theme: DEFAULTS.default_theme,
+        social_instagram: "",
+        social_twitter: "",
+        social_facebook: "",
+        social_youtube: "",
+        social_soundcloud: "",
+        social_mixcloud: "",
+        social_tiktok: "",
+        app_android_url: "",
+        app_ios_url: "",
+        under_header_text: "",
+        under_header_align: "center"
+      };
       const res = await fetchAdmin("/api/admin/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          app_name: DEFAULTS.appName,
-          app_title: DEFAULTS.appTitle,
-          app_tagline: DEFAULTS.appTagline,
-          logo_url: DEFAULTS.logo_url,
-          logo_dark: DEFAULTS.logo_dark,
-          logo_light: DEFAULTS.logo_light,
-          logo_shape: DEFAULTS.logo_shape,
-          favicon: DEFAULTS.favicon,
-          primary_color: DEFAULTS.primary_color,
-          secondary_color: DEFAULTS.secondary_color,
-          font_sans: DEFAULTS.font_sans,
-          font_display: DEFAULTS.font_display,
-          default_theme: DEFAULTS.default_theme,
-          social_instagram: "",
-          social_twitter: "",
-          social_facebook: "",
-          social_youtube: "",
-          social_soundcloud: "",
-          social_mixcloud: "",
-          social_tiktok: "",
-          app_android_url: "",
-          app_ios_url: "",
-          under_header_text: "",
-          under_header_align: "center"
-        })
+        body: JSON.stringify(defaultSettingsObj)
       });
       if (res.ok) {
+        setCachedSettings(defaultSettingsObj);
+        queryClient.setQueryData(['settings'], (prev: any) => ({ ...(prev || {}), ...defaultSettingsObj }));
         showAlert({ title: "Reset Complete", message: "All branding settings have been restored to defaults.", style: "success" });
         queryClient.invalidateQueries({ queryKey: ["settings"] });
         setAppName(DEFAULTS.appName);
@@ -440,37 +443,40 @@ export function AdminBranding() {
   const handleSave = async (e: any) => {
     e.preventDefault();
     try {
+      const brandingObj = { 
+        app_name: appName,
+        app_title: appTitle,
+        app_tagline: appTagline,
+        logo_url: logoUrl,
+        logo_dark: logoDark,
+        logo_light: logoLight,
+        logo_shape: logoShape,
+        favicon: favicon,
+        primary_color: primaryColor,
+        secondary_color: secondaryColor,
+        font_sans: fontSans,
+        font_display: fontDisplay,
+        default_theme: defaultTheme,
+        social_instagram: socialInstagram,
+        social_twitter: socialTwitter,
+        social_facebook: socialFacebook,
+        social_youtube: socialYoutube,
+        social_soundcloud: socialSoundcloud,
+        social_mixcloud: socialMixcloud,
+        social_tiktok: socialTiktok,
+        app_android_url: appAndroidUrl,
+        app_ios_url: appIosUrl,
+        under_header_text: underHeaderText,
+        under_header_align: underHeaderAlign
+      };
       const res = await fetchAdmin("/api/admin/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          app_name: appName,
-          app_title: appTitle,
-          app_tagline: appTagline,
-          logo_url: logoUrl,
-          logo_dark: logoDark,
-          logo_light: logoLight,
-          logo_shape: logoShape,
-          favicon: favicon,
-          primary_color: primaryColor,
-          secondary_color: secondaryColor,
-          font_sans: fontSans,
-          font_display: fontDisplay,
-          default_theme: defaultTheme,
-          social_instagram: socialInstagram,
-          social_twitter: socialTwitter,
-          social_facebook: socialFacebook,
-          social_youtube: socialYoutube,
-          social_soundcloud: socialSoundcloud,
-          social_mixcloud: socialMixcloud,
-          social_tiktok: socialTiktok,
-          app_android_url: appAndroidUrl,
-          app_ios_url: appIosUrl,
-          under_header_text: underHeaderText,
-          under_header_align: underHeaderAlign
-        })
+        body: JSON.stringify(brandingObj)
       });
       if (res.ok) {
+        setCachedSettings(brandingObj);
+        queryClient.setQueryData(['settings'], (prev: any) => ({ ...(prev || {}), ...brandingObj }));
         showAlert({ title: "Success", message: "Branding settings saved!", style: "success" });
         queryClient.invalidateQueries({ queryKey: ["settings"] });
       }
@@ -864,18 +870,21 @@ export function AdminSettings() {
     const modeToSave = overrideMode !== undefined ? overrideMode : maintenanceMode;
     const toastId = toast.loading("Updating maintenance status...");
     try {
+      const maintenanceObj = { 
+        maintenance_mode: modeToSave ? '1' : '0',
+        maintenance_title: maintenanceTitle,
+        maintenance_text: maintenanceText,
+        maintenance_end_time: maintenanceEndTime,
+        maintenance_show_player: maintenanceShowPlayer ? '1' : '0'
+      };
       const res = await fetchAdmin("/api/admin/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          maintenance_mode: modeToSave ? '1' : '0',
-          maintenance_title: maintenanceTitle,
-          maintenance_text: maintenanceText,
-          maintenance_end_time: maintenanceEndTime,
-          maintenance_show_player: maintenanceShowPlayer
-        })
+        body: JSON.stringify(maintenanceObj)
       });
       if (res.ok) {
+        setCachedSettings(maintenanceObj);
+        queryClient.setQueryData(['settings'], (prev: any) => ({ ...(prev || {}), ...maintenanceObj }));
         toast.success(
           modeToSave 
             ? "Maintenance Mode is now ACTIVE!" 
@@ -909,27 +918,30 @@ export function AdminSettings() {
         formattedPath = formattedPath.slice(0, -1);
       }
 
+      const generalSettingsObj = { 
+        stream_url: stream, 
+        stream_url_low: streamLow,
+        stream_url_medium: streamMedium,
+        stream_url_high: streamHigh,
+        rss_feed_url: rss, 
+        studio_video_url: studioVideoUrl,
+        is_on_air: isOnAir,
+        admin_custom_path: formattedPath,
+        maintenance_mode: maintenanceMode,
+        maintenance_title: maintenanceTitle,
+        maintenance_text: maintenanceText,
+        maintenance_end_time: maintenanceEndTime,
+        maintenance_show_player: maintenanceShowPlayer
+      };
       const res = await fetchAdmin("/api/admin/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          stream_url: stream, 
-          stream_url_low: streamLow,
-          stream_url_medium: streamMedium,
-          stream_url_high: streamHigh,
-          rss_feed_url: rss, 
-          studio_video_url: studioVideoUrl,
-          is_on_air: isOnAir,
-          admin_custom_path: formattedPath,
-          maintenance_mode: maintenanceMode,
-          maintenance_title: maintenanceTitle,
-          maintenance_text: maintenanceText,
-          maintenance_end_time: maintenanceEndTime,
-          maintenance_show_player: maintenanceShowPlayer
-        })
+        body: JSON.stringify(generalSettingsObj)
       });
       if (res.ok) {
         setAdminCustomPath(formattedPath);
+        setCachedSettings(generalSettingsObj);
+        queryClient.setQueryData(['settings'], (prev: any) => ({ ...(prev || {}), ...generalSettingsObj }));
         
         // Sync live audio store immediately
         const urls = {

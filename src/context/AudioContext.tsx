@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { ReactNode } from 'react';
 import { toast } from 'sonner';
+import { getCachedSettings } from '../hooks/useLogo';
 
 // External Singletons to avoid putting non-serializable objects in Zustand state
 let radioAudio: HTMLAudioElement | null = null;
@@ -160,7 +161,10 @@ const getSavedQuality = (): AudioQuality => {
 
 const getSavedStreamUrl = () => {
   if (typeof window === 'undefined') return "";
-  return localStorage.getItem('dejavufm_stream_url') || "";
+  const stored = localStorage.getItem('dejavufm_stream_url');
+  if (stored) return stored;
+  const cached = getCachedSettings();
+  return cached?.stream_url || cached?.stream_url_medium || "";
 };
 
 const getSavedQualityUrls = (): Record<AudioQuality, string> => {
@@ -170,9 +174,21 @@ const getSavedQualityUrls = (): Record<AudioQuality, string> => {
   try {
     const saved = localStorage.getItem('dejavufm_quality_urls');
     if (saved) {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      if (parsed && (parsed.low || parsed.medium || parsed.high)) {
+        return parsed;
+      }
     }
   } catch (e) {}
+  const cached = getCachedSettings();
+  if (cached) {
+    const lowUrl = cached.stream_url_low || cached.stream_url || "";
+    const medUrl = cached.stream_url_medium || cached.stream_url || "";
+    const hiUrl = cached.stream_url_high || cached.stream_url || "";
+    if (lowUrl || medUrl || hiUrl) {
+      return { low: lowUrl, medium: medUrl, high: hiUrl };
+    }
+  }
   return { low: "", medium: "", high: "" };
 };
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Menu, ArrowUp, ArrowDown, Eye, EyeOff, Save, Globe, Sparkles, RefreshCw, Layers, Shield, Radio, Plus, Trash2, ChevronDown } from 'lucide-react';
-import { useLogo } from '../../hooks/useLogo';
+import { useLogo, setCachedSettings } from '../../hooks/useLogo';
 import { useModal } from '../../context/ModalContext';
 import { ImageUploadField } from './ImageUploadField';
 import { fetchAdmin } from './adminApi';
@@ -330,25 +330,30 @@ export function AdminMenu() {
     const pageTitlesStr = JSON.stringify(menuItemPageTitles);
 
     try {
+      const menuBrandingObj = {
+        app_name: appName,
+        app_title: appTitle,
+        app_tagline: appTagline,
+        menu_order: orderStr,
+        menu_item_labels: labelsStr,
+        menu_item_visibility: visibilityStr,
+        menu_item_paths: pathsStr,
+        menu_sub_items: subItemsStr,
+        menu_item_page_titles: pageTitlesStr,
+      };
+
       const res = await fetchAdmin('/api/admin/settings', {
         method: 'PUT',
-        body: {
-          app_name: appName,
-          app_title: appTitle,
-          app_tagline: appTagline,
-          menu_order: orderStr,
-          menu_item_labels: labelsStr,
-          menu_item_visibility: visibilityStr,
-          menu_item_paths: pathsStr,
-          menu_sub_items: subItemsStr,
-          menu_item_page_titles: pageTitlesStr,
-        },
+        body: menuBrandingObj,
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'Failed to update settings');
       }
+
+      setCachedSettings(menuBrandingObj);
+      queryClient.setQueryData(['settings'], (prev: any) => ({ ...(prev || {}), ...menuBrandingObj }));
 
       // Dispatch event to trigger refresh across open tabs & windows
       window.dispatchEvent(new Event('settings-updated'));

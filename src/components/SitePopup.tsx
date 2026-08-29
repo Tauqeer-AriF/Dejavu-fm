@@ -1,37 +1,57 @@
 import React, { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { getCachedSettings } from "../hooks/useLogo";
+import { safeFetchJson } from "../utils/safeFetch";
 
 export function SitePopup() {
-  const [popups, setPopups] = useState<any[]>([]);
+  const [popups, setPopups] = useState<any[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const cached = sessionStorage.getItem('dejavufm_cached_popups');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        const dismissed = JSON.parse(sessionStorage.getItem('dismissed_popups') || '[]');
+        return Array.isArray(parsed) ? parsed.filter((p: any) => !dismissed.includes(p.id)) : [];
+      }
+    } catch (e) {}
+    return [];
+  });
   const [currentIndex, setCurrentIndex] = useState(0);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
 
+    // Get delay immediately from zero-flash settings cache
+    const cachedSettings = getCachedSettings();
+    let initialDelay = 10000;
+    if (cachedSettings?.popup_delay) {
+      initialDelay = parseInt(cachedSettings.popup_delay) || 10000;
+    }
+
     const loadPopups = async () => {
       try {
-        const settingsRes = await fetch("/api/public/settings");
-        let delay = 10000;
-        if (settingsRes.ok) {
-          const settings = await settingsRes.json();
-          if (settings.popup_delay) delay = parseInt(settings.popup_delay);
+        const [settings, data] = await Promise.all([
+          safeFetchJson("/api/public/settings"),
+          safeFetchJson("/api/public/popups")
+        ]);
+
+        let delay = initialDelay;
+        if (settings?.popup_delay) {
+          delay = parseInt(settings.popup_delay) || 10000;
         }
 
-        const res = await fetch("/api/public/popups");
-        if (!res.ok) return;
-        const contentType = res.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          return; // Ignore if not JSON (e.g. server returned HTML fallback)
-        }
-        const data = await res.json();
-        
         // Filter out already dismissed popups
         const dismissed = JSON.parse(sessionStorage.getItem('dismissed_popups') || '[]');
         const activePopups = Array.isArray(data) ? data.filter((p: any) => !dismissed.includes(p.id)) : [];
 
+        if (Array.isArray(data)) {
+          sessionStorage.setItem('dejavufm_cached_popups', JSON.stringify(data));
+        }
+
         if (activePopups.length > 0) {
+          clearTimeout(timer);
           timer = setTimeout(() => {
             setPopups(activePopups);
             setVisible(true);
@@ -42,6 +62,13 @@ export function SitePopup() {
       }
     };
     
+    // Start initial timer immediately if cached popups exist
+    if (popups.length > 0) {
+      timer = setTimeout(() => {
+        setVisible(true);
+      }, initialDelay);
+    }
+
     loadPopups();
 
     // Immediate logic: Listen for real-time socket events

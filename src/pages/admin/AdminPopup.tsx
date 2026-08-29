@@ -8,9 +8,10 @@ import { motion, AnimatePresence } from "motion/react";
 import { fetchAdmin } from "./adminApi";
 import { ImageUploadField } from "./ImageUploadField";
 
-import { useLogo } from "../../hooks/useLogo";
+import { useLogo, setCachedSettings } from "../../hooks/useLogo";
 
 export function AdminPopup() {
+  const queryClient = useQueryClient();
   const { isLightMode } = useLogo();
   const [popups, setPopups] = useState<any[]>([]);
   const [heading, setHeading] = useState("");
@@ -50,12 +51,16 @@ export function AdminPopup() {
   const saveDelay = async () => {
     setIsSavingDelay(true);
     try {
+      const delayObj = { popup_delay: popupDelay.toString() };
       const res = await fetchAdmin("/api/admin/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ popup_delay: popupDelay.toString() })
+        body: JSON.stringify(delayObj)
       });
       if (res.ok) {
+        setCachedSettings(delayObj);
+        queryClient.setQueryData(['settings'], (prev: any) => ({ ...(prev || {}), ...delayObj }));
+        queryClient.invalidateQueries({ queryKey: ['settings'] });
         showAlert({ title: "Updated", message: "Pop-up timing saved!", style: "success" });
       }
     } catch (err) {

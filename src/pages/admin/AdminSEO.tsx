@@ -4,7 +4,7 @@ import {
   RefreshCw, ExternalLink, Copy, Check, Activity, Database, 
   AlertTriangle, TrendingUp, X, Palette
 } from 'lucide-react';
-import { useLogo } from '../../hooks/useLogo';
+import { useLogo, setCachedSettings } from '../../hooks/useLogo';
 import { useModal } from '../../context/ModalContext';
 import { ImageUploadField } from './ImageUploadField';
 import { fetchAdmin } from './adminApi';
@@ -143,15 +143,17 @@ export function AdminSEO() {
     e.preventDefault();
     setIsSavingGlobal(true);
     try {
+      const seoObj = {
+        seo_title: seoTitle,
+        seo_description: seoDescription,
+        seo_image: seoImage,
+      };
       const res = await fetchAdmin('/api/admin/settings', {
         method: 'PUT',
-        body: {
-          seo_title: seoTitle,
-          seo_description: seoDescription,
-          seo_image: seoImage,
-        },
+        body: seoObj,
       });
       if (!res.ok) throw new Error('Failed to save global SEO tags');
+      setCachedSettings(seoObj);
       showAlert({ title: 'Success', message: 'Global SEO configurations updated successfully.', style: 'success' });
       fetchMetrics();
     } catch (err: any) {

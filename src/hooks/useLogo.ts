@@ -21,10 +21,79 @@ export function getCachedSettings(): any {
   return undefined;
 }
 
+export function applyCachedBrandingDirectly(settings?: any) {
+  if (typeof window === 'undefined') return;
+  const s = settings || getCachedSettings();
+  if (!s) return;
+
+  // 1. Primary & Secondary Colors
+  if (s.primary_color) {
+    document.documentElement.style.setProperty('--color-neon-purple', s.primary_color);
+    try {
+      localStorage.setItem('branding_primary_color', s.primary_color);
+      let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+      if (!metaThemeColor) {
+        metaThemeColor = document.createElement('meta');
+        metaThemeColor.setAttribute('name', 'theme-color');
+        document.head.appendChild(metaThemeColor);
+      }
+      metaThemeColor.setAttribute('content', s.primary_color);
+    } catch (e) {}
+  }
+
+  if (s.secondary_color) {
+    document.documentElement.style.setProperty('--color-neon-blue', s.secondary_color);
+    try {
+      localStorage.setItem('branding_secondary_color', s.secondary_color);
+    } catch (e) {}
+  }
+
+  // 2. Fonts
+  if (s.font_sans) {
+    const val = `"${s.font_sans}", ui-sans-serif, system-ui, sans-serif`;
+    document.documentElement.style.setProperty('--font-sans', val);
+    document.documentElement.style.setProperty('--font-mono', val);
+  }
+
+  if (s.font_display) {
+    let displayFallback = ', sans-serif';
+    if (s.font_display === 'Playfair Display') displayFallback = ', serif';
+    if (s.font_display === 'JetBrains Mono') displayFallback = ', monospace';
+    const val = `"${s.font_display}"${displayFallback}`;
+    document.documentElement.style.setProperty('--font-display', val);
+  }
+
+  // 3. Favicon
+  if (s.favicon) {
+    const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+    if (link) {
+      if (link.href !== s.favicon) link.href = s.favicon;
+    } else {
+      const newLink = document.createElement('link');
+      newLink.rel = 'icon';
+      newLink.href = s.favicon;
+      document.head.appendChild(newLink);
+    }
+  }
+
+  // 4. Default Theme Fallback
+  if (s.default_theme) {
+    try {
+      localStorage.setItem('default_theme_fallback', s.default_theme);
+    } catch (e) {}
+  }
+}
+
+// Run immediately upon script load for zero-flash visual styling
+applyCachedBrandingDirectly();
+
 export function setCachedSettings(settings: any) {
   if (typeof window === 'undefined' || !settings) return;
   try {
-    localStorage.setItem(CACHED_SETTINGS_KEY, JSON.stringify(settings));
+    const existing = getCachedSettings() || {};
+    const merged = { ...existing, ...settings };
+    localStorage.setItem(CACHED_SETTINGS_KEY, JSON.stringify(merged));
+    applyCachedBrandingDirectly(merged);
   } catch (e) {
     // ignore quota error
   }
