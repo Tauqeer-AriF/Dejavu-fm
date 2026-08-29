@@ -6,6 +6,7 @@ import { ExternalLink } from "lucide-react";
 import { motion } from "motion/react";
 import { useLocation } from "react-router-dom";
 import { safeFetchJson } from "../utils/safeFetch";
+import { getCachedSettings } from "../hooks/useLogo";
 
 // Import Swiper styles
 import "swiper/css";
@@ -54,8 +55,9 @@ export function AdvertisementSliders({ position = "bottom" }: { position?: "top"
   });
 
   const { data: settings = {} } = useQuery({
-    queryKey: ['publicSettings'],
-    queryFn: () => safeFetchJson("/api/public/settings")
+    queryKey: ['settings'],
+    queryFn: () => safeFetchJson("/api/public/settings"),
+    initialData: getCachedSettings,
   });
 
   const autoScroll = settings.ad_auto_scroll === '1';

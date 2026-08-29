@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { fetchAdmin } from "./adminApi";
 import { ShieldAlert, Power, Radio, RefreshCw, AlertOctagon, Mail, Lock, CheckCircle, Eye, EyeOff, Sliders, Ghost, Shield, KeyRound } from "lucide-react";
-import { useLogo } from "../../hooks/useLogo";
+import { useLogo, getCachedSettings, setCachedSettings } from "../../hooks/useLogo";
 import { safeFetchJson } from "../../utils/safeFetch";
 import { motion } from "motion/react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -14,6 +14,7 @@ export default function AdminOwnerControl() {
   const { data: serverSettings } = useQuery({
     queryKey: ['settings'],
     queryFn: () => safeFetchJson('/api/public/settings'),
+    initialData: getCachedSettings,
   });
 
   const [isKilled, setIsKilled] = useState<boolean>(false);
@@ -89,6 +90,9 @@ export default function AdminOwnerControl() {
             ? `Feature hidden from Advanced Tab`
             : `Feature made visible in Advanced Tab`
         );
+        const updated = { ...(serverSettings || {}), [`owner_hide_${featureId}`]: hide ? '1' : '0' };
+        setCachedSettings(updated);
+        queryClient.setQueryData(['settings'], updated);
         await queryClient.invalidateQueries({ queryKey: ['settings'] });
         await queryClient.refetchQueries({ queryKey: ['settings'] });
       } else {

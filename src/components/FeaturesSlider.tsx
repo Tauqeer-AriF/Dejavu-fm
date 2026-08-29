@@ -7,7 +7,7 @@ import { useMemo, useRef } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Navigation, Pagination } from "swiper/modules";
 import type { Swiper as SwiperType } from "swiper";
-import { useLogo } from "../hooks/useLogo";
+import { useLogo, getCachedSettings } from "../hooks/useLogo";
 import { safeFetchJson } from "../utils/safeFetch";
 
 // Import Swiper styles
@@ -41,6 +41,7 @@ export function FeaturesSlider() {
   const { data: settings } = useQuery<any>({
     queryKey: ["settings"],
     queryFn: () => safeFetchJson("/api/public/settings"),
+    initialData: getCachedSettings,
     staleTime: 1000 * 60,
   });
 

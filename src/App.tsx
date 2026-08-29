@@ -14,7 +14,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
 import { convertToLocalTime, getLondonTime } from './lib/timeUtils';
-import { useLogo } from './hooks/useLogo';
+import { useLogo, getCachedSettings, setCachedSettings } from './hooks/useLogo';
 import { SecretAdminPrompt } from './components/SecretAdminPrompt';
 import { SitePopup } from './components/SitePopup';
 import { AdvertisementSliders } from './components/AdvertisementSliders';
@@ -112,6 +112,12 @@ const queryClient = new QueryClient({
   },
 });
 
+// Pre-hydrate queryClient with cached settings immediately on script evaluation
+const initialCachedSettings = getCachedSettings();
+if (initialCachedSettings) {
+  queryClient.setQueryData(['settings'], initialCachedSettings);
+}
+
 // Initialize global socket
 if (typeof window !== 'undefined') {
   let tabId = sessionStorage.getItem('dejavu_tab_id');
@@ -140,6 +146,9 @@ if (typeof window !== 'undefined') {
   });
 
   socketInstance.on('settings_updated', (updatedSettings: any) => {
+    if (updatedSettings) {
+      setCachedSettings(updatedSettings);
+    }
     queryClient.setQueryData(['settings'], updatedSettings);
     queryClient.invalidateQueries({ queryKey: ['settings'] });
   });
@@ -1096,6 +1105,7 @@ function AnimatedRoutes({ adminPath = '/admin' }: { adminPath?: string }) {
   const { data: settings } = useQuery({
     queryKey: ['settings'],
     queryFn: () => safeFetchJson("/api/public/settings"),
+    initialData: getCachedSettings,
   });
   const featBooth = settings?.feat_booth !== '0';
   const featSpecialEvents = settings?.feat_special_events !== '0';
@@ -1174,7 +1184,12 @@ function MainLayout() {
 
   const { data: settings } = useQuery({
     queryKey: ['settings'],
-    queryFn: () => safeFetchJson('/api/public/settings'),
+    queryFn: async () => {
+      const res = await safeFetchJson('/api/public/settings');
+      if (res) setCachedSettings(res);
+      return res;
+    },
+    initialData: getCachedSettings,
     refetchInterval: 3000,
   });
 

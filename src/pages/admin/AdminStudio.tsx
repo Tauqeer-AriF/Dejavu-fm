@@ -4681,13 +4681,22 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                   <h3 className={`text-base font-black uppercase tracking-wider font-display ${
                     isStudioLight ? 'text-slate-900' : 'text-white'
                   }`}>
-                    Live Stream Command Desk
+                    {isAdmin ? 'Live Stream Command Desk' : 'Studio Inbox'}
                   </h3>
-                  <p className={`text-xs max-w-sm mx-auto leading-relaxed ${
-                    isStudioLight ? 'text-slate-500' : 'text-white/40'
-                  }`}>
-                    This is your centralised hub for listener interaction and stream telemetry. Select an active thread from the left pane to initialise a high-fidelity connection pipeline.
-                  </p>
+                  {isAdmin && (
+                    <p className={`text-xs max-w-sm mx-auto leading-relaxed ${
+                      isStudioLight ? 'text-slate-500' : 'text-white/40'
+                    }`}>
+                      This is your centralised hub for listener interaction and stream telemetry. Select an active thread from the left pane to initialise a high-fidelity connection pipeline.
+                    </p>
+                  )}
+                  {!isAdmin && (
+                    <p className={`text-xs max-w-sm mx-auto leading-relaxed ${
+                      isStudioLight ? 'text-slate-500' : 'text-white/40'
+                    }`}>
+                      Select an active thread from the left pane to view and respond to messages.
+                    </p>
+                  )}
                 </div>
 
                 {/* Highly structured, clean system telemetry grid (Hidden for DJ role, visible for Admin/Owner) */}

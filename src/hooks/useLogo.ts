@@ -3,15 +3,53 @@ import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
 import { safeFetchJson } from '../utils/safeFetch';
 
+export const CACHED_SETTINGS_KEY = 'dejavufm_cached_public_settings';
+
+export function getCachedSettings(): any {
+  if (typeof window === 'undefined') return undefined;
+  try {
+    const raw = localStorage.getItem(CACHED_SETTINGS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    // ignore json parse error
+  }
+  return undefined;
+}
+
+export function setCachedSettings(settings: any) {
+  if (typeof window === 'undefined' || !settings) return;
+  try {
+    localStorage.setItem(CACHED_SETTINGS_KEY, JSON.stringify(settings));
+  } catch (e) {
+    // ignore quota error
+  }
+}
+
 export function useLogo() {
   const location = useLocation();
   const pathname = location?.pathname || (typeof window !== 'undefined' ? window.location.pathname : '');
 
   const { data: settings } = useQuery({
     queryKey: ['settings'],
-    queryFn: () => safeFetchJson("/api/public/settings"),
+    queryFn: async () => {
+      const res = await safeFetchJson("/api/public/settings");
+      if (res) setCachedSettings(res);
+      return res;
+    },
+    initialData: getCachedSettings,
     staleTime: 1000 * 60 * 2,
   });
+
+  useEffect(() => {
+    if (settings) {
+      setCachedSettings(settings);
+    }
+  }, [settings]);
 
   const customAdminPath = (settings?.admin_custom_path || '/admin').trim().replace(/\/+$/, '') || '/admin';
   const checkAdmin = (p: string) => p.startsWith(customAdminPath);

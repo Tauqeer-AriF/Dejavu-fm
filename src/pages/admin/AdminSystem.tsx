@@ -10,7 +10,7 @@ import { fetchAdmin } from "./adminApi";
 import { ImageUploadField } from "./ImageUploadField";
 import { safeFetchJson } from "../../utils/safeFetch";
 
-import { useLogo } from "../../hooks/useLogo";
+import { useLogo, getCachedSettings, setCachedSettings } from "../../hooks/useLogo";
 import { useAudioStore } from "../../context/AudioContext";
 
 export function AdminAdvanced() {
@@ -19,6 +19,7 @@ export function AdminAdvanced() {
   const { data: serverSettings } = useQuery({
     queryKey: ['settings'],
     queryFn: () => safeFetchJson('/api/public/settings'),
+    initialData: getCachedSettings,
   });
 
   const [features, setFeatures] = useState<Record<string, boolean>>({
@@ -89,6 +90,9 @@ export function AdminAdvanced() {
     
     if (res.ok) {
       showAlert({ title: "Success", message: "Advanced features saved!", style: "success" });
+      const updated = { ...(serverSettings || {}), ...settingsToSave };
+      setCachedSettings(updated);
+      queryClient.setQueryData(['settings'], updated);
       queryClient.invalidateQueries({ queryKey: ['settings'] });
       queryClient.invalidateQueries({ queryKey: ['publicSettings'] });
     } else {
