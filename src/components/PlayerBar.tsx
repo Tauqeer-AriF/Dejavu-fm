@@ -6,6 +6,7 @@ import { safeFetchJson } from '../utils/safeFetch';
 import { motion, AnimatePresence } from 'motion/react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import { triggerHaptic } from '../lib/hapticHelper';
 
 function Visualizer({ isPlaying, volume, isLightMode }: { isPlaying: boolean; volume: number; isLightMode: boolean }) {
   const numBars = 16;
@@ -170,6 +171,7 @@ function QualitySelector() {
               <button
                 key={q}
                 onClick={() => {
+                  triggerHaptic('selection');
                   setQuality(q);
                   setIsOpen(false);
                 }}
@@ -244,6 +246,7 @@ export function PlayerBar() {
 
   const handleSkip = (delta: number) => {
     if (activeType !== 'podcast') return;
+    triggerHaptic('light');
     const maxDur = podcastDuration || 999999;
     const newProgress = Math.max(0, Math.min(maxDur, podcastProgress + delta));
     seekPodcast(newProgress);
@@ -251,6 +254,7 @@ export function PlayerBar() {
 
   const speedOptions = [1, 1.25, 1.5, 2];
   const toggleSpeed = () => {
+    triggerHaptic('selection');
     const currentIdx = speedOptions.indexOf(playbackRate);
     const nextIdx = (currentIdx + 1) % speedOptions.length;
     setPlaybackRate(speedOptions[nextIdx]);
@@ -270,7 +274,10 @@ export function PlayerBar() {
           <div className={`front-player-bar-card max-w-6xl mx-auto backdrop-blur-3xl rounded-2xl md:rounded-3xl h-24 md:h-28 flex flex-col justify-center px-3 sm:px-6 md:px-10 border relative group pointer-events-auto shadow-2xl ${isLightMode ? "bg-[#ffffff]/95 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border-black/10" : "bg-dark-bg/95 shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-white/10"}`}>
             {/* Close/Minimize Button */}
             <button 
-              onClick={() => setIsMinimized(true)}
+              onClick={() => {
+                triggerHaptic('selection');
+                setIsMinimized(true);
+              }}
               className={`front-player-minimize-btn absolute top-1.5 right-1.5 md:top-3 md:right-3 p-1.5 md:p-2 rounded-full transition-all z-20 ${isLightMode ? "text-black/30 hover:text-black hover:bg-black/10" : "text-white/30 hover:text-white hover:bg-white/10"}`}
               title="Minimize Player"
             >
@@ -377,7 +384,10 @@ export function PlayerBar() {
                 )}
 
                 <button 
-                  onClick={togglePlay}
+                  onClick={() => {
+                    triggerHaptic(isPlaying ? 'light' : 'medium');
+                    togglePlay();
+                  }}
                   className={`front-player-play-btn w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all relative group/play z-10 ${isLightMode ? "bg-black text-[#ffffff] shadow-[0_0_40px_rgba(0,0,0,0.2)]" : "bg-white text-dark-bg shadow-[0_0_40px_rgba(255,255,255,0.3)]"}`}
                 >
                   {isBuffering && isPlaying ? (
@@ -472,14 +482,20 @@ export function PlayerBar() {
         >
           <div className={`backdrop-blur-3xl border rounded-full p-1 sm:p-1.5 flex items-center ${isLightMode ? "bg-[#ffffff]/80 border-black/10 shadow-[0_20px_50px_rgba(0,0,0,0.1)]" : "bg-dark-bg/80 border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]"}`}>
              <button 
-              onClick={() => setIsMinimized(false)}
+              onClick={() => {
+                triggerHaptic('selection');
+                setIsMinimized(false);
+              }}
               className={`p-1.5 sm:p-2 rounded-full transition-all mr-0.5 sm:mr-1 ${isLightMode ? "text-black/50 hover:text-black hover:bg-black/10" : "text-white/50 hover:text-white hover:bg-white/10"}`}
               title="Expand Player"
             >
               <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
             <button 
-              onClick={togglePlay}
+              onClick={() => {
+                triggerHaptic(isPlaying ? 'light' : 'medium');
+                togglePlay();
+              }}
               className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all ${isLightMode ? "bg-black text-[#ffffff] shadow-[0_10px_30px_rgba(0,0,0,0.2)]" : "bg-white text-dark-bg shadow-[0_10px_30px_rgba(255,255,255,0.3)]"}`}
             >
               {isBuffering && isPlaying ? (

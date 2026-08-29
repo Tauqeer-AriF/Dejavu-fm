@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback, useLayoutEffect } from
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Smile } from 'lucide-react';
+import { triggerHaptic } from '../../lib/hapticHelper';
 
 export const COMMON_REACTIONS = ['❤️', '🔥', '👍', '👏', '😂', '🎵', '🎧', '⚡', '🙌', '💯'];
 
@@ -178,7 +179,10 @@ export const MessageReactions: React.FC<MessageReactionsProps> = ({
                 whileHover={{ scale: 1.08 }}
                 whileTap={{ scale: 0.92 }}
                 disabled={disabled}
-                onClick={() => onToggleReaction(emoji)}
+                onClick={() => {
+                  triggerHaptic('light');
+                  onToggleReaction(emoji);
+                }}
                 onMouseEnter={() => setHoveredEmoji(emoji)}
                 onMouseLeave={() => setHoveredEmoji(null)}
                 style={{
@@ -296,6 +300,7 @@ export const MessageReactions: React.FC<MessageReactionsProps> = ({
                       whileTap={{ scale: 0.95 }}
                       onClick={(e) => {
                         e.stopPropagation();
+                        triggerHaptic('success');
                         onToggleReaction(emoji);
                         setShowPicker(false);
                       }}
