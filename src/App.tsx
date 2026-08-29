@@ -65,6 +65,7 @@ import { GamificationNavBadge } from './components/gamification/GamificationNavB
 import { GamificationHubModal } from './components/gamification/GamificationHubModal';
 import { LevelUpModal } from './components/gamification/LevelUpModal';
 import { PersonalizedGreetingModal } from './components/PersonalizedGreetingModal';
+import { SwipeNavigation } from './components/SwipeNavigation';
 import { getPodcastId } from './utils/safeFetch';
 
 const TikTokIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
@@ -2002,6 +2003,7 @@ function MainLayout() {
       <GamificationHubModal />
       <LevelUpModal />
       <PersonalizedGreetingModal />
+      {!isAdmin && <SwipeNavigation />}
     </div>
     </>
   );
