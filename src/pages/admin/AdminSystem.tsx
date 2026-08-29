@@ -35,6 +35,7 @@ export function AdminAdvanced() {
     feat_auto_fullscreen: true,
     feat_booth: true,
     feat_special_events: true,
+    feat_accessibility: true,
     feat_ai_studio: true,
     feat_studio: true,
     feat_meta: true,
@@ -57,6 +58,7 @@ export function AdminAdvanced() {
         feat_auto_fullscreen: serverSettings.feat_auto_fullscreen !== '0',
         feat_booth: serverSettings.feat_booth !== '0',
         feat_special_events: serverSettings.feat_special_events !== '0',
+        feat_accessibility: serverSettings.feat_accessibility !== '0',
         feat_ai_studio: serverSettings.feat_ai_studio !== '0' && serverSettings.ai_studio_enabled !== '0',
         feat_studio: serverSettings.feat_studio !== '0',
         feat_meta: serverSettings.feat_meta !== '0',
@@ -115,6 +117,7 @@ export function AdminAdvanced() {
     { id: 'feat_live_tools', title: 'Live Tools / Studio Cam', description: 'Enable the studio camera watch live tools.' },
     { id: 'feat_booth', title: 'Virtual DJ Booth', description: 'Enable or disable the whole DJ Booth feature, request queue, and navigation link.' },
     { id: 'feat_special_events', title: 'Special Events Module', description: 'Enable or disable the special events broadcast listings, RSVP details, and floating date/schedule badges.' },
+    { id: 'feat_accessibility', title: 'Accessibility Hub', description: 'Enable or disable the header theme & accessibility settings dropdown (high contrast, dyslexia font, text scaling, contrast modes).' },
     { id: 'feat_stream_quality', title: 'Stream Quality Toggle', description: 'Show or hide the stream quality selector in the playbar.' },
   ].filter(item => serverSettings?.[`owner_hide_${item.id}`] !== '1');
 

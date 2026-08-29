@@ -789,7 +789,9 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
             </motion.button>
            )}
 
-          <ThemeAccessibilityDropdown />
+           {settings?.feat_accessibility !== '0' && (
+             <ThemeAccessibilityDropdown />
+           )}
           
           <button 
             className={`front-mobile-menu-toggle xl:hidden w-12 h-12 flex flex-shrink-0 items-center justify-center rounded-2xl border transition-all ${

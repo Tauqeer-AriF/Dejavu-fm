@@ -57,6 +57,7 @@ export default function AdminOwnerControl() {
     { id: 'feat_live_tools', title: 'Live Tools & Studio Camera', description: 'Live broadcast studio webcam and DJ interaction controls.' },
     { id: 'feat_booth', title: 'Virtual DJ Booth System', description: 'Interactive virtual booth, request queue, and booth page.' },
     { id: 'feat_special_events', title: 'Special Events Module', description: 'Enable or disable the special events broadcast listings, RSVP details, and floating date/schedule badges.' },
+    { id: 'feat_accessibility', title: 'Accessibility Hub', description: 'Header accessibility and high-contrast settings menu.' },
     { id: 'feat_stream_quality', title: 'Stream Quality Selector', description: 'Audio bit-rate quality selector in player controls.' },
   ];
 
