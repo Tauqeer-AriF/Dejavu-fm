@@ -13,7 +13,17 @@ const parser = new Parser({
   }
 });
 
-const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes cache TTL
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes cache TTL
+const FETCH_TIMEOUT_MS = 45000; // 45s timeout for downloading & parsing large (~9.4MB) XML feed
+
+interface MemoryCache {
+  feed: any;
+  url: string;
+  timestamp: number;
+}
+
+let inMemoryPodcastCache: MemoryCache | null = null;
+let inFlightFetchPromise: Promise<any> | null = null;
 
 function normalizePodcastUrl(rawUrl: string | undefined): string {
   if (!rawUrl || typeof rawUrl !== 'string') {
@@ -40,58 +50,17 @@ function normalizePodcastUrl(rawUrl: string | undefined): string {
   return url;
 }
 
-export async function getPodcastFeed(forceRefresh: boolean = false) {
+async function fetchAndCacheLiveFeed(targetUrl: string): Promise<any> {
   try {
-    if (!db.open) {
-      console.warn("[Podcast] Database connection is closed, returning generic response.");
-      return {
-        title: "dejavufm Podcasts",
-        description: "Direct from London's heartbeat.",
-        items: []
-      };
-    }
-    // 1. Get the configured RSS Feed URL from settings
-    const settingRow = db.prepare("SELECT value FROM settings WHERE key = 'rss_feed_url'").get() as { value: string } | undefined;
-    const rawRssUrl = settingRow?.value;
-    const rssUrl = normalizePodcastUrl(rawRssUrl);
-
-    // If setting was outdated or pointing to empty feed, update the setting in DB
-    if (rawRssUrl && rawRssUrl !== rssUrl && rawRssUrl.includes('dejavufm.podomatic.com')) {
-      try {
-        db.prepare("UPDATE settings SET value = ? WHERE key = 'rss_feed_url'").run(rssUrl);
-        console.log(`[Podcast] Auto-corrected settings.rss_feed_url to: ${rssUrl}`);
-      } catch (uErr) {
-        console.warn('[Podcast] Could not update settings table with normalized URL:', uErr);
-      }
-    }
-
-    // 2. Check if we have a valid, unexpired cached feed in podcast_cache
-    if (!forceRefresh) {
-      const cachedRow = db.prepare("SELECT feed_json, url, timestamp FROM podcast_cache WHERE id = 1").get() as { feed_json: string, url: string, timestamp: number } | undefined;
-      
-      const now = Date.now();
-      if (cachedRow && cachedRow.url === rssUrl && (now - cachedRow.timestamp) < CACHE_TTL_MS) {
-        try {
-          const parsedCache = JSON.parse(cachedRow.feed_json);
-          if (parsedCache?.items?.length > 0) {
-            return parsedCache;
-          }
-        } catch (parseErr) {
-          console.error("[Podcast Cache] Failed to parse cached JSON, refetching...", parseErr);
-        }
-      }
-    }
-
-    // 3. Fetch and parse the live RSS feed with a 15-second timeout
-    console.log(`[Podcast] Fetching live RSS feed from: ${rssUrl} (Forced: ${forceRefresh})`);
+    console.log(`[Podcast] Fetching live RSS feed from: ${targetUrl}...`);
     
-    let targetUrl = rssUrl;
-    let response = await fetch(targetUrl, {
+    let currentUrl = targetUrl;
+    const response = await fetch(currentUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'application/rss+xml, application/xml, text/xml, */*'
       },
-      signal: AbortSignal.timeout(15000)
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
     });
 
     if (!response.ok) {
@@ -102,22 +71,23 @@ export async function getPodcastFeed(forceRefresh: boolean = false) {
     let feed = await parser.parseString(xmlText);
 
     // If 0 items were returned and URL was dejavufm.podomatic.com, automatically fallback to active dejavufmpodcast.podomatic.com
-    if ((!feed.items || feed.items.length === 0) && targetUrl.includes('dejavufm.podomatic.com')) {
+    if ((!feed.items || feed.items.length === 0) && currentUrl.includes('dejavufm.podomatic.com')) {
       console.log('[Podcast] Feed returned 0 items. Retrying with active dejavufmpodcast.podomatic.com/rss2.xml...');
-      targetUrl = 'https://dejavufmpodcast.podomatic.com/rss2.xml';
-      const fallbackResp = await fetch(targetUrl, {
+      currentUrl = 'https://dejavufmpodcast.podomatic.com/rss2.xml';
+      const fallbackResp = await fetch(currentUrl, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
           'Accept': 'application/rss+xml, application/xml, text/xml, */*'
         },
-        signal: AbortSignal.timeout(15000)
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
       });
       if (fallbackResp.ok) {
         xmlText = await fallbackResp.text();
         feed = await parser.parseString(xmlText);
-        // Persist the corrected URL
         try {
-          db.prepare("UPDATE settings SET value = ? WHERE key = 'rss_feed_url'").run(targetUrl);
+          if (db.open) {
+            db.prepare("UPDATE settings SET value = ? WHERE key = 'rss_feed_url'").run(currentUrl);
+          }
         } catch (_) {}
       }
     }
@@ -138,34 +108,158 @@ export async function getPodcastFeed(forceRefresh: boolean = false) {
       });
     }
 
-    // 4. Update the cache in the database
+    // Update memory cache
     const now = Date.now();
-    const feedJson = JSON.stringify(feed);
-    db.prepare(`
-      INSERT INTO podcast_cache (id, feed_json, url, timestamp)
-      VALUES (1, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET feed_json = excluded.feed_json, url = excluded.url, timestamp = excluded.timestamp
-    `).run(feedJson, targetUrl, now);
+    inMemoryPodcastCache = {
+      feed,
+      url: currentUrl,
+      timestamp: now
+    };
 
-    return feed;
-  } catch (err) {
-    console.error("[Podcast] Failed to fetch or parse RSS feed:", err);
-    
-    // Fallback: If live fetch fails, try to return any cached feed we have
-    try {
-      const cachedRow = db.prepare("SELECT feed_json FROM podcast_cache WHERE id = 1").get() as { feed_json: string } | undefined;
-      if (cachedRow?.feed_json) {
-        console.log("[Podcast] Returning stale cached feed due to live fetch failure");
-        const parsed = JSON.parse(cachedRow.feed_json);
-        if (parsed?.items?.length > 0) {
-          return parsed;
-        }
+    // Update database cache
+    if (db.open) {
+      try {
+        const feedJson = JSON.stringify(feed);
+        db.prepare(`
+          INSERT INTO podcast_cache (id, feed_json, url, timestamp)
+          VALUES (1, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET feed_json = excluded.feed_json, url = excluded.url, timestamp = excluded.timestamp
+        `).run(feedJson, currentUrl, now);
+      } catch (dbErr) {
+        console.warn("[Podcast Cache] Could not write to podcast_cache table:", dbErr);
       }
-    } catch (fallbackErr) {
-      console.error("[Podcast] Stale cache fallback failed:", fallbackErr);
     }
 
-    // Ultimate fallback
+    console.log(`[Podcast] Successfully fetched and cached RSS feed (${feed.items?.length || 0} episodes)`);
+    return feed;
+  } catch (err: any) {
+    const isTimeout = err?.name === 'TimeoutError' || err?.message?.includes('timeout') || err?.message?.includes('aborted');
+    console.warn(`[Podcast] ${isTimeout ? 'Feed fetch timed out' : 'Feed fetch failed'}: ${err?.message || err}. Checking for cached fallback.`);
+
+    // Fallback 1: Return in-memory cache if available
+    if (inMemoryPodcastCache?.feed?.items?.length) {
+      console.log("[Podcast] Serving stale in-memory cached feed.");
+      return inMemoryPodcastCache.feed;
+    }
+
+    // Fallback 2: Return SQLite database cache if available
+    if (db.open) {
+      try {
+        const cachedRow = db.prepare("SELECT feed_json FROM podcast_cache WHERE id = 1").get() as { feed_json: string } | undefined;
+        if (cachedRow?.feed_json) {
+          const parsed = JSON.parse(cachedRow.feed_json);
+          if (parsed?.items?.length > 0) {
+            console.log(`[Podcast] Serving stale database cached feed (${parsed.items.length} episodes).`);
+            inMemoryPodcastCache = {
+              feed: parsed,
+              url: targetUrl,
+              timestamp: Date.now()
+            };
+            return parsed;
+          }
+        }
+      } catch (fallbackErr) {
+        console.warn("[Podcast] Stale cache fallback read failed:", fallbackErr);
+      }
+    }
+
+    // Fallback 3: Safe empty feed fallback
+    return {
+      title: "dejavufm Podcasts",
+      description: "Underground Radio Archives",
+      items: [],
+      error: true,
+      message: err instanceof Error ? err.message : String(err)
+    };
+  } finally {
+    inFlightFetchPromise = null;
+  }
+}
+
+export async function getPodcastFeed(forceRefresh: boolean = false) {
+  try {
+    if (!db.open) {
+      if (inMemoryPodcastCache?.feed) {
+        return inMemoryPodcastCache.feed;
+      }
+      return {
+        title: "dejavufm Podcasts",
+        description: "Direct from London's heartbeat.",
+        items: []
+      };
+    }
+
+    // 1. Get the configured RSS Feed URL from settings
+    const settingRow = db.prepare("SELECT value FROM settings WHERE key = 'rss_feed_url'").get() as { value: string } | undefined;
+    const rawRssUrl = settingRow?.value;
+    const rssUrl = normalizePodcastUrl(rawRssUrl);
+
+    // If setting was outdated or pointing to empty feed, update the setting in DB
+    if (rawRssUrl && rawRssUrl !== rssUrl && rawRssUrl.includes('dejavufm.podomatic.com')) {
+      try {
+        db.prepare("UPDATE settings SET value = ? WHERE key = 'rss_feed_url'").run(rssUrl);
+        console.log(`[Podcast] Auto-corrected settings.rss_feed_url to: ${rssUrl}`);
+      } catch (uErr) {
+        console.warn('[Podcast] Could not update settings table with normalized URL:', uErr);
+      }
+    }
+
+    const now = Date.now();
+
+    // 2. Fast Path: Check In-Memory Cache
+    if (!forceRefresh && inMemoryPodcastCache && inMemoryPodcastCache.url === rssUrl) {
+      const isFresh = (now - inMemoryPodcastCache.timestamp) < CACHE_TTL_MS;
+      if (isFresh && inMemoryPodcastCache.feed?.items?.length > 0) {
+        return inMemoryPodcastCache.feed;
+      }
+      // If stale, return memory cache immediately and revalidate in background
+      if (inMemoryPodcastCache.feed?.items?.length > 0 && !inFlightFetchPromise) {
+        inFlightFetchPromise = fetchAndCacheLiveFeed(rssUrl);
+        return inMemoryPodcastCache.feed;
+      }
+    }
+
+    // 3. Check Database Cache
+    if (!forceRefresh) {
+      try {
+        const cachedRow = db.prepare("SELECT feed_json, url, timestamp FROM podcast_cache WHERE id = 1").get() as { feed_json: string, url: string, timestamp: number } | undefined;
+        if (cachedRow && cachedRow.url === rssUrl) {
+          const isFresh = (now - cachedRow.timestamp) < CACHE_TTL_MS;
+          const parsedCache = JSON.parse(cachedRow.feed_json);
+          if (parsedCache?.items?.length > 0) {
+            inMemoryPodcastCache = {
+              feed: parsedCache,
+              url: rssUrl,
+              timestamp: cachedRow.timestamp
+            };
+            if (isFresh) {
+              return parsedCache;
+            }
+            // Stale-while-revalidate: return DB cache immediately and refresh in background
+            if (!inFlightFetchPromise) {
+              inFlightFetchPromise = fetchAndCacheLiveFeed(rssUrl);
+            }
+            return parsedCache;
+          }
+        }
+      } catch (parseErr) {
+        console.warn("[Podcast Cache] Could not read from database cache:", parseErr);
+      }
+    }
+
+    // 4. If in-flight request is already running, await it (prevents thundering herd)
+    if (inFlightFetchPromise) {
+      return await inFlightFetchPromise;
+    }
+
+    // 5. Fetch live feed
+    inFlightFetchPromise = fetchAndCacheLiveFeed(rssUrl);
+    return await inFlightFetchPromise;
+  } catch (err) {
+    console.warn("[Podcast] Unexpected error in getPodcastFeed:", err);
+    if (inMemoryPodcastCache?.feed) {
+      return inMemoryPodcastCache.feed;
+    }
     return {
       title: "dejavufm Podcasts",
       description: "Underground Radio Archives",
@@ -177,6 +271,8 @@ export async function getPodcastFeed(forceRefresh: boolean = false) {
 }
 
 export function clearPodcastCache() {
+  inMemoryPodcastCache = null;
+  inFlightFetchPromise = null;
   try {
     if (!db.open) return;
     db.prepare("DELETE FROM podcast_cache WHERE id = 1").run();
@@ -185,3 +281,4 @@ export function clearPodcastCache() {
     console.error("[Podcast Cache] Failed to clear cache:", err);
   }
 }
+
