@@ -23,6 +23,44 @@ export function SwipeNavigation() {
   const location = useLocation();
   const { isLightMode } = useLogo();
 
+  // Robust, real-time light mode detection
+  const checkIsLight = useCallback(() => {
+    if (typeof window === 'undefined') return false;
+    return (
+      document.documentElement.classList.contains('light') ||
+      document.documentElement.classList.contains('contrast-high-light') ||
+      localStorage.getItem('theme') === 'light' ||
+      localStorage.getItem('contrast_mode') === 'high-light' ||
+      Boolean(isLightMode)
+    );
+  }, [isLightMode]);
+
+  const [isLight, setIsLight] = useState<boolean>(checkIsLight);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const update = () => {
+      setIsLight(checkIsLight());
+    };
+    update();
+
+    const observer = new MutationObserver(() => {
+      update();
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class', 'style'],
+    });
+
+    window.addEventListener('theme-change', update);
+    window.addEventListener('storage', update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('theme-change', update);
+      window.removeEventListener('storage', update);
+    };
+  }, [checkIsLight]);
+
   const [swipeState, setSwipeState] = useState<SwipeState>({
     isActive: false,
     direction: null,
@@ -280,6 +318,7 @@ export function SwipeNavigation() {
     <div className="fixed inset-0 pointer-events-none z-[99999] select-none overflow-hidden font-display">
       {/* Subtle Specular Edge Refraction Arc (Minimalist Glass Horizon) */}
       <motion.div
+        id="swipe-nav-edge-glow"
         initial={{ opacity: 0 }}
         animate={{
           opacity: clampedProgress * (swipeState.isReady ? 0.9 : 0.4),
@@ -289,10 +328,10 @@ export function SwipeNavigation() {
         transition={{ duration: 0.12 }}
         style={{
           top: `clamp(70px, ${swipeState.startY}px, calc(100vh - 140px))`,
-          background: isLightMode
+          background: isLight
             ? isBackward
-              ? 'radial-gradient(ellipse at 0% 50%, rgba(0, 210, 255, 0.18) 0%, rgba(0, 0, 0, 0.04) 40%, rgba(255, 255, 255, 0) 75%)'
-              : 'radial-gradient(ellipse at 100% 50%, rgba(0, 210, 255, 0.18) 0%, rgba(0, 0, 0, 0.04) 40%, rgba(255, 255, 255, 0) 75%)'
+              ? 'radial-gradient(ellipse at 0% 50%, rgba(0, 210, 255, 0.18) 0%, rgba(255, 255, 255, 0.6) 40%, rgba(255, 255, 255, 0) 75%)'
+              : 'radial-gradient(ellipse at 100% 50%, rgba(0, 210, 255, 0.18) 0%, rgba(255, 255, 255, 0.6) 40%, rgba(255, 255, 255, 0) 75%)'
             : isBackward
             ? 'radial-gradient(ellipse at 0% 50%, rgba(0, 210, 255, 0.22) 0%, rgba(255, 255, 255, 0.05) 35%, rgba(0, 0, 0, 0) 75%)'
             : 'radial-gradient(ellipse at 100% 50%, rgba(0, 210, 255, 0.22) 0%, rgba(255, 255, 255, 0.05) 35%, rgba(0, 0, 0, 0) 75%)',
@@ -320,19 +359,19 @@ export function SwipeNavigation() {
         }`}
       >
         <div
-          className={`relative flex items-center gap-2.5 px-3.5 py-2 rounded-full backdrop-blur-2xl transition-all duration-200 border overflow-hidden shadow-2xl ${
-            isLightMode
+          id="swipe-nav-indicator"
+          data-light={isLight ? "true" : "false"}
+          data-ready={swipeState.isReady ? "true" : "false"}
+          className={`relative flex items-center gap-2.5 px-3.5 py-2 rounded-full backdrop-blur-2xl transition-all duration-200 border ${
+            isLight
               ? swipeState.isReady
-                ? 'bg-white/90 text-neutral-950 border-[var(--color-neon-blue,#00d2ff)]/60 shadow-[0_12px_36px_rgba(0,0,0,0.12),0_0_20px_rgba(0,210,255,0.22)]'
-                : 'bg-white/70 text-neutral-800 border-[var(--color-neon-blue,#00d2ff)]/25 shadow-[0_6px_24px_rgba(0,0,0,0.06)]'
+                ? 'bg-white text-slate-950 border-[var(--color-neon-blue,#00d2ff)] shadow-[0_10px_30px_rgba(0,0,0,0.08),0_0_20px_rgba(0,210,255,0.25)]'
+                : 'bg-white/95 text-slate-800 border-[var(--color-neon-blue,#00d2ff)]/40 shadow-[0_6px_20px_rgba(0,0,0,0.06)]'
               : swipeState.isReady
-              ? 'bg-[#0b0d14]/85 text-white border-[var(--color-neon-blue,#00d2ff)]/60 shadow-[0_12px_40px_rgba(0,0,0,0.65),0_0_24px_rgba(0,210,255,0.25)]'
-              : 'bg-[#0b0d14]/65 text-neutral-200 border-[var(--color-neon-blue,#00d2ff)]/25 shadow-[0_6px_28px_rgba(0,0,0,0.45)]'
+              ? 'bg-[#0b0d14]/90 text-white border-[var(--color-neon-blue,#00d2ff)]/70 shadow-[0_12px_40px_rgba(0,0,0,0.65),0_0_24px_rgba(0,210,255,0.25)]'
+              : 'bg-[#0b0d14]/75 text-neutral-200 border-[var(--color-neon-blue,#00d2ff)]/30 shadow-[0_6px_28px_rgba(0,0,0,0.45)]'
           }`}
         >
-          {/* Specular Inner Glare Top Highlight */}
-          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/35 to-transparent pointer-events-none" />
-
           {isBackward ? (
             <>
               {/* Minimalist Circular Progress Indicator with Secondary Color */}
@@ -342,7 +381,7 @@ export function SwipeNavigation() {
                     cx="15"
                     cy="15"
                     r={radius}
-                    className={isLightMode ? 'stroke-[var(--color-neon-blue,#00d2ff)]/15' : 'stroke-[var(--color-neon-blue,#00d2ff)]/20'}
+                    className={isLight ? 'stroke-slate-200' : 'stroke-[var(--color-neon-blue,#00d2ff)]/20'}
                     strokeWidth="2.2"
                     fill="transparent"
                   />
@@ -370,15 +409,15 @@ export function SwipeNavigation() {
                   className={`w-3.5 h-3.5 absolute inset-0 m-auto transition-transform duration-200 ${
                     swipeState.isReady
                       ? '-translate-x-0.5 scale-110'
-                      : isLightMode
-                      ? 'text-neutral-800'
+                      : isLight
+                      ? 'text-slate-700'
                       : 'text-neutral-200'
                   }`}
                 />
               </div>
 
               {/* Minimalist Label */}
-              <span className="text-[11px] font-semibold tracking-wider uppercase pr-0.5 select-none">
+              <span className="text-[11px] font-bold tracking-wider uppercase pr-0.5 select-none swipe-nav-text">
                 {swipeState.isReady ? (
                   <span style={{ color: 'var(--color-neon-blue, #00d2ff)' }}>Release</span>
                 ) : (
@@ -389,7 +428,7 @@ export function SwipeNavigation() {
           ) : (
             <>
               {/* Minimalist Label */}
-              <span className="text-[11px] font-semibold tracking-wider uppercase pl-0.5 select-none">
+              <span className="text-[11px] font-bold tracking-wider uppercase pl-0.5 select-none swipe-nav-text">
                 {swipeState.isReady ? (
                   <span style={{ color: 'var(--color-neon-blue, #00d2ff)' }}>Release</span>
                 ) : (
@@ -404,7 +443,7 @@ export function SwipeNavigation() {
                     cx="15"
                     cy="15"
                     r={radius}
-                    className={isLightMode ? 'stroke-[var(--color-neon-blue,#00d2ff)]/15' : 'stroke-[var(--color-neon-blue,#00d2ff)]/20'}
+                    className={isLight ? 'stroke-slate-200' : 'stroke-[var(--color-neon-blue,#00d2ff)]/20'}
                     strokeWidth="2.2"
                     fill="transparent"
                   />
@@ -432,8 +471,8 @@ export function SwipeNavigation() {
                   className={`w-3.5 h-3.5 absolute inset-0 m-auto transition-transform duration-200 ${
                     swipeState.isReady
                       ? 'translate-x-0.5 scale-110'
-                      : isLightMode
-                      ? 'text-neutral-800'
+                      : isLight
+                      ? 'text-slate-700'
                       : 'text-neutral-200'
                   }`}
                 />
