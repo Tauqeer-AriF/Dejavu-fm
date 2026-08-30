@@ -1,6 +1,30 @@
 import nodemailer from 'nodemailer';
 import { db } from '../db.ts';
 import crypto from 'crypto';
+import dns from 'dns';
+
+// Force IPv4 DNS resolution globally in Node runtime to prevent IPv6 socket hangs on Docker/Railway
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch (e) {
+  // Ignored on older Node versions
+}
+
+/**
+ * Custom DNS lookup that strictly enforces IPv4 (family: 4) resolution.
+ * Prevents ENETUNREACH errors on cloud host containers without IPv6 interfaces (like Railway, Cloud Run).
+ */
+function ipv4Lookup(hostname: string, options: any, callback: any) {
+  if (typeof options === 'function') {
+    callback = options;
+    options = { family: 4 };
+  } else if (typeof options === 'number') {
+    options = { family: 4 };
+  } else {
+    options = { ...options, family: 4 };
+  }
+  return dns.lookup(hostname, options, callback);
+}
 
 export interface SmtpConfig {
   host: string;
@@ -65,8 +89,9 @@ export function createTransporter(configOverride?: SmtpConfig) {
     tls: {
       rejectUnauthorized: false // Helps avoid SSL handshake failures on custom webmail / self-hosted servers
     },
-    connectionTimeout: 12000,
-    greetingTimeout: 12000,
+    lookup: ipv4Lookup,
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
     socketTimeout: 20000,
     // Force IPv4 DNS lookup to prevent Docker/Railway container IPv6 socket hangs
     family: 4
