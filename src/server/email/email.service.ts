@@ -26,6 +26,46 @@ function ipv4Lookup(hostname: string, options: any, callback: any) {
   return dns.lookup(hostname, options, callback);
 }
 
+/**
+ * Formats raw Nodemailer and socket errors into detailed diagnostic strings
+ * without masking or stripping underlying error properties.
+ */
+export function formatRawSmtpError(err: any): string {
+  if (!err) return 'Unknown SMTP Error';
+  
+  const parts: string[] = [];
+  
+  if (err.message) {
+    parts.push(err.message);
+  }
+  
+  if (err.code) {
+    parts.push(`Code: ${err.code}`);
+  }
+  
+  if (err.command) {
+    parts.push(`Command: ${err.command}`);
+  }
+  
+  if (err.responseCode) {
+    parts.push(`Response Code: ${err.responseCode}`);
+  }
+  
+  if (err.response) {
+    parts.push(`Response: ${err.response}`);
+  }
+  
+  if (err.syscall) {
+    parts.push(`Syscall: ${err.syscall}`);
+  }
+  
+  if (err.address && err.port) {
+    parts.push(`Target: ${err.address}:${err.port}`);
+  }
+
+  return parts.length > 0 ? parts.join(' | ') : String(err);
+}
+
 export interface SmtpConfig {
   host: string;
   port: number;
@@ -170,10 +210,7 @@ export async function testSmtpConnection(testRecipientEmail?: string, configOver
       testMessageId
     };
   } catch (err: any) {
-    let errorMsg = err?.message || String(err);
-    if (errorMsg.toLowerCase().includes('timeout') || err?.code === 'ETIMEDOUT' || err?.code === 'ESOCKET') {
-      errorMsg = `Connection timeout (${errorMsg}). Railway Tip: Try switching to Port 465 with SSL enabled, and verify you are using a 16-character Google App Password.`;
-    }
+    const errorMsg = formatRawSmtpError(err);
     
     // Update error status in DB
     const nowStr = new Date().toISOString();
@@ -269,7 +306,7 @@ export async function sendEmail(options: SendEmailOptions) {
 
     return { success: true, messageId: info.messageId };
   } catch (err: any) {
-    const errorMsg = err?.message || String(err);
+    const errorMsg = formatRawSmtpError(err);
     logEmailDispatch({
       recipient_email: options.to,
       recipient_name: options.recipientName,
