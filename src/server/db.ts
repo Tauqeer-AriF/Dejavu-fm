@@ -6,6 +6,7 @@ import * as tar from 'tar';
 import crypto from 'crypto';
 import { initGamificationDb } from './gamification.db.ts';
 import { initEventsDb } from './events.db.ts';
+import { initEmailDb } from './email/email.db.ts';
 
 const isWritableDir = (dirPath: string): boolean => {
   try {
@@ -118,8 +119,9 @@ const createAndConfigureDb = (pathStr: string): any => {
     try {
       initGamificationDb(conn);
       initEventsDb(conn);
+      initEmailDb(conn);
     } catch (gErr) {
-      console.warn('[DB] Non-critical warning initializing gamification/events schema on connection start:', gErr);
+      console.warn('[DB] Non-critical warning initializing gamification/events/email schema on connection start:', gErr);
     }
     return conn;
   } catch (err: any) {

@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
-import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles, Database, Video, Key, Facebook, Layers, Mic, Music, Power, Ticket, Megaphone } from "lucide-react";
+import { LogOut, Settings, Users, Calendar, Eye, EyeOff, UserCog, User, Home as HomeIcon, MessageSquare, Menu, X, Radio, BarChart3, Globe, TrendingUp, PlayCircle, Ghost, Shield, FileText, Image as ImageIcon, Plus, Search, Upload, ChevronLeft, ChevronRight, RefreshCw, Sparkles, Database, Video, Key, Facebook, Layers, Mic, Music, Power, Ticket, Megaphone, Mail } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { useModal } from "../../context/ModalContext";
 import { motion, AnimatePresence } from "motion/react";
@@ -58,6 +58,7 @@ export function AdminSidebar({ onLogout, isAdminUser, userRole }: { onLogout: ()
     { name: "Chat Users", path: `${adminBasePath}/chat-users`, icon: MessageSquare },
     { name: "Data Operations", path: `${adminBasePath}/chat-room-setting`, icon: RefreshCw },
     { name: "Backup", path: `${adminBasePath}/backup`, icon: Database },
+    { name: "Email Suite", path: `${adminBasePath}/email`, icon: Mail },
     { name: "Audit Logs", path: `${adminBasePath}/audit-logs`, icon: Shield },
     { name: "Meta Integrations", path: `${adminBasePath}/meta-integrations`, icon: Facebook },
   ];

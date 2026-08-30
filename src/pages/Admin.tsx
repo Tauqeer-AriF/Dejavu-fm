@@ -94,6 +94,7 @@ const AdminFeatures = lazyWithRetry(() => import("./admin/AdminFeatures").then(m
 const AdminSongRequests = lazyWithRetry(() => import("./admin/AdminSongRequests").then(m => ({ default: m.AdminSongRequests })));
 const AdminOwnerControl = lazyWithRetry(() => import("./admin/AdminOwnerControl"));
 const AdminAIContentStudio = lazyWithRetry(() => import("./admin/AdminAIContentStudio").then(m => ({ default: m.AdminAIContentStudio })));
+const AdminEmail = lazyWithRetry(() => import("./admin/AdminEmail").then(m => ({ default: m.AdminEmail })));
 import { useLogo } from "../hooks/useLogo";
 import { PremiumRingLoader } from "../components/PremiumRingLoader";
 import { AppLoader } from "../components/AppLoader";
@@ -1063,6 +1064,7 @@ export default function Admin() {
                         <Route path="/chat-users" element={isAdmin && isChatEnabled ? <AdminChatUsers isAdminUser={isAdmin} /> : <Navigate to={isAdmin ? adminBasePath : defaultDjPath} replace />} />
                         <Route path="/chat-room-setting" element={isAdmin ? <AdminChatRoomSettings /> : <Navigate to={defaultDjPath} replace />} />
                         <Route path="/audit-logs" element={isAdmin ? <AdminAuditLogs /> : <Navigate to={defaultDjPath} replace />} />
+                        <Route path="/email" element={isAdmin ? <AdminEmail /> : <Navigate to={defaultDjPath} replace />} />
                         <Route path="/backup" element={isAdmin && isBackupEnabled ? <AdminBackup /> : <Navigate to={isAdmin ? adminBasePath : defaultDjPath} replace />} />
                         <Route path="/meta-integrations" element={isAdmin && isMetaEnabled ? <AdminMetaIntegrations /> : <Navigate to={isAdmin ? adminBasePath : defaultDjPath} replace />} />
                         <Route path="/seo" element={isAdmin ? <AdminSEO /> : <Navigate to={defaultDjPath} replace />} />

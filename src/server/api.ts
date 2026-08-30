@@ -22,6 +22,7 @@ import { gamificationRouter, getAuthenticatedUser } from "./gamification.routes.
 import { eventsRouter } from "./events.routes.ts";
 import { greetingRouter } from "./greeting.routes.ts";
 import { aiStudioRouter } from "./ai-studio/ai-studio.routes.ts";
+import { emailRouter } from "./email/email.routes.ts";
 import { ensureUserGamification, awardXP, calculateLevelProgression } from "./gamification.service.ts";
 import { toggleMessageReaction, getReactionsForMessage } from "./reactions.service.ts";
 // `sharp` is optional at runtime; dynamically import when needed to avoid startup failure
@@ -6041,6 +6042,9 @@ apiRouter.use(greetingRouter);
 
 // AI Automatic Social Content Studio Routes (Admin-Only)
 apiRouter.use("/admin/ai-studio", aiStudioRouter);
+
+// Email Management Engine Routes (Admin-Only)
+apiRouter.use("/admin/email", emailRouter);
 
 // Global Error Handler Middleware
 apiRouter.use((err: any, req: Request, res: Response, next: NextFunction) => {
