@@ -2,6 +2,7 @@ import nodemailer from 'nodemailer';
 import { db } from '../db.ts';
 import crypto from 'crypto';
 import dns from 'dns';
+import net from 'net';
 
 // Force IPv4 DNS resolution globally in Node runtime to prevent IPv6 socket hangs on Docker/Railway
 try {
@@ -11,19 +12,27 @@ try {
 }
 
 /**
- * Custom DNS lookup that strictly enforces IPv4 (family: 4) resolution.
- * Prevents ENETUNREACH errors on cloud host containers without IPv6 interfaces (like Railway, Cloud Run).
+ * Custom DNS lookup that strictly enforces IPv4 resolution via direct A-record query (dns.resolve4).
+ * Bypasses libc getaddrinfo IPv6 defaults on Linux/Railway container environments.
  */
 function ipv4Lookup(hostname: string, options: any, callback: any) {
   if (typeof options === 'function') {
     callback = options;
-    options = { family: 4 };
-  } else if (typeof options === 'number') {
-    options = { family: 4 };
-  } else {
-    options = { ...options, family: 4 };
   }
-  return dns.lookup(hostname, options, callback);
+
+  // If host is already an IP address, pass it through directly
+  if (net.isIP(hostname)) {
+    return callback(null, hostname, net.isIPv6(hostname) ? 6 : 4);
+  }
+
+  // Query IPv4 A-records directly to bypass OS getaddrinfo IPv6 preference
+  dns.resolve4(hostname, (err, addresses) => {
+    if (!err && addresses && addresses.length > 0) {
+      return callback(null, addresses[0], 4);
+    }
+    // Fallback if A-record resolution fails
+    dns.lookup(hostname, { family: 4 }, callback);
+  });
 }
 
 /**
@@ -127,7 +136,8 @@ export function createTransporter(configOverride?: SmtpConfig) {
       pass: config.auth_pass
     },
     tls: {
-      rejectUnauthorized: false // Helps avoid SSL handshake failures on custom webmail / self-hosted servers
+      rejectUnauthorized: false, // Helps avoid SSL handshake failures on custom webmail / self-hosted servers
+      servername: config.host
     },
     lookup: ipv4Lookup,
     connectionTimeout: 15000,
