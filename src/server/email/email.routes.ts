@@ -231,7 +231,7 @@ emailRouter.post('/send-test-template', requireAdmin, async (req: Request, res: 
       reset_code: '894201',
       newsletter_title: 'Weekly Studio Highlights',
       headline: 'Sub-bass frequencies take over Friday night',
-      content_body: 'Check out our new catchup archives and live show lineup for this weekend!',
+      content_body: 'Check out our new catch-up archives and live show line-up for this weekend!',
       ...(custom_vars || {})
     };
 

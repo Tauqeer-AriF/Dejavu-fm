@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import dns from 'dns';
 import net from 'net';
 
-// Force IPv4 DNS resolution globally in Node runtime to prevent IPv6 socket hangs on Docker/Railway
+// Force IPv4 DNS resolution globally in Node runtime to prevent IPv6 socket hangs on Docker/Cloud container hosting
 try {
   dns.setDefaultResultOrder('ipv4first');
 } catch (e) {
@@ -13,7 +13,7 @@ try {
 
 /**
  * Custom DNS lookup that strictly enforces IPv4 resolution via direct A-record query (dns.resolve4).
- * Bypasses libc getaddrinfo IPv6 defaults on Linux/Railway container environments.
+ * Bypasses libc getaddrinfo IPv6 defaults on Linux/Cloud container environments.
  */
 function ipv4Lookup(hostname: string, options: any, callback: any) {
   if (typeof options === 'function') {
@@ -143,7 +143,7 @@ export function createTransporter(configOverride?: SmtpConfig) {
     connectionTimeout: 15000,
     greetingTimeout: 15000,
     socketTimeout: 20000,
-    // Force IPv4 DNS lookup to prevent Docker/Railway container IPv6 socket hangs
+    // Force IPv4 DNS lookup to prevent Docker/Cloud container IPv6 socket hangs
     family: 4
   } as any);
 }
@@ -177,7 +177,7 @@ export async function testSmtpConnection(testRecipientEmail?: string, configOver
           <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; background: #0A0C16; color: #ffffff; padding: 25px; border-radius: 12px; border: 1px solid #00F0FF;">
             <h2 style="color: #00F0FF; margin-top: 0;">SMTP Test Successful! 🎉</h2>
             <p style="color: #CBD5E1; font-size: 14px; line-height: 1.5;">
-              This is a test email sent from your application's built-in Email Engine.
+              This is a test email dispatched from your application's built-in Email Engine.
             </p>
             <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; font-size: 12px; font-family: monospace; color: #A855F7; margin: 15px 0;">
               <div><strong>SMTP Host:</strong> ${config.host}:${config.port}</div>
@@ -185,11 +185,11 @@ export async function testSmtpConnection(testRecipientEmail?: string, configOver
               <div><strong>Timestamp:</strong> ${new Date().toLocaleString()}</div>
             </div>
             <p style="color: #64748B; font-size: 12px; margin-bottom: 0;">
-              Your email management suite is fully configured and ready to dispatch notifications!
+              Your email management suite is fully configured and ready to dispatch notifications.
             </p>
           </div>
         `,
-        text: `SMTP Test Successful! Sent from ${config.host}:${config.port}`
+        text: `SMTP Test Successful! Dispatched from ${config.host}:${config.port}`
       });
 
       testSent = true;
@@ -215,7 +215,7 @@ export async function testSmtpConnection(testRecipientEmail?: string, configOver
 
     return {
       success: true,
-      message: 'SMTP Connection verified successfully!',
+      message: 'SMTP connection verified successfully!',
       testSent,
       testMessageId
     };

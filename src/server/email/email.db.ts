@@ -85,17 +85,14 @@ export function initEmailDb(db: any) {
 }
 
 function seedDefaultTemplatesAndTriggers(db: any) {
-  const templateCount = db.prepare("SELECT COUNT(*) as count FROM email_templates").get() as { count: number };
-  
-  if (templateCount.count === 0) {
-    const defaultTemplates = [
-      {
-        id: 'tpl_welcome',
-        slug: 'welcome_user',
-        name: 'Welcome New Listener',
-        category: 'transactional',
-        subject: 'Welcome to {{site_name}}, {{user_name}}! 🎧',
-        body_html: `
+  const defaultTemplates = [
+    {
+      id: 'tpl_welcome',
+      slug: 'welcome_user',
+      name: 'Welcome New Listener',
+      category: 'transactional',
+      subject: 'Welcome to {{site_name}}, {{user_name}}! 🎧',
+      body_html: `
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #0A0C16; color: #ffffff; padding: 30px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);">
   <div style="text-align: center; margin-bottom: 25px;">
     <h1 style="color: #00F0FF; font-size: 28px; margin: 0; text-transform: uppercase; letter-spacing: 1px;">{{site_name}}</h1>
@@ -104,7 +101,7 @@ function seedDefaultTemplatesAndTriggers(db: any) {
   <div style="background-color: rgba(255,255,255,0.03); border-radius: 12px; padding: 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 25px;">
     <h2 style="color: #ffffff; font-size: 20px; margin-top: 0;">Welcome to the Family, {{user_name}}! 🎉</h2>
     <p style="color: #CBD5E1; line-height: 1.6; font-size: 15px;">
-      Thank you for creating an account with <strong>{{site_name}}</strong>. You now have full access to live radio streams, exclusive archives, studio chats, and live DJ shoutouts!
+      Thank you for creating an account with <strong>{{site_name}}</strong>. You now have full access to live radio streams, exclusive archives, studio chats, and live DJ shout-outs!
     </p>
     <div style="text-align: center; margin: 30px 0;">
       <a href="{{site_url}}" style="background: linear-gradient(135deg, #A855F7, #00F0FF); color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 12px; font-weight: bold; display: inline-block; font-size: 15px;">
@@ -113,21 +110,21 @@ function seedDefaultTemplatesAndTriggers(db: any) {
     </div>
   </div>
   <div style="text-align: center; color: #64748B; font-size: 12px; border-t: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
-    Sent with ❤️ from {{site_name}} Radio Studio • You received this because you signed up on {{site_url}}.
+    Sent with ❤️ from {{site_name}} Radio Studio • You received this because you registered on {{site_url}}.
   </div>
 </div>
-        `.trim(),
-        body_text: 'Welcome to {{site_name}}, {{user_name}}! Thank you for registering. Tune in live at {{site_url}}',
-        variables: JSON.stringify(['user_name', 'site_name', 'site_url']),
-        is_system: 1
-      },
-      {
-        id: 'tpl_show_reminder',
-        slug: 'show_reminder',
-        name: 'Live Show Broadcast Alert',
-        category: 'alert',
-        subject: '🔴 {{show_title}} with {{dj_name}} is LIVE NOW on {{site_name}}!',
-        body_html: `
+      `.trim(),
+      body_text: 'Welcome to {{site_name}}, {{user_name}}! Thank you for registering. Tune in live at {{site_url}}',
+      variables: JSON.stringify(['user_name', 'site_name', 'site_url']),
+      is_system: 1
+    },
+    {
+      id: 'tpl_show_reminder',
+      slug: 'show_reminder',
+      name: 'Live Show Broadcast Alert',
+      category: 'alert',
+      subject: '🔴 {{show_title}} with {{dj_name}} is LIVE NOW on {{site_name}}!',
+      body_html: `
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #0A0C16; color: #ffffff; padding: 30px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);">
   <div style="background-color: #EF4444; color: #ffffff; text-align: center; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 12px; letter-spacing: 1px; display: inline-block; margin-bottom: 20px; text-transform: uppercase;">
     LIVE BROADCAST ALERT
@@ -136,11 +133,11 @@ function seedDefaultTemplatesAndTriggers(db: any) {
   <p style="color: #00F0FF; font-size: 16px; font-weight: bold; margin-top: 0;">Resident Host: {{dj_name}}</p>
   
   <p style="color: #CBD5E1; line-height: 1.6; font-size: 15px; margin: 20px 0;">
-    Hey {{user_name}}, your favorite broadcast session is going live right now in the studio! Don't miss out on track drops, live studio chat, and listener shoutouts.
+    Hey {{user_name}}, your favourite broadcast show is live right now in the studio! Don't miss track drops, live studio chat, and listener shout-outs.
   </p>
 
   <div style="background-color: rgba(0,240,255,0.05); border-left: 4px solid #00F0FF; padding: 15px; border-radius: 4px; margin-bottom: 25px;">
-    <p style="margin: 0; color: #94A3B8; font-size: 13px;">Slot Time: <strong style="color: #ffffff;">{{show_time}}</strong></p>
+    <p style="margin: 0; color: #94A3B8; font-size: 13px;">Broadcast Slot: <strong style="color: #ffffff;">{{show_time}}</strong></p>
   </div>
 
   <div style="text-align: center; margin: 30px 0;">
@@ -150,21 +147,21 @@ function seedDefaultTemplatesAndTriggers(db: any) {
   </div>
 
   <div style="text-align: center; color: #64748B; font-size: 12px; border-t: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
-    {{site_name}} Broadcast Schedule • Managed via Admin Email Engine
+    {{site_name}} Broadcast Schedule • Managed via Admin Email Suite
   </div>
 </div>
-        `.trim(),
-        body_text: '{{show_title}} with {{dj_name}} is LIVE NOW on {{site_name}}! Watch live at {{watch_url}}',
-        variables: JSON.stringify(['show_title', 'dj_name', 'user_name', 'show_time', 'watch_url', 'site_name']),
-        is_system: 1
-      },
-      {
-        id: 'tpl_password_reset',
-        slug: 'password_reset',
-        name: 'Password Reset Code',
-        category: 'system',
-        subject: '🔒 Reset Your Account Password - {{site_name}}',
-        body_html: `
+      `.trim(),
+      body_text: '{{show_title}} with {{dj_name}} is LIVE NOW on {{site_name}}! Watch live at {{watch_url}}',
+      variables: JSON.stringify(['show_title', 'dj_name', 'user_name', 'show_time', 'watch_url', 'site_name']),
+      is_system: 1
+    },
+    {
+      id: 'tpl_password_reset',
+      slug: 'password_reset',
+      name: 'Password Reset Code',
+      category: 'system',
+      subject: '🔒 Reset Your Account Password - {{site_name}}',
+      body_html: `
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #0A0C16; color: #ffffff; padding: 30px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);">
   <h2 style="color: #00F0FF; margin-top: 0;">Password Reset Request</h2>
   <p style="color: #CBD5E1; line-height: 1.6; font-size: 15px;">
@@ -175,28 +172,28 @@ function seedDefaultTemplatesAndTriggers(db: any) {
     <span style="font-family: monospace; font-size: 32px; font-weight: bold; color: #A855F7; letter-spacing: 4px;">{{reset_code}}</span>
   </div>
   <p style="color: #94A3B8; font-size: 13px; line-height: 1.5;">
-    If you did not request a password reset, please ignore this email. Your account remains completely secure.
+    If you did not request a password reset, please disregard this email. Your account remains entirely secure.
   </p>
   <div style="text-align: center; color: #64748B; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
     {{site_name}} Security System
   </div>
 </div>
-        `.trim(),
-        body_text: 'Hello {{user_name}}, your {{site_name}} password reset code is: {{reset_code}}',
-        variables: JSON.stringify(['user_name', 'site_name', 'reset_code']),
-        is_system: 1
-      },
-      {
-        id: 'tpl_newsletter_digest',
-        slug: 'weekly_newsletter',
-        name: 'Weekly Station Newsletter',
-        category: 'newsletter',
-        subject: '📻 {{newsletter_title}} - This Week on {{site_name}}',
-        body_html: `
+      `.trim(),
+      body_text: 'Hello {{user_name}}, your {{site_name}} password reset code is: {{reset_code}}',
+      variables: JSON.stringify(['user_name', 'site_name', 'reset_code']),
+      is_system: 1
+    },
+    {
+      id: 'tpl_newsletter_digest',
+      slug: 'weekly_newsletter',
+      name: 'Weekly Station Newsletter',
+      category: 'newsletter',
+      subject: '📻 {{newsletter_title}} - This Week on {{site_name}}',
+      body_html: `
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #0A0C16; color: #ffffff; padding: 30px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);">
   <div style="text-align: center; margin-bottom: 25px;">
     <h1 style="color: #A855F7; font-size: 26px; margin: 0;">{{site_name}} WEEKLY DIGEST</h1>
-    <p style="color: #94A3B8; font-size: 14px;">The underground sound highlights & upcoming shows</p>
+    <p style="color: #94A3B8; font-size: 14px;">Underground sound highlights & upcoming programmes</p>
   </div>
 
   <div style="background-color: rgba(255,255,255,0.03); border-radius: 12px; padding: 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 20px;">
@@ -208,7 +205,7 @@ function seedDefaultTemplatesAndTriggers(db: any) {
 
   <div style="text-align: center; margin: 30px 0;">
     <a href="{{site_url}}" style="background: linear-gradient(135deg, #00F0FF, #A855F7); color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 12px; font-weight: bold; display: inline-block;">
-      Explore Full Schedule & Catchups
+      Explore Full Schedule & Catch-ups
     </a>
   </div>
 
@@ -216,13 +213,16 @@ function seedDefaultTemplatesAndTriggers(db: any) {
     You are receiving this newsletter as a registered listener on {{site_name}}.
   </div>
 </div>
-        `.trim(),
-        body_text: '{{newsletter_title}} - {{headline}}\n\n{{content_body}}\n\nVisit {{site_url}}',
-        variables: JSON.stringify(['newsletter_title', 'headline', 'content_body', 'site_name', 'site_url']),
-        is_system: 0
-      }
-    ];
+      `.trim(),
+      body_text: '{{newsletter_title}} - {{headline}}\n\n{{content_body}}\n\nVisit {{site_url}}',
+      variables: JSON.stringify(['newsletter_title', 'headline', 'content_body', 'site_name', 'site_url']),
+      is_system: 0
+    }
+  ];
 
+  const templateCount = db.prepare("SELECT COUNT(*) as count FROM email_templates").get() as { count: number };
+  
+  if (templateCount.count === 0) {
     const insertStmt = db.prepare(`
       INSERT INTO email_templates (id, slug, name, category, subject, body_html, body_text, variables, is_system)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -230,6 +230,18 @@ function seedDefaultTemplatesAndTriggers(db: any) {
 
     for (const tpl of defaultTemplates) {
       insertStmt.run(tpl.id, tpl.slug, tpl.name, tpl.category, tpl.subject, tpl.body_html, tpl.body_text, tpl.variables, tpl.is_system);
+    }
+  } else {
+    // Update core system templates with UK English copy if present
+    const updateSysStmt = db.prepare(`
+      UPDATE email_templates
+      SET name = ?, subject = ?, body_html = ?, body_text = ?
+      WHERE id = ? AND is_system = 1
+    `);
+    for (const tpl of defaultTemplates) {
+      if (tpl.is_system === 1) {
+        updateSysStmt.run(tpl.name, tpl.subject, tpl.body_html, tpl.body_text, tpl.id);
+      }
     }
   }
 
