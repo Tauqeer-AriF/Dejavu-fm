@@ -65,10 +65,12 @@ export function createTransporter(configOverride?: SmtpConfig) {
     tls: {
       rejectUnauthorized: false // Helps avoid SSL handshake failures on custom webmail / self-hosted servers
     },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000
-  });
+    connectionTimeout: 12000,
+    greetingTimeout: 12000,
+    socketTimeout: 20000,
+    // Force IPv4 DNS lookup to prevent Docker/Railway container IPv6 socket hangs
+    family: 4
+  } as any);
 }
 
 /**
@@ -143,7 +145,10 @@ export async function testSmtpConnection(testRecipientEmail?: string, configOver
       testMessageId
     };
   } catch (err: any) {
-    const errorMsg = err?.message || String(err);
+    let errorMsg = err?.message || String(err);
+    if (errorMsg.toLowerCase().includes('timeout') || err?.code === 'ETIMEDOUT' || err?.code === 'ESOCKET') {
+      errorMsg = `Connection timeout (${errorMsg}). Railway Tip: Try switching to Port 465 with SSL enabled, and verify you are using a 16-character Google App Password.`;
+    }
     
     // Update error status in DB
     const nowStr = new Date().toISOString();
