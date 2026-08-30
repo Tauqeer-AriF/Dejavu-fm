@@ -155,12 +155,17 @@ export function AdminEmail() {
   };
 
   // Preset Auto-fill for non-technical users
-  const applyPreset = (preset: 'gmail' | 'webmail' | 'outlook') => {
-    if (preset === 'gmail') {
+  const applyPreset = (preset: 'gmail-ssl' | 'gmail-tls' | 'webmail' | 'outlook') => {
+    if (preset === 'gmail-ssl') {
+      setHost('smtp.gmail.com');
+      setPort('465');
+      setSecure(true);
+      toast.info("Gmail SSL (Port 465) preset loaded. Recommended for Cloud hosting like Railway!");
+    } else if (preset === 'gmail-tls') {
       setHost('smtp.gmail.com');
       setPort('587');
       setSecure(false);
-      toast.info("Gmail SMTP preset loaded. Use your Gmail address and 16-character App Password.");
+      toast.info("Gmail TLS (Port 587) preset loaded. Use your 16-character App Password.");
     } else if (preset === 'outlook') {
       setHost('smtp.office365.com');
       setPort('587');
@@ -486,10 +491,15 @@ export function AdminEmail() {
 
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className={`text-[10px] font-bold uppercase tracking-wider ${isLightMode ? 'text-slate-500' : 'text-slate-400'}`}>Quick Presets:</span>
-                <button type="button" onClick={() => applyPreset('gmail')} className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all ${
+                <button type="button" onClick={() => applyPreset('gmail-ssl')} className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all ${
+                  isLightMode ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                }`}>
+                  Gmail (SSL 465) ⭐
+                </button>
+                <button type="button" onClick={() => applyPreset('gmail-tls')} className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all ${
                   isLightMode ? 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100' : 'bg-purple-500/10 border-purple-500/30 text-purple-300'
                 }`}>
-                  Gmail
+                  Gmail (TLS 587)
                 </button>
                 <button type="button" onClick={() => applyPreset('outlook')} className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all ${
                   isLightMode ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100' : 'bg-blue-500/10 border-blue-500/30 text-blue-300'
@@ -499,7 +509,7 @@ export function AdminEmail() {
                 <button type="button" onClick={() => applyPreset('webmail')} className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all ${
                   isLightMode ? 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100' : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300'
                 }`}>
-                  cPanel
+                  cPanel / Custom
                 </button>
               </div>
             </div>
