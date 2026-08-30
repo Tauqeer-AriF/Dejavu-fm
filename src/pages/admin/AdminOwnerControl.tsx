@@ -43,6 +43,7 @@ export default function AdminOwnerControl() {
   const [savingFeatureId, setSavingFeatureId] = useState<string | null>(null);
 
   const advancedFeatureList = [
+    { id: 'feat_email', title: 'Centralised Email Suite', description: 'Self-hosted SMTP dispatch engine, automated system notifications, template editor, and broadcast manager.' },
     { id: 'feat_studio', title: 'Studio Inbox Console', description: 'Real-time multi-channel DJ inbox, external chat feeds, broadcast messenger, and listener thread manager.' },
     { id: 'feat_meta', title: 'Meta & Social Integrations', description: 'Webhook processing, Instagram/Facebook social bridge, and messaging connections.' },
     { id: 'feat_backup', title: 'Database & System Backup', description: 'System backups, automated snapshot timers, and database download management.' },

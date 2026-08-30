@@ -100,6 +100,10 @@ export function AdminSidebar({ onLogout, isAdminUser, userRole }: { onLogout: ()
     navs = navs.filter(n => n.name !== 'Backup');
   }
 
+  if (features.feat_email === '0' || (!isOwner && features.owner_hide_feat_email === '1')) {
+    navs = navs.filter(n => n.name !== 'Email Suite');
+  }
+
   if (!isOwner && features.owner_hide_feat_audit_logs === '1') {
     navs = navs.filter(n => n.name !== 'Audit Logs');
   }

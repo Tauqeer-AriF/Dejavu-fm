@@ -275,6 +275,23 @@ export interface SendEmailOptions {
  * Dispatches a single email using stored SMTP configuration and records execution log.
  */
 export async function sendEmail(options: SendEmailOptions) {
+  try {
+    const featRow = db.prepare("SELECT value FROM settings WHERE key = 'feat_email'").get() as any;
+    if (featRow && featRow.value === '0') {
+      const err = 'Email Suite is currently disabled in Advanced settings.';
+      logEmailDispatch({
+        recipient_email: options.to,
+        recipient_name: options.recipientName,
+        template_slug: options.templateSlug || 'custom',
+        subject: options.subject,
+        status: 'failed',
+        error_message: err,
+        metadata: options.metadata
+      });
+      return { success: false, error: err };
+    }
+  } catch (e) {}
+
   const config = getSmtpConfig();
 
   if (!config.is_enabled) {

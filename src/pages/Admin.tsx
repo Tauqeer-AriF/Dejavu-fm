@@ -125,6 +125,7 @@ export default function Admin() {
   const isStudioEnabled = settings?.feat_studio !== '0' && (isOwner || settings?.owner_hide_feat_studio !== '1');
   const isMetaEnabled = settings?.feat_meta !== '0' && (isOwner || settings?.owner_hide_feat_meta !== '1');
   const isBackupEnabled = settings?.feat_backup !== '0' && (isOwner || settings?.owner_hide_feat_backup !== '1');
+  const isEmailEnabled = settings?.feat_email !== '0' && (isOwner || settings?.owner_hide_feat_email !== '1');
 
   const defaultDjPath = isLiveToolsEnabled
     ? `${adminBasePath}/live-tools`
@@ -207,6 +208,7 @@ export default function Admin() {
     if (pathname.includes('/chat-room-setting')) return 'In Data Operations';
     if (pathname.includes('/backup')) return 'In System Backups';
     if (pathname.includes('/audit-logs')) return 'In Audit Logs';
+    if (pathname.includes('/email')) return 'In Email Suite';
     if (pathname.includes('/meta-integrations')) return 'In Meta Integrations';
     if (pathname.includes('/analytics')) return 'In Analytics';
     
@@ -1064,7 +1066,7 @@ export default function Admin() {
                         <Route path="/chat-users" element={isAdmin && isChatEnabled ? <AdminChatUsers isAdminUser={isAdmin} /> : <Navigate to={isAdmin ? adminBasePath : defaultDjPath} replace />} />
                         <Route path="/chat-room-setting" element={isAdmin ? <AdminChatRoomSettings /> : <Navigate to={defaultDjPath} replace />} />
                         <Route path="/audit-logs" element={isAdmin ? <AdminAuditLogs /> : <Navigate to={defaultDjPath} replace />} />
-                        <Route path="/email" element={isAdmin ? <AdminEmail /> : <Navigate to={defaultDjPath} replace />} />
+                        <Route path="/email" element={isAdmin && isEmailEnabled ? <AdminEmail /> : <Navigate to={isAdmin ? adminBasePath : defaultDjPath} replace />} />
                         <Route path="/backup" element={isAdmin && isBackupEnabled ? <AdminBackup /> : <Navigate to={isAdmin ? adminBasePath : defaultDjPath} replace />} />
                         <Route path="/meta-integrations" element={isAdmin && isMetaEnabled ? <AdminMetaIntegrations /> : <Navigate to={isAdmin ? adminBasePath : defaultDjPath} replace />} />
                         <Route path="/seo" element={isAdmin ? <AdminSEO /> : <Navigate to={defaultDjPath} replace />} />

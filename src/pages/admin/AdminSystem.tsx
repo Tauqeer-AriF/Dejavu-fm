@@ -40,6 +40,7 @@ export function AdminAdvanced() {
     feat_studio: true,
     feat_meta: true,
     feat_backup: true,
+    feat_email: true,
   });
   const { showAlert } = useModal();
 
@@ -63,6 +64,7 @@ export function AdminAdvanced() {
         feat_studio: serverSettings.feat_studio !== '0',
         feat_meta: serverSettings.feat_meta !== '0',
         feat_backup: serverSettings.feat_backup !== '0',
+        feat_email: serverSettings.feat_email !== '0',
       });
     }
   }, [serverSettings]);
@@ -103,6 +105,7 @@ export function AdminAdvanced() {
   };
 
   const toggleItems = [
+    { id: 'feat_email', title: 'Centralised Email Suite', description: 'Enable or disable the Centralised Email Suite, custom SMTP dispatch engine, automated system notifications, and email broadcast manager.' },
     { id: 'feat_studio', title: 'Studio Inbox', description: 'Enable or disable the Studio Inbox messaging console, unified DJ conversations, and broadcast manager.' },
     { id: 'feat_meta', title: 'Meta Integrations', description: 'Enable or disable Meta/Facebook/Instagram webhook receiver, lead sync, and social messaging integrations.' },
     { id: 'feat_backup', title: 'Database & System Backups', description: 'Enable or disable automated system snapshots, database backups, and emergency restore tools.' },
