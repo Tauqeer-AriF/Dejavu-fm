@@ -2667,44 +2667,89 @@ apiRouter.get("/admin/profile", (req: any, res: any) => {
 });
 
 apiRouter.put("/admin/profile", (req: any, res: any) => {
-  const { bio, photo_url, email, password } = req.body;
+  const { bio, photo_url, email, password, username } = req.body;
 
   const currentAdmin = db.prepare("SELECT * FROM admins WHERE username = ?").get(req.user.username) as any;
   if (!currentAdmin) {
     return res.status(404).json({ error: "Admin profile not found" });
   }
 
+  let finalUsername = currentAdmin.username;
+  let usernameChanged = false;
+
+  if (username !== undefined && username !== null) {
+    const trimmedUsername = username.trim();
+    if (trimmedUsername.length < 2) {
+      return res.status(400).json({ error: "Username must be at least 2 characters long." });
+    }
+    if (trimmedUsername.toLowerCase() !== currentAdmin.username.toLowerCase()) {
+      const existing = db.prepare("SELECT username FROM admins WHERE LOWER(TRIM(username)) = LOWER(TRIM(?)) AND LOWER(TRIM(username)) != LOWER(TRIM(?))")
+        .get(trimmedUsername, currentAdmin.username) as any;
+      if (existing) {
+        return res.status(400).json({ error: "This username is already in use by another account." });
+      }
+      finalUsername = trimmedUsername;
+      usernameChanged = true;
+    }
+  }
+
   const updatedBio = bio !== undefined ? bio : (currentAdmin.bio || "");
   const updatedPhotoUrl = photo_url !== undefined ? photo_url : (currentAdmin.photo_url || "");
-  const updatedEmail = (email !== undefined && email !== null && email.trim() !== "") ? email.trim() : (currentAdmin.email || "");
+  const updatedEmail = email !== undefined ? (email ? email.trim() : "") : (currentAdmin.email || "");
 
+  let hash = currentAdmin.password_hash;
   if (password) {
     if (password.length < 6) {
       return res.status(400).json({ error: "Password must be at least 6 characters" });
     }
-    const hash = bcrypt.hashSync(password, 10);
-    db.prepare("UPDATE admins SET bio=?, photo_url=?, email=?, password_hash=? WHERE username=?")
-      .run(updatedBio, updatedPhotoUrl, updatedEmail, hash, req.user.username);
-  } else {
-    db.prepare("UPDATE admins SET bio=?, photo_url=?, email=? WHERE username=?")
-      .run(updatedBio, updatedPhotoUrl, updatedEmail, req.user.username);
+    hash = bcrypt.hashSync(password, 10);
   }
 
-  // Senior Dev: Seamlessly sync profile photo and bio changes downstream to the public 'djs' database entry
+  if (usernameChanged) {
+    db.prepare("UPDATE admins SET username=?, bio=?, photo_url=?, email=?, password_hash=? WHERE username=?")
+      .run(finalUsername, updatedBio, updatedPhotoUrl, updatedEmail, hash, currentAdmin.username);
+  } else {
+    db.prepare("UPDATE admins SET bio=?, photo_url=?, email=?, password_hash=? WHERE username=?")
+      .run(updatedBio, updatedPhotoUrl, updatedEmail, hash, currentAdmin.username);
+  }
+
+  // Issue refreshed token if username changed
+  let newToken: string | undefined;
+  if (usernameChanged) {
+    newToken = jwt.sign({ username: finalUsername, role: currentAdmin.role }, ACTUAL_SECRET, { expiresIn: "30d" });
+    res.cookie("admin_token", newToken, { 
+      httpOnly: true, 
+      secure: true, 
+      sameSite: "none", 
+      path: '/', 
+      maxAge: 30 * 24 * 60 * 60 * 1000 
+    });
+  }
+
+  // Seamlessly sync profile photo and bio changes downstream to the public 'djs' database entry
   try {
     if (currentAdmin.dj_profile_id) {
       db.prepare("UPDATE djs SET bio = ?, image_url = ? WHERE id = ?")
         .run(updatedBio, updatedPhotoUrl, currentAdmin.dj_profile_id);
     } else {
       db.prepare("UPDATE djs SET bio = ?, image_url = ? WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))")
-        .run(updatedBio, updatedPhotoUrl, req.user.username);
+        .run(updatedBio, updatedPhotoUrl, finalUsername);
     }
   } catch (syncErr) {
     console.error("[Sync] Failed to sync admin profile to public djs table:", syncErr);
   }
 
-  logAction(req, 'UPDATE_PROFILE', 'admins', req.user.username);
-  res.json({ success: true, profile: { bio: updatedBio, photo_url: updatedPhotoUrl, email: updatedEmail } });
+  logAction(req, 'UPDATE_PROFILE', 'admins', finalUsername);
+  res.json({ 
+    success: true, 
+    token: newToken,
+    profile: { 
+      username: finalUsername, 
+      bio: updatedBio, 
+      photo_url: updatedPhotoUrl, 
+      email: updatedEmail 
+    } 
+  });
 });
 
 apiRouter.get("/admin/djs", (req, res) => {

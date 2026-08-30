@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { fetchAdmin } from "./adminApi";
-import { ShieldAlert, Power, Radio, RefreshCw, AlertOctagon, Mail, Lock, CheckCircle, Eye, EyeOff, Sliders, Ghost, Shield, KeyRound } from "lucide-react";
+import { ShieldAlert, Power, Radio, RefreshCw, AlertOctagon, Mail, Lock, CheckCircle, Eye, EyeOff, Sliders, Ghost, Shield, KeyRound, User } from "lucide-react";
 import { useLogo, getCachedSettings, setCachedSettings } from "../../hooks/useLogo";
 import { safeFetchJson } from "../../utils/safeFetch";
 import { motion } from "motion/react";
@@ -23,6 +23,7 @@ export default function AdminOwnerControl() {
   const [error, setError] = useState<string | null>(null);
 
   // Credentials State
+  const [username, setUsername] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
@@ -123,10 +124,11 @@ export default function AdminOwnerControl() {
         setError("Failed to fetch current system status.");
       }
 
-      // Fetch logged-in owner profile for email prefilling
+      // Fetch logged-in owner profile for username and email prefilling
       const profileRes = await fetchAdmin("/api/admin/profile");
       if (profileRes.ok) {
         const profileData = await profileRes.json();
+        setUsername(profileData.username || "");
         setEmail(profileData.email || "");
       }
 
@@ -223,6 +225,17 @@ export default function AdminOwnerControl() {
     setCredError(null);
     setCredSuccess(null);
 
+    const trimmedUsername = username.trim();
+    if (!trimmedUsername) {
+      setCredError("Owner username cannot be empty.");
+      return;
+    }
+
+    if (trimmedUsername.length < 2) {
+      setCredError("Username must be at least 2 characters long.");
+      return;
+    }
+
     if (password && password.length < 6) {
       setCredError("Password must be at least 6 characters long.");
       return;
@@ -238,15 +251,22 @@ export default function AdminOwnerControl() {
       const updateRes = await fetchAdmin("/api/admin/profile", {
         method: "PUT",
         body: JSON.stringify({
+          username: trimmedUsername,
           email: email.trim(),
           password: password ? password : undefined,
         }),
       });
 
       if (updateRes.ok) {
+        const resData = await updateRes.json();
+        if (resData.token) {
+          localStorage.setItem('admin_token', resData.token);
+        }
         setCredSuccess("Your owner credentials have been updated successfully!");
         setPassword("");
         setConfirmPassword("");
+        queryClient.invalidateQueries({ queryKey: ['admin_user'] });
+        queryClient.invalidateQueries({ queryKey: ['settings'] });
       } else {
         const data = await updateRes.json();
         setCredError(data.error || "Failed to update owner credentials.");
@@ -383,23 +403,51 @@ export default function AdminOwnerControl() {
           )}
 
           <form onSubmit={handleUpdateCredentials} className="space-y-4">
-            {/* Email Address */}
-            <div className="space-y-1.5">
-              <label className={`block text-[10px] uppercase font-black tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>
-                Owner Email Address
-              </label>
-              <div className="relative">
-                <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 ${isLightMode ? 'text-black/40' : 'text-white/30'}`} />
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={`w-full text-sm border rounded-xl pl-11 pr-4 py-3.5 focus:border-neon-purple focus:outline-none transition-all ${
-                    isLightMode ? 'bg-black/5 border-black/15 text-slate-900' : 'bg-black/40 border-white/10 text-white'
-                  }`}
-                  placeholder="owner@station.com"
-                />
+            {/* Username & Email Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Owner Username */}
+              <div className="space-y-1.5">
+                <label className={`block text-[10px] uppercase font-black tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>
+                  Owner Username
+                </label>
+                <div className="relative">
+                  <User className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 ${isLightMode ? 'text-black/40' : 'text-white/30'}`} />
+                  <input
+                    type="text"
+                    required
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className={`w-full text-sm border rounded-xl pl-11 pr-4 py-3.5 focus:border-neon-purple focus:outline-none transition-all ${
+                      isLightMode ? 'bg-black/5 border-black/15 text-slate-900' : 'bg-black/40 border-white/10 text-white'
+                    }`}
+                    placeholder="owner"
+                  />
+                </div>
+                <p className={`text-[10px] ${isLightMode ? 'text-slate-400' : 'text-white/30'}`}>
+                  Primary username for owner station login
+                </p>
+              </div>
+
+              {/* Owner Email Address (Optional) */}
+              <div className="space-y-1.5">
+                <label className={`block text-[10px] uppercase font-black tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>
+                  Owner Email Address <span className="normal-case opacity-60 font-medium">(Optional)</span>
+                </label>
+                <div className="relative">
+                  <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 ${isLightMode ? 'text-black/40' : 'text-white/30'}`} />
+                  <input
+                    type="text"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={`w-full text-sm border rounded-xl pl-11 pr-4 py-3.5 focus:border-neon-purple focus:outline-none transition-all ${
+                      isLightMode ? 'bg-black/5 border-black/15 text-slate-900' : 'bg-black/40 border-white/10 text-white'
+                    }`}
+                    placeholder="owner@station.com (optional)"
+                  />
+                </div>
+                <p className={`text-[10px] ${isLightMode ? 'text-slate-400' : 'text-white/30'}`}>
+                  Optional for notifications & email login
+                </p>
               </div>
             </div>
 

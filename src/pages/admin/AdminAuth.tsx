@@ -151,8 +151,8 @@ function AdminLogin({ onLogin }: { onLogin: (user?: any) => void }) {
       {success && <div className="bg-green-500/10 border border-green-500/20 text-green-600 p-3 rounded mb-4 text-center text-sm">You are logged in! Redirecting...</div>}
       <form onSubmit={handleLogin} className="space-y-6">
         <div>
-          <label className={`block text-xs uppercase mb-1 font-semibold ${isLightMode ? 'text-slate-500' : 'text-white/50'}`}>Username</label>
-          <input type="text" value={user} onChange={e=>setUser(e.target.value)} className={`w-full border rounded px-4 py-2 focus:border-neon-purple outline-none ${isLightMode ? 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400' : 'bg-dark-bg border-white/10 text-white'}`} required />
+          <label className={`block text-xs uppercase mb-1 font-semibold ${isLightMode ? 'text-slate-500' : 'text-white/50'}`}>Username or Email</label>
+          <input type="text" value={user} onChange={e=>setUser(e.target.value)} placeholder="Enter username or email" className={`w-full border rounded px-4 py-2 focus:border-neon-purple outline-none ${isLightMode ? 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400' : 'bg-dark-bg border-white/10 text-white placeholder:text-white/20'}`} required />
         </div>
         <div>
           <label className={`block text-xs uppercase mb-1 font-semibold ${isLightMode ? 'text-slate-500' : 'text-white/50'}`}>Password</label>

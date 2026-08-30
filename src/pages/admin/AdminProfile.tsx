@@ -10,6 +10,7 @@ import { ImageUploadField } from "./ImageUploadField";
 
 export function AdminProfile() {
   const [profile, setProfile] = useState<any>(null);
+  const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
   const [email, setEmail] = useState("");
@@ -26,6 +27,7 @@ export function AdminProfile() {
       .then(r => r.json())
       .then(data => {
         setProfile(data);
+        setUsername(data?.username || "");
         setBio(data?.bio || "");
         setPhotoUrl(data?.photo_url || "");
         setEmail(data?.email || "");
@@ -64,6 +66,16 @@ export function AdminProfile() {
 
   const handleSaveCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmedUsername = username.trim();
+    if (!trimmedUsername) {
+      showAlert({ title: "Error", message: "Username cannot be empty!", style: "danger" });
+      return;
+    }
+    if (trimmedUsername.length < 2) {
+      showAlert({ title: "Error", message: "Username must be at least 2 characters long!", style: "danger" });
+      return;
+    }
+
     if (password && password !== confirmPassword) {
       showAlert({ title: "Error", message: "Passwords do not match!", style: "danger" });
       return;
@@ -75,7 +87,10 @@ export function AdminProfile() {
 
     setIsSavingCredentials(true);
     try {
-      const payload: any = { email };
+      const payload: any = { 
+        username: trimmedUsername,
+        email: email.trim() 
+      };
       if (password) {
         payload.password = password;
       }
@@ -86,9 +101,17 @@ export function AdminProfile() {
       });
       setIsSavingCredentials(false);
       if (res.ok) {
+        const data = await res.json();
+        if (data.token) {
+          localStorage.setItem('admin_token', data.token);
+        }
         showAlert({ title: "Success", message: "Account Credentials updated successfully!", style: "success" });
         setPassword("");
         setConfirmPassword("");
+        if (data.profile?.username) {
+          setUsername(data.profile.username);
+          setProfile((prev: any) => ({ ...prev, ...data.profile }));
+        }
       } else {
         const errData = await res.json().catch(() => ({}));
         showAlert({ title: "Error", message: errData.error || "Failed to update credentials", style: "danger" });
@@ -180,19 +203,39 @@ export function AdminProfile() {
             </h5>
             <span className="text-[10px] text-white/40 font-mono">Private login details</span>
           </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-white/70 mb-1">Email Address</label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-white/30">
-                <Mail className="w-4 h-4" />
-              </span>
-              <input 
-                type="email"
-                value={email} 
-                onChange={e => setEmail(e.target.value)} 
-                className="w-full bg-dark-bg border border-white/10 rounded-xl pl-10 pr-4 py-2.5 focus:border-neon-purple focus:ring-1 focus:ring-neon-purple outline-none transition-all text-white text-sm" 
-                placeholder="you@dejavufm.com"
-              />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-white/70 mb-1">Username</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-white/30">
+                  <User className="w-4 h-4" />
+                </span>
+                <input 
+                  type="text"
+                  required
+                  value={username} 
+                  onChange={e => setUsername(e.target.value)} 
+                  className="w-full bg-dark-bg border border-white/10 rounded-xl pl-10 pr-4 py-2.5 focus:border-neon-purple focus:ring-1 focus:ring-neon-purple outline-none transition-all text-white text-sm" 
+                  placeholder="username"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-white/70 mb-1">
+                Email Address <span className="text-[10px] text-white/40 normal-case">(Optional)</span>
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-white/30">
+                  <Mail className="w-4 h-4" />
+                </span>
+                <input 
+                  type="text"
+                  value={email} 
+                  onChange={e => setEmail(e.target.value)} 
+                  className="w-full bg-dark-bg border border-white/10 rounded-xl pl-10 pr-4 py-2.5 focus:border-neon-purple focus:ring-1 focus:ring-neon-purple outline-none transition-all text-white text-sm" 
+                  placeholder="you@dejavufm.com (optional)"
+                />
+              </div>
             </div>
           </div>
 
