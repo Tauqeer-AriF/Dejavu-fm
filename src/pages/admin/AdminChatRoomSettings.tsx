@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Clock, MessageSquare, RefreshCw, Save, Trash2, Image as ImageIcon, Music, Video, Shield, BarChart2, Database, Zap, Globe, Sparkles, CheckCircle2, Mic, Paintbrush, History, UserCheck } from "lucide-react";
+import { Clock, MessageSquare, RefreshCw, Save, Trash2, Image as ImageIcon, Music, Video, Shield, BarChart2, Database, Zap, Globe, Sparkles, CheckCircle2, Mic, Paintbrush, History, UserCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { useModal } from "../../context/ModalContext";
 import { fetchAdmin } from "./adminApi";
 import { useLogo } from "../../hooks/useLogo";
@@ -83,6 +83,8 @@ const PRUNE_PRESETS = [
   { label: "365 days", value: 365 },
 ];
 
+const PURGE_HISTORY_PER_PAGE = 10;
+
 export function AdminChatRoomSettings() {
   const { isLightMode } = useLogo();
   const [settings, setSettings] = useState<SystemSettings>(DEFAULT_SETTINGS);
@@ -92,6 +94,7 @@ export function AdminChatRoomSettings() {
   const [dataPruneDays, setDataPruneDays] = useState(90);
   const [autoPurgeOnSave, setAutoPurgeOnSave] = useState(true);
   const [selectedPurgeScope, setSelectedPurgeScope] = useState<'all' | 'visitor_ui' | 'podcasts' | 'audio_meta'>('all');
+  const [purgeHistoryPage, setPurgeHistoryPage] = useState(1);
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -264,6 +267,21 @@ export function AdminChatRoomSettings() {
     }
     return `${pad(m)}m ${pad(s)}s`;
   }, [dataPruneEnabled, settings.dataPruneLastRun, currentTimestamp, componentMountedTime]);
+
+  // Purge Audit History Pagination
+  const totalPurgeHistoryPages = Math.max(1, Math.ceil((settings.purgeHistory?.length || 0) / PURGE_HISTORY_PER_PAGE));
+
+  useEffect(() => {
+    if (purgeHistoryPage > totalPurgeHistoryPages) {
+      setPurgeHistoryPage(totalPurgeHistoryPages);
+    }
+  }, [totalPurgeHistoryPages, purgeHistoryPage]);
+
+  const paginatedPurgeHistory = useMemo(() => {
+    const history = settings.purgeHistory || [];
+    const start = (purgeHistoryPage - 1) * PURGE_HISTORY_PER_PAGE;
+    return history.slice(start, start + PURGE_HISTORY_PER_PAGE);
+  }, [settings.purgeHistory, purgeHistoryPage]);
 
   const saveSettings = async () => {
     if (!Number.isInteger(hours) || hours < 1 || hours > 8760) {
@@ -441,6 +459,7 @@ export function AdminChatRoomSettings() {
 
       showAlert({ title: "History Cleared", message: "Purge audit history records have been cleared.", style: "success" });
       setSettings(prev => ({ ...prev, purgeHistory: [] }));
+      setPurgeHistoryPage(1);
     } catch (err: any) {
       showAlert({ title: "Error", message: err.message || "Failed to clear purge history.", style: "danger" });
     }
@@ -913,11 +932,11 @@ export function AdminChatRoomSettings() {
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <h5 className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${isLightMode ? 'text-black/70' : 'text-white/70'}`}>
                   <History className="w-3.5 h-3.5 text-emerald-400" />
-                  Recent Purge Audit History
+                  Purge Audit History
                 </h5>
-                <div className="flex items-center gap-3">
-                  <span className={`text-[10px] font-mono ${isLightMode ? 'text-black/40' : 'text-white/40'}`}>
-                    Last {settings.purgeHistory.length} events
+                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                  <span className={`text-[10px] font-mono ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>
+                    {settings.purgeHistory.length} total events{totalPurgeHistoryPages > 1 ? ` • Page ${purgeHistoryPage} of ${totalPurgeHistoryPages}` : ''}
                   </span>
                   <button
                     type="button"
@@ -948,20 +967,20 @@ export function AdminChatRoomSettings() {
                       <th className="pb-2 pr-2 text-right">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5 font-mono text-[11px]">
-                    {settings.purgeHistory.map((item) => (
+                  <tbody className={`divide-y font-mono text-[11px] ${isLightMode ? 'divide-black/5' : 'divide-white/5'}`}>
+                    {paginatedPurgeHistory.map((item) => (
                       <tr key={item.id} className={isLightMode ? 'hover:bg-black/[0.02]' : 'hover:bg-white/[0.02]'}>
-                        <td className="py-2.5 pl-2">
+                        <td className="py-2.5 pl-2 whitespace-nowrap">
                           {new Date(item.timestamp).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                         </td>
                         <td className="py-2.5">
                           <span className="flex items-center gap-1 font-sans">
                             {item.auto ? (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] bg-blue-500/20 text-blue-400 font-mono">SYSTEM AUTO</span>
+                              <span className="px-1.5 py-0.5 rounded text-[9px] bg-blue-500/20 text-blue-400 font-mono font-bold">SYSTEM AUTO</span>
                             ) : (
                               <span className="flex items-center gap-1">
                                 <UserCheck className="w-3 h-3 text-emerald-400" />
-                                {item.username || 'admin'}
+                                <span className={isLightMode ? 'text-black/80 font-medium' : 'text-white/80'}>{item.username || 'admin'}</span>
                               </span>
                             )}
                           </span>
@@ -979,7 +998,7 @@ export function AdminChatRoomSettings() {
                             {item.scope || 'all'}
                           </span>
                         </td>
-                        <td className="py-2.5 text-[10px] text-white/60">
+                        <td className={`py-2.5 text-[10px] ${isLightMode ? 'text-black/60' : 'text-white/60'}`}>
                           {item.clientsNotified !== undefined ? `${item.clientsNotified} visitors` : 'Broadcasted'}
                         </td>
                         <td className="py-2.5 pr-2 text-right">
@@ -992,6 +1011,84 @@ export function AdminChatRoomSettings() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Pagination Controls (10 per page) */}
+              <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t ${isLightMode ? 'border-black/5' : 'border-white/5'}`}>
+                <div className={`text-[11px] font-mono ${isLightMode ? 'text-black/50' : 'text-white/50'}`}>
+                  Showing <span className="font-bold text-emerald-400 font-sans">{(purgeHistoryPage - 1) * PURGE_HISTORY_PER_PAGE + 1}</span> to{' '}
+                  <span className="font-bold text-emerald-400 font-sans">{Math.min(purgeHistoryPage * PURGE_HISTORY_PER_PAGE, settings.purgeHistory.length)}</span> of{' '}
+                  <span className="font-bold text-emerald-400 font-sans">{settings.purgeHistory.length}</span> events
+                </div>
+
+                {totalPurgeHistoryPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setPurgeHistoryPage(prev => Math.max(prev - 1, 1))}
+                      disabled={purgeHistoryPage === 1}
+                      className={`p-1.5 px-2.5 rounded-lg border text-xs font-bold transition flex items-center gap-1 disabled:opacity-30 disabled:cursor-not-allowed ${
+                        isLightMode
+                          ? 'bg-black/[0.03] border-black/10 text-black/70 hover:bg-black/5'
+                          : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                      }`}
+                      title="Previous Page"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                      <span className="text-[10px] uppercase font-bold hidden sm:inline">Prev</span>
+                    </button>
+
+                    {/* Numbered Page Buttons */}
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPurgeHistoryPages }, (_, i) => i + 1)
+                        .filter(page => {
+                          if (totalPurgeHistoryPages <= 5) return true;
+                          if (page === 1 || page === totalPurgeHistoryPages) return true;
+                          return Math.abs(page - purgeHistoryPage) <= 1;
+                        })
+                        .map((page, idx, arr) => {
+                          const prevPage = arr[idx - 1];
+                          const showEllipsisBefore = prevPage && page - prevPage > 1;
+
+                          return (
+                            <React.Fragment key={page}>
+                              {showEllipsisBefore && (
+                                <span className={`px-1 text-[10px] ${isLightMode ? 'text-black/30' : 'text-white/30'}`}>...</span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setPurgeHistoryPage(page)}
+                                className={`min-w-[28px] h-7 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center border ${
+                                  purgeHistoryPage === page
+                                    ? 'bg-neon-purple text-white border-neon-purple shadow-md shadow-neon-purple/20'
+                                    : (isLightMode 
+                                        ? 'bg-black/[0.03] border-black/10 text-black/70 hover:bg-black/5' 
+                                        : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10')
+                                }`}
+                              >
+                                {page}
+                              </button>
+                            </React.Fragment>
+                          );
+                        })}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setPurgeHistoryPage(prev => Math.min(prev + 1, totalPurgeHistoryPages))}
+                      disabled={purgeHistoryPage === totalPurgeHistoryPages}
+                      className={`p-1.5 px-2.5 rounded-lg border text-xs font-bold transition flex items-center gap-1 disabled:opacity-30 disabled:cursor-not-allowed ${
+                        isLightMode
+                          ? 'bg-black/[0.03] border-black/10 text-black/70 hover:bg-black/5'
+                          : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                      }`}
+                      title="Next Page"
+                    >
+                      <span className="text-[10px] uppercase font-bold hidden sm:inline">Next</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}

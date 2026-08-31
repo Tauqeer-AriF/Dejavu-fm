@@ -3552,7 +3552,7 @@ apiRouter.get("/admin/chat-room-settings", authMiddleware, authorizeRole('admin'
       (SELECT COUNT(*) FROM shoutouts WHERE videoUrl IS NOT NULL OR replyVideoUrl IS NOT NULL) as videos
   `).get() as { images: number; audios: number; videos: number };
 
-  // Fetch recent purge history (last 10 records)
+  // Fetch recent purge history (ordered newest first)
   let purgeHistory: any[] = [];
   try {
     const historyRows = db.prepare(`
@@ -3560,7 +3560,7 @@ apiRouter.get("/admin/chat-room-settings", authMiddleware, authorizeRole('admin'
       FROM audit_logs
       WHERE resource = 'system_cache'
       ORDER BY timestamp DESC
-      LIMIT 10
+      LIMIT 500
     `).all() as any[];
     purgeHistory = historyRows.map(row => {
       let parsed = {};
@@ -3786,7 +3786,7 @@ apiRouter.get("/admin/system/purge-history", authMiddleware, authorizeRole('admi
       FROM audit_logs
       WHERE resource = 'system_cache'
       ORDER BY timestamp DESC
-      LIMIT 15
+      LIMIT 500
     `).all() as any[];
     
     const purgeHistory = historyRows.map(row => {
