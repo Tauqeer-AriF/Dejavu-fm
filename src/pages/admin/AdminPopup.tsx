@@ -19,6 +19,10 @@ export function AdminPopup() {
   const [btnText, setBtnText] = useState("");
   const [btnLink, setBtnLink] = useState("");
   const [btnTarget, setBtnTarget] = useState<"_blank" | "_self">("_blank");
+  const [hasSecondBtn, setHasSecondBtn] = useState(false);
+  const [btn2Text, setBtn2Text] = useState("");
+  const [btn2Link, setBtn2Link] = useState("");
+  const [btn2Target, setBtn2Target] = useState<"_blank" | "_self">("_blank");
   const [isPermanent, setIsPermanent] = useState(true);
   const [isActive, setIsActive] = useState(true);
   const [popupDelay, setPopupDelay] = useState(10000);
@@ -82,13 +86,24 @@ export function AdminPopup() {
           btn_text: btnText,
           btn_link: btnLink,
           btn_target: btnTarget,
+          btn2_text: hasSecondBtn ? btn2Text : null,
+          btn2_link: hasSecondBtn ? btn2Link : null,
+          btn2_target: hasSecondBtn ? btn2Target : "_blank",
           type: isPermanent ? 'permanent' : 'immediate',
           is_active: isActive
         })
       });
       if (res.ok) {
         showAlert({ title: "Success", message: "Pop-up created!", style: "success" });
-        setHeading(""); setText(""); setBtnText(""); setBtnLink(""); setBtnTarget("_blank");
+        setHeading(""); 
+        setText(""); 
+        setBtnText(""); 
+        setBtnLink(""); 
+        setBtnTarget("_blank");
+        setHasSecondBtn(false);
+        setBtn2Text("");
+        setBtn2Link("");
+        setBtn2Target("_blank");
         loadPopups();
       } else {
         showAlert({ title: "Error", message: "Failed to create pop-up.", style: "danger" });
@@ -108,7 +123,10 @@ export function AdminPopup() {
             text: popup.text, 
             btnText: popup.btn_text, 
             btnLink: popup.btn_link,
-            btnTarget: popup.btn_target || popup.btnTarget || "_blank"
+            btnTarget: popup.btn_target || popup.btnTarget || "_blank",
+            btn2Text: popup.btn2_text,
+            btn2Link: popup.btn2_link,
+            btn2Target: popup.btn2_target || "_blank"
           })
        });
        if (res.ok) {
@@ -222,59 +240,163 @@ export function AdminPopup() {
                 placeholder="Type your message here..." 
               />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className={`block text-[10px] uppercase font-black tracking-widest mb-2 ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>Button Label</label>
-                <input 
-                  value={btnText} 
-                  onChange={e => setBtnText(e.target.value)} 
-                  className={`w-full rounded-xl px-5 py-3.5 focus:border-neon-purple outline-none text-sm transition-all border ${
-                    isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-white/5 border-white/10 text-white'
-                  }`} 
-                  placeholder="View Details" 
-                />
+
+            {/* Primary Action Button (Button 1) */}
+            <div className={`p-5 rounded-2xl border space-y-4 ${isLightMode ? 'bg-black/[0.02] border-black/10' : 'bg-white/5 border-white/10'}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black uppercase tracking-wider text-neon-purple flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-neon-purple"></span> Primary Button (Button 1)
+                </span>
+                <span className="text-[10px] opacity-40 uppercase font-semibold">Required or Optional</span>
               </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className={`block text-[10px] uppercase font-black tracking-widest mb-2 ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>Button Label</label>
+                  <input 
+                    value={btnText} 
+                    onChange={e => setBtnText(e.target.value)} 
+                    className={`w-full rounded-xl px-5 py-3.5 focus:border-neon-purple outline-none text-sm transition-all border ${
+                      isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg/60 border-white/10 text-white'
+                    }`} 
+                    placeholder="View Details" 
+                  />
+                </div>
+                <div>
+                  <label className={`block text-[10px] uppercase font-black tracking-widest mb-2 ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>Button Destination URL</label>
+                  <input 
+                    value={btnLink} 
+                    onChange={e => setBtnLink(e.target.value)} 
+                    className={`w-full rounded-xl px-5 py-3.5 focus:border-neon-purple outline-none text-sm transition-all border ${
+                      isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg/60 border-white/10 text-white'
+                    }`} 
+                    placeholder="https://dejavufm.com/live" 
+                  />
+                </div>
+              </div>
+
               <div>
-                <label className={`block text-[10px] uppercase font-black tracking-widest mb-2 ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>Button Destination</label>
-                <input 
-                  value={btnLink} 
-                  onChange={e => setBtnLink(e.target.value)} 
-                  className={`w-full rounded-xl px-5 py-3.5 focus:border-neon-purple outline-none text-sm transition-all border ${
-                    isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-white/5 border-white/10 text-white'
-                  }`} 
-                  placeholder="https://dejavufm.com/live" 
-                />
+                <label className={`block text-[10px] uppercase font-black tracking-widest mb-2 ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>
+                  Button 1 Link Open Target
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setBtnTarget("_self")}
+                    className={`p-3 rounded-xl border text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                      btnTarget === "_self"
+                        ? 'bg-neon-purple text-white border-neon-purple shadow-lg shadow-neon-purple/20'
+                        : (isLightMode ? 'bg-black/[0.03] border-black/10 text-black/60 hover:bg-black/5' : 'bg-dark-bg/60 border-white/10 text-white/60 hover:bg-white/10')
+                    }`}
+                  >
+                    Current Tab (_self)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBtnTarget("_blank")}
+                    className={`p-3 rounded-xl border text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                      btnTarget === "_blank"
+                        ? 'bg-neon-purple text-white border-neon-purple shadow-lg shadow-neon-purple/20'
+                        : (isLightMode ? 'bg-black/[0.03] border-black/10 text-black/60 hover:bg-black/5' : 'bg-dark-bg/60 border-white/10 text-white/60 hover:bg-white/10')
+                    }`}
+                  >
+                    New Tab (_blank)
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div>
-              <label className={`block text-[10px] uppercase font-black tracking-widest mb-2 ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>
-                Button Link Open Behavior
-              </label>
-              <div className="grid grid-cols-2 gap-3">
+            {/* Secondary Action Button (Button 2) */}
+            <div className={`p-5 rounded-2xl border space-y-4 transition-all ${
+              hasSecondBtn 
+                ? (isLightMode ? 'bg-neon-blue/[0.04] border-neon-blue/40' : 'bg-neon-blue/[0.06] border-neon-blue/30')
+                : (isLightMode ? 'bg-black/[0.02] border-black/10' : 'bg-white/5 border-white/10')
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-neon-blue flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-neon-blue"></span> Secondary Button (Button 2)
+                  </span>
+                  <span className="text-[10px] opacity-50 uppercase font-bold">(Optional)</span>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setBtnTarget("_self")}
-                  className={`p-3.5 rounded-xl border text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
-                    btnTarget === "_self"
-                      ? 'bg-neon-purple text-white border-neon-purple shadow-lg shadow-neon-purple/20'
-                      : (isLightMode ? 'bg-black/[0.03] border-black/10 text-black/60 hover:bg-black/5' : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10')
+                  onClick={() => setHasSecondBtn(!hasSecondBtn)}
+                  className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${
+                    hasSecondBtn
+                      ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20'
+                      : 'bg-neon-blue/10 text-neon-blue hover:bg-neon-blue/20'
                   }`}
                 >
-                  Current Tab (_self)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBtnTarget("_blank")}
-                  className={`p-3.5 rounded-xl border text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
-                    btnTarget === "_blank"
-                      ? 'bg-neon-purple text-white border-neon-purple shadow-lg shadow-neon-purple/20'
-                      : (isLightMode ? 'bg-black/[0.03] border-black/10 text-black/60 hover:bg-black/5' : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10')
-                  }`}
-                >
-                  New Tab (_blank)
+                  {hasSecondBtn ? (
+                    <>
+                      <X className="w-3 h-3" /> Remove Button 2
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-3 h-3" /> + Add Button 2
+                    </>
+                  )}
                 </button>
               </div>
+
+              {hasSecondBtn && (
+                <div className="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className={`block text-[10px] uppercase font-black tracking-widest mb-2 ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>Button 2 Label</label>
+                      <input 
+                        value={btn2Text} 
+                        onChange={e => setBtn2Text(e.target.value)} 
+                        className={`w-full rounded-xl px-5 py-3.5 focus:border-neon-blue outline-none text-sm transition-all border ${
+                          isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg/60 border-white/10 text-white'
+                        }`} 
+                        placeholder="Learn More" 
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-[10px] uppercase font-black tracking-widest mb-2 ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>Button 2 Destination URL</label>
+                      <input 
+                        value={btn2Link} 
+                        onChange={e => setBtn2Link(e.target.value)} 
+                        className={`w-full rounded-xl px-5 py-3.5 focus:border-neon-blue outline-none text-sm transition-all border ${
+                          isLightMode ? 'bg-black/[0.03] border-black/10 text-black' : 'bg-dark-bg/60 border-white/10 text-white'
+                        }`} 
+                        placeholder="https://instagram.com/dejavufm" 
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className={`block text-[10px] uppercase font-black tracking-widest mb-2 ${isLightMode ? 'text-black/40' : 'text-white/30'}`}>
+                      Button 2 Link Open Target
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setBtn2Target("_self")}
+                        className={`p-3 rounded-xl border text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                          btn2Target === "_self"
+                            ? 'bg-neon-blue text-white border-neon-blue shadow-lg shadow-neon-blue/20'
+                            : (isLightMode ? 'bg-black/[0.03] border-black/10 text-black/60 hover:bg-black/5' : 'bg-dark-bg/60 border-white/10 text-white/60 hover:bg-white/10')
+                        }`}
+                      >
+                        Current Tab (_self)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBtn2Target("_blank")}
+                        className={`p-3 rounded-xl border text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                          btn2Target === "_blank"
+                            ? 'bg-neon-blue text-white border-neon-blue shadow-lg shadow-neon-blue/20'
+                            : (isLightMode ? 'bg-black/[0.03] border-black/10 text-black/60 hover:bg-black/5' : 'bg-dark-bg/60 border-white/10 text-white/60 hover:bg-white/10')
+                        }`}
+                      >
+                        New Tab (_blank)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           <button type="submit" className="w-full bg-neon-purple text-white font-black py-5 rounded-[1.25rem] hover:bg-neon-blue transition-all uppercase tracking-[0.2em] text-xs shadow-xl shadow-neon-purple/20">Initialise Pop-up</button>
@@ -292,7 +414,7 @@ export function AdminPopup() {
               isLightMode ? 'bg-white border-black/10 shadow-sm' : 'bg-white/5 border-white/10'
             }`}>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-2.5 flex-wrap">
+                <div className="flex items-center gap-2.5 mb-2.5 flex-wrap">
                   <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
                     p.type === 'permanent' 
                       ? (isLightMode ? 'bg-neon-purple/10 text-neon-purple' : 'bg-neon-purple/20 text-neon-purple') 
@@ -300,11 +422,20 @@ export function AdminPopup() {
                   }`}>
                     {p.type}
                   </span>
-                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
-                    isLightMode ? 'bg-black/5 border-black/10 text-black/70' : 'bg-white/5 border-white/10 text-white/70'
-                  }`}>
-                    {p.btn_target === '_self' ? 'Current Tab' : 'New Tab'}
-                  </span>
+                  {p.btn_text && (
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold tracking-tight border ${
+                      isLightMode ? 'bg-black/5 border-black/10 text-black/70' : 'bg-white/5 border-white/10 text-white/70'
+                    }`}>
+                      Btn 1: {p.btn_text} ({p.btn_target === '_self' ? '_self' : '_blank'})
+                    </span>
+                  )}
+                  {p.btn2_text && (
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold tracking-tight border border-neon-blue/30 ${
+                      isLightMode ? 'bg-neon-blue/10 text-neon-blue' : 'bg-neon-blue/20 text-neon-blue'
+                    }`}>
+                      Btn 2: {p.btn2_text} ({p.btn2_target === '_self' ? '_self' : '_blank'})
+                    </span>
+                  )}
                   {p.type === 'permanent' && (
                     <span className={`text-[9px] uppercase font-black tracking-widest flex items-center gap-1.5 ${p.is_active ? 'text-green-500' : (isLightMode ? 'text-black/20' : 'text-white/20')}`}>
                       <div className={`w-1.5 h-1.5 rounded-full ${p.is_active ? 'bg-green-500 animate-pulse' : 'bg-current'}`} />
