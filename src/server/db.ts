@@ -536,6 +536,9 @@ export function initDb() {
       btn_text TEXT,
       btn_link TEXT,
       btn_target TEXT DEFAULT '_blank',
+      btn2_text TEXT,
+      btn2_link TEXT,
+      btn2_target TEXT DEFAULT '_blank',
       type TEXT,
       is_active INTEGER DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -556,6 +559,14 @@ export function initDb() {
   runMigration('popup_delay_init', "INSERT OR IGNORE INTO settings (key, value) VALUES ('popup_delay', '10000');");
   runMigration('popups_delay_column', "ALTER TABLE popups ADD COLUMN delay_ms INTEGER DEFAULT 10000;");
   runMigration('popups_btn_target_column', "ALTER TABLE popups ADD COLUMN btn_target TEXT DEFAULT '_blank';");
+  runMigration('popups_btn2_columns', `
+    ALTER TABLE popups ADD COLUMN btn2_text TEXT;
+    ALTER TABLE popups ADD COLUMN btn2_link TEXT;
+    ALTER TABLE popups ADD COLUMN btn2_target TEXT DEFAULT '_blank';
+  `);
+  try { db.exec("ALTER TABLE popups ADD COLUMN btn2_text TEXT;"); } catch (e) {}
+  try { db.exec("ALTER TABLE popups ADD COLUMN btn2_link TEXT;"); } catch (e) {}
+  try { db.exec("ALTER TABLE popups ADD COLUMN btn2_target TEXT DEFAULT '_blank';"); } catch (e) {}
   runMigration('studio_profile_name', "INSERT OR IGNORE INTO settings (key, value) VALUES ('studio_name', 'DejavuFM Studio');");
   runMigration('studio_profile_image', "INSERT OR IGNORE INTO settings (key, value) VALUES ('studio_image', '/icon.svg');");
   runMigration('analytics_events_value_column', "ALTER TABLE analytics_events ADD COLUMN value REAL;");

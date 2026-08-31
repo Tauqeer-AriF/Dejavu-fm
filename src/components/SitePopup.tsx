@@ -116,6 +116,10 @@ export function SitePopup() {
   const btnLink = popup?.btn_link || popup?.btnLink;
   const btnTarget = (popup?.btn_target || popup?.btnTarget) === '_self' ? '_self' : '_blank';
 
+  const btn2Text = popup?.btn2_text || popup?.btn2Text;
+  const btn2Link = popup?.btn2_link || popup?.btn2Link;
+  const btn2Target = (popup?.btn2_target || popup?.btn2Target) === '_self' ? '_self' : '_blank';
+
   return (
     <AnimatePresence>
       {visible && popup && (
@@ -128,21 +132,38 @@ export function SitePopup() {
             <div className="relative z-10 space-y-6">
               {popup.heading && <h3 className="text-3xl md:text-4xl font-display font-black uppercase tracking-tighter text-white">{popup.heading}</h3>}
               {popup.text && <p className="text-white/60 text-lg leading-relaxed font-light">{popup.text}</p>}
-              {btnText && (
-                <div className="pt-4">
-                  <a
-                    href={btnLink || "#"}
-                    target={btnTarget}
-                    rel={btnTarget === "_blank" ? "noopener noreferrer" : undefined}
-                    onClick={() => {
-                      if (btnTarget === '_self') {
-                        handleClose();
-                      }
-                    }}
-                    className="inline-flex items-center justify-center px-10 py-4 bg-neon-purple text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-neon-blue transition-all shadow-lg shadow-neon-purple/20"
-                  >
-                    {btnText}
-                  </a>
+              {(btnText || btn2Text) && (
+                <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
+                  {btnText && (
+                    <a
+                      href={btnLink || "#"}
+                      target={btnTarget}
+                      rel={btnTarget === "_blank" ? "noopener noreferrer" : undefined}
+                      onClick={() => {
+                        if (btnTarget === '_self') {
+                          handleClose();
+                        }
+                      }}
+                      className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 bg-neon-purple text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-neon-blue transition-all shadow-lg shadow-neon-purple/20"
+                    >
+                      {btnText}
+                    </a>
+                  )}
+                  {btn2Text && (
+                    <a
+                      href={btn2Link || "#"}
+                      target={btn2Target}
+                      rel={btn2Target === "_blank" ? "noopener noreferrer" : undefined}
+                      onClick={() => {
+                        if (btn2Target === '_self') {
+                          handleClose();
+                        }
+                      }}
+                      className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 bg-white/10 text-white hover:bg-white/20 border border-white/20 rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-lg backdrop-blur-sm"
+                    >
+                      {btn2Text}
+                    </a>
+                  )}
                 </div>
               )}
             </div>

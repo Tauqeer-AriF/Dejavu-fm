@@ -2858,11 +2858,12 @@ apiRouter.get("/admin/popups", (req, res) => {
 });
 
 apiRouter.post("/admin/popups", (req, res) => {
-  const { heading, text, btn_text, btn_link, btn_target, type, is_active } = req.body;
+  const { heading, text, btn_text, btn_link, btn_target, btn2_text, btn2_link, btn2_target, type, is_active } = req.body;
   const target = btn_target === '_self' ? '_self' : '_blank';
+  const target2 = btn2_target === '_self' ? '_self' : '_blank';
   const id = crypto.randomUUID();
-  db.prepare("INSERT INTO popups (id, heading, text, btn_text, btn_link, btn_target, type, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-    .run(id, heading, text, btn_text, btn_link, target, type, is_active ? 1 : 0);
+  db.prepare("INSERT INTO popups (id, heading, text, btn_text, btn_link, btn_target, btn2_text, btn2_link, btn2_target, type, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .run(id, heading, text, btn_text || null, btn_link || null, target, btn2_text || null, btn2_link || null, target2, type, is_active ? 1 : 0);
   logAction(req, 'CREATE', 'popup', id, { heading });
   res.json({ success: true, id });
 });
@@ -2874,11 +2875,21 @@ apiRouter.delete("/admin/popups/:id", (req, res) => {
 });
 
 apiRouter.post("/admin/push-popup", authMiddleware, authorizeRole('admin'), (req, res) => {
-  const { heading, text, btnText, btnLink, btnTarget } = req.body;
+  const { heading, text, btnText, btnLink, btnTarget, btn2Text, btn2Link, btn2Target } = req.body;
   const target = (btnTarget || req.body.btn_target) === '_self' ? '_self' : '_blank';
+  const target2 = (btn2Target || req.body.btn2_target) === '_self' ? '_self' : '_blank';
   const io = req.app.get('io');
   if (io) {
-    io.emit('show_popup', { heading, text, btnText, btnLink, btnTarget: target });
+    io.emit('show_popup', { 
+      heading, 
+      text, 
+      btnText, 
+      btnLink, 
+      btnTarget: target,
+      btn2Text: btn2Text || req.body.btn2_text,
+      btn2Link: btn2Link || req.body.btn2_link,
+      btn2Target: target2
+    });
   }
   logAction(req, 'PUSH_POPUP', 'popup', null, { heading });
   res.json({ success: true });
