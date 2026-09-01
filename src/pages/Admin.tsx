@@ -773,11 +773,18 @@ export default function Admin() {
   };
 
   const handleLogout = () => {
-    fetchAdmin("/api/admin/logout", { method: "POST" }).then(() => {
+    // Log out from both dashboard and chatroom backend
+    Promise.all([
+      fetchAdmin("/api/admin/logout", { method: "POST" }).catch(() => {}),
+      fetch("/api/public/auth/logout", { method: "POST" }).catch(() => {})
+    ]).finally(() => {
       localStorage.removeItem("admin_token");
+      localStorage.removeItem("chat_user_token");
+      localStorage.removeItem("dejavu_blocked_users");
+      window.dispatchEvent(new CustomEvent('chat_auth_sync', { detail: null }));
       setIsLogged(false);
       setUserRole(null);
-      navigate("/admin");
+      navigate(adminBasePath);
     });
   };
 
