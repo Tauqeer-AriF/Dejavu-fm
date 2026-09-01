@@ -30,6 +30,7 @@ import { NewJobModal } from "./ai-studio/NewJobModal";
 import { SettingsAndPresetsModal } from "./ai-studio/SettingsAndPresetsModal";
 import { AIStudioThemeProvider, useAIStudioTheme } from "./ai-studio/themeContext";
 import { io } from "socket.io-client";
+import { useLogo } from "../../hooks/useLogo";
 
 interface Props {
   onLogout?: () => void;
@@ -38,6 +39,11 @@ interface Props {
 const AdminAIContentStudioInner: React.FC<Props> = ({ onLogout }) => {
   const navigate = useNavigate();
   const { isLight, toggleTheme } = useAIStudioTheme();
+  const { settings } = useLogo();
+  const adminPathSetting = (settings?.admin_custom_path || '/admin').trim().replace(/\/+$/, '') || '/admin';
+  const ownerPathSetting = (settings?.owner_custom_path || '/owner').trim().replace(/\/+$/, '') || '/owner';
+  const adminBasePath = typeof window !== 'undefined' && window.location.pathname.startsWith(ownerPathSetting) ? ownerPathSetting : adminPathSetting;
+
   const [activeTab, setActiveTab] = useState<"reels" | "jobs" | "audit">("reels");
   const [stats, setStats] = useState<AIStats>({
     totalJobs: 0,
@@ -132,18 +138,6 @@ const AdminAIContentStudioInner: React.FC<Props> = ({ onLogout }) => {
           : "bg-black/40 border-white/10 text-white"
       }`}>
         <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-          <Link
-            to="/admin"
-            className={`p-1.5 sm:p-2 rounded-xl border transition flex items-center gap-1.5 text-xs font-bold shrink-0 ${
-              isLight
-                ? "bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border-slate-200"
-                : "bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border-white/10"
-            }`}
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Back to Dashboard</span>
-          </Link>
-
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-neon-purple flex items-center justify-center shadow-lg shadow-neon-purple/30 shrink-0">
               <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
@@ -165,6 +159,18 @@ const AdminAIContentStudioInner: React.FC<Props> = ({ onLogout }) => {
 
         {/* Action Controls */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+          <Link
+            to={adminBasePath}
+            className={`p-1.5 sm:p-2 rounded-xl border transition flex items-center gap-1.5 text-xs font-bold shrink-0 ${
+              isLight
+                ? "bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border-slate-200"
+                : "bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border-white/10"
+            }`}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Back to Dashboard</span>
+          </Link>
+
           {/* Light / Dark Mode Toggle */}
           <button
             type="button"

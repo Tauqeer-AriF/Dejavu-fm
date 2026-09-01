@@ -111,7 +111,9 @@ export default function Admin() {
   const location = useLocation();
 
   const { settings } = useLogo();
-  const adminBasePath = (settings?.admin_custom_path || '/admin').trim().replace(/\/+$/, '') || '/admin';
+  const adminPathSetting = (settings?.admin_custom_path || '/admin').trim().replace(/\/+$/, '') || '/admin';
+  const ownerPathSetting = (settings?.owner_custom_path || '/owner').trim().replace(/\/+$/, '') || '/owner';
+  const adminBasePath = location.pathname.startsWith(ownerPathSetting) ? ownerPathSetting : adminPathSetting;
 
   const isOwner = userRole === 'owner';
   const isAdmin = userRole === 'admin' || isOwner;

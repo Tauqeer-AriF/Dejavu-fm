@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { fetchAdmin } from "./adminApi";
-import { ShieldAlert, Power, Radio, RefreshCw, AlertOctagon, Mail, Lock, CheckCircle, Eye, EyeOff, Sliders, Ghost, Shield, KeyRound, User } from "lucide-react";
+import { ShieldAlert, Power, Radio, RefreshCw, AlertOctagon, Mail, Lock, CheckCircle, Eye, EyeOff, Sliders, Ghost, Shield, KeyRound, User, Link } from "lucide-react";
 import { useLogo, getCachedSettings, setCachedSettings } from "../../hooks/useLogo";
 import { safeFetchJson } from "../../utils/safeFetch";
 import { motion } from "motion/react";
@@ -21,6 +21,12 @@ export default function AdminOwnerControl() {
   const [loading, setLoading] = useState<boolean>(true);
   const [updating, setUpdating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Dashboard Path Settings State
+  const [ownerCustomPath, setOwnerCustomPath] = useState<string>("/owner");
+  const [pathUpdating, setPathUpdating] = useState<boolean>(false);
+  const [pathSuccess, setPathSuccess] = useState<string | null>(null);
+  const [pathError, setPathError] = useState<string | null>(null);
 
   // Credentials State
   const [username, setUsername] = useState<string>("");
@@ -70,6 +76,10 @@ export default function AdminOwnerControl() {
         initialHidden[item.id] = serverSettings[`owner_hide_${item.id}`] === '1';
       });
       setHiddenFeatures(initialHidden);
+      
+      if (serverSettings.owner_custom_path) {
+        setOwnerCustomPath(serverSettings.owner_custom_path);
+      }
     }
   }, [serverSettings]);
 
@@ -275,6 +285,69 @@ export default function AdminOwnerControl() {
       setCredError("An unexpected error occurred while saving your credentials.");
     } finally {
       setCredUpdating(false);
+    }
+  };
+
+  const handleUpdateDashboardPath = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPathError(null);
+    setPathSuccess(null);
+
+    let formattedPath = ownerCustomPath.trim();
+    if (!formattedPath) {
+      formattedPath = "/owner";
+    }
+    if (!formattedPath.startsWith('/')) {
+      formattedPath = '/' + formattedPath;
+    }
+    // Remove trailing slash if length > 1
+    if (formattedPath.length > 1 && formattedPath.endsWith('/')) {
+      formattedPath = formattedPath.slice(0, -1);
+    }
+
+    // Basic validation
+    if (formattedPath === "/") {
+      setPathError("Dashboard path cannot be the root '/' URL as it is reserved for the public home page.");
+      return;
+    }
+
+    // Regexp check: must be a valid path (alphanumeric, dashes, underscores, slashes)
+    const validPathRegex = /^\/[a-zA-Z0-9\-_/]+$/;
+    if (!validPathRegex.test(formattedPath)) {
+      setPathError("Path must only contain letters, numbers, dashes, underscores, and slashes.");
+      return;
+    }
+
+    try {
+      setPathUpdating(true);
+      const res = await fetchAdmin("/api/admin/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          owner_custom_path: formattedPath
+        })
+      });
+
+      if (res.ok) {
+        setOwnerCustomPath(formattedPath);
+        setPathSuccess(`Dashboard Access URL has been successfully updated to ${formattedPath}!`);
+        toast.success(`Dashboard Access URL updated to ${formattedPath}`);
+        
+        // Sync cache and react-query
+        const updated = { ...(serverSettings || {}), owner_custom_path: formattedPath };
+        setCachedSettings(updated);
+        queryClient.setQueryData(['settings'], updated);
+        await queryClient.invalidateQueries({ queryKey: ['settings'] });
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setPathError(data.error || "Failed to update Dashboard Access URL.");
+        toast.error("Failed to update Dashboard Access URL.");
+      }
+    } catch (err) {
+      setPathError("An unexpected error occurred while saving the dashboard URL.");
+      toast.error("Failed to update Dashboard Access URL.");
+    } finally {
+      setPathUpdating(false);
     }
   };
 
@@ -512,6 +585,97 @@ export default function AdminOwnerControl() {
               >
                 {credUpdating && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
                 <span>Save Owner Profile</span>
+              </motion.button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      {/* Custom Dashboard Access URL Setup Card */}
+      <div className={`rounded-3xl p-6 sm:p-10 border transition-all duration-300 relative overflow-hidden shadow-xl ${
+        isLightMode
+          ? 'bg-white/80 backdrop-blur-xl border-slate-200/90 text-slate-800'
+          : 'bg-[#0f1115]/80 backdrop-blur-xl border-white/10 text-white'
+      }`}>
+        <div className="space-y-6 max-w-xl">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <Link className="w-5 h-5 text-neon-purple shrink-0" />
+              <h3 className="text-lg font-black uppercase tracking-tight">Dashboard Access URL</h3>
+            </div>
+            <p className={`text-xs mt-1.5 leading-relaxed ${isLightMode ? 'text-slate-500' : 'text-slate-400'}`}>
+              Establish a custom, obfuscated relative path to access the DejavuFM Owner & Administrator Dashboard. This acts as an additional security layer, preventing unauthorized actors from discovering the login gateway.
+            </p>
+          </div>
+
+          {pathSuccess && (
+            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center gap-3 text-xs font-semibold animate-fadeIn">
+              <CheckCircle className="w-5 h-5 shrink-0" />
+              <span>{pathSuccess}</span>
+            </div>
+          )}
+
+          {pathError && (
+            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center gap-3 text-xs font-semibold animate-fadeIn">
+              <AlertOctagon className="w-5 h-5 shrink-0" />
+              <span>{pathError}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleUpdateDashboardPath} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className={`block text-[10px] uppercase font-black tracking-widest ${isLightMode ? 'text-black/50' : 'text-white/30'}`}>
+                Dashboard Custom Relative Path
+              </label>
+              
+              <div className="flex flex-col sm:flex-row items-stretch gap-2">
+                <div className={`flex items-center px-4 rounded-xl text-xs font-mono select-none border whitespace-nowrap ${
+                  isLightMode 
+                    ? 'bg-black/[0.03] border-black/10 text-black/50' 
+                    : 'bg-white/5 border-white/10 text-white/40'
+                }`}>
+                  {typeof window !== 'undefined' ? window.location.origin : 'https://dejavufm.com'}
+                </div>
+                
+                <div className="relative flex-1">
+                  <span className={`absolute left-4 top-1/2 -translate-y-1/2 text-sm font-mono font-bold select-none ${
+                    isLightMode ? 'text-black/40' : 'text-white/30'
+                  }`}>
+                    /
+                  </span>
+                  <input
+                    type="text"
+                    required
+                    value={ownerCustomPath.replace(/^\//, '')}
+                    onChange={(e) => setOwnerCustomPath('/' + e.target.value.trim().replace(/^\//, ''))}
+                    className={`w-full text-sm border rounded-xl pl-8 pr-4 py-3.5 focus:border-neon-purple focus:outline-none transition-all font-mono ${
+                      isLightMode ? 'bg-black/5 border-black/15 text-slate-900' : 'bg-black/40 border-white/10 text-white'
+                    }`}
+                    placeholder="owner"
+                  />
+                </div>
+              </div>
+              
+              <div className={`text-[10px] space-y-1 leading-relaxed ${isLightMode ? 'text-slate-400' : 'text-white/30'}`}>
+                <p>
+                  • Must start with a slash and contain only letters, numbers, dashes, or underscores.
+                </p>
+                <p>
+                  • Default is <code className="px-1 py-0.5 rounded bg-black/5 dark:bg-white/5 font-mono">/owner</code>. This is separate from the Settings tab dashboard path, enabling both URLs to host the dashboard simultaneously.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                type="submit"
+                disabled={pathUpdating}
+                className="px-6 py-3 rounded-xl bg-neon-purple text-white font-black text-xs uppercase tracking-widest hover:bg-neon-purple/90 hover:shadow-lg hover:shadow-neon-purple/20 transition-all cursor-pointer disabled:opacity-50 select-none flex items-center gap-2"
+              >
+                {pathUpdating && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                <span>Save Access URL</span>
               </motion.button>
             </div>
           </form>

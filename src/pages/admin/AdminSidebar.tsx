@@ -30,7 +30,9 @@ export function AdminSidebar({ onLogout, isAdminUser, userRole }: { onLogout: ()
     queryFn: () => safeFetchJson('/api/public/settings'),
   });
 
-  const adminBasePath = (features.admin_custom_path || '/admin').trim().replace(/\/+$/, '') || '/admin';
+  const adminPathSetting = (features.admin_custom_path || '/admin').trim().replace(/\/+$/, '') || '/admin';
+  const ownerPathSetting = (features.owner_custom_path || '/owner').trim().replace(/\/+$/, '') || '/owner';
+  const adminBasePath = location.pathname.startsWith(ownerPathSetting) ? ownerPathSetting : adminPathSetting;
 
   const isOwner = userRole === "owner";
 

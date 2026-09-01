@@ -830,6 +830,12 @@ export function AdminBranding() {
 export function AdminSettings() {
   const { isLightMode } = useLogo();
   const queryClient = useQueryClient();
+  const { data: serverSettings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: () => safeFetchJson('/api/public/settings'),
+    initialData: getCachedSettings,
+  });
+
   const [stream, setStream] = useState("");
   const [streamLow, setStreamLow] = useState("");
   const [streamMedium, setStreamMedium] = useState("");
@@ -847,26 +853,26 @@ export function AdminSettings() {
   const { showAlert, showConfirm } = useModal();
 
   useEffect(() => {
-    fetch("/api/public/settings").then(r=>r.json()).then(d => {
-      setStream(d.stream_url || "");
-      setStreamLow(d.stream_url_low || "");
-      setStreamMedium(d.stream_url_medium || "");
-      setStreamHigh(d.stream_url_high || "");
-      setRss(d.rss_feed_url || "");
-      setStudioVideoUrl(d.studio_video_url || "");
-      setIsOnAir(d.is_on_air === '1');
-      const isMaint = d.maintenance_mode === '1';
+    if (serverSettings) {
+      setStream(serverSettings.stream_url || "");
+      setStreamLow(serverSettings.stream_url_low || "");
+      setStreamMedium(serverSettings.stream_url_medium || "");
+      setStreamHigh(serverSettings.stream_url_high || "");
+      setRss(serverSettings.rss_feed_url || "");
+      setStudioVideoUrl(serverSettings.studio_video_url || "");
+      setIsOnAir(serverSettings.is_on_air === '1');
+      const isMaint = serverSettings.maintenance_mode === '1';
       setMaintenanceMode(isMaint);
       if (isMaint) setIsMaintenanceExpanded(true);
-      setMaintenanceTitle(d.maintenance_title || "TEMPORARY CLOSED FOR MAINTENANCE");
-      setMaintenanceText(d.maintenance_text || "Our sound engineers are performing essential system updates. We will be back on-air shortly with upgraded streams, podcasts, and archives.");
-      setMaintenanceEndTime(d.maintenance_end_time || "");
-      setMaintenanceShowPlayer(d.maintenance_show_player === '1');
-      if (d.admin_custom_path) {
-        setAdminCustomPath(d.admin_custom_path);
+      setMaintenanceTitle(serverSettings.maintenance_title || "TEMPORARY CLOSED FOR MAINTENANCE");
+      setMaintenanceText(serverSettings.maintenance_text || "Our sound engineers are performing essential system updates. We will be back on-air shortly with upgraded streams, podcasts, and archives.");
+      setMaintenanceEndTime(serverSettings.maintenance_end_time || "");
+      setMaintenanceShowPlayer(serverSettings.maintenance_show_player === '1');
+      if (serverSettings.admin_custom_path) {
+        setAdminCustomPath(serverSettings.admin_custom_path);
       }
-    });
-  }, []);
+    }
+  }, [serverSettings]);
 
   const [isSavingMaintenance, setIsSavingMaintenance] = useState(false);
   const [isSavingGeneral, setIsSavingGeneral] = useState(false);
