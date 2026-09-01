@@ -121,7 +121,10 @@ export function useLogo() {
   }, [settings]);
 
   const customAdminPath = (settings?.admin_custom_path || '/admin').trim().replace(/\/+$/, '') || '/admin';
-  const checkAdmin = (p: string) => p.startsWith(customAdminPath);
+  const customOwnerPath = (settings?.owner_custom_path || '/owner').trim().replace(/\/+$/, '') || '/owner';
+  const checkAdmin = useCallback((p: string) => {
+    return p.startsWith(customAdminPath) || p.startsWith(customOwnerPath);
+  }, [customAdminPath, customOwnerPath]);
 
   const getThemeState = useCallback((p: string) => {
     if (typeof window === 'undefined') return false;
@@ -130,7 +133,7 @@ export function useLogo() {
       return document.documentElement.classList.contains('admin-light-mode');
     }
     return localStorage.getItem('theme') === 'light' || document.documentElement.classList.contains('light');
-  }, [customAdminPath]);
+  }, [checkAdmin]);
 
   const [isLightMode, setIsLightMode] = useState(() => getThemeState(pathname));
 
