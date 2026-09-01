@@ -1,10 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { useLocation } from "react-router-dom";
 import { getCachedSettings } from "../hooks/useLogo";
 import { safeFetchJson } from "../utils/safeFetch";
 
 export function SitePopup() {
+  const location = useLocation();
+  const pathname = location.pathname;
+
+  const cachedSettings = getCachedSettings();
+  const adminCustomPath = (cachedSettings?.admin_custom_path || '/admin').trim().replace(/\/+$/, '') || '/admin';
+  const ownerCustomPath = (cachedSettings?.owner_custom_path || '/owner').trim().replace(/\/+$/, '') || '/owner';
+
+  const isDashboard = pathname.startsWith(adminCustomPath) || pathname.startsWith(ownerCustomPath);
+
   const [popups, setPopups] = useState<any[]>(() => {
     if (typeof window === 'undefined') return [];
     try {
@@ -120,20 +130,51 @@ export function SitePopup() {
   const btn2Link = popup?.btn2_link || popup?.btn2Link;
   const btn2Target = (popup?.btn2_target || popup?.btn2Target) === '_self' ? '_self' : '_blank';
 
+  if (isDashboard) {
+    return null;
+  }
+
   return (
     <AnimatePresence>
       {visible && popup && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-          <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="relative w-full max-w-lg bg-dark-bg border border-white/10 rounded-[2.5rem] p-8 md:p-12 shadow-2xl overflow-hidden text-center">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={handleClose}
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md cursor-pointer"
+        >
+          <motion.div
+            initial={{ scale: 0.9, y: 20 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.9, y: 20 }}
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-lg bg-dark-bg border border-white/10 rounded-[1.75rem] sm:rounded-[2.25rem] md:rounded-[2.5rem] p-6 sm:p-8 md:p-12 shadow-2xl overflow-hidden text-center cursor-default"
+          >
             <div className="absolute top-0 right-0 w-64 h-64 bg-neon-purple/10 blur-[100px] pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
-            <button onClick={handleClose} className="absolute top-8 right-8 text-white/40 hover:text-white transition-colors">
-              <X className="w-6 h-6" />
+            
+            {/* Highly visible circular close button meeting the 44px mobile touch target guideline */}
+            <button
+              onClick={handleClose}
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20 w-11 h-11 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 text-white/80 hover:text-white transition-all border border-white/10 focus:outline-none shadow-md backdrop-blur-sm"
+              aria-label="Close Pop-up"
+            >
+              <X className="w-5 h-5" />
             </button>
-            <div className="relative z-10 space-y-6">
-              {popup.heading && <h3 className="text-3xl md:text-4xl font-display font-black uppercase tracking-tighter text-white">{popup.heading}</h3>}
-              {popup.text && <p className="text-white/60 text-lg leading-relaxed font-light">{popup.text}</p>}
+
+            <div className="relative z-10 space-y-5 sm:space-y-6 pt-4 sm:pt-0">
+              {popup.heading && (
+                <h3 className="text-2xl sm:text-3xl md:text-4xl font-display font-black uppercase tracking-tighter text-white px-8 sm:px-12 md:px-0">
+                  {popup.heading}
+                </h3>
+              )}
+              {popup.text && (
+                <p className="text-white/60 text-sm sm:text-base md:text-lg leading-relaxed font-light">
+                  {popup.text}
+                </p>
+              )}
               {(btnText || btn2Text) && (
-                <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
+                <div className="pt-3 sm:pt-4 flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
                   {btnText && (
                     <a
                       href={btnLink || "#"}
