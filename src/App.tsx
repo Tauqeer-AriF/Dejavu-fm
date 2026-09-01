@@ -250,7 +250,8 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
   const { logoUrl, logoShape, isLightMode, settings } = useLogo();
 
   const adminPath = (settings?.admin_custom_path || '/admin').trim().replace(/\/+$/, '') || '/admin';
-  const isAdmin = location.pathname.startsWith('/admin') || (adminPath !== '/admin' && location.pathname.startsWith(adminPath));
+  const ownerPath = (settings?.owner_custom_path || '/owner').trim().replace(/\/+$/, '') || '/owner';
+  const isAdmin = location.pathname.startsWith(adminPath) || location.pathname.startsWith(ownerPath);
 
   const handleAdminClick = () => {
     // Senior Dev: If the user is already confirmed as staff or has passed the secret, go straight to admin
@@ -1101,9 +1102,9 @@ function MobileBottomBar({ featLiveTools, featBooth }: { featLiveTools: boolean;
   );
 }
 
-function AnimatedRoutes({ adminPath = '/admin' }: { adminPath?: string }) {
+function AnimatedRoutes({ adminPath = '/admin', ownerPath = '/owner' }: { adminPath?: string; ownerPath?: string }) {
   const location = useLocation();
-  const isAdmin = location.pathname.startsWith('/admin') || (adminPath !== '/admin' && location.pathname.startsWith(adminPath));
+  const isAdmin = location.pathname.startsWith(adminPath) || location.pathname.startsWith(ownerPath);
 
   const { data: settings } = useQuery({
     queryKey: ['settings'],
@@ -1145,15 +1146,15 @@ function AnimatedRoutes({ adminPath = '/admin' }: { adminPath?: string }) {
             <Route path="/arch421" element={<Arch421 />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/dejavufm-privacy-policy" element={<PrivacyPolicy />} />
-            <Route path="/admin/*" element={
+            <Route path={`${adminPath}/*`} element={
               <Suspense fallback={
                 <AppLoader size="lg" fullScreen />
               }>
                 <Admin />
               </Suspense>
             } />
-            {adminPath !== '/admin' && (
-              <Route path={`${adminPath}/*`} element={
+            {ownerPath !== adminPath && (
+              <Route path={`${ownerPath}/*`} element={
                 <Suspense fallback={
                   <AppLoader size="lg" fullScreen />
                 }>
@@ -1518,7 +1519,8 @@ function MainLayout() {
   }, [settings?.system_cache_version]);
 
   const adminPath = (settings?.admin_custom_path || '/admin').trim().replace(/\/+$/, '') || '/admin';
-  const isAdmin = location.pathname.startsWith('/admin') || (adminPath !== '/admin' && location.pathname.startsWith(adminPath));
+  const ownerPath = (settings?.owner_custom_path || '/owner').trim().replace(/\/+$/, '') || '/owner';
+  const isAdmin = location.pathname.startsWith(adminPath) || location.pathname.startsWith(ownerPath);
 
   const [isSplitActive, setIsSplitActive] = useState(false);
 
@@ -1747,7 +1749,7 @@ function MainLayout() {
       <main className={`front-main-container ${location.pathname.includes('/studio') || isSplitActive ? "flex-1 w-full relative" : "flex-1 w-full max-w-7xl mx-auto py-4 md:py-8 px-0 relative"}`}>
         {!isAdmin && !isSplitActive && <AdvertisementSliders position="top" />}
         <ErrorBoundary key={isAdmin ? 'admin' : location.pathname}>
-          <AnimatedRoutes adminPath={adminPath} />
+          <AnimatedRoutes adminPath={adminPath} ownerPath={ownerPath} />
         </ErrorBoundary>
         {!isAdmin && !isSplitActive && <FeaturesSlider />}
         {!isAdmin && !isSplitActive && <AdvertisementSliders position="bottom" />}
