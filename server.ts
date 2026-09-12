@@ -338,16 +338,27 @@ async function startServer() {
     let description = "Direct from the heart of the capital. Since 2005, dejavufm has been the heartbeat of the underground.";
     let image = "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=1200";
 
-    // Load admin SEO settings from database if available
+    // Load admin SEO and branding settings from database if available
     let customHeaderInject = "";
     let customCss = "";
     let appName = "dejavufm";
+    let fontSans = "Inter";
+    let fontDisplay = "Outfit";
+    let primaryColor = "#b026ff";
+    let secondaryColor = "#00d2ff";
+    let defaultTheme = "dark";
     try {
-      const settingsRows = db.prepare("SELECT key, value FROM settings WHERE key IN ('seo_title','seo_description','seo_image','app_title','app_name','favicon','custom_header_inject','custom_css','admin_custom_path')").all() as { key: string; value: string }[];
+      const settingsRows = db.prepare("SELECT key, value FROM settings WHERE key IN ('seo_title','seo_description','seo_image','app_title','app_name','app_tagline','favicon','custom_header_inject','custom_css','admin_custom_path','font_sans','font_display','primary_color','secondary_color','default_theme')").all() as { key: string; value: string }[];
       const settingsData = settingsRows.reduce<Record<string, string>>((acc, row) => {
         acc[row.key] = row.value;
         return acc;
       }, {});
+
+      if (settingsData.font_sans) fontSans = settingsData.font_sans;
+      if (settingsData.font_display) fontDisplay = settingsData.font_display;
+      if (settingsData.primary_color) primaryColor = settingsData.primary_color;
+      if (settingsData.secondary_color) secondaryColor = settingsData.secondary_color;
+      if (settingsData.default_theme) defaultTheme = settingsData.default_theme;
 
       if (settingsData.app_name) {
         appName = settingsData.app_name;
@@ -598,6 +609,34 @@ async function startServer() {
       schemaMarkup = `\n<script type="application/ld+json">\n${JSON.stringify(schemaJson, null, 2)}\n</script>\n`;
     }
 
+    let displayFallback = ', sans-serif';
+    if (fontDisplay === 'Playfair Display') displayFallback = ', serif';
+    if (fontDisplay === 'JetBrains Mono') displayFallback = ', monospace';
+
+    const serverFontCss = `
+      <style id="server-branding-fonts">
+        :root {
+          --font-sans: "${fontSans}", ui-sans-serif, system-ui, sans-serif;
+          --font-display: "${fontDisplay}"${displayFallback};
+          --font-mono: "${fontSans}", ui-sans-serif, system-ui, sans-serif;
+          ${primaryColor ? `--color-neon-purple: ${primaryColor};` : ''}
+          ${secondaryColor ? `--color-neon-blue: ${secondaryColor};` : ''}
+        }
+      </style>
+      <script>
+        window.__INITIAL_SETTINGS__ = ${JSON.stringify({
+          font_sans: fontSans,
+          font_display: fontDisplay,
+          primary_color: primaryColor,
+          secondary_color: secondaryColor,
+          default_theme: defaultTheme,
+          app_name: appName,
+          app_title: title,
+          favicon: image
+        })};
+      </script>
+    `;
+
     const metaTags = `
       <title>${title}</title>
       <link rel="canonical" href="${currentUrl}" />
@@ -614,6 +653,7 @@ async function startServer() {
       <meta name="twitter:image" content="${image}" />
       <meta name="twitter:url" content="${currentUrl}" />
       ${schemaMarkup}
+      ${serverFontCss}
       ${customHeaderInject}
       ${customCss ? `<style id="custom-injected-css">${customCss}</style>` : ''}
     `;

@@ -18,6 +18,12 @@
     <link rel="apple-touch-icon" sizes="167x167" href="/pwa-192x192.png" />
     <meta name="msapplication-TileImage" content="/favicon.jpg" />
     <meta name="theme-color" id="theme-color-meta" content="#0a0a0f" />
+    <!-- Preconnect to Google Fonts CDN for instant typography fetching -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- High-priority typography stylesheet covering all available app & branding fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Comic+Neue:wght@400;700&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Lexend:wght@300;400;500;600;700&family=Oswald:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&display=swap" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/db.opendyslexic@1.0.1/css/opendyslexic.css" />
     <!-- Preconnect to video streaming CDNs for instant player initialization -->
     <link rel="preconnect" href="https://player.twitch.tv" crossorigin />
     <link rel="preconnect" href="https://static.twitchcdn.net" crossorigin />
@@ -28,13 +34,21 @@
     <link rel="dns-prefetch" href="https://static.twitchcdn.net" />
     <script>
       (function() {
-        let cachedSettings = null;
-        try {
-          const raw = localStorage.getItem('dejavufm_cached_public_settings');
-          if (raw) {
-            cachedSettings = JSON.parse(raw);
-          }
-        } catch (e) {}
+        let cachedSettings = (typeof window !== 'undefined' && window.__INITIAL_SETTINGS__) ? window.__INITIAL_SETTINGS__ : null;
+        if (!cachedSettings) {
+          try {
+            const raw = localStorage.getItem('dejavufm_cached_public_settings');
+            if (raw) {
+              cachedSettings = JSON.parse(raw);
+            }
+          } catch (e) {}
+        } else {
+          try {
+            const existingRaw = localStorage.getItem('dejavufm_cached_public_settings');
+            const existing = existingRaw ? JSON.parse(existingRaw) : {};
+            localStorage.setItem('dejavufm_cached_public_settings', JSON.stringify({ ...existing, ...cachedSettings }));
+          } catch (e) {}
+        }
 
         const savedTheme = localStorage.getItem('theme');
         const defaultThemeFallback = (cachedSettings && cachedSettings.default_theme) || localStorage.getItem('default_theme_fallback');
@@ -45,6 +59,36 @@
           document.documentElement.style.backgroundColor = '#f8f9fa';
         } else {
           document.documentElement.style.backgroundColor = '#0a0a0f';
+        }
+
+        // Accessibility dyslexic font check
+        try {
+          if (localStorage.getItem('accessibility_dyslexic') === 'true') {
+            document.documentElement.classList.add('accessibility-dyslexic');
+          }
+        } catch (e) {}
+
+        // Instant Dynamic Typography Setup
+        const activeFontSans = (cachedSettings && cachedSettings.font_sans) || 'Inter';
+        const activeFontDisplay = (cachedSettings && cachedSettings.font_display) || 'Outfit';
+
+        const sansVal = '"' + activeFontSans + '", ui-sans-serif, system-ui, sans-serif';
+        document.documentElement.style.setProperty('--font-sans', sansVal);
+        document.documentElement.style.setProperty('--font-mono', sansVal);
+
+        let displayFallback = ', sans-serif';
+        if (activeFontDisplay === 'Playfair Display') displayFallback = ', serif';
+        if (activeFontDisplay === 'JetBrains Mono') displayFallback = ', monospace';
+        document.documentElement.style.setProperty('--font-display', '"' + activeFontDisplay + '"' + displayFallback);
+
+        // Preload active font glyphs in browser font engine
+        if (typeof document !== 'undefined' && document.fonts && document.fonts.load) {
+          try {
+            document.fonts.load('16px "' + activeFontSans + '"');
+            if (activeFontDisplay !== activeFontSans) {
+              document.fonts.load('16px "' + activeFontDisplay + '"');
+            }
+          } catch (e) {}
         }
 
         if (cachedSettings) {
@@ -58,19 +102,6 @@
           }
           if (cachedSettings.secondary_color) {
             document.documentElement.style.setProperty('--color-neon-blue', cachedSettings.secondary_color);
-          }
-
-          // 2. Dynamic Typography
-          if (cachedSettings.font_sans) {
-            const sansVal = '"' + cachedSettings.font_sans + '", ui-sans-serif, system-ui, sans-serif';
-            document.documentElement.style.setProperty('--font-sans', sansVal);
-            document.documentElement.style.setProperty('--font-mono', sansVal);
-          }
-          if (cachedSettings.font_display) {
-            let displayFallback = ', sans-serif';
-            if (cachedSettings.font_display === 'Playfair Display') displayFallback = ', serif';
-            if (cachedSettings.font_display === 'JetBrains Mono') displayFallback = ', monospace';
-            document.documentElement.style.setProperty('--font-display', '"' + cachedSettings.font_display + '"' + displayFallback);
           }
 
           // 3. Dynamic Favicon
@@ -135,17 +166,28 @@
     <div id="root"></div>
     <script>
       window.dismissSplash = function() {
-        const splash = document.getElementById('loading-splash');
-        if (splash && splash.style.display !== 'none') {
-          splash.style.opacity = '0';
-          splash.style.pointerEvents = 'none';
-          setTimeout(() => {
-            if (splash.parentNode) splash.parentNode.removeChild(splash);
-          }, 400);
+        const doDismiss = function() {
+          const splash = document.getElementById('loading-splash');
+          if (splash && splash.style.display !== 'none') {
+            splash.style.opacity = '0';
+            splash.style.pointerEvents = 'none';
+            setTimeout(() => {
+              if (splash.parentNode) splash.parentNode.removeChild(splash);
+            }, 350);
+          }
+        };
+
+        if (typeof document !== 'undefined' && document.fonts && document.fonts.ready) {
+          Promise.race([
+            document.fonts.ready,
+            new Promise(function(resolve) { setTimeout(resolve, 500); })
+          ]).then(doDismiss, doDismiss);
+        } else {
+          doDismiss();
         }
       };
       // Automatic safety timeout so splash never stays stuck
-      setTimeout(function() { if (window.dismissSplash) window.dismissSplash(); }, 1200);
+      setTimeout(function() { if (window.dismissSplash) window.dismissSplash(); }, 1500);
     </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
