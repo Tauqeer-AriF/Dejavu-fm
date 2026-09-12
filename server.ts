@@ -347,9 +347,10 @@ async function startServer() {
     let primaryColor = "#b026ff";
     let secondaryColor = "#00d2ff";
     let defaultTheme = "dark";
+    let settingsData: Record<string, string> = {};
     try {
-      const settingsRows = db.prepare("SELECT key, value FROM settings WHERE key IN ('seo_title','seo_description','seo_image','app_title','app_name','app_tagline','favicon','custom_header_inject','custom_css','admin_custom_path','font_sans','font_display','primary_color','secondary_color','default_theme')").all() as { key: string; value: string }[];
-      const settingsData = settingsRows.reduce<Record<string, string>>((acc, row) => {
+      const settingsRows = db.prepare("SELECT key, value FROM settings WHERE key NOT IN ('admin_secret', 'owner_secret')").all() as { key: string; value: string }[];
+      settingsData = settingsRows.reduce<Record<string, string>>((acc, row) => {
         acc[row.key] = row.value;
         return acc;
       }, {});
@@ -624,16 +625,7 @@ async function startServer() {
         }
       </style>
       <script>
-        window.__INITIAL_SETTINGS__ = ${JSON.stringify({
-          font_sans: fontSans,
-          font_display: fontDisplay,
-          primary_color: primaryColor,
-          secondary_color: secondaryColor,
-          default_theme: defaultTheme,
-          app_name: appName,
-          app_title: title,
-          favicon: image
-        })};
+        window.__INITIAL_SETTINGS__ = ${JSON.stringify(settingsData)};
       </script>
     `;
 
@@ -1832,6 +1824,30 @@ async function startServer() {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
+      plugins: [
+        {
+          name: 'inject-initial-settings-dev',
+          transformIndexHtml(rawHtml) {
+            try {
+              if (db.open) {
+                const rows = db.prepare("SELECT key, value FROM settings WHERE key NOT IN ('admin_secret', 'owner_secret')").all() as { key: string; value: string }[];
+                const sData = rows.reduce<Record<string, string>>((acc, r) => {
+                  acc[r.key] = r.value;
+                  return acc;
+                }, {});
+                const scriptInject = `<script>window.__INITIAL_SETTINGS__ = ${JSON.stringify(sData)};</script>`;
+                if (rawHtml.includes('</head>')) {
+                  return rawHtml.replace('</head>', `${scriptInject}</head>`);
+                }
+                return scriptInject + rawHtml;
+              }
+            } catch (e) {
+              console.warn('[ViteDev] Failed to inject initial settings:', e);
+            }
+            return rawHtml;
+          }
+        }
+      ]
     });
     app.use(vite.middlewares);
   } else {
