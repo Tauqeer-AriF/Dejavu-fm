@@ -102,7 +102,7 @@ const getSecureImageUrl = (url?: string) => {
 };
 
 export default function WatchLive() {
-  const { logoUrl, resolveDjImage, isLightMode, getPageTitle } = useLogo();
+  const { logoUrl, resolveDjImage, isLightMode, getPageTitle, settings } = useLogo();
   
   const rawTitle = getPageTitle('watch', 'Live Studio Cam');
   
@@ -118,18 +118,11 @@ export default function WatchLive() {
 
   const socketRef = useRef<Socket | null>(null);
 
-  // Use react-query for settings to keep it automatically in sync
-  const { data: settings } = useQuery({
-    queryKey: ['settings'],
-    queryFn: () => safeFetchJson('/api/public/settings'),
-    refetchInterval: 3000,
-  });
-
   const { onAirInfo, isPlaying, togglePlay, stopAudio } = useAudio();
 
   const studioVideoUrl = settings?.studio_video_url || studioVideoUrlState;
   const embedVideoUrl = useMemo(() => getEmbedUrl(studioVideoUrl), [studioVideoUrl]);
-  const featChat = settings?.feat_chat !== '0';
+  const featChat = settings?.feat_chat !== '0' && settings?.feat_chat !== false && settings?.feat_chat !== 'false';
 
   const [isSplitActive, setIsSplitActive] = useState(false);
   const [hasInitializedSplit, setHasInitializedSplit] = useState(false);

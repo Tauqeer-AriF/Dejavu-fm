@@ -181,19 +181,13 @@ export default function DJs() {
     }
   }, [searchParams]);
 
-  const { data: settings } = useQuery({
-    queryKey: ['settings'],
-    queryFn: () => safeFetchJson('/api/public/settings'),
-    refetchInterval: 3000,
-  });
-
   const { data: djs, isLoading } = useQuery<DJ[]>({
     queryKey: ['djs'],
     queryFn: () => safeFetchJson('/api/public/djs'),
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  const { logoUrl, isLightMode, resolveDjImage, getPageTitle } = useLogo();
+  const { logoUrl, isLightMode, resolveDjImage, getPageTitle, settings } = useLogo();
 
   const rawTitle = getPageTitle('djs', 'The Residents');
   const words = rawTitle.split(' ');
