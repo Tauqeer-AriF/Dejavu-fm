@@ -130,16 +130,11 @@ function Visualizer({ isPlaying, volume, isLightMode }: { isPlaying: boolean; vo
 }
 
 function QualitySelector() {
-  const { isLightMode } = useLogo();
-  const { data: settings } = useQuery({
-    queryKey: ['settings'],
-    queryFn: () => safeFetchJson('/api/public/settings'),
-  });
-
+  const { isLightMode, settings } = useLogo();
   const { quality, setQuality, qualityUrls } = useAudio();
   const [isOpen, setIsOpen] = useState(false);
 
-  if (settings?.feat_stream_quality === '0') return null;
+  if (settings?.feat_stream_quality === '0' || settings?.feat_stream_quality === false || settings?.feat_stream_quality === 'false') return null;
 
   const availableQualities = (Object.keys(qualityUrls) as AudioQuality[])
     .filter(k => !!qualityUrls[k]);
@@ -452,7 +447,7 @@ export function PlayerBar() {
                     />
                   </div>
                 </div>
-                {activeType === 'radio' && (
+                {activeType === 'radio' && settings?.feat_cinematic !== '0' && settings?.feat_cinematic !== false && settings?.feat_cinematic !== 'false' && (
                   <button 
                     onClick={() => toggleCinematic()}
                     className="front-player-visualizer-btn relative group transition-opacity hover:opacity-80 shrink-0"

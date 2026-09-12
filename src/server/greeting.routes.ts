@@ -96,6 +96,11 @@ export function getCurrentLiveShow(referenceDate: Date = new Date()): {
  */
 greetingRouter.get('/public/greeting', (req, res) => {
   try {
+    const featRow = db.prepare("SELECT value FROM settings WHERE key = 'feat_greeting'").get() as { value: string } | undefined;
+    if (featRow && (featRow.value === '0' || featRow.value === 'false')) {
+      return res.json({ disabled: true });
+    }
+
     const authUser = getAuthenticatedUser(req);
     const clientHour = req.query.hour ? parseInt(req.query.hour as string, 10) : undefined;
     const clientTz = (req.query.tz as string) || undefined;

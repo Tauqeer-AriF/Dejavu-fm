@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useAudio } from '../context/AudioContext.tsx';
 import { useGamification } from '../context/GamificationContext.tsx';
+import { useLogo } from './useLogo.ts';
 import { GreetingCTA, GreetingResult } from '../types/greeting.ts';
 import { resolveGreeting } from '../utils/greetingResolver.ts';
 
@@ -11,6 +12,15 @@ export function useGreeting() {
   const navigate = useNavigate();
   const { onAirInfo, isPlaying, playRadio, togglePlay, activeType } = useAudio();
   const gamification = useGamification();
+  const { settings } = useLogo();
+
+  const isGreetingEnabled = Boolean(
+    settings &&
+    settings.feat_greeting !== '0' &&
+    settings.feat_greeting !== false &&
+    settings.feat_greeting !== 'false' &&
+    settings.feat_greeting !== 0
+  );
 
   // Local client time state updated periodically
   const [clientTime, setClientTime] = useState<{ hour: number; tz: string }>(() => {
@@ -33,8 +43,8 @@ export function useGreeting() {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch greeting from the backend
-  const { data: serverGreeting, isLoading, refetch } = useQuery<GreetingResult>({
+  // Fetch greeting from the backend only if greeting feature is enabled
+  const { data: serverGreeting, isLoading, refetch } = useQuery<GreetingResult & { disabled?: boolean }>({
     queryKey: ['personalized-greeting', clientTime.hour, clientTime.tz],
     queryFn: async () => {
       const res = await fetch(`/api/public/greeting?hour=${clientTime.hour}&tz=${encodeURIComponent(clientTime.tz)}`, {
@@ -45,13 +55,14 @@ export function useGreeting() {
       }
       return res.json();
     },
+    enabled: isGreetingEnabled,
     staleTime: 30000,
     refetchOnWindowFocus: true
   });
 
   // Compute live synthesized greeting to instantly reflect immediate UI changes (like onAir DJ changes or audio playback)
   const greetingData: GreetingResult | null = useMemo(() => {
-    if (!serverGreeting) return null;
+    if (!isGreetingEnabled || !serverGreeting || serverGreeting.disabled) return null;
 
     // If server already resolved greeting, check if client has real-time onAirInfo override
     if (onAirInfo && serverGreeting.isAuthenticated && gamification?.profile) {

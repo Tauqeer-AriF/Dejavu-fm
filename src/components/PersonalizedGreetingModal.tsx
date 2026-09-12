@@ -59,7 +59,13 @@ export function PersonalizedGreetingModal() {
   );
 
   // Check if greeting feature is enabled in admin settings
-  const isGreetingEnabled = settings?.feat_greeting !== '0';
+  const isGreetingEnabled = Boolean(
+    settings &&
+    settings.feat_greeting !== '0' &&
+    settings.feat_greeting !== false &&
+    settings.feat_greeting !== 'false' &&
+    settings.feat_greeting !== 0
+  );
 
   // Exclude dashboard / admin routes
   const isDashboardRoute =

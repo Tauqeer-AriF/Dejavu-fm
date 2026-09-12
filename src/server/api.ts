@@ -3315,6 +3315,18 @@ apiRouter.put("/admin/settings", authMiddleware, authorizeRole(['admin', 'dj']),
     console.warn("[Settings] Auto cache purge check skipped:", e);
   }
 
+  // Broadcast live updated settings to all connected frontend clients
+  try {
+    const io = req.app.get('io');
+    if (io) {
+      const rows = db.prepare("SELECT key, value FROM settings WHERE key NOT IN ('admin_secret', 'owner_secret')").all() as {key: string, value: string}[];
+      const settingsMap = rows.reduce((acc, row) => ({ ...acc, [row.key]: row.value }), {});
+      io.emit('settings_updated', settingsMap);
+    }
+  } catch (ioErr) {
+    console.warn("[Settings] Socket broadcast warning:", ioErr);
+  }
+
   logAction(req, 'UPDATE', 'settings', null, req.body);
   res.json({ success: true });
 });

@@ -1631,14 +1631,16 @@ function MainLayout() {
     };
   }, []);
 
-  const featChat = settings?.feat_chat !== '0';
-  const featShoutouts = settings?.feat_shoutouts !== '0';
-  const featCinematic = settings?.feat_cinematic !== '0';
-  const featPWA = settings?.feat_pwa !== '0';
-  const featBookings = settings?.feat_bookings !== '0';
-  const featLiveTools = settings?.feat_live_tools !== '0';
-  const featBooth = settings?.feat_booth !== '0';
-  const featSpecialEvents = settings?.feat_special_events !== '0';
+  const featChat = settings?.feat_chat !== '0' && settings?.feat_chat !== false && settings?.feat_chat !== 'false';
+  const featGamification = settings?.feat_gamification !== '0' && settings?.feat_gamification !== false && settings?.feat_gamification !== 'false';
+  const featGreeting = settings?.feat_greeting !== '0' && settings?.feat_greeting !== false && settings?.feat_greeting !== 'false';
+  const featShoutouts = settings?.feat_shoutouts !== '0' && settings?.feat_shoutouts !== false && settings?.feat_shoutouts !== 'false';
+  const featCinematic = settings?.feat_cinematic !== '0' && settings?.feat_cinematic !== false && settings?.feat_cinematic !== 'false';
+  const featPWA = settings?.feat_pwa !== '0' && settings?.feat_pwa !== false && settings?.feat_pwa !== 'false';
+  const featBookings = settings?.feat_bookings !== '0' && settings?.feat_bookings !== false && settings?.feat_bookings !== 'false';
+  const featLiveTools = settings?.feat_live_tools !== '0' && settings?.feat_live_tools !== false && settings?.feat_live_tools !== 'false';
+  const featBooth = settings?.feat_booth !== '0' && settings?.feat_booth !== false && settings?.feat_booth !== 'false';
+  const featSpecialEvents = settings?.feat_special_events !== '0' && settings?.feat_special_events !== false && settings?.feat_special_events !== 'false';
 
   const isOwner = authData?.loggedIn && authData?.role === 'owner';
   const isLoginPage = isAdmin && !authData?.loggedIn;
@@ -1958,7 +1960,7 @@ function MainLayout() {
       
       {!location.pathname.startsWith('/admin') && !isSplitActive && <MobileBottomBar featLiveTools={featLiveTools} featBooth={featBooth} />}
       {!isSplitActive && <PlayerBar />}
-      {!isAdmin && !isSplitActive && (
+      {!isAdmin && !isSplitActive && featGamification && (
         <div id="floating-gamification-container" className="hidden sm:block fixed bottom-24 sm:bottom-28 xl:bottom-12 left-4 sm:left-6 xl:left-8 z-40 pointer-events-auto">
           <GamificationNavBadge isLightMode={isLightMode} />
         </div>
@@ -1975,9 +1977,9 @@ function MainLayout() {
         appName={appName} 
         appTagline={appTagline} 
       />
-      <GamificationHubModal />
-      <LevelUpModal />
-      <PersonalizedGreetingModal />
+      {featGamification && <GamificationHubModal />}
+      {featGamification && <LevelUpModal />}
+      {featGreeting && <PersonalizedGreetingModal />}
       {!isAdmin && <SwipeNavigation />}
     </div>
     </>
