@@ -49,46 +49,48 @@ export default function Schedule() {
   }, []);
 
   const toggleReminder = async (showId: string, showName: string) => {
-    if (!("Notification" in window)) {
-      toast.error("This browser does not support desktop notifications");
+    const isSet = reminders.includes(showId);
+
+    // If removing the reminder
+    if (isSet) {
+      const newReminders = reminders.filter(id => id !== showId);
+      setReminders(newReminders);
+      localStorage.setItem('dejavu_reminders', JSON.stringify(newReminders));
+      toast.info(`Reminder removed for ${showName}`, { id: `schedule-reminder-${showId}` });
       return;
     }
 
-    let permission = Notification.permission;
-    if (permission === 'default') {
-      try {
-        permission = await Notification.requestPermission();
-      } catch (err) {
-        console.error("Failed to request notification permission:", err);
-      }
-    }
-
-    if (permission !== 'granted') {
-      const isIframe = window.self !== window.top;
-      if (isIframe) {
-        toast.error("Notification permission is blocked in previews. Please open the app in a new tab to enable desktop alerts.");
-      } else {
-        toast.warning("Notification permission denied. We'll still save your reminder, but you won't receive a desktop alert.");
-      }
-    }
-
-    setReminders(prev => {
-      const isSet = prev.includes(showId);
-      let newReminders;
-      if (isSet) {
-        newReminders = prev.filter(id => id !== showId);
-        toast.info(`Reminder removed for ${showName}`);
-      } else {
-        newReminders = [...prev, showId];
-        if (permission === 'granted') {
-          toast.success(`We will notify you 10 mins before ${showName} starts!`);
-        } else {
-          toast.success(`Show added to reminders (Desktop alerts disabled)`);
+    // Adding the reminder
+    let permission = 'granted';
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      permission = Notification.permission;
+      if (permission === 'default') {
+        try {
+          permission = await Notification.requestPermission();
+        } catch (err) {
+          console.error("Failed to request notification permission:", err);
         }
       }
-      localStorage.setItem('dejavu_reminders', JSON.stringify(newReminders));
-      return newReminders;
-    });
+    } else {
+      permission = 'denied';
+    }
+
+    const newReminders = [...reminders, showId];
+    setReminders(newReminders);
+    localStorage.setItem('dejavu_reminders', JSON.stringify(newReminders));
+
+    if (permission === 'granted') {
+      toast.success(`We will notify you 10 mins before ${showName} starts!`, {
+        id: `schedule-reminder-${showId}`,
+        icon: '🔔'
+      });
+    } else {
+      const isIframe = typeof window !== 'undefined' && window.self !== window.top;
+      toast.info(`Show added to reminders${isIframe ? ' (Open app in new tab for desktop alerts)' : ' (Desktop alerts disabled)'}`, {
+        id: `schedule-reminder-${showId}`,
+        icon: '🔔'
+      });
+    }
   };
 
   const localSchedule = useMemo(() => {

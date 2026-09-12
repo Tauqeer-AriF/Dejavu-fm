@@ -44,22 +44,20 @@ export default function Booth() {
   }, [soundsEnabled]);
 
   const toggleSounds = () => {
-    setSoundsEnabled(prev => {
-      const next = !prev;
-      localStorage.setItem('booth_sounds_enabled', String(next));
-      window.dispatchEvent(new CustomEvent('booth_sounds_changed', { detail: next }));
-      toast.success(next ? "Notification SFX enabled! (Chime triggered)" : "Notification SFX muted", { duration: 2500 });
-      if (next) {
-        setTimeout(() => {
-          playHighFidelitySound('approved');
-        }, 100);
-      }
-      return next;
+    const next = !soundsEnabled;
+    setSoundsEnabled(next);
+    localStorage.setItem('booth_sounds_enabled', String(next));
+    window.dispatchEvent(new CustomEvent('booth_sounds_changed', { detail: next }));
+    
+    toast.success(next ? "Notification SFX enabled! (Chime triggered)" : "Notification SFX muted", { 
+      id: 'booth-sfx-toggle',
+      duration: 2500 
     });
 
-    if (soundsEnabled) {
-      toast.info("Testing approved chime sound...", { duration: 1500 });
-      playHighFidelitySound('approved');
+    if (next) {
+      setTimeout(() => {
+        playHighFidelitySound('approved');
+      }, 100);
     }
   };
   

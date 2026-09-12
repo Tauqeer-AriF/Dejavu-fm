@@ -10,7 +10,7 @@ import { safeFetchJson, getPodcastId } from "../utils/safeFetch";
 
 function ShareModal({ podcast, isOpen, onClose }: { podcast: any, isOpen: boolean, onClose: () => void }) {
   const [copied, setCopied] = useState(false);
-  const { claimShareXp } = useGamification();
+  const { claimShareXp, isEnabled } = useGamification();
   const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
 
   const handleCopy = async () => {
@@ -28,13 +28,13 @@ function ShareModal({ podcast, isOpen, onClose }: { podcast: any, isOpen: boolea
         document.body.removeChild(textarea);
       }
       setCopied(true);
-      toast.success("Link copied to clipboard! +25 XP");
-      if (claimShareXp) {
+      toast.success(isEnabled ? "Link copied to clipboard! +25 XP" : "Link copied to clipboard!", { id: 'podcast-share-toast' });
+      if (isEnabled && claimShareXp) {
         await claimShareXp(podcast?.title || "Podcast Episode", shareUrl);
       }
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error("Failed to copy link");
+      toast.error("Failed to copy link", { id: 'podcast-share-toast' });
     }
   };
 
@@ -42,16 +42,16 @@ function ShareModal({ podcast, isOpen, onClose }: { podcast: any, isOpen: boolea
     const titleText = podcast?.title ? `Listen to "${podcast.title}" on DejavuFM\n` : "Listen to DejavuFM\n";
     const text = encodeURIComponent(titleText);
     window.open(`https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(shareUrl)}`, '_blank');
-    toast.success("Shared to Twitter! +25 XP");
-    if (claimShareXp) {
+    toast.success(isEnabled ? "Shared to Twitter! +25 XP" : "Shared to Twitter!", { id: 'podcast-twitter-toast' });
+    if (isEnabled && claimShareXp) {
       await claimShareXp(podcast?.title || "Podcast Episode", shareUrl);
     }
   };
 
   const handleFacebookShare = async () => {
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank');
-    toast.success("Shared to Facebook! +25 XP");
-    if (claimShareXp) {
+    toast.success(isEnabled ? "Shared to Facebook! +25 XP" : "Shared to Facebook!", { id: 'podcast-facebook-toast' });
+    if (isEnabled && claimShareXp) {
       await claimShareXp(podcast?.title || "Podcast Episode", shareUrl);
     }
   };

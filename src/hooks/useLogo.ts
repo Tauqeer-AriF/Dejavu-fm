@@ -7,6 +7,9 @@ export const CACHED_SETTINGS_KEY = 'dejavufm_cached_public_settings';
 
 export function getCachedSettings(): any {
   if (typeof window === 'undefined') return undefined;
+  if ((window as any).__INITIAL_SETTINGS__) {
+    return (window as any).__INITIAL_SETTINGS__;
+  }
   try {
     const raw = localStorage.getItem(CACHED_SETTINGS_KEY);
     if (raw) {
@@ -51,8 +54,15 @@ export function applyCachedBrandingDirectly(settings?: any) {
   // 2. Fonts
   if (s.font_sans) {
     const val = `"${s.font_sans}", ui-sans-serif, system-ui, sans-serif`;
-    document.documentElement.style.setProperty('--font-sans', val);
-    document.documentElement.style.setProperty('--font-mono', val);
+    if (document.documentElement.style.getPropertyValue('--font-sans') !== val) {
+      document.documentElement.style.setProperty('--font-sans', val);
+      document.documentElement.style.setProperty('--font-mono', val);
+    }
+    if (typeof document !== 'undefined' && document.fonts && document.fonts.load) {
+      try {
+        document.fonts.load('16px "' + s.font_sans + '"');
+      } catch (e) {}
+    }
   }
 
   if (s.font_display) {
@@ -60,7 +70,14 @@ export function applyCachedBrandingDirectly(settings?: any) {
     if (s.font_display === 'Playfair Display') displayFallback = ', serif';
     if (s.font_display === 'JetBrains Mono') displayFallback = ', monospace';
     const val = `"${s.font_display}"${displayFallback}`;
-    document.documentElement.style.setProperty('--font-display', val);
+    if (document.documentElement.style.getPropertyValue('--font-display') !== val) {
+      document.documentElement.style.setProperty('--font-display', val);
+    }
+    if (typeof document !== 'undefined' && document.fonts && document.fonts.load && s.font_display !== s.font_sans) {
+      try {
+        document.fonts.load('16px "' + s.font_display + '"');
+      } catch (e) {}
+    }
   }
 
   // 3. Favicon

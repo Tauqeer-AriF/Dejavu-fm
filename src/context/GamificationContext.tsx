@@ -78,7 +78,13 @@ function playCelebrationSound(type: 'xp' | 'badge' | 'levelup' | 'streak') {
 
 export function GamificationProvider({ children }: { children: React.ReactNode }) {
   const { settings, isLightMode } = useLogo();
-  const isEnabled = settings?.feat_gamification !== '0';
+  const isEnabled = Boolean(
+    settings &&
+    settings.feat_gamification !== '0' &&
+    settings.feat_gamification !== false &&
+    settings.feat_gamification !== 'false' &&
+    settings.feat_gamification !== 0
+  );
 
   const [profile, setProfile] = useState<UserGamificationProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -354,7 +360,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
   // Toggle DJ Follow
   const toggleFollowDj = async (djId: string): Promise<boolean> => {
     if (!profile) {
-      toast.error('Please log in first to follow DJs and earn XP!', {
+      toast.error(isEnabled ? 'Please log in first to follow DJs and earn XP!' : 'Please log in first to follow DJs!', {
         action: {
           label: 'Log In',
           onClick: () => {
@@ -376,13 +382,13 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
 
       if (res.ok) {
         const data = await res.json();
-        if (data.xpResult) {
+        if (isEnabled && data.xpResult) {
           handleRewardNotification(data.xpResult);
         }
         await fetchProfile();
         return !!data.isFollowing;
       } else if (res.status === 401) {
-        toast.error('Please log in first to follow DJs and earn XP!');
+        toast.error(isEnabled ? 'Please log in first to follow DJs and earn XP!' : 'Please log in first to follow DJs!');
       }
     } catch (e) {
       toast.error('Failed to update DJ follow');
@@ -392,6 +398,7 @@ export function GamificationProvider({ children }: { children: React.ReactNode }
 
   // Claim Share XP
   const claimShareXp = async (showName?: string, url?: string) => {
+    if (!isEnabled) return;
     try {
       const res = await fetch('/api/public/gamification/share', {
         method: 'POST',
