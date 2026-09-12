@@ -1571,10 +1571,15 @@ function MainLayout() {
     let desc = baseDesc;
 
     if (location.pathname.startsWith("/podcasts/")) {
-      const id = location.pathname.split("/").filter(Boolean).pop();
+      const rawId = location.pathname.split("/").filter(Boolean).pop() || "";
+      let decodedId = rawId;
+      try {
+        decodedId = decodeURIComponent(rawId);
+      } catch {}
       const podcast = podcastsFeed?.items?.find((i: any) => {
         try {
-          return getPodcastId(i) === id;
+          const currentId = getPodcastId(i);
+          return currentId === rawId || currentId === decodedId;
         } catch (e) {
           return false;
         }
