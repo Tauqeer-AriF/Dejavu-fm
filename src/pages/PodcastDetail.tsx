@@ -11,27 +11,49 @@ import { safeFetchJson, getPodcastId } from "../utils/safeFetch";
 function ShareModal({ podcast, isOpen, onClose }: { podcast: any, isOpen: boolean, onClose: () => void }) {
   const [copied, setCopied] = useState(false);
   const { claimShareXp } = useGamification();
-  const shareUrl = window.location.href;
+  const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
 
   const handleCopy = async () => {
-    navigator.clipboard.writeText(shareUrl);
-    setCopied(true);
-    toast.success("Link copied to clipboard! +25 XP");
-    await claimShareXp(podcast?.title || "Podcast Episode", shareUrl);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = shareUrl;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setCopied(true);
+      toast.success("Link copied to clipboard! +25 XP");
+      if (claimShareXp) {
+        await claimShareXp(podcast?.title || "Podcast Episode", shareUrl);
+      }
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy link");
+    }
   };
 
   const handleTwitterShare = async () => {
-    const text = encodeURIComponent(`Listen to "${podcast.title}" on DejavuFM\n`);
+    const titleText = podcast?.title ? `Listen to "${podcast.title}" on DejavuFM\n` : "Listen to DejavuFM\n";
+    const text = encodeURIComponent(titleText);
     window.open(`https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(shareUrl)}`, '_blank');
     toast.success("Shared to Twitter! +25 XP");
-    await claimShareXp(podcast?.title || "Podcast Episode", shareUrl);
+    if (claimShareXp) {
+      await claimShareXp(podcast?.title || "Podcast Episode", shareUrl);
+    }
   };
 
   const handleFacebookShare = async () => {
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank');
     toast.success("Shared to Facebook! +25 XP");
-    await claimShareXp(podcast?.title || "Podcast Episode", shareUrl);
+    if (claimShareXp) {
+      await claimShareXp(podcast?.title || "Podcast Episode", shareUrl);
+    }
   };
 
   return (
@@ -121,6 +143,8 @@ export default function PodcastDetail() {
   } = useAudio();
   const { id } = useParams();
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
 
   const { data: feed, isLoading: loading } = useQuery({
     queryKey: ['podcasts'],
@@ -177,10 +201,15 @@ export default function PodcastDetail() {
     );
   }
 
+  let decodedId = id || "";
+  try {
+    decodedId = decodeURIComponent(id || "");
+  } catch {}
+
   const podcast = feed?.items?.find((i: any, idx: number) => {
     try {
       const currentId = getPodcastId(i);
-      return currentId === id || String(idx) === id;
+      return currentId === id || currentId === decodedId || String(idx) === id;
     } catch (e) {
       return false;
     }
@@ -200,18 +229,24 @@ export default function PodcastDetail() {
                    podcast.audioUrl || 
                    (typeof podcast.link === 'string' && podcast.link.includes('.mp3') ? podcast.link : '');
 
-  const dateStr = (podcast.pubDate || podcast.isoDate) 
-    ? new Date(podcast.pubDate || podcast.isoDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) 
-    : 'Recent';
+  let dateStr = 'Recent';
+  try {
+    const rawDate = podcast.pubDate || podcast.isoDate;
+    if (rawDate) {
+      const parsed = new Date(rawDate);
+      if (!isNaN(parsed.getTime())) {
+        dateStr = parsed.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      }
+    }
+  } catch {
+    dateStr = 'Recent';
+  }
 
   // Extract a sensible image if possible; many RSS feeds have itunes:image or just use a default
   const imageUrl = podcast.imageUrl || podcast.itunes?.image || "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=1200";
 
   const isCurrentPodcastPlaying = activeType === 'podcast' && podcastTrack?.id === id && isPlaying;
   const isCurrentPodcastLoaded = activeType === 'podcast' && podcastTrack?.id === id;
-
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadProgress, setDownloadProgress] = useState(0);
 
   const triggerBlobDownload = (blob: Blob) => {
     const blobUrl = URL.createObjectURL(blob);
