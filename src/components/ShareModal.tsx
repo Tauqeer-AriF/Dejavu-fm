@@ -16,16 +16,25 @@ interface ShareModalProps {
 
 export function ShareModal({ isOpen, onClose, appName, appTagline, shareUrl }: ShareModalProps) {
   const [copied, setCopied] = useState(false);
-  const { isLightMode } = useLogo();
-  const { claimShareXp } = useGamification();
+  const { isLightMode, settings } = useLogo();
+  const { claimShareXp, isEnabled } = useGamification();
+  const isGamificationActive = Boolean(
+    isEnabled &&
+    settings?.feat_gamification !== '0' &&
+    settings?.feat_gamification !== false &&
+    settings?.feat_gamification !== 'false' &&
+    settings?.feat_gamification !== 0
+  );
   const targetUrl = shareUrl || window.location.origin;
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(targetUrl);
       setCopied(true);
-      toast.success('Link copied to clipboard! +25 XP');
-      await claimShareXp('dejavufm', targetUrl);
+      toast.success(isGamificationActive ? 'Link copied to clipboard! +25 XP' : 'Link copied to clipboard!', { id: 'station-share-copy' });
+      if (isGamificationActive && claimShareXp) {
+        await claimShareXp('dejavufm', targetUrl);
+      }
       setTimeout(() => setCopied(false), 2500);
     } catch (err) {
       console.error('Failed to copy text: ', err);
@@ -42,8 +51,10 @@ export function ShareModal({ isOpen, onClose, appName, appTagline, shareUrl }: S
     if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
       try {
         await navigator.share(shareData);
-        toast.success('Station shared successfully! +25 XP');
-        await claimShareXp('dejavufm', targetUrl);
+        toast.success(isGamificationActive ? 'Station shared successfully! +25 XP' : 'Station shared successfully!', { id: 'station-share-native' });
+        if (isGamificationActive && claimShareXp) {
+          await claimShareXp('dejavufm', targetUrl);
+        }
       } catch (e) {
         console.log('Native share failed or aborted', e);
       }

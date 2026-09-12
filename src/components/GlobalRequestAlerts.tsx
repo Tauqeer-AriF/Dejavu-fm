@@ -184,16 +184,19 @@ export function GlobalRequestAlerts() {
         if (savedMyRequests.includes(id)) {
           if (status === 'approved') {
             toast.success(`🎉 DJ Approved Your Track!`, {
+              id: `request-status-${id}-${status}`,
               description: `"${request.track_title}" has been approved for the broadcast queue!`,
               duration: 10000,
             });
           } else if (status === 'on_deck') {
             toast.info(`🔥 Your Track is ON DECK!`, {
+              id: `request-status-${id}-${status}`,
               description: `"${request.track_title}" is playing next! Tuned in?`,
               duration: 12000,
             });
           } else if (status === 'played') {
             toast(`🎧 Now Playing Your Request!`, {
+              id: `request-status-${id}-${status}`,
               description: `Enjoy "${request.track_title}" playing live on air now!`,
               duration: 10000,
             });

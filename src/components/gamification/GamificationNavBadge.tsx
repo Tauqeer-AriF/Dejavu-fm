@@ -59,7 +59,13 @@ export function GamificationNavBadge({ mobileMenu, onItemClick, className, isLig
 
   const isLightMode = passedIsLightMode !== undefined ? passedIsLightMode : domIsLight;
 
-  const isGamificationActive = isEnabled ?? (settings?.feat_gamification !== '0');
+  const isGamificationActive = Boolean(
+    isEnabled &&
+    settings?.feat_gamification !== '0' &&
+    settings?.feat_gamification !== false &&
+    settings?.feat_gamification !== 'false' &&
+    settings?.feat_gamification !== 0
+  );
 
   if (!isGamificationActive) {
     return null;

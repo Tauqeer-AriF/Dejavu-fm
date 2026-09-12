@@ -39,13 +39,13 @@ export function EventReminderModal({ event, isOpen, onClose }: EventReminderModa
     }
   }, [event]);
 
-  const requestPermissionIfNeeded = async () => {
+  const requestPermissionIfNeeded = async (silent: boolean = false) => {
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
       try {
         const permission = await Notification.requestPermission();
         setHasNotifPermission(permission === 'granted');
-        if (permission === 'granted') {
-          toast.success('Notification permissions enabled');
+        if (permission === 'granted' && !silent) {
+          toast.success('Notification permissions enabled', { id: 'event-notif-perm' });
         }
       } catch {}
     }
@@ -61,7 +61,7 @@ export function EventReminderModal({ event, isOpen, onClose }: EventReminderModa
 
   const handleSave = async () => {
     setLoading(true);
-    await requestPermissionIfNeeded();
+    await requestPermissionIfNeeded(true);
 
     try {
       // Save locally
@@ -103,16 +103,19 @@ export function EventReminderModal({ event, isOpen, onClose }: EventReminderModa
 
       if (selectedIntervals.length > 0) {
         toast.success(`Reminder set for ${event.title}`, {
+          id: `event-reminder-${event.id}`,
           description: `You'll be notified ${selectedIntervals.map(i => i === '24h' ? '24 hours before' : i === '1h' ? '1 hour before' : '15 minutes before').join(', ')}`,
           icon: '🔔'
         });
       } else {
-        toast.info(`Reminders turned off for this event`);
+        toast.info(`Reminders turned off for this event`, {
+          id: `event-reminder-${event.id}`
+        });
       }
 
       onClose();
     } catch (err: any) {
-      toast.error('Failed to save reminder preferences');
+      toast.error('Failed to save reminder preferences', { id: `event-reminder-${event.id}` });
     } finally {
       setLoading(false);
     }

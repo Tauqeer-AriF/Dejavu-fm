@@ -135,7 +135,13 @@ export function GamificationHubModal() {
   }, []);
 
   const isLightMode = domIsLight;
-  const isGamificationActive = isEnabled ?? (settings?.feat_gamification !== '0');
+  const isGamificationActive = Boolean(
+    isEnabled &&
+    settings?.feat_gamification !== '0' &&
+    settings?.feat_gamification !== false &&
+    settings?.feat_gamification !== 'false' &&
+    settings?.feat_gamification !== 0
+  );
 
   // Leaderboard state
   const [leaderboardTimeframe, setLeaderboardTimeframe] = useState<'weekly' | 'monthly' | 'all_time'>('all_time');

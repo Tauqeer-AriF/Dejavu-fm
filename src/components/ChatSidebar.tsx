@@ -1950,7 +1950,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                     if (newValue) {
                       playNotificationSound();
                     }
-                    toast.success(newValue ? "Chat sounds enabled" : "Chat sounds muted");
+                    toast.success(newValue ? "Chat sounds enabled" : "Chat sounds muted", { id: 'chat-sound-toggle' });
                   }}
                   id="chat-sound-toggle-btn"
                   className={`${embedded ? 'w-7 h-7' : 'w-8 h-8 sm:w-9 sm:h-9'} flex items-center justify-center rounded-xl border transition-all relative cursor-pointer group ${

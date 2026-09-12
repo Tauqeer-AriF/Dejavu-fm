@@ -77,6 +77,7 @@ export function NotificationManager() {
               }
             } else {
               toast.info(body, {
+                id: notificationKey,
                 duration: 8000,
                 icon: '⏰'
               });
@@ -167,6 +168,7 @@ export function NotificationManager() {
 
               // Also display in-app toast notification with action link
               toast.info(body, {
+                id: notifKey,
                 description: `${event.genres?.join(', ') || 'Special Broadcast'} • ${event.xp_multiplier}× XP Multiplier`,
                 duration: 10000,
                 action: {
