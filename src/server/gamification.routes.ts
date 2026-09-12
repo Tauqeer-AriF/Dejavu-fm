@@ -12,7 +12,8 @@ import {
   getGamificationLevels,
   getGamificationAdminOverview,
   ensureUserGamification,
-  isStaffOrAdmin
+  isStaffOrAdmin,
+  isGamificationStationEnabled
 } from './gamification.service.ts';
 
 export const gamificationRouter = Router();
@@ -101,6 +102,9 @@ function requireStaffAuth(req: any, res: any, next: any) {
 // Get current user's full gamification profile
 gamificationRouter.get('/public/gamification/profile', requireUserAuth, (req: any, res: any) => {
   try {
+    if (!isGamificationStationEnabled()) {
+      return res.json({ is_disabled: true, profile: null });
+    }
     const username = req.authenticatedUser.username;
     if (isStaffOrAdmin(username) || req.authenticatedUser.is_admin) {
       return res.json({ is_admin_or_dj: true, profile: null });
@@ -148,6 +152,9 @@ gamificationRouter.get('/public/gamification/user/:username', (req: any, res: an
 // Listening heartbeat
 gamificationRouter.post('/public/gamification/heartbeat', requireUserAuth, (req: any, res: any) => {
   try {
+    if (!isGamificationStationEnabled()) {
+      return res.json({ success: false, xp_awarded: 0, message: 'Gamification is disabled' });
+    }
     const username = req.authenticatedUser.username;
     const { durationSeconds, isPlaying, djName, showName, trackTitle, tabId } = req.body;
 
@@ -169,6 +176,9 @@ gamificationRouter.post('/public/gamification/heartbeat', requireUserAuth, (req:
 // Claim daily login bonus
 gamificationRouter.post('/public/gamification/daily-login', requireUserAuth, (req: any, res: any) => {
   try {
+    if (!isGamificationStationEnabled()) {
+      return res.json({ success: false, xp_awarded: 0, message: 'Gamification is disabled' });
+    }
     const username = req.authenticatedUser.username;
     const result = awardXP(username, 'daily_login', 'Daily listener check-in bonus');
     res.json(result);
@@ -180,6 +190,9 @@ gamificationRouter.post('/public/gamification/daily-login', requireUserAuth, (re
 // Claim share show bonus
 gamificationRouter.post('/public/gamification/share', requireUserAuth, (req: any, res: any) => {
   try {
+    if (!isGamificationStationEnabled()) {
+      return res.json({ success: false, xp_awarded: 0, message: 'Gamification is disabled' });
+    }
     const username = req.authenticatedUser.username;
     const { showName, url } = req.body;
     const result = awardXP(username, 'share_show', `Shared live show ${showName || 'dejavufm'}`, { showName, url });
@@ -192,6 +205,9 @@ gamificationRouter.post('/public/gamification/share', requireUserAuth, (req: any
 // Claim join chat bonus
 gamificationRouter.post('/public/gamification/join-chat', requireUserAuth, (req: any, res: any) => {
   try {
+    if (!isGamificationStationEnabled()) {
+      return res.json({ success: false, xp_awarded: 0, message: 'Gamification is disabled' });
+    }
     const username = req.authenticatedUser.username;
     const result = awardXP(username, 'join_chat', 'Joined the live chat room');
     res.json(result);

@@ -25,5 +25,11 @@ createRoot(document.getElementById('root')!).render(
 );
 
 if (typeof window !== 'undefined' && (window as any).dismissSplash) {
-  (window as any).dismissSplash();
+  if (typeof requestAnimationFrame !== 'undefined') {
+    requestAnimationFrame(() => {
+      (window as any).dismissSplash();
+    });
+  } else {
+    (window as any).dismissSplash();
+  }
 }

@@ -14,7 +14,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
 import { convertToLocalTime, getLondonTime } from './lib/timeUtils';
-import { useLogo, getCachedSettings, setCachedSettings } from './hooks/useLogo';
+import { useLogo, getCachedSettings, setCachedSettings, applyCachedBrandingDirectly } from './hooks/useLogo';
 import { SecretAdminPrompt } from './components/SecretAdminPrompt';
 import { SitePopup } from './components/SitePopup';
 import { AdvertisementSliders } from './components/AdvertisementSliders';
@@ -667,22 +667,7 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
         }
         metaThemeColor.setAttribute('content', settings.primary_color);
       }
-      if (settings.secondary_color) {
-        document.documentElement.style.setProperty('--color-neon-blue', settings.secondary_color);
-        localStorage.setItem('branding_secondary_color', settings.secondary_color);
-      }
-      
-      if (settings.font_sans) {
-        const sansFallback = ', ui-sans-serif, system-ui, sans-serif';
-        document.documentElement.style.setProperty('--font-sans', `"${settings.font_sans}"${sansFallback}`);
-        document.documentElement.style.setProperty('--font-mono', `"${settings.font_sans}"${sansFallback}`);
-      }
-      if (settings.font_display) {
-        let displayFallback = ', sans-serif';
-        if (settings.font_display === 'Playfair Display') displayFallback = ', serif';
-        if (settings.font_display === 'JetBrains Mono') displayFallback = ', monospace';
-        document.documentElement.style.setProperty('--font-display', `"${settings.font_display}"${displayFallback}`);
-      }
+      applyCachedBrandingDirectly(settings);
     }
   }, [settings]);
 
@@ -1473,24 +1458,7 @@ function MainLayout() {
         }
       }
 
-      if (settings.primary_color) {
-        document.documentElement.style.setProperty('--color-neon-purple', settings.primary_color);
-      }
-      if (settings.secondary_color) {
-        document.documentElement.style.setProperty('--color-neon-blue', settings.secondary_color);
-      }
-
-      if (settings.font_sans) {
-        const sansFallback = ', ui-sans-serif, system-ui, sans-serif';
-        document.documentElement.style.setProperty('--font-sans', `"${settings.font_sans}"${sansFallback}`);
-        document.documentElement.style.setProperty('--font-mono', `"${settings.font_sans}"${sansFallback}`);
-      }
-      if (settings.font_display) {
-        let displayFallback = ', sans-serif';
-        if (settings.font_display === 'Playfair Display') displayFallback = ', serif';
-        if (settings.font_display === 'JetBrains Mono') displayFallback = ', monospace';
-        document.documentElement.style.setProperty('--font-display', `"${settings.font_display}"${displayFallback}`);
-      }
+      applyCachedBrandingDirectly(settings);
 
       const urls = {
         low: settings.stream_url_low || settings.stream_url || "",

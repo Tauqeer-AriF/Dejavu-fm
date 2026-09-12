@@ -58,6 +58,17 @@ export function getGamificationSettings(): GamificationSettings {
   }
 }
 
+// Check if gamification feature is globally enabled in system settings
+export function isGamificationStationEnabled(): boolean {
+  try {
+    const row = db.prepare("SELECT value FROM settings WHERE key = 'feat_gamification'").get() as { value: string } | undefined;
+    if (!row) return true;
+    return row.value !== '0' && row.value !== 'false';
+  } catch {
+    return true;
+  }
+}
+
 // Get all gamification levels sorted ascending
 export function getGamificationLevels(): GamificationLevel[] {
   try {
@@ -337,6 +348,21 @@ export function awardXP(
   }
 
   const cleanUsername = username.trim();
+
+  // If gamification is disabled station-wide from dashboard, do not track or award XP
+  if (!isGamificationStationEnabled()) {
+    return {
+      success: false,
+      xp_awarded: 0,
+      activity_type: activityType,
+      description: 'Gamification is currently disabled',
+      total_xp: 0,
+      current_level: 1,
+      level_title: '',
+      leveled_up: false,
+      unlocked_badges: []
+    };
+  }
 
   // Do not track or award XP to admins or DJs
   if (isStaffOrAdmin(cleanUsername)) {

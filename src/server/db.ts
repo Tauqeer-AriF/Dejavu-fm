@@ -1017,6 +1017,26 @@ export function initDb() {
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING').run('maintenance_show_player', '0');
   }
 
+  // Ensure essential typography and branding settings always exist even on pre-existing databases
+  try {
+    const essentialDefaults: [string, string][] = [
+      ['font_sans', 'Inter'],
+      ['font_display', 'Outfit'],
+      ['primary_color', '#b026ff'],
+      ['secondary_color', '#00d2ff'],
+      ['app_name', 'dejavufm'],
+      ['app_title', 'dejavufm | THE SOUND OF LONDON'],
+      ['app_tagline', 'The Underground Worldwide'],
+      ['default_theme', 'dark'],
+    ];
+    const insertEssential = db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING');
+    for (const [key, val] of essentialDefaults) {
+      insertEssential.run(key, val);
+    }
+  } catch (err) {
+    console.warn('[DB] Failed to ensure essential font/branding settings:', err);
+  }
+
   // Ensure admin secret exists
   const envSecret = process.env.ADMIN_SECRET;
   try {
