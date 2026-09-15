@@ -832,6 +832,14 @@ async function startServer() {
     if (!db.open) return;    
     const io = app.get('io');
 
+    try {
+      const anonKill = db.prepare("SELECT value FROM settings WHERE key = 'anonymous_kill_switch'").get() as { value: string } | undefined;
+      if (anonKill && (anonKill.value === '1' || anonKill.value === 'true')) {
+        console.log(`[Chat Restricted] Anonymous Kill Switch active. Suppressing chat message from '${msg?.user}'.`);
+        return;
+      }
+    } catch (e) {}
+
     let avatar_url = null;
     let level = msg.level;
     let levelTitle = msg.levelTitle;
@@ -1349,6 +1357,17 @@ async function startServer() {
 
     socket.on('chatMessage', (msg) => {
        if (!msg) return;
+       if (db.open) {
+         try {
+           const anonKill = db.prepare("SELECT value FROM settings WHERE key = 'anonymous_kill_switch'").get() as { value: string } | undefined;
+           if (anonKill && (anonKill.value === '1' || anonKill.value === 'true')) {
+             socket.emit('chatMessageError', {
+               error: 'Error'
+             });
+             return;
+           }
+         } catch (e) {}
+       }
        const sender = msg.user || (socket as any).username;
        if (sender && db.open) {
          try {
