@@ -5,7 +5,7 @@ import { PlayerBar } from './components/PlayerBar';
 import { NotificationManager } from './components/NotificationManager';
 import { GlobalRequestAlerts } from './components/GlobalRequestAlerts';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
-import { AudioProvider, useAudio } from './context/AudioContext';
+import { AudioProvider, useAudio, useAudioStore } from './context/AudioContext';
 import { ModalProvider, useModal } from './context/ModalContext';
 import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -156,6 +156,23 @@ if (typeof window !== 'undefined') {
 
   socketInstance.on('kill_switch_toggled', () => {
     queryClient.invalidateQueries({ queryKey: ['settings'] });
+  });
+
+  socketInstance.on('anonymous_kill_toggled', (data: { active: boolean }) => {
+    const active = !!data?.active;
+    const updated = { ...(getCachedSettings() || {}), anonymous_kill_switch: active ? '1' : '0' };
+    setCachedSettings(updated);
+    queryClient.setQueryData(['settings'], updated);
+    queryClient.invalidateQueries({ queryKey: ['settings'] });
+    if (active) {
+      const store = useAudioStore.getState();
+      if (store.isPlaying) {
+        store.stopAudio();
+      }
+      toast.error("Anonymous Kill Switch Activated: Radio, Podcasts, Studio stream, and Chat messaging are now suspended.", { duration: 5000 });
+    } else {
+      toast.success("Anonymous Kill Switch Deactivated: Radio stream, Podcasts, Studio stream, and Chat messaging restored.", { duration: 5000 });
+    }
   });
 
   socketInstance.on('system_cache_purged', async (data: any) => {
@@ -676,8 +693,8 @@ function Navigation({ onOpenChat, featChat, isStaff }: { onOpenChat: () => void;
   return (
     <>
       {/* Top Announcement Bar */}
-      <div className="front-announcement-bar w-full bg-[#f75c1e] text-[#ffffff] py-2.5 px-4 shadow-md relative z-[1000] border-b border-black/10">
-        <div className="front-announcement-container max-w-[100rem] mx-auto flex items-center justify-between gap-3 text-left">
+      <div className="front-announcement-bar w-full bg-[#f75c1e] text-[#ffffff] py-2.5 shadow-md relative z-[1000] border-b border-black/10">
+        <div className="front-announcement-container max-w-[100rem] mx-auto px-4 md:px-8 flex items-center justify-between gap-3 text-left">
           <div className="front-announcement-text flex items-center gap-2.5 font-display font-black tracking-tight text-xs sm:text-sm md:text-base uppercase text-[#ffffff] min-w-0">
             <span className="front-announcement-badge bg-black/20 border border-white/20 px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-mono tracking-widest text-[#ffffff] shrink-0 hidden xs:inline-block">ANNOUNCEMENT</span>
             <span className="truncate text-[#ffffff]">ARCH 421: THE UNMUTED ARCHIVES. OPENING SOON.</span>
@@ -1672,10 +1689,6 @@ function MainLayout() {
           </div>
 
           <div className="h-px w-24 bg-red-500/30 mx-auto" />
-
-          <p className="text-sm md:text-base text-slate-400 leading-relaxed max-w-md mx-auto font-medium">
-            This application has been suspended by Station Management. Standard broadcast functions, DJ booths, audio player, and chat features are temporarily offline.
-          </p>
         </div>
       </div>
     );
@@ -1959,7 +1972,7 @@ function MainLayout() {
       )}
       
       {!location.pathname.startsWith('/admin') && !isSplitActive && <MobileBottomBar featLiveTools={featLiveTools} featBooth={featBooth} />}
-      {!isSplitActive && <PlayerBar />}
+      {!isAdmin && !isSplitActive && <PlayerBar />}
       {!isAdmin && !isSplitActive && featGamification && (
         <div id="floating-gamification-container" className="hidden sm:block fixed bottom-24 sm:bottom-28 xl:bottom-12 left-4 sm:left-6 xl:left-8 z-40 pointer-events-auto">
           <GamificationNavBadge isLightMode={isLightMode} />

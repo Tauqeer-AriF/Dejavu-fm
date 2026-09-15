@@ -1620,7 +1620,9 @@ body::-webkit-scrollbar {
 
 @media (max-width: 639px) {
   :root.text-size-large .front-navbar,
-  :root.text-size-extra .front-navbar {
+  :root.text-size-extra .front-navbar,
+  :root.text-size-large .front-announcement-container,
+  :root.text-size-extra .front-announcement-container {
     padding-left: 0.75rem !important;
     padding-right: 0.75rem !important;
     gap: 0.5rem !important;

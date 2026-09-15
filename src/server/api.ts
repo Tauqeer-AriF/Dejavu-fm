@@ -204,6 +204,15 @@ apiRouter.get("/admin/owner/kill-status", authMiddleware, authorizeRole('owner')
   }
 });
 
+apiRouter.get("/admin/owner/anonymous-kill-status", authMiddleware, authorizeRole('owner'), (req, res) => {
+  try {
+    const row = db.prepare("SELECT value FROM settings WHERE key = 'anonymous_kill_switch'").get() as { value: string } | undefined;
+    res.json({ active: row?.value === '1' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 apiRouter.post("/admin/owner/toggle-kill", authMiddleware, authorizeRole('owner'), (req, res) => {
   try {
     const rawActive = req.body?.active;
@@ -221,6 +230,28 @@ apiRouter.post("/admin/owner/toggle-kill", authMiddleware, authorizeRole('owner'
     }
 
     res.json({ killed: active });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.post("/admin/owner/toggle-anonymous-kill", authMiddleware, authorizeRole('owner'), (req, res) => {
+  try {
+    const rawActive = req.body?.active;
+    const active = rawActive === true || rawActive === 'true' || rawActive === 1 || rawActive === '1';
+    const value = active ? '1' : '0';
+    db.prepare("INSERT INTO settings (key, value) VALUES ('anonymous_kill_switch', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(value);
+    logAction(req, 'TOGGLE_ANONYMOUS_KILL_SWITCH', 'settings', 'anonymous_kill_switch', { active });
+
+    const io = req.app.get('io');
+    if (io) {
+      const rows = db.prepare("SELECT key, value FROM settings").all() as {key: string, value: string}[];
+      const settingsMap = rows.reduce((acc, row) => ({ ...acc, [row.key]: row.value }), {});
+      io.emit('settings_updated', settingsMap);
+      io.emit('anonymous_kill_toggled', { active });
+    }
+
+    res.json({ active });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -509,6 +540,13 @@ function proxyPodcast(targetUrl: string, clientReq: Request, clientRes: Response
   clientRes.setHeader("Access-Control-Expose-Headers", "Content-Length, Content-Range, Accept-Ranges, Content-Type");
   clientRes.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
 
+  try {
+    const anonKill = db.prepare("SELECT value FROM settings WHERE key = 'anonymous_kill_switch'").get() as { value: string } | undefined;
+    if (anonKill && (anonKill.value === '1' || anonKill.value === 'true')) {
+      return clientRes.status(503).send("Error");
+    }
+  } catch (e) {}
+
   if (redirectCount > 8) {
     return clientRes.status(500).send("Too many redirects");
   }
@@ -648,6 +686,13 @@ function proxyRadioStream(targetUrl: string, clientReq: Request, clientRes: Resp
   clientRes.setHeader("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
   clientRes.setHeader("Pragma", "no-cache");
   clientRes.setHeader("Expires", "0");
+
+  try {
+    const anonKill = db.prepare("SELECT value FROM settings WHERE key = 'anonymous_kill_switch'").get() as { value: string } | undefined;
+    if (anonKill && (anonKill.value === '1' || anonKill.value === 'true')) {
+      return clientRes.status(503).send("Error");
+    }
+  } catch (e) {}
 
   if (redirectCount > 8) {
     return clientRes.status(500).send("Too many redirects");
