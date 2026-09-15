@@ -23,6 +23,7 @@ export function AdminSidebar({ onLogout, isAdminUser, userRole }: { onLogout: ()
 
   useEffect(() => {
     localStorage.setItem('admin_sidebar_collapsed', isCollapsed.toString());
+    window.dispatchEvent(new Event('admin_sidebar_toggle'));
   }, [isCollapsed]);
 
   const { data: features = {} } = useQuery({

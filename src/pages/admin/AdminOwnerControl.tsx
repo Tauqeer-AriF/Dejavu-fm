@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { fetchAdmin } from "./adminApi";
-import { ShieldAlert, Power, Radio, RefreshCw, AlertOctagon, Mail, Lock, CheckCircle, Eye, EyeOff, Sliders, Ghost, Shield, KeyRound, User, Link } from "lucide-react";
+import { ShieldAlert, Power, Radio, RefreshCw, AlertOctagon, Mail, Lock, CheckCircle, Eye, EyeOff, Sliders, Ghost, Shield, KeyRound, User, Link, Headphones } from "lucide-react";
 import { useLogo, getCachedSettings, setCachedSettings } from "../../hooks/useLogo";
 import { safeFetchJson } from "../../utils/safeFetch";
 import { motion } from "motion/react";
@@ -18,8 +18,10 @@ export default function AdminOwnerControl() {
   });
 
   const [isKilled, setIsKilled] = useState<boolean>(false);
+  const [isAnonKilled, setIsAnonKilled] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [updating, setUpdating] = useState<boolean>(false);
+  const [anonUpdating, setAnonUpdating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // Dashboard Path Settings State
@@ -79,6 +81,9 @@ export default function AdminOwnerControl() {
       
       if (serverSettings.owner_custom_path) {
         setOwnerCustomPath(serverSettings.owner_custom_path);
+      }
+      if (serverSettings.anonymous_kill_switch !== undefined) {
+        setIsAnonKilled(serverSettings.anonymous_kill_switch === '1' || serverSettings.anonymous_kill_switch === 'true');
       }
     }
   }, [serverSettings]);
@@ -148,6 +153,13 @@ export default function AdminOwnerControl() {
         const secretData = await secretRes.json();
         setOwnerSecret(secretData.secret || "owner");
       }
+
+      // Fetch anonymous kill status
+      const anonRes = await fetchAdmin("/api/admin/owner/anonymous-kill-status");
+      if (anonRes.ok) {
+        const anonData = await anonRes.json();
+        setIsAnonKilled(!!anonData.active);
+      }
     } catch (err) {
       setError("An unexpected error occurred while loading settings.");
     } finally {
@@ -189,6 +201,41 @@ export default function AdminOwnerControl() {
       toast.error("Failed to toggle system power state");
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleToggleAnonymousKill = async () => {
+    try {
+      setAnonUpdating(true);
+      setError(null);
+      const targetState = !isAnonKilled;
+      const res = await fetchAdmin("/api/admin/owner/toggle-anonymous-kill", {
+        method: "POST",
+        body: JSON.stringify({ active: targetState }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const newState = !!data.active;
+        setIsAnonKilled(newState);
+        const updated = { ...(serverSettings || {}), anonymous_kill_switch: newState ? '1' : '0' };
+        setCachedSettings(updated);
+        queryClient.setQueryData(['settings'], updated);
+        await queryClient.invalidateQueries({ queryKey: ['settings'] });
+        
+        if (newState) {
+          toast.error("Anonymous Kill Switch ACTIVATED. Radio stream, podcasts, studio stream, and chatroom messages suspended.", { duration: 5000 });
+        } else {
+          toast.success("Anonymous Kill Switch DEACTIVATED. Radio stream, podcasts, studio stream, and chatroom messages restored.", { duration: 5000 });
+        }
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "Failed to update Anonymous Kill Switch.");
+      }
+    } catch (err) {
+      toast.error("Failed to toggle Anonymous Kill Switch.");
+    } finally {
+      setAnonUpdating(false);
     }
   };
 
@@ -444,6 +491,82 @@ export default function AdminOwnerControl() {
         {/* Ambient background decoration */}
         <div className={`absolute -right-24 -bottom-24 w-64 h-64 rounded-full blur-[100px] pointer-events-none transition-all duration-1000 ${
           isKilled ? 'bg-red-500/10' : 'bg-emerald-500/10'
+        }`} />
+      </div>
+
+      {/* Anonymous Broadcast Kill Switch Card */}
+      <div className={`rounded-3xl p-6 sm:p-10 border transition-all duration-300 relative overflow-hidden shadow-2xl ${
+        isLightMode
+          ? 'bg-white/80 backdrop-blur-xl border-amber-200/90'
+          : 'bg-[#0f1115]/80 backdrop-blur-xl border-amber-500/20'
+      }`}>
+        <div className="relative z-10 flex flex-col items-center text-center space-y-6">
+          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center border transition-all duration-500 ${
+            isAnonKilled
+              ? 'bg-amber-500/10 border-amber-500/30 text-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.25)] animate-pulse'
+              : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400 shadow-[0_0_20px_rgba(99,102,241,0.15)]'
+          }`}>
+            <Ghost className="w-8 h-8" />
+          </div>
+
+          <div className="max-w-md space-y-2">
+            <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight flex items-center justify-center gap-2">
+              <span>Anonymous Kill Switch</span>
+              {isAnonKilled && (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] bg-amber-500/20 border border-amber-500/40 text-amber-400 font-bold uppercase tracking-widest">
+                  ACTIVE
+                </span>
+              )}
+            </h2>
+            <p className={`text-xs leading-relaxed ${isLightMode ? 'text-slate-600' : 'text-slate-400'}`}>
+              {isAnonKilled
+                ? "The Anonymous Kill Switch is currently ACTIVE. Radio stream playback, podcast playback, live studio video cam, and chatroom message sending are suspended across the application."
+                : "Selective broadcast switch that disables radio stream playback, suspends podcast playback, shuts down the studio video camera feed, and prevents chatroom message transmission without bringing down the main website."}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full max-w-2xl text-left text-xs font-semibold">
+            <div className={`p-3 rounded-2xl border flex items-center gap-2.5 ${isAnonKilled ? 'bg-red-500/10 border-red-500/30 text-red-400' : (isLightMode ? 'bg-black/5 border-black/10 text-slate-700' : 'bg-white/5 border-white/10 text-slate-300')}`}>
+              <Radio className="w-4 h-4 shrink-0 text-amber-500" />
+              <span>Radio: {isAnonKilled ? 'Killed' : 'Active'}</span>
+            </div>
+            <div className={`p-3 rounded-2xl border flex items-center gap-2.5 ${isAnonKilled ? 'bg-red-500/10 border-red-500/30 text-red-400' : (isLightMode ? 'bg-black/5 border-black/10 text-slate-700' : 'bg-white/5 border-white/10 text-slate-300')}`}>
+              <Headphones className="w-4 h-4 shrink-0 text-amber-500" />
+              <span>Podcasts: {isAnonKilled ? 'Killed' : 'Active'}</span>
+            </div>
+            <div className={`p-3 rounded-2xl border flex items-center gap-2.5 ${isAnonKilled ? 'bg-red-500/10 border-red-500/30 text-red-400' : (isLightMode ? 'bg-black/5 border-black/10 text-slate-700' : 'bg-white/5 border-white/10 text-slate-300')}`}>
+              <Eye className="w-4 h-4 shrink-0 text-amber-500" />
+              <span>Studio: {isAnonKilled ? 'Killed' : 'Active'}</span>
+            </div>
+            <div className={`p-3 rounded-2xl border flex items-center gap-2.5 ${isAnonKilled ? 'bg-red-500/10 border-red-500/30 text-red-400' : (isLightMode ? 'bg-black/5 border-black/10 text-slate-700' : 'bg-white/5 border-white/10 text-slate-300')}`}>
+              <Mail className="w-4 h-4 shrink-0 text-amber-500" />
+              <span>Chat: {isAnonKilled ? 'Killed' : 'Active'}</span>
+            </div>
+          </div>
+
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={handleToggleAnonymousKill}
+            disabled={anonUpdating}
+            className={`px-8 py-5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center space-x-2 border shadow-xl cursor-pointer disabled:opacity-50 select-none ${
+              isAnonKilled
+                ? 'bg-amber-600 border-amber-500 text-white hover:bg-amber-500 hover:shadow-[0_0_30px_rgba(245,158,11,0.4)]'
+                : 'bg-indigo-600 border-indigo-500 text-white hover:bg-indigo-500 hover:shadow-[0_0_30px_rgba(99,102,241,0.4)]'
+            }`}
+          >
+            {anonUpdating ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <Power className="w-4 h-4" />
+            )}
+            <span>{isAnonKilled ? "Deactivate Anonymous Kill Switch" : "Activate Anonymous Kill Switch"}</span>
+          </motion.button>
+        </div>
+
+        {/* Ambient background decoration */}
+        <div className={`absolute -right-24 -bottom-24 w-64 h-64 rounded-full blur-[100px] pointer-events-none transition-all duration-1000 ${
+          isAnonKilled ? 'bg-amber-500/15' : 'bg-indigo-500/10'
         }`} />
       </div>
 

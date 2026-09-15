@@ -95,6 +95,7 @@ const AdminSongRequests = lazyWithRetry(() => import("./admin/AdminSongRequests"
 const AdminOwnerControl = lazyWithRetry(() => import("./admin/AdminOwnerControl"));
 const AdminAIContentStudio = lazyWithRetry(() => import("./admin/AdminAIContentStudio").then(m => ({ default: m.AdminAIContentStudio })));
 const AdminEmail = lazyWithRetry(() => import("./admin/AdminEmail").then(m => ({ default: m.AdminEmail })));
+import { AdminGuideWidget } from "./admin/AdminGuideWidget";
 import { useLogo } from "../hooks/useLogo";
 import { PremiumRingLoader } from "../components/PremiumRingLoader";
 import { AppLoader } from "../components/AppLoader";
@@ -1090,6 +1091,7 @@ export default function Admin() {
             </AnimatePresence>
           </div>
         </div>
+        <AdminGuideWidget userRole={userRole} adminBasePath={adminBasePath} />
       </motion.div>
     </div>
   );

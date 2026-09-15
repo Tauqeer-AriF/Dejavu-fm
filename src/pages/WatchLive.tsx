@@ -2,7 +2,7 @@ import { ChatMessage } from "../types";
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { io, Socket } from 'socket.io-client';
-import { Send, User, LogOut, Loader2, Instagram, Facebook, Globe, Radio, Sparkles, Clock, MessageSquare, Users, Eye, EyeOff, Maximize2, X, RefreshCw, Disc } from 'lucide-react';
+import { Send, User, LogOut, Loader2, Instagram, Facebook, Globe, Radio, Sparkles, Clock, MessageSquare, Users, Eye, EyeOff, Maximize2, X, RefreshCw, Disc, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { useAudio } from '../context/AudioContext';
@@ -127,13 +127,23 @@ export default function WatchLive() {
   const [isSplitActive, setIsSplitActive] = useState(false);
   const [hasInitializedSplit, setHasInitializedSplit] = useState(false);
 
+  const isAnonymousKilled = settings?.anonymous_kill_switch === '1' || settings?.anonymous_kill_switch === 'true';
+
   useEffect(() => {
     if (settings && !hasInitializedSplit) {
       const autoFullscreen = settings.feat_auto_fullscreen !== '0';
-      setIsSplitActive(autoFullscreen);
+      if (!isAnonymousKilled) {
+        setIsSplitActive(autoFullscreen);
+      }
       setHasInitializedSplit(true);
     }
-  }, [settings, hasInitializedSplit]);
+  }, [settings, hasInitializedSplit, isAnonymousKilled]);
+
+  useEffect(() => {
+    if (isAnonymousKilled && isSplitActive) {
+      setIsSplitActive(false);
+    }
+  }, [isAnonymousKilled, isSplitActive]);
 
   const [viewportHeight, setViewportHeight] = useState('100dvh');
   const [viewportOffsetTop, setViewportOffsetTop] = useState(0);
@@ -307,9 +317,16 @@ export default function WatchLive() {
               {featChat && (
                 <button
                   type="button"
-                  onClick={() => setIsSplitActive(true)}
-                  className="flex items-center gap-1 p-2 sm:px-3 sm:py-1 bg-neon-blue/10 hover:bg-neon-blue/20 text-neon-blue border border-neon-blue/20 rounded-full transition-all text-[10px] font-black uppercase tracking-wider cursor-pointer shadow-[0_0_15px_rgba(0,242,254,0.1)] hover:shadow-[0_0_15px_rgba(0,242,254,0.25)] whitespace-nowrap"
-                  title="Enter Interactive Full-Screen View"
+                  onClick={() => {
+                    if (isAnonymousKilled) {
+                      toast.error("Full screen view is disabled while studio stream is suspended.");
+                      return;
+                    }
+                    setIsSplitActive(true);
+                  }}
+                  disabled={isAnonymousKilled}
+                  className={`flex items-center gap-1 p-2 sm:px-3 sm:py-1 ${isAnonymousKilled ? 'opacity-40 cursor-not-allowed bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-neon-blue/10 hover:bg-neon-blue/20 text-neon-blue border border-neon-blue/20 shadow-[0_0_15px_rgba(0,242,254,0.1)] hover:shadow-[0_0_15px_rgba(0,242,254,0.25)]'} rounded-full transition-all text-[10px] font-black uppercase tracking-wider cursor-pointer whitespace-nowrap`}
+                  title={isAnonymousKilled ? "Stream suspended" : "Enter Interactive Full-Screen View"}
                 >
                   <Maximize2 className="w-3 h-3 shrink-0" />
                   <span className="hidden sm:inline">Full Screen</span>
@@ -322,7 +339,19 @@ export default function WatchLive() {
             className="w-full relative bg-black group flex items-center justify-center aspect-video lg:aspect-auto lg:flex-1 overflow-hidden border-0 outline-none flex-none lg:flex-1"
             style={{ width: '100%', minWidth: '100%', maxWidth: '100%', aspectRatio: '16 / 9', flexShrink: 0 }}
           >
-            {embedVideoUrl && !isSplitActive ? (
+            {(settings?.anonymous_kill_switch === '1' || settings?.anonymous_kill_switch === 'true') ? (
+              <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/95 text-center p-6 border border-red-500/20">
+                <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center mb-4 text-red-500 animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.3)]">
+                  <ShieldAlert className="w-8 h-8" />
+                </div>
+                <h3 className="text-base sm:text-lg font-black uppercase tracking-widest text-red-500 mb-1">
+                  Studio Stream Suspended
+                </h3>
+                <p className="text-xs text-white/60 max-w-md font-medium">
+                  Error
+                </p>
+              </div>
+            ) : embedVideoUrl && !isSplitActive ? (
               <iframe 
                 key={`${playerKey}-${embedVideoUrl || 'empty'}`}
                 src={embedVideoUrl || undefined} 
@@ -575,7 +604,19 @@ export default function WatchLive() {
                   className="w-full aspect-video lg:aspect-auto lg:flex-1 bg-black relative flex-none lg:flex-1 flex items-center justify-center border-0 outline-none overflow-hidden"
                   style={{ width: '100%', minWidth: '100%', maxWidth: '100%', aspectRatio: '16 / 9', flexShrink: 0 }}
                 >
-                  {embedVideoUrl ? (
+                  {isAnonymousKilled ? (
+                    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/95 text-center p-6 border border-red-500/20">
+                      <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center mb-4 text-red-500 animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.3)]">
+                        <ShieldAlert className="w-8 h-8" />
+                      </div>
+                      <h3 className="text-base sm:text-lg font-black uppercase tracking-widest text-red-500 mb-1">
+                        Studio Stream Suspended
+                      </h3>
+                      <p className="text-xs text-white/60 max-w-md font-medium">
+                        Error
+                      </p>
+                    </div>
+                  ) : embedVideoUrl ? (
                     <iframe 
                       key={`split-${playerKey}-${embedVideoUrl}`}
                       src={embedVideoUrl || undefined} 
