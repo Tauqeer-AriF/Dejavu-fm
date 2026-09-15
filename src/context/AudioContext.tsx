@@ -30,6 +30,17 @@ export function getProxiedRadioUrl(url: string | undefined): string {
   return trimmed;
 }
 
+export function isAnonymousKillActive(): boolean {
+  try {
+    const cached = getCachedSettings();
+    if (cached) {
+      const val = cached.anonymous_kill_switch;
+      return val === '1' || val === 'true' || val === true;
+    }
+  } catch (e) {}
+  return false;
+}
+
 export function playRadioAudioWithFallback(rawUrl: string, vol: number): Promise<void> {
   if (!radioAudio || !rawUrl || !rawUrl.trim()) {
     return Promise.reject(new Error("No audio element or empty stream URL"));
@@ -307,6 +318,12 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
         set({ isPlaying: false, isBuffering: false });
         if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
       } else {
+        if (isAnonymousKillActive()) {
+          toast.error("Error");
+          set({ isPlaying: false, isBuffering: false });
+          return;
+        }
+
         if (!podcastTrack?.audioUrl || !podcastTrack.audioUrl.trim()) {
           toast.error("Audio stream not available for this episode.");
           return;
@@ -367,6 +384,11 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
       set({ isPlaying: false, isBuffering: false });
       if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
     } else {
+      if (isAnonymousKillActive()) {
+        toast.error("Error");
+        set({ isPlaying: false, isBuffering: false });
+        return;
+      }
       initAudioContextIfNeeded();
       const targetUrl = streamUrl || qualityUrls[quality] || qualityUrls.medium || qualityUrls.low || qualityUrls.high;
       
@@ -432,6 +454,15 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
 
   playRadio: () => {
     if (!radioAudio) return;
+    if (isAnonymousKillActive()) {
+      toast.error("Error");
+      if (radioAudio) {
+        radioAudio.pause();
+        radioAudio.src = '';
+      }
+      set({ isPlaying: false, isBuffering: false });
+      return;
+    }
     const { streamUrl, volume, quality, qualityUrls } = get();
 
     if (podcastAudio) {
@@ -471,6 +502,15 @@ export const useAudioStore = create<AudioStore>((set, get) => ({
 
   playPodcast: (track) => {
     if (!podcastAudio) return;
+
+    if (isAnonymousKillActive()) {
+      toast.error("Error");
+      if (podcastAudio) {
+        podcastAudio.pause();
+      }
+      set({ isPlaying: false, isBuffering: false });
+      return;
+    }
     
     if (!track?.audioUrl || !track.audioUrl.trim()) {
       toast.error("Audio stream not available for this episode.");

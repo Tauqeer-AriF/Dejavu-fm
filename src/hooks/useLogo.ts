@@ -7,21 +7,23 @@ export const CACHED_SETTINGS_KEY = 'dejavufm_cached_public_settings';
 
 export function getCachedSettings(): any {
   if (typeof window === 'undefined') return undefined;
-  if ((window as any).__INITIAL_SETTINGS__) {
-    return (window as any).__INITIAL_SETTINGS__;
-  }
+  const initial = (window as any).__INITIAL_SETTINGS__ || {};
+  let localSettings: any = null;
   try {
     const raw = localStorage.getItem(CACHED_SETTINGS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object') {
-        return parsed;
+        localSettings = parsed;
       }
     }
   } catch (e) {
     // ignore json parse error
   }
-  return undefined;
+  if (localSettings) {
+    return { ...initial, ...localSettings };
+  }
+  return Object.keys(initial).length > 0 ? initial : undefined;
 }
 
 export function applyCachedBrandingDirectly(settings?: any) {
@@ -109,6 +111,7 @@ export function setCachedSettings(settings: any) {
   try {
     const existing = getCachedSettings() || {};
     const merged = { ...existing, ...settings };
+    (window as any).__INITIAL_SETTINGS__ = merged;
     localStorage.setItem(CACHED_SETTINGS_KEY, JSON.stringify(merged));
     applyCachedBrandingDirectly(merged);
   } catch (e) {

@@ -5,7 +5,7 @@ import { useLogo } from '../hooks/useLogo';
 import { safeFetchJson } from '../utils/safeFetch';
 import { motion, AnimatePresence } from 'motion/react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { triggerHaptic } from '../lib/hapticHelper';
 
 function Visualizer({ isPlaying, volume, isLightMode }: { isPlaying: boolean; volume: number; isLightMode: boolean }) {
@@ -223,6 +223,16 @@ export function PlayerBar() {
   
   const [isMinimized, setIsMinimized] = useState(true);
 
+  const location = useLocation();
+  const adminPathSetting = (settings?.admin_custom_path || '/admin').trim().replace(/\/+$/, '') || '/admin';
+  const ownerPathSetting = (settings?.owner_custom_path || '/owner').trim().replace(/\/+$/, '') || '/owner';
+  const isDashboard = location.pathname.startsWith(adminPathSetting) || 
+                      location.pathname.startsWith(ownerPathSetting) || 
+                      location.pathname.startsWith('/admin') || 
+                      location.pathname.startsWith('/owner') ||
+                      location.pathname.startsWith('/studio') ||
+                      location.pathname.startsWith('/dashboard');
+
   const [dragConstraints, setDragConstraints] = useState({ left: -800, right: 50, top: -600, bottom: 50 });
 
   useEffect(() => {
@@ -254,6 +264,10 @@ export function PlayerBar() {
     const nextIdx = (currentIdx + 1) % speedOptions.length;
     setPlaybackRate(speedOptions[nextIdx]);
   };
+
+  if (isDashboard) {
+    return null;
+  }
 
   return (
     <AnimatePresence mode="wait">
@@ -469,13 +483,13 @@ export function PlayerBar() {
           initial={{ scale: 0, opacity: 0, x: 50 }}
           animate={{ scale: 1, opacity: 1, x: 0 }}
           exit={{ scale: 0, opacity: 0, x: 50 }}
-          className="front-player-bar-minimized fixed bottom-[88px] sm:bottom-[112px] xl:bottom-8 right-3 sm:right-8 z-50 hidden sm:flex items-center space-x-2 sm:space-x-3 cursor-grab active:cursor-grabbing touch-none select-none"
+          className="front-player-bar-minimized fixed z-50 hidden sm:flex items-center space-x-2 sm:space-x-3 cursor-grab active:cursor-grabbing touch-none select-none transition-all duration-300 bottom-[88px] sm:bottom-[112px] xl:bottom-8 right-3 sm:right-8"
           drag
           dragConstraints={dragConstraints}
           dragElastic={0.1}
           dragMomentum={false}
         >
-          <div className={`backdrop-blur-3xl border rounded-full p-1 sm:p-1.5 flex items-center ${isLightMode ? "bg-[#ffffff]/80 border-black/10 shadow-[0_20px_50px_rgba(0,0,0,0.1)]" : "bg-dark-bg/80 border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]"}`}>
+          <div className={`backdrop-blur-3xl border rounded-full p-1 sm:p-1.5 flex items-center space-x-2 sm:space-x-3 ${isLightMode ? "bg-[#ffffff]/80 border-black/10 shadow-[0_20px_50px_rgba(0,0,0,0.1)]" : "bg-dark-bg/80 border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]"}`}>
              <button 
               onClick={() => {
                 triggerHaptic('selection');

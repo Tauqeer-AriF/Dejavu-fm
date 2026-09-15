@@ -164,6 +164,7 @@ const renderLevelBadge = (level?: number, levelTitle?: string, showGamificationL
 
 export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = false }: { isOpen?: boolean; onClose?: () => void; embedded?: boolean }) {
   const { isLightMode, settings } = useLogo();
+  const isAnonymousKilled = settings?.anonymous_kill_switch === '1' || settings?.anonymous_kill_switch === 'true';
   const showGamificationLevels = settings?.feat_gamification !== '0';
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
     const saved = safeLocalStorage.getItem('dejavu_chat_sound_enabled');
@@ -1598,6 +1599,10 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
 
   const sendMessage = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isAnonymousKilled) {
+      toast.error("Error");
+      return;
+    }
     const hasText = !!inputText.trim();
     const hasAttachment = !!pendingAttachment;
     if ((!hasText && !hasAttachment) || !socketRef.current || !loggedInUser || !isConnected || isDmRestricted) {
@@ -3026,7 +3031,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
-                          disabled={!isConnected || isDmRestricted}
+                          disabled={!isConnected || isDmRestricted || isAnonymousKilled}
                           className={`absolute ${embedded ? 'left-1.5 top-1.5 bottom-1.5 w-8' : 'left-2 top-2 bottom-2 w-10'} flex items-center justify-center rounded-xl transition-all disabled:opacity-30 disabled:pointer-events-none ${isLightMode ? 'text-black/40 hover:text-black hover:bg-black/5' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
                           title="Attach image or audio"
                         >
@@ -3037,7 +3042,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                         <button
                           type="button"
                           onClick={startRecording}
-                          disabled={!isConnected || isDmRestricted}
+                          disabled={!isConnected || isDmRestricted || isAnonymousKilled}
                           className={`absolute ${embedded ? 'left-9 top-1.5 bottom-1.5 w-8' : 'left-12 top-2 bottom-2 w-10'} flex items-center justify-center rounded-xl transition-all disabled:opacity-30 disabled:pointer-events-none ${isLightMode ? 'text-black/40 hover:text-black hover:bg-black/5' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
                           title="Record voice note"
                         >
@@ -3050,22 +3055,24 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                           value={inputText}
                           onChange={(e) => handleInputChange(e.target.value)}
                           onKeyDown={handleKeyDown}
-                          disabled={!isConnected || isDmRestricted}
+                          disabled={!isConnected || isDmRestricted || isAnonymousKilled}
                           placeholder={
-                            !isConnected
+                            isAnonymousKilled
+                              ? "Chat messaging suspended by broadcast controls..."
+                              : !isConnected
                               ? "Connection restricted or offline..."
                               : isDmRestricted
                               ? "Messaging restricted due to block..."
                               : "Say something to the station..."
                           }
-                          className={`w-full ${isLightMode ? 'bg-[#ffffff]/80 border-black/10 text-black placeholder-black/40' : 'bg-black/50 border-white/10 placeholder-white/20'} border rounded-2xl ${embedded ? 'pl-[76px] pr-20 py-2.5 text-xs' : 'pl-[88px] pr-24 py-4 text-sm'} focus:outline-none focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/50 transition-all ${(!isConnected || isDmRestricted) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          className={`w-full ${isLightMode ? 'bg-[#ffffff]/80 border-black/10 text-black placeholder-black/40' : 'bg-black/50 border-white/10 placeholder-white/20'} border rounded-2xl ${embedded ? 'pl-[76px] pr-20 py-2.5 text-xs' : 'pl-[88px] pr-24 py-4 text-sm'} focus:outline-none focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/50 transition-all ${(!isConnected || isDmRestricted || isAnonymousKilled) ? 'opacity-50 cursor-not-allowed' : ''}`}
                         />
                         
                         {/* Emoji trigger button inside the input */}
                         <button
                           type="button"
                           onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                          disabled={!isConnected || isDmRestricted}
+                          disabled={!isConnected || isDmRestricted || isAnonymousKilled}
                           className={`absolute ${embedded ? 'right-9 top-1.5 bottom-1.5 w-8' : 'right-12 top-2 bottom-2 w-10'} flex items-center justify-center rounded-xl transition-all disabled:opacity-30 disabled:pointer-events-none ${
                             showEmojiPicker ? 'text-neon-purple bg-neon-purple/10' : (isLightMode ? 'text-black/40 hover:text-black bg-transparent' : 'text-white/40 hover:text-white bg-transparent')
                           }`}
