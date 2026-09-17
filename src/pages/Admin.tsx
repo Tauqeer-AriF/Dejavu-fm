@@ -517,8 +517,45 @@ export default function Admin() {
         if (!saved) return;
         const currentThreads = JSON.parse(saved);
         const userKey = username.toLowerCase();
-        if (currentThreads[userKey]) {
-          delete currentThreads[userKey];
+        let updated = false;
+
+        Object.keys(currentThreads).forEach(k => {
+          const tUser = (currentThreads[k]?.user || '').toLowerCase();
+          if (k === userKey || tUser === userKey || (userKey && tUser.includes(userKey)) || (userKey && userKey.includes(tUser))) {
+            delete currentThreads[k];
+            updated = true;
+          }
+        });
+
+        if (updated) {
+          localStorage.setItem('dejavu_studio_threads', JSON.stringify(currentThreads));
+          window.dispatchEvent(new Event('dejavu_studio_threads_updated'));
+        }
+      } catch {}
+    };
+
+    const onBulkUserThreadsCleared = ({ usernames }: { usernames: string[] }) => {
+      try {
+        if (!usernames || !Array.isArray(usernames)) return;
+        const saved = localStorage.getItem('dejavu_studio_threads');
+        if (!saved) return;
+        const currentThreads = JSON.parse(saved);
+        const lowerKeys = usernames.map(u => u.toLowerCase());
+        let updated = false;
+
+        Object.keys(currentThreads).forEach(k => {
+          const tUser = (currentThreads[k]?.user || '').toLowerCase();
+          if (
+            lowerKeys.includes(k) ||
+            lowerKeys.includes(tUser) ||
+            lowerKeys.some(lk => (lk && tUser.includes(lk)) || (tUser && lk.includes(tUser)))
+          ) {
+            delete currentThreads[k];
+            updated = true;
+          }
+        });
+
+        if (updated) {
           localStorage.setItem('dejavu_studio_threads', JSON.stringify(currentThreads));
           window.dispatchEvent(new Event('dejavu_studio_threads_updated'));
         }
@@ -616,6 +653,7 @@ export default function Admin() {
     socket.on('privateHistory', onPrivateHistory);
     socket.on('shoutoutHistory', onShoutoutHistory);
     socket.on('userThreadCleared', onUserThreadCleared);
+    socket.on('bulkUserThreadsCleared', onBulkUserThreadsCleared);
     socket.on('messageDeleted', onMessageDeleted);
     socket.on('shoutoutDeleted', onShoutoutDeleted);
     socket.on('messagesCleared', onMessagesCleared);
@@ -628,6 +666,7 @@ export default function Admin() {
       socket.off('privateHistory', onPrivateHistory);
       socket.off('shoutoutHistory', onShoutoutHistory);
       socket.off('userThreadCleared', onUserThreadCleared);
+      socket.off('bulkUserThreadsCleared', onBulkUserThreadsCleared);
       socket.off('messageDeleted', onMessageDeleted);
       socket.off('shoutoutDeleted', onShoutoutDeleted);
       socket.off('messagesCleared', onMessagesCleared);

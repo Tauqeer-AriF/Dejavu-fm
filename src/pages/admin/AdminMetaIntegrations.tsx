@@ -96,6 +96,7 @@ export function AdminMetaIntegrations() {
   const [testMsgPhone, setTestMsgPhone] = useState('');
   const [testMsgText, setTestMsgText] = useState('Hello from DejavuFM Radio Studio! 📻🎵');
   const [isSendingTestMsg, setIsSendingTestMsg] = useState(false);
+  const [isSyncingGateway, setIsSyncingGateway] = useState(false);
   const [showRailwayGuide, setShowRailwayGuide] = useState(false);
 
   // Load states from settings response when loaded
@@ -265,7 +266,13 @@ export function AdminMetaIntegrations() {
         if (data.connected) {
           toast.success(`WhatsApp Connected! Phone linked: +${data.phone || 'Ready'}`);
         } else if (data.status === 'SCAN_QR_CODE') {
-          toast.info("Gateway is waiting for QR code scan.");
+          toast.info("Gateway is waiting for QR code scan. Loading QR...");
+          handleFetchGatewayQr();
+        } else if (data.status === 'STARTING') {
+          toast.info("Session is initializing on WAHA. Loading QR code now...");
+          handleFetchGatewayQr();
+        } else if (data.status === 'STOPPED') {
+          toast.warning("Session was stopped. Starting session and fetching QR...");
           handleFetchGatewayQr();
         } else {
           toast.warning(`Gateway status: ${data.status}`);
@@ -290,17 +297,6 @@ export function AdminMetaIntegrations() {
     }
     setIsLoadingQr(true);
     try {
-      // First ensure session is started
-      await fetchAdmin("/api/admin/whatsapp-gateway/start", {
-        method: "POST",
-        body: JSON.stringify({
-          serverUrl: wa.serverUrl,
-          apiKey: wa.apiKey || '',
-          sessionName: wa.sessionName || 'default'
-        })
-      });
-
-      // Then fetch QR code
       const query = new URLSearchParams({
         serverUrl: wa.serverUrl,
         apiKey: wa.apiKey || '',
@@ -311,9 +307,14 @@ export function AdminMetaIntegrations() {
       if (data.qr) {
         setQrCodeData(data);
         setGatewayStatus('SCAN_QR_CODE');
-        toast.success("QR Code loaded! Point your phone camera to pair.");
+        toast.success("WhatsApp QR code generated! Point your phone camera to pair.");
       } else {
-        toast.error(data.error || "No QR code available. Check if phone is already linked.");
+        if (data.error && data.error.includes('already connected')) {
+          setGatewayStatus('CONNECTED');
+          toast.success(data.error);
+        } else {
+          toast.error(data.error || "No QR code available. Check if phone is already linked.");
+        }
       }
     } catch (err: any) {
       toast.error(err.message || "Failed to retrieve QR code.");
@@ -376,6 +377,25 @@ export function AdminMetaIntegrations() {
       toast.error(err.message || "Failed to send test message.");
     } finally {
       setIsSendingTestMsg(false);
+    }
+  };
+
+  const handleSyncGatewayMessages = async () => {
+    setIsSyncingGateway(true);
+    try {
+      const res = await fetchAdmin("/api/admin/whatsapp-gateway/sync", {
+        method: "POST"
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Synced WhatsApp: ${data.syncedCount || 0} new message(s) imported across ${data.chatsCount || 0} active chat(s).`);
+      } else {
+        toast.error(data.error || "Sync failed. Check Gateway Server status.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to sync messages.");
+    } finally {
+      setIsSyncingGateway(false);
     }
   };
 
@@ -897,68 +917,126 @@ export function AdminMetaIntegrations() {
               {platformConfigs.whatsapp?.provider !== 'meta' ? (
                 /* WAHA / Evolution Self-Hosted Form */
                 <div className="space-y-4">
-                  <div className={`p-3.5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                  <div className={`p-4 rounded-2xl border transition-all space-y-3 ${
                     gatewayStatus === 'CONNECTED'
-                      ? (isLightMode ? 'bg-emerald-50/70 border-emerald-200/80 text-emerald-900' : 'bg-emerald-950/20 border-emerald-800/40 text-emerald-300')
+                      ? (isLightMode ? 'bg-emerald-50/60 border-emerald-200 text-emerald-950' : 'bg-emerald-950/20 border-emerald-800/50 text-emerald-200')
                       : gatewayStatus === 'SCAN_QR_CODE'
-                      ? (isLightMode ? 'bg-amber-50/70 border-amber-200/80 text-amber-900' : 'bg-amber-950/20 border-amber-800/40 text-amber-300')
-                      : (isLightMode ? 'bg-zinc-50 border-zinc-200/80' : 'bg-zinc-950/40 border-zinc-800/60')
+                      ? (isLightMode ? 'bg-amber-50/60 border-amber-200 text-amber-950' : 'bg-amber-950/20 border-amber-800/50 text-amber-200')
+                      : gatewayStatus === 'OFFLINE'
+                      ? (isLightMode ? 'bg-red-50/50 border-red-200 text-red-950' : 'bg-red-950/20 border-red-800/40 text-red-200')
+                      : (isLightMode ? 'bg-zinc-50/80 border-zinc-200' : 'bg-zinc-950/50 border-zinc-800/80')
                   }`}>
-                    <div className="flex items-center gap-3">
-                      <div className={`w-3 h-3 rounded-full shrink-0 ${
-                        gatewayStatus === 'CONNECTED' ? 'bg-emerald-500 animate-pulse' : gatewayStatus === 'SCAN_QR_CODE' ? 'bg-amber-500 animate-pulse' : 'bg-zinc-400'
-                      }`} />
-                      <div>
-                        <div className="text-xs font-semibold">
+                    {/* Header Row: Status Indicator + Title + Badge */}
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                          gatewayStatus === 'CONNECTED' 
+                            ? 'bg-emerald-500 ring-4 ring-emerald-500/20 animate-pulse' 
+                            : gatewayStatus === 'SCAN_QR_CODE' 
+                            ? 'bg-amber-500 ring-4 ring-amber-500/20 animate-pulse' 
+                            : gatewayStatus === 'OFFLINE'
+                            ? 'bg-red-500 ring-4 ring-red-500/20'
+                            : 'bg-zinc-400'
+                        }`} />
+                        <span className="text-xs sm:text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 truncate">
                           {gatewayStatus === 'CONNECTED'
                             ? `WhatsApp Connected & Linked! (+${gatewayPhone || platformConfigs.whatsapp?.phone || 'Ready'})`
                             : gatewayStatus === 'SCAN_QR_CODE'
-                            ? 'Ready for Pairing: Scan the QR code with WhatsApp'
+                            ? 'Ready for Pairing: Scan QR code'
                             : gatewayStatus === 'OFFLINE'
-                            ? 'Gateway Server Unreachable (Check Railway URL)'
-                            : 'Gateway Idle / Checking Connection...'}
-                        </div>
-                        <p className="text-[11px] opacity-75">
-                          {gatewayStatus === 'CONNECTED'
-                            ? 'Inbound messages stream into Studio Inbox in real time. Outbound replies send directly from your station SIM.'
-                            : 'Runs WhatsApp Web headlessly on your server without Meta approval or subscription fees.'}
-                        </p>
+                            ? 'Gateway Server Unreachable'
+                            : 'Gateway Idle / Checking Connection'}
+                        </span>
                       </div>
+
+                      <span className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full shrink-0 ${
+                        gatewayStatus === 'CONNECTED'
+                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                          : gatewayStatus === 'SCAN_QR_CODE'
+                          ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                          : gatewayStatus === 'OFFLINE'
+                          ? 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30'
+                          : 'bg-zinc-200/60 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-300/60 dark:border-zinc-700'
+                      }`}>
+                        {gatewayStatus === 'CONNECTED'
+                          ? 'Live Bridge Active'
+                          : gatewayStatus === 'SCAN_QR_CODE'
+                          ? 'Awaiting Scan'
+                          : gatewayStatus === 'OFFLINE'
+                          ? 'Offline'
+                          : 'Standby'}
+                      </span>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={handleCheckGatewayStatus}
-                        disabled={isCheckingGateway}
-                        className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition flex items-center gap-1.5 ${
-                          isLightMode ? 'bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-700' : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-700 text-zinc-200'
-                        }`}
-                      >
-                        <RefreshCw className={`w-3.5 h-3.5 ${isCheckingGateway ? 'animate-spin' : ''}`} />
-                        Check Status
-                      </button>
+                    {/* Description */}
+                    <p className={`text-xs leading-relaxed ${isLightMode ? 'text-zinc-600' : 'text-zinc-400'}`}>
+                      {gatewayStatus === 'CONNECTED'
+                        ? 'Inbound listener WhatsApp messages stream into the Studio Inbox in real time. Outbound replies send directly through your station number.'
+                        : gatewayStatus === 'SCAN_QR_CODE'
+                        ? 'Your WhatsApp bridge session is waiting for mobile authorization. Click Pair Phone / QR below and scan the QR code from WhatsApp Settings > Linked Devices.'
+                        : gatewayStatus === 'OFFLINE'
+                        ? 'Cannot reach the WAHA / Evolution gateway server URL. Verify your Railway or VPS deployment is online and the URL below is correct.'
+                        : 'Runs WhatsApp Web headlessly on your server without Meta approval delays, template restrictions, or recurring API subscription fees.'}
+                    </p>
 
-                      {gatewayStatus === 'CONNECTED' ? (
+                    {/* Action Toolbar */}
+                    <div className={`pt-2.5 border-t flex flex-wrap items-center justify-between gap-2 ${
+                      isLightMode ? 'border-zinc-200/80' : 'border-zinc-800/80'
+                    }`}>
+                      <div className="flex items-center gap-2 flex-wrap">
                         <button
                           type="button"
-                          onClick={handleLogoutGateway}
-                          className="px-3 py-1.5 rounded-xl border text-xs font-medium transition flex items-center gap-1.5 bg-red-500/10 hover:bg-red-500/20 border-red-500/30 text-red-400"
+                          onClick={handleSyncGatewayMessages}
+                          disabled={isSyncingGateway}
+                          className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition flex items-center gap-1.5 shadow-sm active:scale-95 ${
+                            isLightMode 
+                              ? 'bg-white hover:bg-emerald-50/60 border-zinc-200 hover:border-emerald-300 text-emerald-700' 
+                              : 'bg-zinc-900 hover:bg-emerald-950/40 border-zinc-800 hover:border-emerald-800 text-emerald-300'
+                          }`}
+                          title="Sync and import recent messages from your linked WhatsApp"
                         >
-                          <Unlink className="w-3.5 h-3.5" />
-                          Unlink Phone
+                          <RefreshCw className={`w-3.5 h-3.5 text-emerald-500 ${isSyncingGateway ? 'animate-spin' : ''}`} />
+                          {isSyncingGateway ? 'Syncing...' : 'Sync Messages'}
                         </button>
-                      ) : (
+
                         <button
                           type="button"
-                          onClick={handleFetchGatewayQr}
-                          disabled={isLoadingQr}
-                          className="px-3 py-1.5 rounded-xl border text-xs font-medium transition flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-sm"
+                          onClick={handleCheckGatewayStatus}
+                          disabled={isCheckingGateway}
+                          className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition flex items-center gap-1.5 shadow-sm active:scale-95 ${
+                            isLightMode 
+                              ? 'bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-700' 
+                              : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-200'
+                          }`}
+                          title="Ping WhatsApp gateway server and verify health"
                         >
-                          <QrCode className="w-3.5 h-3.5" />
-                          {isLoadingQr ? 'Loading QR...' : 'Pair Phone / QR'}
+                          <RefreshCw className={`w-3.5 h-3.5 ${isCheckingGateway ? 'animate-spin text-zinc-400' : 'text-zinc-400'}`} />
+                          {isCheckingGateway ? 'Checking...' : 'Check Status'}
                         </button>
-                      )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {gatewayStatus === 'CONNECTED' ? (
+                          <button
+                            type="button"
+                            onClick={handleLogoutGateway}
+                            className="px-3.5 py-1.5 rounded-xl border text-xs font-medium transition flex items-center gap-1.5 bg-red-500/10 hover:bg-red-500/20 border-red-500/30 text-red-500 dark:text-red-400 active:scale-95 shadow-sm"
+                          >
+                            <Unlink className="w-3.5 h-3.5" />
+                            Unlink Phone
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleFetchGatewayQr}
+                            disabled={isLoadingQr}
+                            className="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm hover:shadow active:scale-95 disabled:opacity-60"
+                          >
+                            <QrCode className="w-3.5 h-3.5" />
+                            {isLoadingQr ? 'Loading QR...' : 'Pair Phone / QR'}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
 

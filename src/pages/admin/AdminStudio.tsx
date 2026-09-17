@@ -62,13 +62,31 @@ const extractVideoUrl = (item: any): string | undefined => {
   return formatMediaUrl(raw);
 };
 
+const normalizeMsgText = (t?: string) => (t || '').replace(/^@[^\s]+\s+/, '').trim();
+
 const isSameMessage = (msgA: Message, msgB: Message) => {
   if (msgA.id === msgB.id) return true;
   const isTempA = msgA.id.startsWith('reply-') || msgA.id.startsWith('temp-');
   const isTempB = msgB.id.startsWith('reply-') || msgB.id.startsWith('temp-');
-  if ((isTempA || isTempB) && msgA.user === msgB.user && msgA.text === msgB.text) {
-    return Math.abs(msgA.timestamp - msgB.timestamp) < 60000;
+
+  const textA = (msgA.text || '').trim();
+  const textB = (msgB.text || '').trim();
+  const normA = normalizeMsgText(textA);
+  const normB = normalizeMsgText(textB);
+
+  const userA = (msgA.user || '').toLowerCase();
+  const userB = (msgB.user || '').toLowerCase();
+  const isSameUser = userA === userB || 
+    (userA.includes('studio') && userB.includes('studio'));
+
+  if (isSameUser && (textA === textB || normA === normB || (normA && normB && (normA.includes(normB) || normB.includes(normA))))) {
+    return Math.abs(msgA.timestamp - msgB.timestamp) < 90000;
   }
+
+  if ((isTempA || isTempB) && (textA === textB || normA === normB)) {
+    return Math.abs(msgA.timestamp - msgB.timestamp) < 90000;
+  }
+
   return false;
 };
 
@@ -489,6 +507,13 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
+      // Trigger WhatsApp Gateway synchronization immediately
+      try {
+        await fetchAdmin('/api/admin/whatsapp-gateway/sync', { method: 'POST' });
+      } catch (syncErr) {
+        console.warn('WhatsApp gateway sync error on refresh:', syncErr);
+      }
+
       await queryClient.invalidateQueries();
       
       // Reset the history received refs so they can process incoming history again
@@ -506,7 +531,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           socketRef.current.emit('requestHistory');
         }
       }
-      toast.success("Studio Inbox refreshed");
+      toast.success("Studio Inbox refreshed & WhatsApp synced");
     } catch (e) {
       console.error(e);
       toast.error("Failed to refresh");
@@ -514,6 +539,11 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       setTimeout(() => setIsRefreshing(false), 600);
     }
   };
+
+  // Trigger background WhatsApp sync when AdminStudio opens
+  useEffect(() => {
+    fetchAdmin('/api/admin/whatsapp-gateway/sync', { method: 'POST' }).catch(() => {});
+  }, []);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
     try {
       return JSON.parse(localStorage.getItem('studio_sound_enabled') || 'true');
@@ -1655,16 +1685,69 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     const handleUserThreadCleared = ({ username }: { username: string }) => {
       setThreads(prev => {
         const key = username.toLowerCase();
-        if (!prev[key]) return prev;
-        const newThreads = { ...prev };
-        delete newThreads[key];
-        return newThreads;
+        // Also look for matches by phone/name
+        const nextThreads = { ...prev };
+        let changed = false;
+
+        Object.keys(nextThreads).forEach(userKey => {
+          const thread = nextThreads[userKey];
+          const tUser = (thread?.user || '').toLowerCase();
+          if (
+            userKey === key ||
+            tUser === key ||
+            (key && tUser.includes(key)) ||
+            (key && key.includes(tUser))
+          ) {
+            delete nextThreads[userKey];
+            changed = true;
+          }
+        });
+
+        if (changed) {
+          localStorage.setItem('dejavu_studio_threads', JSON.stringify(nextThreads));
+          return nextThreads;
+        }
+        return prev;
       });
 
       if (selectedUserRef.current?.toLowerCase() === username.toLowerCase()) {
         setSelectedUser(null);
       }
       setSelectedThreads(prev => prev.filter(userKey => userKey !== username.toLowerCase()));
+    };
+
+    const handleBulkUserThreadsCleared = ({ usernames }: { usernames: string[] }) => {
+      if (!usernames || !Array.isArray(usernames)) return;
+      const lowerKeys = usernames.map(u => u.toLowerCase());
+
+      setThreads(prev => {
+        const nextThreads = { ...prev };
+        let changed = false;
+
+        Object.keys(nextThreads).forEach(userKey => {
+          const thread = nextThreads[userKey];
+          const tUser = (thread?.user || '').toLowerCase();
+          if (
+            lowerKeys.includes(userKey) ||
+            lowerKeys.includes(tUser) ||
+            lowerKeys.some(k => (k && tUser.includes(k)) || (tUser && k.includes(tUser)))
+          ) {
+            delete nextThreads[userKey];
+            changed = true;
+          }
+        });
+
+        if (changed) {
+          localStorage.setItem('dejavu_studio_threads', JSON.stringify(nextThreads));
+          return nextThreads;
+        }
+        return prev;
+      });
+
+      if (selectedUserRef.current && lowerKeys.includes(selectedUserRef.current.toLowerCase())) {
+        setSelectedUser(null);
+      }
+      setSelectedThreads(prev => prev.filter(userKey => !lowerKeys.includes(userKey)));
     };
 
     const handleMessageDeleted = ({ id, isPrivate }: { id: string; isPrivate: boolean }) => {
@@ -1797,6 +1880,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     socket.on('shoutouts_cleared', handleShoutoutsCleared);
     socket.on('messagesCleared', handleMessagesCleared);
     socket.on('userThreadCleared', handleUserThreadCleared);
+    socket.on('bulkUserThreadsCleared', handleBulkUserThreadsCleared);
     socket.on('messageDeleted', handleMessageDeleted);
     socket.on('shoutoutDeleted', handleShoutoutDeleted);
     socket.on('shoutoutReply', handleShoutoutReply);
@@ -1817,6 +1901,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       socket.off('shoutouts_cleared', handleShoutoutsCleared);
       socket.off('messagesCleared', handleMessagesCleared);
       socket.off('userThreadCleared', handleUserThreadCleared);
+      socket.off('bulkUserThreadsCleared', handleBulkUserThreadsCleared);
       socket.off('messageDeleted', handleMessageDeleted);
       socket.off('shoutoutDeleted', handleShoutoutDeleted);
       socket.off('shoutoutReply', handleShoutoutReply);
@@ -2085,9 +2170,32 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     });
 
     if (confirmed && adminUsername) {
+      const userKey = username.toLowerCase();
+      const targetThread = threads[userKey] || (Object.values(threads) as UserThread[]).find(t => t.user.toLowerCase() === userKey);
+      const messageIds = targetThread?.messages?.map(m => m.id) || [];
+
+      // Optimistically update UI immediately
+      setThreads(prev => {
+        const next = { ...prev };
+        delete next[userKey];
+        Object.keys(next).forEach(k => {
+          if (next[k]?.user?.toLowerCase() === userKey) {
+            delete next[k];
+          }
+        });
+        localStorage.setItem('dejavu_studio_threads', JSON.stringify(next));
+        return next;
+      });
+
+      if (selectedUser?.toLowerCase() === userKey) {
+        setSelectedUser(null);
+      }
+      setSelectedThreads(prev => prev.filter(k => k !== userKey));
+
       socketRef.current?.emit('clearUserThread', {
         adminUser: adminUsername,
-        targetUser: username
+        targetUser: username,
+        messageIds
       });
       toast.success(`Conversation with ${username} has been cleared.`);
     }
@@ -2281,10 +2389,11 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       } else {
         const isMeta = ['whatsapp', 'instagram', 'facebook', 'twitch'].includes(source);
         const isPrivate = source === 'private_dm' || isMeta;
+        const finalText = isPrivate ? replyText.trim() : `@${selectedUser} ${replyText.trim()}`;
 
         const chatPayload = {
           user: studioName,
-          text: `@${selectedUser} ${replyText}`,
+          text: finalText,
           imageUrl: mediaType === 'image' ? mediaUrl : null,
           audioUrl: mediaType === 'audio' ? mediaUrl : null,
           videoUrl: mediaType === 'video' ? mediaUrl : null,
@@ -2300,12 +2409,16 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       // Manually add the reply to the local state for immediate feedback
       // For shoutouts, we rely on the socket broadcast to avoid duplication
       if (!isShoutout) {
+        const isMeta = ['whatsapp', 'instagram', 'facebook', 'twitch'].includes(source);
+        const isPrivate = source === 'private_dm' || isMeta;
+        const finalText = isPrivate ? replyText.trim() : `@${selectedUser} ${replyText.trim()}`;
+
         const replyMessage: Message = {
           id: `reply-${lastMessage.id}-${Date.now()}`,
           type: 'chat', // Treat replies as chat messages for styling
           user: studioName,
           avatar: studioImage,
-          text: `@${selectedUser} ${replyText}`,
+          text: finalText,
           timestamp: Date.now(),
           imageUrl: mediaType === 'image' && mediaUrl ? formatMediaUrl(mediaUrl) : undefined,
           audioUrl: mediaType === 'audio' && mediaUrl ? formatMediaUrl(mediaUrl) : undefined,
@@ -2436,27 +2549,73 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   };
 
   const handleDeleteSelected = async () => {
+    const count = selectedThreads.length;
     const confirmed = await showConfirm({
-      title: `Delete ${selectedThreads.length} Conversations`,
-      message: "Are you sure you want to permanently delete all messages and shoutouts for the selected users? This action cannot be undone.",
+      title: `Delete ${count} Conversation${count !== 1 ? 's' : ''}`,
+      message: `Are you sure you want to permanently delete all messages and shoutouts for the selected ${count} conversation${count !== 1 ? 's' : ''}? This action cannot be undone.`,
       style: "danger",
       confirmText: "Delete Selected"
     });
 
     if (confirmed && adminUsername) {
-      const usersToDelete = selectedThreads
-        .map(userKey => (Object.values(threads) as UserThread[]).find(t => t.user.toLowerCase() === userKey))
+      const selectedKeys = [...selectedThreads];
+      const usersToDelete = selectedKeys
+        .map(userKey => (Object.values(threads) as UserThread[]).find(t => t.user.toLowerCase() === userKey.toLowerCase() || t.user === userKey))
         .filter((t): t is UserThread => !!t);
 
+      const allMessageIds: (string | number)[] = [];
+      const targetUsernames: string[] = [];
+
+      selectedKeys.forEach(k => targetUsernames.push(k));
+
       usersToDelete.forEach(thread => {
-        socketRef.current?.emit('clearUserThread', {
-          adminUser: adminUsername,
-          targetUser: thread.user
+        targetUsernames.push(thread.user);
+        thread.messages.forEach(m => {
+          if (m.id) allMessageIds.push(m.id);
         });
       });
 
-      toast.success(`Deletion process started for ${usersToDelete.length} conversations.`);
+      // 1. Immediate optimistic UI state update
+      setThreads(prev => {
+        const nextThreads = { ...prev };
+        selectedKeys.forEach(userKey => {
+          const lowerKey = userKey.toLowerCase();
+          delete nextThreads[userKey];
+          delete nextThreads[lowerKey];
+          Object.keys(nextThreads).forEach(k => {
+            if (k.toLowerCase() === lowerKey || nextThreads[k]?.user?.toLowerCase() === lowerKey || nextThreads[k]?.user === userKey) {
+              delete nextThreads[k];
+            }
+          });
+        });
+        localStorage.setItem('dejavu_studio_threads', JSON.stringify(nextThreads));
+        return nextThreads;
+      });
+
+      if (selectedUser && (selectedKeys.includes(selectedUser) || selectedKeys.includes(selectedUser.toLowerCase()))) {
+        setSelectedUser(null);
+      }
       setSelectedThreads([]);
+
+      const uniqueTargetUsers = Array.from(new Set(targetUsernames.filter(Boolean)));
+
+      // 2. Emit bulk socket event
+      socketRef.current?.emit('clearBulkThreads', {
+        adminUser: adminUsername,
+        targetUsers: uniqueTargetUsers,
+        messageIds: Array.from(new Set(allMessageIds))
+      });
+
+      // 3. Fallback single-thread emissions for resilience
+      usersToDelete.forEach(thread => {
+        socketRef.current?.emit('clearUserThread', {
+          adminUser: adminUsername,
+          targetUser: thread.user,
+          messageIds: thread.messages.map(m => m.id)
+        });
+      });
+
+      toast.success(`Deleted ${usersToDelete.length || count} conversations.`);
     }
   };
 
@@ -4414,7 +4573,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                     <div key={msg.id} className={`flex items-start gap-3 px-1 group/msg ${isAdminReply ? 'flex-row-reverse' : ''}`}>
                       {isAdminReply && (
                         <img 
-                          src={msg.avatar || studioImage || '/icon.svg'} 
+                          src={msg.avatar && !msg.avatar.includes('dicebear') ? msg.avatar : (studioImage || '/icon.svg')} 
                           alt={msg.user} 
                           className={`w-9 h-9 rounded-xl mt-0.5 object-cover border shadow-sm shrink-0 ${
                             isStudioLight ? 'bg-neon-purple/15 border-neon-purple/20' : 'bg-white/5 border-neon-purple/50 shadow-[0_0_10px_rgba(176,38,255,0.3)]'
