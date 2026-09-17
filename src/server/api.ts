@@ -339,6 +339,16 @@ apiRouter.post("/admin/whatsapp-gateway/test-message", authMiddleware, authorize
   }
 });
 
+apiRouter.post("/admin/whatsapp-gateway/sync", authMiddleware, authorizeRole(['admin', 'dj']), async (req, res) => {
+  try {
+    const io = req.app.get('io');
+    const result = await WhatsappGatewayService.syncAll(io);
+    res.json({ success: true, ...result });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Direct Webhook listener endpoints for WhatsApp Gateway
 apiRouter.post("/webhooks/whatsapp-gateway", WebhookController.processGatewayWebhook);
 apiRouter.get("/webhooks/whatsapp-gateway", (req, res) => res.json({ status: 'active', message: 'WhatsApp Gateway Webhook is listening' }));

@@ -597,6 +597,20 @@ export function initDb() {
     DROP TABLE schedule;
     ALTER TABLE schedule_new RENAME TO schedule;
   `);
+  runMigration('deleted_message_tombstones_v1', `
+    CREATE TABLE IF NOT EXISTS deleted_message_tombstones (
+      id TEXT PRIMARY KEY,
+      deleted_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_tombstones_deleted_at ON deleted_message_tombstones(deleted_at);
+  `);
+  runMigration('deleted_threads_tombstones_v1', `
+    CREATE TABLE IF NOT EXISTS deleted_threads_tombstones (
+      target_id TEXT PRIMARY KEY,
+      deleted_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_thread_tombstones_deleted_at ON deleted_threads_tombstones(deleted_at);
+  `);
   runMigration('admin_dj_profile_link_v2', "ALTER TABLE admins ADD COLUMN dj_profile_id TEXT DEFAULT NULL;");
   runMigration('admin_created_at_field', "ALTER TABLE admins ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;");
   try { db.exec(`ALTER TABLE admins ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;`); } catch (e) {}
