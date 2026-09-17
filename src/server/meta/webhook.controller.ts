@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import crypto from 'crypto';
 import { db } from '../db.ts';
 import { WhatsappService, StandardMessage } from './whatsapp.service.ts';
+import { WhatsappGatewayService } from './whatsapp-gateway.service.ts';
 import { InstagramService } from './instagram.service.ts';
 import { MessengerService } from './messenger.service.ts';
 
@@ -92,8 +93,24 @@ export class WebhookController {
         } else if (payload.object === 'page') {
           platform = 'facebook';
           messages = MessengerService.parseWebhook(payload);
+        } else if (payload.event || payload.session || payload.from || payload.data?.key) {
+          // Self-hosted WhatsApp Gateway (WAHA / Evolution API)
+          platform = 'whatsapp';
+          const gatewayMsgs = WhatsappGatewayService.parseWebhookPayload(payload);
+          messages = gatewayMsgs.map(gm => ({
+            platform: 'whatsapp',
+            senderId: gm.senderId,
+            senderName: gm.senderName,
+            recipientId: 'DejavuFM Studio',
+            messageId: gm.messageId,
+            messageType: gm.messageType,
+            text: gm.text,
+            timestamp: gm.timestamp,
+            rawPayload: payload,
+            mediaUrl: gm.mediaUrl
+          }));
         } else {
-          console.warn('[Meta Webhook POST] Unhandled webhook object type:', payload.object);
+          console.warn('[Meta Webhook POST] Unhandled webhook object type:', payload.object || payload.event);
           return;
         }
 
@@ -235,6 +252,107 @@ export class WebhookController {
         }
       } catch (processingErr) {
         console.error('[Meta Webhook POST] Error processing asynchronous webhook event:', processingErr);
+      }
+    });
+  }
+
+  /**
+   * POST /api/webhooks/whatsapp-gateway (and /webhook/waha)
+   * Dedicated endpoint for self-hosted WhatsApp Web Gateway (WAHA / Evolution API)
+   */
+  public static processGatewayWebhook(req: Request, res: Response): void {
+    const payload = req.body;
+    console.log('[WhatsApp Gateway Webhook] Received event:', payload?.event || 'direct', typeof payload === 'object' ? Object.keys(payload) : '');
+
+    // Acknowledge immediately to prevent gateway timeout
+    res.status(200).json({ status: 'success', received: true });
+
+    setImmediate(async () => {
+      try {
+        const messages = WhatsappGatewayService.parseWebhookPayload(payload);
+        if (messages.length === 0) {
+          return;
+        }
+
+        console.log(`[WhatsApp Gateway Webhook] Extracted ${messages.length} valid incoming messages.`);
+        const io = req.app.get('io');
+
+        for (const msg of messages) {
+          const messageId = msg.messageId || `waha-${crypto.randomUUID()}`;
+          const dbMsg = {
+            id: messageId,
+            sender: msg.senderName || `+${msg.senderId}`,
+            recipient: 'DejavuFM Studio',
+            text: msg.text,
+            imageUrl: msg.messageType === 'image' ? msg.mediaUrl || null : null,
+            imageName: msg.messageType === 'image' ? 'WhatsApp Image' : null,
+            audioUrl: msg.messageType === 'audio' ? msg.mediaUrl || null : null,
+            audioName: msg.messageType === 'audio' ? 'Voice Message' : null,
+            videoUrl: msg.messageType === 'video' ? msg.mediaUrl || null : null,
+            videoName: msg.messageType === 'video' ? 'Video' : null,
+            timestamp: msg.timestamp || Date.now(),
+            platform: 'whatsapp'
+          };
+
+          // Save to SQLite
+          try {
+            if (db.open) {
+              db.prepare(`
+                INSERT INTO private_messages (id, sender, recipient, text, imageUrl, imageName, audioUrl, audioName, videoUrl, videoName, timestamp, platform)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `).run(
+                dbMsg.id,
+                dbMsg.sender,
+                dbMsg.recipient,
+                dbMsg.text,
+                dbMsg.imageUrl,
+                dbMsg.imageName,
+                dbMsg.audioUrl,
+                dbMsg.audioName,
+                dbMsg.videoUrl,
+                dbMsg.videoName,
+                dbMsg.timestamp,
+                dbMsg.platform
+              );
+              console.log(`[WhatsApp Gateway Webhook] Persisted incoming message from ${dbMsg.sender}`);
+            }
+          } catch (dbErr) {
+            console.error('[WhatsApp Gateway Webhook] DB Insert failed:', dbErr);
+          }
+
+          // Broadcast to Studio Inbox via Socket.IO
+          if (io) {
+            const socketMsg = {
+              id: dbMsg.id,
+              user: dbMsg.sender,
+              recipient: dbMsg.recipient,
+              text: dbMsg.text,
+              imageUrl: dbMsg.imageUrl,
+              audioUrl: dbMsg.audioUrl,
+              videoUrl: dbMsg.videoUrl,
+              timestamp: dbMsg.timestamp,
+              avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(dbMsg.sender)}`,
+              platform: 'whatsapp'
+            };
+
+            io.emit('privateMessage', socketMsg);
+
+            // Update unread count badges
+            try {
+              const privateCountRow = db.prepare("SELECT COUNT(*) as count FROM private_messages").get() as any;
+              const publicCountRow = db.prepare("SELECT COUNT(*) as count FROM public_messages").get() as any;
+              const shoutoutCountRow = db.prepare("SELECT COUNT(*) as count FROM shoutouts").get() as any;
+              
+              io.emit('chatCountsUpdated', {
+                publicMessages: publicCountRow?.count || 0,
+                privateMessages: privateCountRow?.count || 0,
+                shoutoutCount: shoutoutCountRow?.count || 0
+              });
+            } catch {}
+          }
+        }
+      } catch (err) {
+        console.error('[WhatsApp Gateway Webhook] Error processing message:', err);
       }
     });
   }

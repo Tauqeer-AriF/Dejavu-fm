@@ -7,7 +7,7 @@ import { GlobalRequestAlerts } from './components/GlobalRequestAlerts';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { AudioProvider, useAudio, useAudioStore } from './context/AudioContext';
 import { ModalProvider, useModal } from './context/ModalContext';
-import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Toaster, toast } from 'sonner';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -1507,6 +1507,26 @@ function MainLayout() {
   const ownerPath = (settings?.owner_custom_path || '/owner').trim().replace(/\/+$/, '') || '/owner';
   const isAdmin = location.pathname.startsWith(adminPath) || location.pathname.startsWith(ownerPath);
 
+  const isDashboardView = useMemo(() => {
+    const p = location.pathname.toLowerCase();
+    const aPath = (settings?.admin_custom_path || '/admin').trim().toLowerCase().replace(/\/+$/, '');
+    const oPath = (settings?.owner_custom_path || '/owner').trim().toLowerCase().replace(/\/+$/, '');
+    return (
+      p.startsWith(aPath) ||
+      p.startsWith(oPath) ||
+      p.startsWith('/admin') ||
+      p.startsWith('/owner') ||
+      p.startsWith('/studio') ||
+      p.startsWith('/social-studio') ||
+      p.startsWith('/ai-studio') ||
+      p.startsWith('/dashboard') ||
+      p.includes('/admin') ||
+      p.includes('/owner') ||
+      p.includes('/studio') ||
+      p.includes('/dashboard')
+    );
+  }, [location.pathname, settings?.admin_custom_path, settings?.owner_custom_path]);
+
   const [isSplitActive, setIsSplitActive] = useState(false);
 
   useEffect(() => {
@@ -1972,7 +1992,7 @@ function MainLayout() {
       )}
       
       {!location.pathname.startsWith('/admin') && !isSplitActive && <MobileBottomBar featLiveTools={featLiveTools} featBooth={featBooth} />}
-      {!isAdmin && !isSplitActive && <PlayerBar />}
+      {!isDashboardView && !isSplitActive && <PlayerBar />}
       {!isAdmin && !isSplitActive && featGamification && (
         <div id="floating-gamification-container" className="hidden sm:block fixed bottom-24 sm:bottom-28 xl:bottom-12 left-4 sm:left-6 xl:left-8 z-40 pointer-events-auto">
           <GamificationNavBadge isLightMode={isLightMode} />

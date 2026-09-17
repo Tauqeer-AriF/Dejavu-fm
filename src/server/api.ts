@@ -25,6 +25,8 @@ import { aiStudioRouter } from "./ai-studio/ai-studio.routes.ts";
 import { emailRouter } from "./email/email.routes.ts";
 import { ensureUserGamification, awardXP, calculateLevelProgression } from "./gamification.service.ts";
 import { toggleMessageReaction, getReactionsForMessage } from "./reactions.service.ts";
+import { WhatsappGatewayService } from "./meta/whatsapp-gateway.service.ts";
+import { WebhookController } from "./meta/webhook.controller.ts";
 // `sharp` is optional at runtime; dynamically import when needed to avoid startup failure
 
 async function processImage(file: any): Promise<string> {
@@ -194,6 +196,154 @@ apiRouter.post("/admin/studio-settings", authMiddleware, authorizeRole(['admin',
     res.status(500).json({ error: err.message });
   }
 });
+
+// --- WhatsApp Gateway (WAHA / Evolution API) Management Endpoints ---
+
+apiRouter.get("/admin/whatsapp-gateway/status", authMiddleware, authorizeRole(['admin', 'dj']), async (req, res) => {
+  try {
+    const configRow = db.prepare("SELECT value FROM settings WHERE key = 'studio_platform_configs'").get() as any;
+    let config: any = {};
+    if (configRow && configRow.value) {
+      try {
+        const parsed = JSON.parse(configRow.value);
+        config = parsed.whatsapp || {};
+      } catch (e) {}
+    }
+
+    const serverUrl = (req.query.serverUrl as string) || config.serverUrl || '';
+    const apiKey = (req.query.apiKey as string) || config.apiKey || '';
+    const sessionName = (req.query.sessionName as string) || config.sessionName || 'default';
+
+    if (!serverUrl) {
+      return res.json({
+        status: 'OFFLINE',
+        connected: false,
+        sessionName,
+        message: 'No Gateway Server URL configured yet.'
+      });
+    }
+
+    const result = await WhatsappGatewayService.checkStatus(serverUrl, apiKey, sessionName);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.get("/admin/whatsapp-gateway/qr", authMiddleware, authorizeRole(['admin', 'dj']), async (req, res) => {
+  try {
+    const configRow = db.prepare("SELECT value FROM settings WHERE key = 'studio_platform_configs'").get() as any;
+    let config: any = {};
+    if (configRow && configRow.value) {
+      try {
+        const parsed = JSON.parse(configRow.value);
+        config = parsed.whatsapp || {};
+      } catch (e) {}
+    }
+
+    const serverUrl = (req.query.serverUrl as string) || config.serverUrl || '';
+    const apiKey = (req.query.apiKey as string) || config.apiKey || '';
+    const sessionName = (req.query.sessionName as string) || config.sessionName || 'default';
+
+    if (!serverUrl) {
+      return res.status(400).json({ error: 'Gateway Server URL is missing.' });
+    }
+
+    const result = await WhatsappGatewayService.getQrCode(serverUrl, apiKey, sessionName);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.post("/admin/whatsapp-gateway/start", authMiddleware, authorizeRole(['admin', 'dj']), async (req, res) => {
+  try {
+    const configRow = db.prepare("SELECT value FROM settings WHERE key = 'studio_platform_configs'").get() as any;
+    let config: any = {};
+    if (configRow && configRow.value) {
+      try {
+        const parsed = JSON.parse(configRow.value);
+        config = parsed.whatsapp || {};
+      } catch (e) {}
+    }
+
+    const serverUrl = req.body.serverUrl || config.serverUrl || '';
+    const apiKey = req.body.apiKey || config.apiKey || '';
+    const sessionName = req.body.sessionName || config.sessionName || 'default';
+
+    if (!serverUrl) {
+      return res.status(400).json({ error: 'Gateway Server URL is required.' });
+    }
+
+    const result = await WhatsappGatewayService.startSession(serverUrl, apiKey, sessionName);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.post("/admin/whatsapp-gateway/logout", authMiddleware, authorizeRole(['admin', 'dj']), async (req, res) => {
+  try {
+    const configRow = db.prepare("SELECT value FROM settings WHERE key = 'studio_platform_configs'").get() as any;
+    let config: any = {};
+    if (configRow && configRow.value) {
+      try {
+        const parsed = JSON.parse(configRow.value);
+        config = parsed.whatsapp || {};
+      } catch (e) {}
+    }
+
+    const serverUrl = req.body.serverUrl || config.serverUrl || '';
+    const apiKey = req.body.apiKey || config.apiKey || '';
+    const sessionName = req.body.sessionName || config.sessionName || 'default';
+
+    if (!serverUrl) {
+      return res.status(400).json({ error: 'Gateway Server URL is required.' });
+    }
+
+    const result = await WhatsappGatewayService.logoutSession(serverUrl, apiKey, sessionName);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.post("/admin/whatsapp-gateway/test-message", authMiddleware, authorizeRole(['admin', 'dj']), async (req, res) => {
+  try {
+    const { to, text, serverUrl: reqUrl, apiKey: reqKey, sessionName: reqSession } = req.body;
+    if (!to || !text) {
+      return res.status(400).json({ error: 'Recipient phone number and message text are required.' });
+    }
+
+    const configRow = db.prepare("SELECT value FROM settings WHERE key = 'studio_platform_configs'").get() as any;
+    let config: any = {};
+    if (configRow && configRow.value) {
+      try {
+        const parsed = JSON.parse(configRow.value);
+        config = parsed.whatsapp || {};
+      } catch (e) {}
+    }
+
+    const serverUrl = reqUrl || config.serverUrl || '';
+    const apiKey = reqKey || config.apiKey || '';
+    const sessionName = reqSession || config.sessionName || 'default';
+
+    if (!serverUrl) {
+      return res.status(400).json({ error: 'Gateway Server URL is required.' });
+    }
+
+    const result = await WhatsappGatewayService.sendTextMessage(serverUrl, apiKey, sessionName, to, text);
+    res.json({ success: true, result });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Direct Webhook listener endpoints for WhatsApp Gateway
+apiRouter.post("/webhooks/whatsapp-gateway", WebhookController.processGatewayWebhook);
+apiRouter.get("/webhooks/whatsapp-gateway", (req, res) => res.json({ status: 'active', message: 'WhatsApp Gateway Webhook is listening' }));
+apiRouter.post("/webhooks/waha", WebhookController.processGatewayWebhook);
+apiRouter.get("/webhooks/waha", (req, res) => res.json({ status: 'active', message: 'WAHA Webhook is listening' }));
 
 apiRouter.get("/admin/owner/kill-status", authMiddleware, authorizeRole('owner'), (req, res) => {
   try {

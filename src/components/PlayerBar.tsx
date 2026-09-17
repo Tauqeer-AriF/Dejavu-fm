@@ -224,14 +224,21 @@ export function PlayerBar() {
   const [isMinimized, setIsMinimized] = useState(true);
 
   const location = useLocation();
-  const adminPathSetting = (settings?.admin_custom_path || '/admin').trim().replace(/\/+$/, '') || '/admin';
-  const ownerPathSetting = (settings?.owner_custom_path || '/owner').trim().replace(/\/+$/, '') || '/owner';
-  const isDashboard = location.pathname.startsWith(adminPathSetting) || 
-                      location.pathname.startsWith(ownerPathSetting) || 
-                      location.pathname.startsWith('/admin') || 
-                      location.pathname.startsWith('/owner') ||
-                      location.pathname.startsWith('/studio') ||
-                      location.pathname.startsWith('/dashboard');
+  const adminPathSetting = (settings?.admin_custom_path || '/admin').trim().toLowerCase().replace(/\/+$/, '') || '/admin';
+  const ownerPathSetting = (settings?.owner_custom_path || '/owner').trim().toLowerCase().replace(/\/+$/, '') || '/owner';
+  const currentPath = location.pathname.toLowerCase();
+  const isDashboard = currentPath.startsWith(adminPathSetting) || 
+                      currentPath.startsWith(ownerPathSetting) || 
+                      currentPath.startsWith('/admin') || 
+                      currentPath.startsWith('/owner') || 
+                      currentPath.startsWith('/studio') || 
+                      currentPath.startsWith('/social-studio') || 
+                      currentPath.startsWith('/ai-studio') || 
+                      currentPath.startsWith('/dashboard') || 
+                      currentPath.includes('/admin') || 
+                      currentPath.includes('/owner') || 
+                      currentPath.includes('/studio') ||
+                      currentPath.includes('/dashboard');
 
   const [dragConstraints, setDragConstraints] = useState({ left: -800, right: 50, top: -600, bottom: 50 });
 
@@ -490,7 +497,7 @@ export function PlayerBar() {
           dragMomentum={false}
         >
           <div className={`backdrop-blur-3xl border rounded-full p-1 sm:p-1.5 flex items-center space-x-2 sm:space-x-3 ${isLightMode ? "bg-[#ffffff]/80 border-black/10 shadow-[0_20px_50px_rgba(0,0,0,0.1)]" : "bg-dark-bg/80 border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]"}`}>
-             <button 
+            <button 
               onClick={() => {
                 triggerHaptic('selection');
                 setIsMinimized(false);
