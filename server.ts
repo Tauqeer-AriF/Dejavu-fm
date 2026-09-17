@@ -7,6 +7,7 @@ import { fileURLToPath } from "url";
 import { apiRouter, performMediaAutoDeleteCleanup, getActivePresenceList } from "./src/server/api.ts";
 import { webhookRouter } from "./src/server/meta/webhook.routes.ts";
 import { MetaService } from "./src/server/meta/meta.service.ts";
+import { WhatsappGatewayService } from "./src/server/meta/whatsapp-gateway.service.ts";
 import { TwitchService } from "./src/server/twitch.service.ts";
 import { TikTokService } from "./src/server/tiktok.service.ts";
 import { tiktokRouter } from "./src/server/tiktok.routes.ts";
@@ -304,6 +305,7 @@ async function startServer() {
   setSocketIOInstance(io);
   await TwitchService.initialize(io);
   await TikTokService.initialize(io);
+  WhatsappGatewayService.initialize(io);
 
   // Helper for meta tag injection
   let indexHtmlCache: string | null = null;
@@ -1031,6 +1033,11 @@ async function startServer() {
           chatHistory = chatHistory.filter(m => m.id !== payload.id);
         }
         deleteMessageReactions(payload.id);
+
+        // Record in tombstone table so background sync workers never re-ingest it
+        try {
+          db.prepare("INSERT OR REPLACE INTO deleted_message_tombstones (id, deleted_at) VALUES (?, ?)").run(payload.id, Date.now());
+        } catch (e) {}
         
         // Notify all clients to remove the message from their UI
         io.emit('messageDeleted', { id: payload.id, isPrivate: payload.isPrivate });
@@ -1054,8 +1061,13 @@ async function startServer() {
           if (payload.targetRecipient) {
             // Clear conversation between payload.user and targetRecipient
             try {
-              const msgs = db.prepare("SELECT imageUrl, audioUrl, videoUrl FROM private_messages WHERE ((sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?)) AND (imageUrl IS NOT NULL OR audioUrl IS NOT NULL OR videoUrl IS NOT NULL)").all(payload.user, payload.targetRecipient, payload.targetRecipient, payload.user) as any[];
-              deleteMessageFiles(msgs);
+              const msgs = db.prepare("SELECT id, imageUrl, audioUrl, videoUrl FROM private_messages WHERE ((sender = ? AND recipient = ?) OR (sender = ? AND recipient = ?))").all(payload.user, payload.targetRecipient, payload.targetRecipient, payload.user) as any[];
+              msgs.forEach(m => {
+                try {
+                  db.prepare("INSERT OR REPLACE INTO deleted_message_tombstones (id, deleted_at) VALUES (?, ?)").run(String(m.id), Date.now());
+                } catch (e) {}
+              });
+              deleteMessageFiles(msgs.filter(m => m.imageUrl || m.audioUrl || m.videoUrl));
             } catch (err) {
               console.error("[Media Cleanup] Failed to cleanup private thread files:", err);
             }
@@ -1067,8 +1079,13 @@ async function startServer() {
           } else {
             // Clear ALL private messages
             try {
-              const msgs = db.prepare("SELECT imageUrl, audioUrl, videoUrl FROM private_messages WHERE imageUrl IS NOT NULL OR audioUrl IS NOT NULL OR videoUrl IS NOT NULL").all() as any[];
-              deleteMessageFiles(msgs);
+              const msgs = db.prepare("SELECT id, imageUrl, audioUrl, videoUrl FROM private_messages").all() as any[];
+              msgs.forEach(m => {
+                try {
+                  db.prepare("INSERT OR REPLACE INTO deleted_message_tombstones (id, deleted_at) VALUES (?, ?)").run(String(m.id), Date.now());
+                } catch (e) {}
+              });
+              deleteMessageFiles(msgs.filter(m => m.imageUrl || m.audioUrl || m.videoUrl));
             } catch (err) {
               console.error("[Media Cleanup] Failed to cleanup all private files:", err);
             }
@@ -1080,8 +1097,13 @@ async function startServer() {
         } else {
           // Clear ALL public messages
           try {
-            const msgs = db.prepare("SELECT imageUrl, audioUrl, videoUrl FROM public_messages WHERE imageUrl IS NOT NULL OR audioUrl IS NOT NULL OR videoUrl IS NOT NULL").all() as any[];
-            deleteMessageFiles(msgs);
+            const msgs = db.prepare("SELECT id, imageUrl, audioUrl, videoUrl FROM public_messages").all() as any[];
+            msgs.forEach(m => {
+              try {
+                db.prepare("INSERT OR REPLACE INTO deleted_message_tombstones (id, deleted_at) VALUES (?, ?)").run(String(m.id), Date.now());
+              } catch (e) {}
+            });
+            deleteMessageFiles(msgs.filter(m => m.imageUrl || m.audioUrl || m.videoUrl));
           } catch (err) {
             console.error("[Media Cleanup] Failed to cleanup all public files:", err);
           }
@@ -1097,7 +1119,141 @@ async function startServer() {
       }
     });
 
-    socket.on('clearUserThread', (payload: { adminUser: string; targetUser: string }) => {
+    const deleteThreadRecords = (targetUser: string, messageIds?: (string | number)[]) => {
+      if (!db.open) return { publicCount: 0, privateCount: 0, shoutoutCount: 0 };
+      const now = Date.now();
+
+      // 1. Delete by explicit messageIds if provided
+      if (messageIds && messageIds.length > 0) {
+        try {
+          const stringIds = messageIds.map(id => String(id));
+          const placeholders = stringIds.map(() => '?').join(',');
+
+          // Record tombstones for explicit message IDs
+          stringIds.forEach(id => {
+            try {
+              db.prepare("INSERT OR REPLACE INTO deleted_message_tombstones (id, deleted_at) VALUES (?, ?)").run(id, now);
+            } catch (e) {}
+          });
+
+          // Delete media files from disk
+          try {
+            const privMedia = db.prepare(`SELECT imageUrl, audioUrl, videoUrl FROM private_messages WHERE id IN (${placeholders}) AND (imageUrl IS NOT NULL OR audioUrl IS NOT NULL OR videoUrl IS NOT NULL)`).all(...stringIds) as any[];
+            deleteMessageFiles(privMedia);
+          } catch (e) {}
+
+          try {
+            const pubMedia = db.prepare(`SELECT imageUrl, audioUrl, videoUrl FROM public_messages WHERE id IN (${placeholders}) AND (imageUrl IS NOT NULL OR audioUrl IS NOT NULL OR videoUrl IS NOT NULL)`).all(...stringIds) as any[];
+            deleteMessageFiles(pubMedia);
+          } catch (e) {}
+
+          try {
+            const shoutMedia = db.prepare(`SELECT imageUrl, audioUrl, videoUrl FROM shoutouts WHERE id IN (${placeholders}) AND (imageUrl IS NOT NULL OR audioUrl IS NOT NULL OR videoUrl IS NOT NULL)`).all(...stringIds) as any[];
+            deleteMessageFiles(shoutMedia);
+          } catch (e) {}
+
+          db.prepare(`DELETE FROM private_messages WHERE id IN (${placeholders})`).run(...stringIds);
+          db.prepare(`DELETE FROM public_messages WHERE id IN (${placeholders})`).run(...stringIds);
+          db.prepare(`DELETE FROM shoutouts WHERE id IN (${placeholders})`).run(...stringIds);
+          stringIds.forEach(id => deleteMessageReactions(id));
+        } catch (err) {
+          console.error("[DeleteThreadRecords] Error deleting by messageIds:", err);
+        }
+      }
+
+      // 2. Build candidate matching terms for targetUser
+      const targets: string[] = [];
+      if (targetUser) {
+        const raw = targetUser.trim();
+        targets.push(raw.toLowerCase());
+
+        // Extract name before parentheses e.g. "TauqEER (+68569220006024)" -> "TauqEER"
+        const nameMatch = raw.match(/^([^(]+)/);
+        if (nameMatch && nameMatch[1].trim()) {
+          targets.push(nameMatch[1].trim().toLowerCase());
+        }
+
+        // Extract phone or LID number inside parentheses e.g. "(+68569220006024)" -> "68569220006024"
+        const phoneMatch = raw.match(/\(\+?([0-9a-zA-Z_\-]+)\)/);
+        if (phoneMatch && phoneMatch[1].trim()) {
+          const num = phoneMatch[1].trim().toLowerCase();
+          targets.push(num);
+          targets.push(`+${num}`);
+          targets.push(`${num}@c.us`);
+          targets.push(`${num}@lid`);
+          targets.push(`${num}@s.whatsapp.net`);
+        }
+
+        // Digits-only representation
+        const digitsOnly = raw.replace(/\D/g, '');
+        if (digitsOnly.length >= 8) {
+          targets.push(digitsOnly);
+          targets.push(`+${digitsOnly}`);
+          targets.push(`${digitsOnly}@c.us`);
+          targets.push(`${digitsOnly}@lid`);
+        }
+      }
+
+      const uniqueTargets = Array.from(new Set(targets.filter(Boolean)));
+      if (uniqueTargets.length === 0) {
+        return { publicCount: 0, privateCount: 0, shoutoutCount: 0 };
+      }
+
+      // Record thread tombstones so sync workers will never re-ingest past messages from these targets
+      uniqueTargets.forEach(t => {
+        try {
+          db.prepare("INSERT OR REPLACE INTO deleted_threads_tombstones (target_id, deleted_at) VALUES (?, ?)").run(t.toLowerCase(), now);
+        } catch (e) {}
+      });
+
+      const inPlaceholders = uniqueTargets.map(() => '?').join(',');
+
+      // Find and tombstone all individual message IDs for these targets
+      try {
+        const matchedPrivMsgs = db.prepare(`SELECT id, imageUrl, audioUrl, videoUrl FROM private_messages WHERE (LOWER(sender) IN (${inPlaceholders}) OR LOWER(recipient) IN (${inPlaceholders}))`).all(...uniqueTargets, ...uniqueTargets) as any[];
+        matchedPrivMsgs.forEach(m => {
+          try {
+            db.prepare("INSERT OR REPLACE INTO deleted_message_tombstones (id, deleted_at) VALUES (?, ?)").run(String(m.id), now);
+          } catch (e) {}
+        });
+        deleteMessageFiles(matchedPrivMsgs.filter(m => m.imageUrl || m.audioUrl || m.videoUrl));
+      } catch (e) {}
+
+      try {
+        const matchedPubMsgs = db.prepare(`SELECT id, imageUrl, audioUrl, videoUrl FROM public_messages WHERE LOWER(sender) IN (${inPlaceholders})`).all(...uniqueTargets) as any[];
+        matchedPubMsgs.forEach(m => {
+          try {
+            db.prepare("INSERT OR REPLACE INTO deleted_message_tombstones (id, deleted_at) VALUES (?, ?)").run(String(m.id), now);
+          } catch (e) {}
+        });
+        deleteMessageFiles(matchedPubMsgs.filter(m => m.imageUrl || m.audioUrl || m.videoUrl));
+      } catch (e) {}
+
+      try {
+        const matchedShoutouts = db.prepare(`SELECT id, imageUrl, audioUrl, videoUrl FROM shoutouts WHERE LOWER(listener_name) IN (${inPlaceholders})`).all(...uniqueTargets) as any[];
+        matchedShoutouts.forEach(m => {
+          try {
+            db.prepare("INSERT OR REPLACE INTO deleted_message_tombstones (id, deleted_at) VALUES (?, ?)").run(String(m.id), now);
+          } catch (e) {}
+        });
+        deleteMessageFiles(matchedShoutouts.filter(m => m.imageUrl || m.audioUrl || m.videoUrl));
+      } catch (e) {}
+
+      const publicInfo = db.prepare(`DELETE FROM public_messages WHERE LOWER(sender) IN (${inPlaceholders})`).run(...uniqueTargets);
+      const shoutoutInfo = db.prepare(`DELETE FROM shoutouts WHERE LOWER(listener_name) IN (${inPlaceholders})`).run(...uniqueTargets);
+      const privateInfo = db.prepare(`DELETE FROM private_messages WHERE LOWER(sender) IN (${inPlaceholders}) OR LOWER(recipient) IN (${inPlaceholders})`).run(...uniqueTargets, ...uniqueTargets);
+
+      // In-memory chat history cleanup
+      chatHistory = chatHistory.filter(m => !uniqueTargets.includes(m.user.toLowerCase()));
+
+      return {
+        publicCount: publicInfo.changes,
+        privateCount: privateInfo.changes,
+        shoutoutCount: shoutoutInfo.changes
+      };
+    };
+
+    socket.on('clearUserThread', (payload: { adminUser: string; targetUser: string; messageIds?: (string | number)[] }) => {
       if (!db.open) return;
       try {
         const adminCheck = db.prepare("SELECT 1 FROM admins WHERE LOWER(username) = ?").get(payload.adminUser.toLowerCase());
@@ -1106,33 +1262,41 @@ async function startServer() {
           return;
         }
 
-        // Clean up public messages files for this user
-        try {
-          const msgs = db.prepare("SELECT imageUrl, audioUrl, videoUrl FROM public_messages WHERE LOWER(sender) = ? AND (imageUrl IS NOT NULL OR audioUrl IS NOT NULL OR videoUrl IS NOT NULL)").all(payload.targetUser.toLowerCase()) as any[];
-          deleteMessageFiles(msgs);
-        } catch (err) {
-          console.error("[Media Cleanup] Failed to cleanup user thread public files:", err);
-        }
-
-        // Clean up private messages files for this user
-        try {
-          const privateMsgs = db.prepare("SELECT imageUrl, audioUrl, videoUrl FROM private_messages WHERE (LOWER(sender) = ? OR LOWER(recipient) = ?) AND (imageUrl IS NOT NULL OR audioUrl IS NOT NULL OR videoUrl IS NOT NULL)").all(payload.targetUser.toLowerCase(), payload.targetUser.toLowerCase()) as any[];
-          deleteMessageFiles(privateMsgs);
-        } catch (err) {
-          console.error("[Media Cleanup] Failed to cleanup user thread private files:", err);
-        }
-
-        const publicInfo = db.prepare("DELETE FROM public_messages WHERE LOWER(sender) = ?").run(payload.targetUser.toLowerCase());
-        const shoutoutInfo = db.prepare("DELETE FROM shoutouts WHERE LOWER(listener_name) = ?").run(payload.targetUser.toLowerCase());
-        const privateInfo = db.prepare("DELETE FROM private_messages WHERE LOWER(sender) = ? OR LOWER(recipient) = ?").run(payload.targetUser.toLowerCase(), payload.targetUser.toLowerCase());
-
-        chatHistory = chatHistory.filter(m => m.user.toLowerCase() !== payload.targetUser.toLowerCase());
+        const counts = deleteThreadRecords(payload.targetUser, payload.messageIds);
 
         io.emit('userThreadCleared', { username: payload.targetUser });
         emitChatRoomCounts();
-        console.log(`[Clear Thread] Cleared thread for ${payload.targetUser} by ${payload.adminUser}. Public: ${publicInfo.changes}, Private: ${privateInfo.changes}, Shoutouts: ${shoutoutInfo.changes}`);
+        console.log(`[Clear Thread] Cleared thread for ${payload.targetUser} by ${payload.adminUser}. Public: ${counts.publicCount}, Private: ${counts.privateCount}, Shoutouts: ${counts.shoutoutCount}`);
       } catch (err) {
         console.error("Failed to clear user thread:", err);
+      }
+    });
+
+    socket.on('clearBulkThreads', (payload: { adminUser: string; targetUsers: string[]; messageIds?: (string | number)[] }) => {
+      if (!db.open) return;
+      try {
+        const adminCheck = db.prepare("SELECT 1 FROM admins WHERE LOWER(username) = ?").get(payload.adminUser.toLowerCase());
+        if (!adminCheck) {
+          console.warn(`[Clear Bulk Threads] Unauthorized attempt by ${payload.adminUser}`);
+          return;
+        }
+
+        const targets = payload.targetUsers || [];
+        targets.forEach(targetUser => {
+          deleteThreadRecords(targetUser, payload.messageIds);
+          io.emit('userThreadCleared', { username: targetUser });
+        });
+
+        // Also if extra message IDs were provided, make sure they are purged
+        if (payload.messageIds && payload.messageIds.length > 0) {
+          deleteThreadRecords('', payload.messageIds);
+        }
+
+        io.emit('bulkUserThreadsCleared', { usernames: targets });
+        emitChatRoomCounts();
+        console.log(`[Clear Bulk Threads] Cleared ${targets.length} threads by ${payload.adminUser}`);
+      } catch (err) {
+        console.error("Failed to clear bulk threads:", err);
       }
     });
 
@@ -1144,6 +1308,10 @@ async function startServer() {
           console.warn(`[Delete Shoutout] Unauthorized delete attempt by ${payload.user}`);
           return;
         }
+
+        try {
+          db.prepare("INSERT OR REPLACE INTO deleted_message_tombstones (id, deleted_at) VALUES (?, ?)").run(String(payload.id), Date.now());
+        } catch (e) {}
 
         db.prepare("DELETE FROM shoutouts WHERE id = ?").run(payload.id);
         io.emit('shoutoutDeleted', { id: payload.id });
@@ -1161,6 +1329,15 @@ async function startServer() {
           console.warn(`[Clear Shoutouts] Unauthorized attempt by ${payload.user}`);
           return;
         }
+
+        try {
+          const shoutouts = db.prepare("SELECT id FROM shoutouts").all() as any[];
+          shoutouts.forEach(s => {
+            try {
+              db.prepare("INSERT OR REPLACE INTO deleted_message_tombstones (id, deleted_at) VALUES (?, ?)").run(String(s.id), Date.now());
+            } catch (e) {}
+          });
+        } catch (e) {}
 
         db.prepare("DELETE FROM shoutouts").run();
         io.emit('shoutouts_cleared');
