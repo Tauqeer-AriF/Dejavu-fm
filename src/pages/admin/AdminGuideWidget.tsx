@@ -931,7 +931,14 @@ export function AdminGuideWidget({ userRole, adminBasePath }: AdminGuideWidgetPr
   // Completely hide the station guide widget in Studio Inbox and AI Content Studio
   const isHiddenRoute = useMemo(() => {
     const path = location.pathname.toLowerCase();
-    return path.includes("/studio") || path.includes("/social-studio") || path.includes("/ai-studio");
+    return (
+      path.includes("/studio") ||
+      path.includes("/social-studio") ||
+      path.includes("/ai-studio") ||
+      path.includes("/inbox") ||
+      path.includes("studio-inbox") ||
+      path.includes("ai-content")
+    );
   }, [location.pathname]);
 
   if (isHiddenRoute) {

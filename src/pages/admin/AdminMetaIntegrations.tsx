@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchAdmin } from "./adminApi";
+import { QRCodeSVG } from "qrcode.react";
 import { 
   CheckCircle2, 
   AlertCircle, 
@@ -20,7 +21,18 @@ import {
   MessageSquare,
   Edit,
   Eye,
-  EyeOff
+  EyeOff,
+  QrCode,
+  Smartphone,
+  Link,
+  Unlink,
+  Copy,
+  ExternalLink,
+  Sparkles,
+  Terminal,
+  ArrowRight,
+  Server,
+  HelpCircle
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
@@ -53,7 +65,16 @@ export function AdminMetaIntegrations() {
     facebook: false
   });
   const [platformConfigs, setPlatformConfigs] = useState<Record<string, Record<string, string>>>({
-    whatsapp: { phone: '', verifyToken: 'dejavu_whatsapp_secret_key', phoneId: '', accessToken: '' },
+    whatsapp: { 
+      provider: 'waha',
+      serverUrl: '', 
+      apiKey: '', 
+      sessionName: 'default',
+      phone: '', 
+      verifyToken: 'dejavu_whatsapp_secret_key', 
+      phoneId: '', 
+      accessToken: '' 
+    },
     instagram: { accountId: '', accessToken: '' },
     facebook: { pageId: '', pageAccessToken: '' }
   });
@@ -64,6 +85,18 @@ export function AdminMetaIntegrations() {
   const [showWhatsAppToken, setShowWhatsAppToken] = useState(false);
   const [showInstagramToken, setShowInstagramToken] = useState(false);
   const [showFacebookToken, setShowFacebookToken] = useState(false);
+
+  // WhatsApp Web Gateway (WAHA / Evolution API) States
+  const [gatewayStatus, setGatewayStatus] = useState<'CONNECTED' | 'SCAN_QR_CODE' | 'STARTING' | 'STOPPED' | 'FAILED' | 'OFFLINE' | 'IDLE'>('IDLE');
+  const [gatewayPhone, setGatewayPhone] = useState<string | null>(null);
+  const [qrCodeData, setQrCodeData] = useState<{ qr: string | null; type: 'image' | 'raw' } | null>(null);
+  const [isLoadingQr, setIsLoadingQr] = useState(false);
+  const [isCheckingGateway, setIsCheckingGateway] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [testMsgPhone, setTestMsgPhone] = useState('');
+  const [testMsgText, setTestMsgText] = useState('Hello from DejavuFM Radio Studio! 📻🎵');
+  const [isSendingTestMsg, setIsSendingTestMsg] = useState(false);
+  const [showRailwayGuide, setShowRailwayGuide] = useState(false);
 
   // Load states from settings response when loaded
   useEffect(() => {
@@ -91,13 +124,20 @@ export function AdminMetaIntegrations() {
         });
       }
       if (settings.studio_platform_configs) {
+        const waCfg = settings.studio_platform_configs.whatsapp || {};
+        const provider = waCfg.provider || (waCfg.accessToken && !waCfg.serverUrl ? 'meta' : 'waha');
+
         setPlatformConfigs(prev => ({
           ...prev,
           whatsapp: { 
-            phone: settings.studio_platform_configs.whatsapp?.phone || '', 
-            verifyToken: settings.studio_platform_configs.whatsapp?.verifyToken || 'dejavu_whatsapp_secret_key',
-            phoneId: settings.studio_platform_configs.whatsapp?.phoneId || '',
-            accessToken: settings.studio_platform_configs.whatsapp?.accessToken || ''
+            provider,
+            serverUrl: waCfg.serverUrl || '',
+            apiKey: waCfg.apiKey || '',
+            sessionName: waCfg.sessionName || 'default',
+            phone: waCfg.phone || '', 
+            verifyToken: waCfg.verifyToken || 'dejavu_whatsapp_secret_key',
+            phoneId: waCfg.phoneId || '',
+            accessToken: waCfg.accessToken || ''
           },
           instagram: { 
             accountId: settings.studio_platform_configs.instagram?.accountId || '', 
@@ -203,6 +243,155 @@ export function AdminMetaIntegrations() {
     }));
   }, []);
 
+  // --- WhatsApp Web Gateway Actions (WAHA / Evolution API) ---
+  const handleCheckGatewayStatus = async () => {
+    const wa = platformConfigs.whatsapp || {};
+    if (!wa.serverUrl) {
+      toast.error("Please enter your Gateway Server URL first.");
+      return;
+    }
+    setIsCheckingGateway(true);
+    try {
+      const query = new URLSearchParams({
+        serverUrl: wa.serverUrl,
+        apiKey: wa.apiKey || '',
+        sessionName: wa.sessionName || 'default'
+      });
+      const res = await fetchAdmin(`/api/admin/whatsapp-gateway/status?${query.toString()}`);
+      const data = await res.json();
+      if (data.status) {
+        setGatewayStatus(data.status);
+        if (data.phone) setGatewayPhone(data.phone);
+        if (data.connected) {
+          toast.success(`WhatsApp Connected! Phone linked: +${data.phone || 'Ready'}`);
+        } else if (data.status === 'SCAN_QR_CODE') {
+          toast.info("Gateway is waiting for QR code scan.");
+          handleFetchGatewayQr();
+        } else {
+          toast.warning(`Gateway status: ${data.status}`);
+        }
+      } else {
+        setGatewayStatus('OFFLINE');
+        toast.error(data.error || "Unable to reach WhatsApp gateway.");
+      }
+    } catch (err: any) {
+      setGatewayStatus('OFFLINE');
+      toast.error(err.message || "Failed to check gateway status.");
+    } finally {
+      setIsCheckingGateway(false);
+    }
+  };
+
+  const handleFetchGatewayQr = async () => {
+    const wa = platformConfigs.whatsapp || {};
+    if (!wa.serverUrl) {
+      toast.error("Please enter your Gateway Server URL first.");
+      return;
+    }
+    setIsLoadingQr(true);
+    try {
+      // First ensure session is started
+      await fetchAdmin("/api/admin/whatsapp-gateway/start", {
+        method: "POST",
+        body: JSON.stringify({
+          serverUrl: wa.serverUrl,
+          apiKey: wa.apiKey || '',
+          sessionName: wa.sessionName || 'default'
+        })
+      });
+
+      // Then fetch QR code
+      const query = new URLSearchParams({
+        serverUrl: wa.serverUrl,
+        apiKey: wa.apiKey || '',
+        sessionName: wa.sessionName || 'default'
+      });
+      const res = await fetchAdmin(`/api/admin/whatsapp-gateway/qr?${query.toString()}`);
+      const data = await res.json();
+      if (data.qr) {
+        setQrCodeData(data);
+        setGatewayStatus('SCAN_QR_CODE');
+        toast.success("QR Code loaded! Point your phone camera to pair.");
+      } else {
+        toast.error(data.error || "No QR code available. Check if phone is already linked.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to retrieve QR code.");
+    } finally {
+      setIsLoadingQr(false);
+    }
+  };
+
+  const handleLogoutGateway = async () => {
+    const wa = platformConfigs.whatsapp || {};
+    if (!wa.serverUrl) return;
+    try {
+      const res = await fetchAdmin("/api/admin/whatsapp-gateway/logout", {
+        method: "POST",
+        body: JSON.stringify({
+          serverUrl: wa.serverUrl,
+          apiKey: wa.apiKey || '',
+          sessionName: wa.sessionName || 'default'
+        })
+      });
+      const data = await res.json();
+      toast.success(data.message || "Session disconnected.");
+      setGatewayStatus('STOPPED');
+      setQrCodeData(null);
+      setGatewayPhone(null);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to disconnect session.");
+    }
+  };
+
+  const handleSendGatewayTestMessage = async () => {
+    const wa = platformConfigs.whatsapp || {};
+    if (!wa.serverUrl) {
+      toast.error("Please enter your Gateway Server URL first.");
+      return;
+    }
+    if (!testMsgPhone || !testMsgPhone.trim()) {
+      toast.error("Please enter a recipient phone number with country code (e.g. +447123456789).");
+      return;
+    }
+    setIsSendingTestMsg(true);
+    try {
+      const res = await fetchAdmin("/api/admin/whatsapp-gateway/test-message", {
+        method: "POST",
+        body: JSON.stringify({
+          serverUrl: wa.serverUrl,
+          apiKey: wa.apiKey || '',
+          sessionName: wa.sessionName || 'default',
+          to: testMsgPhone.trim(),
+          text: testMsgText || 'Hello from DejavuFM Radio!'
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`WhatsApp message sent successfully to ${testMsgPhone}!`);
+      } else {
+        toast.error(data.error || "Failed to send message via gateway.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send test message.");
+    } finally {
+      setIsSendingTestMsg(false);
+    }
+  };
+
+  const copyWebhookUrl = () => {
+    const url = `${window.location.origin}/api/webhooks/whatsapp-gateway`;
+    navigator.clipboard.writeText(url);
+    toast.success("Webhook URL copied to clipboard!");
+  };
+
+  // Auto-check gateway status if serverUrl is configured
+  useEffect(() => {
+    if (platformConfigs.whatsapp?.provider === 'waha' && platformConfigs.whatsapp?.serverUrl) {
+      handleCheckGatewayStatus();
+    }
+  }, [platformConfigs.whatsapp?.serverUrl, platformConfigs.whatsapp?.provider]);
+
   // Credentials Testing State
   const [testingPlatform, setTestingPlatform] = useState<string | null>(null);
   const [testProgress, setTestProgress] = useState("");
@@ -215,18 +404,62 @@ export function AdminMetaIntegrations() {
 
     try {
       const steps = [
-        "Securing communication channel with Meta Graph API...",
-        "Validating credentials and permissions (pages_messaging)...",
-        "Authenticating against Meta Business Platform...",
+        "Securing communication channel with messaging service...",
+        "Validating credentials and active socket status...",
+        "Checking platform endpoint responsiveness...",
         "Validating active webhook subscriptions..."
       ];
 
       for (const step of steps) {
         setTestProgress(step);
-        await new Promise(resolve => setTimeout(resolve, 800));
+        await new Promise(resolve => setTimeout(resolve, 600));
       }
 
       if (platformId === 'whatsapp') {
+        const isGateway = config.provider === 'waha' || (!config.provider && Boolean(config.serverUrl));
+
+        if (isGateway) {
+          if (!config.serverUrl) {
+            setTestResult({
+              success: false,
+              message: "Handshake Failed: Gateway Server URL is empty. Please enter your Railway or server URL (e.g. https://waha-xxx.up.railway.app)."
+            });
+            return;
+          }
+
+          const query = new URLSearchParams({
+            serverUrl: config.serverUrl,
+            apiKey: config.apiKey || '',
+            sessionName: config.sessionName || 'default'
+          });
+
+          const res = await fetchAdmin(`/api/admin/whatsapp-gateway/status?${query.toString()}`);
+          const data = await res.json();
+
+          if (data.status === 'CONNECTED') {
+            setGatewayStatus('CONNECTED');
+            if (data.phone) setGatewayPhone(data.phone);
+            setTestResult({
+              success: true,
+              message: `Handshake Successful! Connected to WhatsApp Web Gateway on session "${config.sessionName || 'default'}". Linked Phone: +${data.phone || 'Ready'}.`
+            });
+          } else if (data.status === 'SCAN_QR_CODE') {
+            setGatewayStatus('SCAN_QR_CODE');
+            setTestResult({
+              success: true,
+              message: `Handshake Reached Gateway! Session is active and waiting for your phone to scan the QR Code.`
+            });
+            handleFetchGatewayQr();
+          } else {
+            setGatewayStatus(data.status || 'OFFLINE');
+            setTestResult({
+              success: false,
+              message: data.error || `Gateway returned status: ${data.status}. Make sure the Docker instance on Railway is running.`
+            });
+          }
+          return;
+        }
+
         const { phone, verifyToken, phoneId, accessToken } = config;
         if (!phone || !phone.trim()) {
           setTestResult({
@@ -319,41 +552,61 @@ export function AdminMetaIntegrations() {
       const ts = Math.floor(Date.now() / 1000);
 
       if (platformId === 'whatsapp') {
-        payload = {
-          object: "whatsapp_business_account",
-          entry: [
-            {
-              id: "9876543210",
-              changes: [
-                {
-                  value: {
-                    messaging_product: "whatsapp",
-                    metadata: {
-                      display_phone_number: platformConfigs.whatsapp.phone || "447123456789",
-                      phone_number_id: platformConfigs.whatsapp.phoneId || "123456789"
-                    },
-                    contacts: [
-                      {
-                        profile: { name: simSender },
-                        wa_id: "447987654321"
-                      }
-                    ],
-                    messages: [
-                      {
-                        from: "447987654321",
-                        id: msgId,
-                        timestamp: String(ts),
-                        text: { body: simText },
-                        type: "text"
-                      }
-                    ]
-                  },
-                  field: "messages"
-                }
-              ]
+        const isGateway = platformConfigs.whatsapp.provider === 'waha' || (!platformConfigs.whatsapp.provider && Boolean(platformConfigs.whatsapp.serverUrl));
+
+        if (isGateway) {
+          payload = {
+            event: "message",
+            session: platformConfigs.whatsapp.sessionName || "default",
+            payload: {
+              id: `waha_sim_${Date.now()}`,
+              timestamp: ts,
+              from: "447987654321@c.us",
+              to: (platformConfigs.whatsapp.phone ? platformConfigs.whatsapp.phone.replace(/\+/g, '') : "447123456789") + "@c.us",
+              body: simText,
+              hasMedia: false,
+              _data: {
+                notifyName: simSender
+              }
             }
-          ]
-        };
+          };
+        } else {
+          payload = {
+            object: "whatsapp_business_account",
+            entry: [
+              {
+                id: "9876543210",
+                changes: [
+                  {
+                    value: {
+                      messaging_product: "whatsapp",
+                      metadata: {
+                        display_phone_number: platformConfigs.whatsapp.phone || "447123456789",
+                        phone_number_id: platformConfigs.whatsapp.phoneId || "123456789"
+                      },
+                      contacts: [
+                        {
+                          profile: { name: simSender },
+                          wa_id: "447987654321"
+                        }
+                      ],
+                      messages: [
+                        {
+                          from: "447987654321",
+                          id: msgId,
+                          timestamp: String(ts),
+                          text: { body: simText },
+                          type: "text"
+                        }
+                      ]
+                    },
+                    field: "messages"
+                  }
+                ]
+              }
+            ]
+          };
+        }
       } else if (platformId === 'instagram') {
         payload = {
           object: "instagram",
@@ -549,19 +802,23 @@ export function AdminMetaIntegrations() {
                   </div>
                   <div>
                     <h3 className={`font-semibold text-base ${isLightMode ? "text-zinc-900" : "text-zinc-50"}`}>WhatsApp</h3>
-                    <span className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider block">Cloud API</span>
+                    <span className="text-[10px] font-medium text-emerald-500 uppercase tracking-wider block">
+                      {platformConfigs.whatsapp?.provider === 'meta' ? 'Meta Cloud API' : 'Self-Hosted Gateway'}
+                    </span>
                   </div>
                 </div>
                 <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${
-                  connectedPlatforms.whatsapp 
-                    ? '${isLightMode ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"}' 
-                    : '${isLightMode ? "bg-zinc-50 text-zinc-500 border-zinc-200" : "bg-zinc-800/50 text-zinc-400 border-zinc-800"}'
+                  gatewayStatus === 'CONNECTED' || (platformConfigs.whatsapp?.provider === 'meta' && connectedPlatforms.whatsapp)
+                    ? (isLightMode ? "bg-emerald-50 text-emerald-700 border-emerald-200/60" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20")
+                    : gatewayStatus === 'SCAN_QR_CODE'
+                    ? (isLightMode ? "bg-amber-50 text-amber-700 border-amber-200/60" : "bg-amber-500/10 text-amber-400 border-amber-500/20")
+                    : (isLightMode ? "bg-zinc-50 text-zinc-500 border-zinc-200" : "bg-zinc-800/50 text-zinc-400 border-zinc-800")
                 }`}>
-                  {connectedPlatforms.whatsapp ? "Connected" : "Inactive"}
+                  {gatewayStatus === 'CONNECTED' ? 'Linked & Live' : gatewayStatus === 'SCAN_QR_CODE' ? 'Scan QR' : connectedPlatforms.whatsapp ? "Active" : "Inactive"}
                 </span>
               </div>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                Receive and send end-customer chats using WhatsApp Cloud Business APIs.
+                Receive and send listener chats over WhatsApp. Connect via free Railway bridge or official Meta API.
               </p>
             </div>
 
@@ -573,7 +830,7 @@ export function AdminMetaIntegrations() {
                   className={`text-[10px] font-semibold uppercase tracking-wider px-3 py-1 rounded-lg transition ${
                     platformToggles.whatsapp 
                       ? 'bg-violet-600 !text-white shadow-sm' 
-                      : '${isLightMode ? "bg-zinc-100 hover:bg-zinc-200 text-zinc-600" : "bg-zinc-800 hover:bg-zinc-700 text-zinc-400"}'
+                      : (isLightMode ? "bg-zinc-100 hover:bg-zinc-200 text-zinc-600" : "bg-zinc-800 hover:bg-zinc-700 text-zinc-400")
                   }`}
                 >
                   {platformToggles.whatsapp ? "Active" : "Disabled"}
@@ -586,8 +843,8 @@ export function AdminMetaIntegrations() {
                   onClick={() => handleTogglePlatformConnection('whatsapp')}
                   className={`text-[10px] font-semibold uppercase tracking-wider px-3 py-1 rounded-lg transition border ${
                     connectedPlatforms.whatsapp 
-                      ? '${isLightMode ? "bg-red-50 text-red-600 border-red-200 hover:bg-red-100" : "bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20"}' 
-                      : '${isLightMode ? "bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50" : "bg-zinc-900 text-zinc-300 border-zinc-800 hover:bg-zinc-800"}'
+                      ? (isLightMode ? "bg-red-50 text-red-600 border-red-200 hover:bg-red-100" : "bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20") 
+                      : (isLightMode ? "bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50" : "bg-zinc-900 text-zinc-300 border-zinc-800 hover:bg-zinc-800")
                   }`}
                 >
                   {connectedPlatforms.whatsapp ? "Disconnect" : "Link Connect"}
@@ -596,77 +853,447 @@ export function AdminMetaIntegrations() {
             </div>
           </div>
 
-          {/* Credentials Column */}
+          {/* Configuration Column */}
           <div className="flex-1 flex flex-col justify-between space-y-6 lg:pl-4">
             <div className="space-y-4">
-              <div>
-                <span className={`text-[10px] font-bold uppercase tracking-wider block mb-1 ${isLightMode ? "text-zinc-400" : "text-zinc-500"}`}>Developer Credentials</span>
-                <p className="text-xs text-zinc-400">Map the specific phone registrations from your Meta Developer app.</p>
+              {/* Provider Selector Tabs */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-100 dark:border-zinc-800/60">
+                <div>
+                  <span className={`text-[10px] font-bold uppercase tracking-wider block mb-0.5 ${isLightMode ? "text-zinc-400" : "text-zinc-500"}`}>
+                    Integration Architecture
+                  </span>
+                  <p className="text-xs text-zinc-400">Choose between the free self-hosted web bridge or Meta developer Cloud API.</p>
+                </div>
+
+                <div className={`p-1 rounded-xl border flex items-center gap-1 self-start sm:self-auto ${isLightMode ? 'bg-zinc-100/80 border-zinc-200' : 'bg-zinc-950 border-zinc-800'}`}>
+                  <button
+                    type="button"
+                    onClick={() => handleUpdatePlatformField('whatsapp', 'provider', 'waha')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                      platformConfigs.whatsapp?.provider !== 'meta'
+                        ? (isLightMode ? 'bg-white text-zinc-900 shadow-sm font-semibold' : 'bg-zinc-800 text-zinc-100 shadow-sm font-semibold')
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    <Smartphone className="w-3.5 h-3.5 text-emerald-500" />
+                    WAHA Gateway (Free)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleUpdatePlatformField('whatsapp', 'provider', 'meta')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                      platformConfigs.whatsapp?.provider === 'meta'
+                        ? (isLightMode ? 'bg-white text-zinc-900 shadow-sm font-semibold' : 'bg-zinc-800 text-zinc-100 shadow-sm font-semibold')
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    <Server className="w-3.5 h-3.5 text-blue-500" />
+                    Meta Cloud API
+                  </button>
+                </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className={`text-[11px] font-medium ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>Registered Phone Number</label>
-                  <input 
-                    type="text"
-                    placeholder="+447123456789"
-                    value={platformConfigs.whatsapp?.phone || ''}
-                    onChange={(e) => handleUpdatePlatformField('whatsapp', 'phone', e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
-                      isLightMode 
-                        ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
-                        : 'bg-zinc-950/40 border-zinc-800 text-zinc-100 focus:bg-zinc-950'
-                    }`}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className={`text-[11px] font-medium ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>Phone Number ID</label>
-                  <input 
-                    type="text"
-                    placeholder="e.g. 102948572019485"
-                    value={platformConfigs.whatsapp?.phoneId || ''}
-                    onChange={(e) => handleUpdatePlatformField('whatsapp', 'phoneId', e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
-                      isLightMode 
-                        ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
-                        : 'bg-zinc-950/40 border-zinc-800 text-zinc-100 focus:bg-zinc-950'
-                    }`}
-                  />
-                </div>
-                <div className="space-y-1.5 md:col-span-2">
-                  <label className={`text-[11px] font-medium ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>WhatsApp Access Token (Permanent / System User Token)</label>
-                  <div className="relative">
-                    <input 
-                      type={showWhatsAppToken ? "text" : "password"}
-                      placeholder="EAAGzD..."
-                      value={platformConfigs.whatsapp?.accessToken || ''}
-                      onChange={(e) => handleUpdatePlatformField('whatsapp', 'accessToken', e.target.value)}
-                      className={`w-full pl-4 pr-11 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
-                        isLightMode 
-                          ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
-                          : 'bg-zinc-950/40 border-zinc-800 text-zinc-100 focus:bg-zinc-950'
+
+              {/* Conditional Form: WAHA vs Meta */}
+              {platformConfigs.whatsapp?.provider !== 'meta' ? (
+                /* WAHA / Evolution Self-Hosted Form */
+                <div className="space-y-4">
+                  <div className={`p-3.5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                    gatewayStatus === 'CONNECTED'
+                      ? (isLightMode ? 'bg-emerald-50/70 border-emerald-200/80 text-emerald-900' : 'bg-emerald-950/20 border-emerald-800/40 text-emerald-300')
+                      : gatewayStatus === 'SCAN_QR_CODE'
+                      ? (isLightMode ? 'bg-amber-50/70 border-amber-200/80 text-amber-900' : 'bg-amber-950/20 border-amber-800/40 text-amber-300')
+                      : (isLightMode ? 'bg-zinc-50 border-zinc-200/80' : 'bg-zinc-950/40 border-zinc-800/60')
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full shrink-0 ${
+                        gatewayStatus === 'CONNECTED' ? 'bg-emerald-500 animate-pulse' : gatewayStatus === 'SCAN_QR_CODE' ? 'bg-amber-500 animate-pulse' : 'bg-zinc-400'
+                      }`} />
+                      <div>
+                        <div className="text-xs font-semibold">
+                          {gatewayStatus === 'CONNECTED'
+                            ? `WhatsApp Connected & Linked! (+${gatewayPhone || platformConfigs.whatsapp?.phone || 'Ready'})`
+                            : gatewayStatus === 'SCAN_QR_CODE'
+                            ? 'Ready for Pairing: Scan the QR code with WhatsApp'
+                            : gatewayStatus === 'OFFLINE'
+                            ? 'Gateway Server Unreachable (Check Railway URL)'
+                            : 'Gateway Idle / Checking Connection...'}
+                        </div>
+                        <p className="text-[11px] opacity-75">
+                          {gatewayStatus === 'CONNECTED'
+                            ? 'Inbound messages stream into Studio Inbox in real time. Outbound replies send directly from your station SIM.'
+                            : 'Runs WhatsApp Web headlessly on your server without Meta approval or subscription fees.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleCheckGatewayStatus}
+                        disabled={isCheckingGateway}
+                        className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition flex items-center gap-1.5 ${
+                          isLightMode ? 'bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-700' : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-700 text-zinc-200'
+                        }`}
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isCheckingGateway ? 'animate-spin' : ''}`} />
+                        Check Status
+                      </button>
+
+                      {gatewayStatus === 'CONNECTED' ? (
+                        <button
+                          type="button"
+                          onClick={handleLogoutGateway}
+                          className="px-3 py-1.5 rounded-xl border text-xs font-medium transition flex items-center gap-1.5 bg-red-500/10 hover:bg-red-500/20 border-red-500/30 text-red-400"
+                        >
+                          <Unlink className="w-3.5 h-3.5" />
+                          Unlink Phone
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleFetchGatewayQr}
+                          disabled={isLoadingQr}
+                          className="px-3 py-1.5 rounded-xl border text-xs font-medium transition flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-sm"
+                        >
+                          <QrCode className="w-3.5 h-3.5" />
+                          {isLoadingQr ? 'Loading QR...' : 'Pair Phone / QR'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* QR Code Modal / Drawer Display if active */}
+                  {qrCodeData?.qr && gatewayStatus !== 'CONNECTED' && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10 }} 
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`p-5 rounded-2xl border flex flex-col md:flex-row items-center gap-6 ${
+                        isLightMode ? 'bg-emerald-50/50 border-emerald-200' : 'bg-emerald-950/20 border-emerald-800/40'
                       }`}
-                    />
+                    >
+                      <div className="bg-white p-3.5 rounded-2xl shadow-md border border-zinc-200 shrink-0">
+                        {qrCodeData.type === 'image' && qrCodeData.qr.startsWith('data:image') ? (
+                          <img src={qrCodeData.qr} alt="WhatsApp Pairing QR" className="w-44 h-44 object-contain" />
+                        ) : (
+                          <QRCodeSVG value={qrCodeData.qr} size={176} level="M" />
+                        )}
+                      </div>
+
+                      <div className="space-y-3 text-left">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-full bg-emerald-500 text-white font-bold text-xs flex items-center justify-center">1</span>
+                          <span className="text-xs font-medium">Open <strong>WhatsApp</strong> on your radio station mobile phone.</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-full bg-emerald-500 text-white font-bold text-xs flex items-center justify-center">2</span>
+                          <span className="text-xs font-medium">Go to <strong>Settings</strong> &gt; <strong>Linked Devices</strong>.</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-full bg-emerald-500 text-white font-bold text-xs flex items-center justify-center">3</span>
+                          <span className="text-xs font-medium">Tap <strong>Link a Device</strong> and point your camera at this QR code.</span>
+                        </div>
+
+                        <div className="pt-2 flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={handleCheckGatewayStatus}
+                            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            I Scanned It (Verify)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleFetchGatewayQr}
+                            className="px-3 py-1.5 rounded-xl border text-xs font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
+                          >
+                            Refresh QR Code
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Gateway Server Inputs */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5 md:col-span-2">
+                      <div className="flex items-center justify-between">
+                        <label className={`text-[11px] font-medium ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>
+                          Gateway Server URL (Railway / VPS)
+                        </label>
+                        <span className="text-[10px] text-zinc-400">e.g. https://waha-xxx.up.railway.app</span>
+                      </div>
+                      <input 
+                        type="text"
+                        placeholder="https://waha-production.up.railway.app"
+                        value={platformConfigs.whatsapp?.serverUrl || ''}
+                        onChange={(e) => handleUpdatePlatformField('whatsapp', 'serverUrl', e.target.value)}
+                        className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 ${
+                          isLightMode 
+                            ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
+                            : 'bg-zinc-950/40 border-zinc-800 text-zinc-100 focus:bg-zinc-950'
+                        }`}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className={`text-[11px] font-medium ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>
+                          WAHA API Key (Optional)
+                        </label>
+                      </div>
+                      <div className="relative">
+                        <input 
+                          type={showApiKey ? "text" : "password"}
+                          placeholder="Your WAHA_API_KEY secret"
+                          value={platformConfigs.whatsapp?.apiKey || ''}
+                          onChange={(e) => handleUpdatePlatformField('whatsapp', 'apiKey', e.target.value)}
+                          className={`w-full pl-4 pr-11 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 ${
+                            isLightMode 
+                              ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
+                              : 'bg-zinc-950/40 border-zinc-800 text-zinc-100 focus:bg-zinc-950'
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowApiKey(!showApiKey)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-zinc-200"
+                        >
+                          {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className={`text-[11px] font-medium ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>
+                        Session Identifier
+                      </label>
+                      <input 
+                        type="text"
+                        placeholder="default"
+                        value={platformConfigs.whatsapp?.sessionName || 'default'}
+                        onChange={(e) => handleUpdatePlatformField('whatsapp', 'sessionName', e.target.value)}
+                        className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 ${
+                          isLightMode 
+                            ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
+                            : 'bg-zinc-950/40 border-zinc-800 text-zinc-100 focus:bg-zinc-950'
+                        }`}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 md:col-span-2">
+                      <label className={`text-[11px] font-medium ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>
+                        Radio Station WhatsApp Phone Number
+                      </label>
+                      <input 
+                        type="text"
+                        placeholder="+44 7123 456789"
+                        value={platformConfigs.whatsapp?.phone || ''}
+                        onChange={(e) => handleUpdatePlatformField('whatsapp', 'phone', e.target.value)}
+                        className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 ${
+                          isLightMode 
+                            ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
+                            : 'bg-zinc-950/40 border-zinc-800 text-zinc-100 focus:bg-zinc-950'
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Webhook Endpoint Info Box */}
+                  <div className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                    isLightMode ? 'bg-zinc-50 border-zinc-200/80' : 'bg-zinc-950/40 border-zinc-800/60'
+                  }`}>
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold">
+                        <Terminal className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>Webhook Ingestion URL</span>
+                      </div>
+                      <code className="text-[11px] font-mono text-zinc-400 select-all break-all">
+                        {window.location.origin}/api/webhooks/whatsapp-gateway
+                      </code>
+                    </div>
                     <button
                       type="button"
-                      onClick={() => setShowWhatsAppToken(!showWhatsAppToken)}
-                      className={`absolute right-3.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors ${
-                        isLightMode 
-                          ? 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100' 
-                          : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                      onClick={copyWebhookUrl}
+                      className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition flex items-center gap-1.5 shrink-0 self-start sm:self-auto ${
+                        isLightMode ? 'bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-700' : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-700 text-zinc-200'
                       }`}
-                      title={showWhatsAppToken ? "Hide access token" : "Show access token"}
                     >
-                      {showWhatsAppToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      <Copy className="w-3.5 h-3.5" />
+                      Copy URL
                     </button>
                   </div>
+
+                  {/* Collapsible Railway Setup Guide */}
+                  <div className={`rounded-xl border overflow-hidden transition-all ${
+                    isLightMode ? 'border-zinc-200/80' : 'border-zinc-800/60'
+                  }`}>
+                    <button
+                      type="button"
+                      onClick={() => setShowRailwayGuide(!showRailwayGuide)}
+                      className={`w-full p-3.5 flex items-center justify-between text-xs font-medium transition ${
+                        isLightMode ? 'bg-zinc-50 hover:bg-zinc-100/80' : 'bg-zinc-900/40 hover:bg-zinc-900/80'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <HelpCircle className="w-4 h-4 text-violet-500" />
+                        <span>How to deploy the free WAHA container on Railway in 2 minutes</span>
+                      </div>
+                      <span className="text-[10px] uppercase font-bold text-violet-500">
+                        {showRailwayGuide ? 'Hide Instructions' : 'View Instructions'}
+                      </span>
+                    </button>
+
+                    {showRailwayGuide && (
+                      <div className={`p-4 text-xs space-y-3 border-t leading-relaxed ${
+                        isLightMode ? 'bg-white border-zinc-200 text-zinc-600' : 'bg-zinc-950 border-zinc-800 text-zinc-400'
+                      }`}>
+                        <div className="flex gap-2.5">
+                          <span className="font-bold text-violet-500">1.</span>
+                          <div>
+                            In your existing <strong>Railway Dashboard</strong>, click <strong>+ New Service &gt; Docker Image</strong>.
+                          </div>
+                        </div>
+                        <div className="flex gap-2.5">
+                          <span className="font-bold text-violet-500">2.</span>
+                          <div>
+                            Enter image name: <code className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono text-violet-400">devlikeapro/waha</code>
+                          </div>
+                        </div>
+                        <div className="flex gap-2.5">
+                          <span className="font-bold text-violet-500">3.</span>
+                          <div>
+                            Under service <strong>Variables</strong>, add:
+                            <ul className="list-disc list-inside mt-1 space-y-1 pl-2 font-mono text-[11px]">
+                              <li><span className="text-emerald-400">WHATSAPP_HOOK_URL</span> = <span className="opacity-80">{window.location.origin}/api/webhooks/whatsapp-gateway</span></li>
+                              <li><span className="text-emerald-400">WHATSAPP_HOOK_EVENTS</span> = <span className="opacity-80">message</span></li>
+                            </ul>
+                          </div>
+                        </div>
+                        <div className="flex gap-2.5">
+                          <span className="font-bold text-violet-500">4.</span>
+                          <div>
+                            Under service <strong>Settings &gt; Networking</strong>, click <strong>Generate Domain</strong>. Copy that URL and paste it into the <strong>Gateway Server URL</strong> input above!
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                /* Meta Official Cloud API Form */
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className={`text-[11px] font-medium ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>Registered Phone Number</label>
+                      <input 
+                        type="text"
+                        placeholder="+447123456789"
+                        value={platformConfigs.whatsapp?.phone || ''}
+                        onChange={(e) => handleUpdatePlatformField('whatsapp', 'phone', e.target.value)}
+                        className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
+                          isLightMode 
+                            ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
+                            : 'bg-zinc-950/40 border-zinc-800 text-zinc-100 focus:bg-zinc-950'
+                        }`}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className={`text-[11px] font-medium ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>Phone Number ID</label>
+                      <input 
+                        type="text"
+                        placeholder="e.g. 102948572019485"
+                        value={platformConfigs.whatsapp?.phoneId || ''}
+                        onChange={(e) => handleUpdatePlatformField('whatsapp', 'phoneId', e.target.value)}
+                        className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
+                          isLightMode 
+                            ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
+                            : 'bg-zinc-950/40 border-zinc-800 text-zinc-100 focus:bg-zinc-950'
+                        }`}
+                      />
+                    </div>
+                    <div className="space-y-1.5 md:col-span-2">
+                      <label className={`text-[11px] font-medium ${isLightMode ? "text-zinc-500" : "text-zinc-400"}`}>WhatsApp Access Token (Permanent / System User Token)</label>
+                      <div className="relative">
+                        <input 
+                          type={showWhatsAppToken ? "text" : "password"}
+                          placeholder="EAAGzD..."
+                          value={platformConfigs.whatsapp?.accessToken || ''}
+                          onChange={(e) => handleUpdatePlatformField('whatsapp', 'accessToken', e.target.value)}
+                          className={`w-full pl-4 pr-11 py-2.5 rounded-xl border text-sm font-mono outline-none transition-all focus:ring-4 focus:ring-violet-500/5 focus:border-violet-500 ${
+                            isLightMode 
+                              ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:bg-white' 
+                              : 'bg-zinc-950/40 border-zinc-800 text-zinc-100 focus:bg-zinc-950'
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowWhatsAppToken(!showWhatsAppToken)}
+                          className={`absolute right-3.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors ${
+                            isLightMode 
+                              ? 'text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100' 
+                              : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                          }`}
+                          title={showWhatsAppToken ? "Hide access token" : "Show access token"}
+                        >
+                          {showWhatsAppToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
+            {/* Test Outbound Live Sandbox if WAHA Gateway */}
+            {platformConfigs.whatsapp?.provider !== 'meta' && (
+              <div className={`p-4 rounded-2xl border space-y-3 ${
+                isLightMode ? 'bg-zinc-50/70 border-zinc-200/80' : 'bg-zinc-950/40 border-zinc-800/60'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Send className="w-3.5 h-3.5 text-emerald-500" />
+                    <span className="text-xs font-semibold">Live Outbound Test Messenger</span>
+                  </div>
+                  <span className="text-[10px] text-zinc-400">Send an actual test message from DJ studio to your phone</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <input
+                    type="text"
+                    placeholder="Recipient (+447123456789)"
+                    value={testMsgPhone}
+                    onChange={(e) => setTestMsgPhone(e.target.value)}
+                    className={`px-3 py-2 rounded-xl border text-xs font-mono outline-none ${
+                      isLightMode ? 'bg-white border-zinc-200' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
+                    }`}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Message text..."
+                    value={testMsgText}
+                    onChange={(e) => setTestMsgText(e.target.value)}
+                    className={`px-3 py-2 rounded-xl border text-xs outline-none ${
+                      isLightMode ? 'bg-white border-zinc-200' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSendGatewayTestMessage}
+                    disabled={isSendingTestMsg || !platformConfigs.whatsapp?.serverUrl}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition"
+                  >
+                    <Send className={`w-3.5 h-3.5 ${isSendingTestMsg ? 'animate-spin' : ''}`} />
+                    {isSendingTestMsg ? 'Sending...' : 'Send Live Test'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Pipeline Action Bar */}
             <div className={`p-4 rounded-xl border flex flex-col md:flex-row md:items-center md:justify-between gap-4 ${isLightMode ? "bg-zinc-50 border-zinc-100" : "bg-zinc-950/40 border-zinc-800/60"}`}>
               <div className="space-y-0.5">
                 <span className={`text-[10px] font-semibold uppercase tracking-wider block ${isLightMode ? "text-zinc-400" : "text-zinc-500"}`}>Pipeline Sandbox</span>
-                <p className="text-xs text-zinc-400">Validate connection or dispatch simulated webhook events.</p>
+                <p className="text-xs text-zinc-400">Validate connection handshake or simulate listener incoming messages into Studio Inbox.</p>
               </div>
               <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
                 <button
@@ -675,7 +1302,7 @@ export function AdminMetaIntegrations() {
                   className={`w-full sm:w-auto px-4 py-2 border text-xs font-medium rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm ${isLightMode ? "bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-700" : "bg-zinc-900 border-zinc-800 hover:bg-zinc-800 text-zinc-300"}`}
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${testingPlatform === 'whatsapp' ? 'animate-spin' : ''}`} />
-                  Test Pipeline
+                  Test Handshake
                 </button>
                 <button
                   onClick={() => handleSimulateWebhook('whatsapp')}
@@ -683,17 +1310,21 @@ export function AdminMetaIntegrations() {
                   className={`w-full sm:w-auto px-4 py-2 border text-xs font-medium rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm ${isLightMode ? "bg-violet-50 hover:bg-violet-100 border-violet-100 text-violet-700" : "bg-violet-500/10 hover:bg-violet-500/20 border-violet-500/20 text-violet-400"}`}
                 >
                   <Play className="w-3.5 h-3.5" />
-                  Simulate Webhook
+                  Simulate Inbound
                 </button>
                 <button
                   onClick={() => handleSaveConfig('whatsapp', { 
-                    phone: platformConfigs.whatsapp.phone,
-                    phoneId: platformConfigs.whatsapp.phoneId,
+                    provider: platformConfigs.whatsapp.provider || 'waha',
+                    serverUrl: platformConfigs.whatsapp.serverUrl || '',
+                    apiKey: platformConfigs.whatsapp.apiKey || '',
+                    sessionName: platformConfigs.whatsapp.sessionName || 'default',
+                    phone: platformConfigs.whatsapp.phone || '',
+                    phoneId: platformConfigs.whatsapp.phoneId || '',
                     accessToken: platformConfigs.whatsapp.accessToken || ''
                   })}
                   className={`col-span-2 sm:col-span-1 w-full sm:w-auto sm:ml-2 px-4 py-2 text-xs font-semibold rounded-xl transition shadow-sm text-center flex items-center justify-center ${isLightMode ? "bg-zinc-900 hover:bg-zinc-800 !text-white" : "bg-zinc-100 hover:bg-zinc-200 text-zinc-900"}`}
                 >
-                  Save
+                  Save Config
                 </button>
               </div>
             </div>
