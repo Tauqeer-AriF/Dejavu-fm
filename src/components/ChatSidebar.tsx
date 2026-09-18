@@ -2228,7 +2228,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                     )}
                                   </div>
                                 )}
-                                {msg.audioUrl && (
+                                {msg.audioUrl && typeof msg.audioUrl === 'string' && msg.audioUrl.trim().length > 0 && (
                                   <div className="mt-2 w-full">
                                     <StudioAudioPlayer
                                       src={msg.audioUrl}
@@ -2270,7 +2270,14 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                 </button>
                               )}
                             </div>
-                            {msg.text && (
+                            {msg.text && !(
+                              (msg.text === "Voice Message" || msg.text === "Voice note" || msg.text === "Voice Note" || msg.text === "Shared an audio clip" || msg.text === "Voice/Media message") && 
+                              (msg.audioUrl && typeof msg.audioUrl === 'string' && msg.audioUrl.trim().length > 0)
+                            ) && !(
+                              (msg.text === "Shared an image" || msg.text === "WhatsApp Image") && !!msg.imageUrl
+                            ) && !(
+                              (msg.text === "Shared a video clip" || msg.text === "Video" || msg.text === "Video Message") && !!msg.videoUrl
+                            ) && (
                               <p className={`text-sm break-words leading-relaxed ${isLightMode ? 'text-black/80' : 'text-white/80'}`}>{renderMessageText(msg.text)}</p>
                             )}
                             {msg.imageUrl && (
@@ -2298,7 +2305,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                 )}
                               </div>
                             )}
-                            {msg.audioUrl && (
+                            {msg.audioUrl && typeof msg.audioUrl === 'string' && msg.audioUrl.trim().length > 0 && (
                               <div className="mt-2 w-full">
                                 <StudioAudioPlayer
                                   src={msg.audioUrl}
@@ -2427,7 +2434,14 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                   </button>
                                 )}
                               </div>
-                              {msg.text && (
+                              {msg.text && !(
+                                (msg.text === "Voice Message" || msg.text === "Voice note" || msg.text === "Voice Note" || msg.text === "Shared an audio clip" || msg.text === "Voice/Media message") && 
+                                (msg.audioUrl && typeof msg.audioUrl === 'string' && msg.audioUrl.trim().length > 0)
+                              ) && !(
+                                (msg.text === "Shared an image" || msg.text === "WhatsApp Image") && !!msg.imageUrl
+                              ) && !(
+                                (msg.text === "Shared a video clip" || msg.text === "Video" || msg.text === "Video Message") && !!msg.videoUrl
+                              ) && (
                                 <p className={`text-sm break-words leading-relaxed ${isLightMode ? 'text-black/80' : 'text-white/80'}`}>{renderMessageText(msg.text)}</p>
                               )}
                               {msg.imageUrl && (
@@ -2455,17 +2469,12 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                   )}
                                 </div>
                               )}
-                              {msg.audioUrl && (
-                                <div className="mt-2 w-full p-2 rounded-xl bg-black/30 border border-white/5 flex flex-col gap-1">
-                                  {msg.audioName && (
-                                    <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider truncate mb-1">
-                                      🎵 {msg.audioName}
-                                    </p>
-                                  )}
-                                  <audio 
-                                    src={msg.audioUrl} 
-                                    controls 
-                                    className="w-full h-8 accent-neon-purple rounded" 
+                              {msg.audioUrl && typeof msg.audioUrl === 'string' && msg.audioUrl.trim().length > 0 && (
+                                <div className="mt-2 w-full">
+                                  <StudioAudioPlayer
+                                    src={msg.audioUrl}
+                                    title={msg.audioName || "Voice Note"}
+                                    variant={isLightMode ? "light" : "dark"}
                                   />
                                 </div>
                               )}

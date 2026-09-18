@@ -1,4 +1,4 @@
-import { GamificationLevel, GamificationBadge, GamificationSettings } from '../types/gamification.ts';
+import type { GamificationLevel, GamificationBadge, GamificationSettings } from '../types/gamification.ts';
 
 export const DEFAULT_GAMIFICATION_SETTINGS: GamificationSettings = {
   xp_daily_login: 20,

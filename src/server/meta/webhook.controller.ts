@@ -169,6 +169,25 @@ export class WebhookController {
           console.log(`[Meta Webhook POST] Platform ${platform} is currently disabled in Studio Settings. Messages will still be recorded but flagged.`);
         }
 
+        const gatewayConfig = platform === 'whatsapp' ? WhatsappGatewayService.getGatewayConfig() : undefined;
+        for (const msg of messages) {
+          if (msg.mediaUrl && !msg.mediaUrl.startsWith('/uploads/') && gatewayConfig?.serverUrl) {
+            try {
+              const local = await WhatsappGatewayService.saveRemoteMediaLocally(
+                msg.mediaUrl,
+                gatewayConfig.serverUrl,
+                gatewayConfig.apiKey,
+                undefined,
+                msg.messageId,
+                msg.messageType === 'audio' ? 'audio/ogg' : undefined
+              );
+              if (local) {
+                msg.mediaUrl = local;
+              }
+            } catch {}
+          }
+        }
+
         const io = req.app.get('io');
 
         for (const msg of messages) {
@@ -205,18 +224,41 @@ export class WebhookController {
             }
           } catch (tombErr) {}
           
+          // Auto-extract media URL from text if messageType wasn't explicitly parsed
+          let detectedImageUrl = msg.messageType === 'image' && msg.mediaUrl && msg.mediaUrl !== 'placeholder' ? msg.mediaUrl : null;
+          let detectedAudioUrl = msg.messageType === 'audio' && msg.mediaUrl && msg.mediaUrl !== 'placeholder' ? msg.mediaUrl : null;
+          let detectedVideoUrl = msg.messageType === 'video' && msg.mediaUrl && msg.mediaUrl !== 'placeholder' ? msg.mediaUrl : null;
+          let cleanDbText = msg.text || null;
+
+          if (!detectedImageUrl && !detectedAudioUrl && !detectedVideoUrl && typeof msg.text === 'string') {
+            const mediaAttachmentMatch = msg.text.match(/\[Media attachment:\s*([^\]]+)\]/i);
+            if (mediaAttachmentMatch) {
+              const filename = mediaAttachmentMatch[1].trim();
+              detectedImageUrl = filename.startsWith('/uploads/') ? filename : `/uploads/${filename}`;
+            } else {
+              const imgMatch = msg.text.match(/(https?:\/\/[^\s)]+)?(\/uploads\/[^\s)]+\.(jpg|jpeg|png|webp|gif|svg|bmp))/i);
+              if (imgMatch) {
+                detectedImageUrl = imgMatch[2] || imgMatch[0];
+              }
+              const audioMatch = msg.text.match(/(https?:\/\/[^\s)]+)?(\/uploads\/[^\s)]+\.(ogg|oga|mp3|wav|m4a|aac))/i);
+              if (audioMatch) {
+                detectedAudioUrl = audioMatch[2] || audioMatch[0];
+              }
+            }
+          }
+
           // Construct the enriched message for the SQLite database
           const dbMsg = {
             id: messageId,
             sender: senderName, // Map name or ID to display in thread
             recipient: 'DejavuFM Studio',
-            text: msg.text,
-            imageUrl: msg.messageType === 'image' ? msg.mediaUrl || 'placeholder' : null,
-            imageName: msg.messageType === 'image' ? 'Attachment' : null,
-            audioUrl: msg.messageType === 'audio' ? msg.mediaUrl || 'placeholder' : null,
-            audioName: msg.messageType === 'audio' ? 'Audio Message' : null,
-            videoUrl: msg.messageType === 'video' ? msg.mediaUrl || 'placeholder' : null,
-            videoName: msg.messageType === 'video' ? 'Video Message' : null,
+            text: cleanDbText,
+            imageUrl: detectedImageUrl,
+            imageName: detectedImageUrl ? 'Attachment' : null,
+            audioUrl: detectedAudioUrl,
+            audioName: detectedAudioUrl ? 'Voice Note' : null,
+            videoUrl: detectedVideoUrl,
+            videoName: detectedVideoUrl ? 'Video Message' : null,
             timestamp: msg.timestamp || Date.now(),
             platform: msg.platform
           };
@@ -301,6 +343,18 @@ export class WebhookController {
         const messages = WhatsappGatewayService.parseWebhookPayload(payload);
         if (messages.length === 0) {
           return;
+        }
+
+        const config = WhatsappGatewayService.getGatewayConfig();
+        for (const msg of messages) {
+          if (msg.mediaUrl && !msg.mediaUrl.startsWith('/uploads/') && (msg.messageType === 'image' || msg.messageType === 'audio' || msg.messageType === 'video')) {
+            try {
+              const local = await WhatsappGatewayService.saveRemoteMediaLocally(msg.mediaUrl, config.serverUrl, config.apiKey, undefined, msg.messageId);
+              if (local) {
+                msg.mediaUrl = local;
+              }
+            } catch {}
+          }
         }
 
         const io = req.app.get('io');

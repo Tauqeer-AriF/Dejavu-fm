@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from "express";
+import axios from "axios";
 import Database from './sqlite.ts';
 import { db, dbPath, backupDir, pruneBackups, backupDatabase, createApplicationBackupBundle, reopenDatabaseConnection, initDb, getUploadsDir, pruneHistoricalData, clearStatementCache } from "./db.ts";
 import { request as httpRequest } from "http";
@@ -224,6 +225,31 @@ apiRouter.get("/admin/whatsapp-gateway/status", authMiddleware, authorizeRole(['
     }
 
     const result = await WhatsappGatewayService.checkStatus(serverUrl, apiKey, sessionName);
+
+    if (result.connected) {
+      try {
+        const currentConfigs = configRow?.value ? JSON.parse(configRow.value) : {};
+        let updated = false;
+        if (!currentConfigs.whatsapp) {
+          currentConfigs.whatsapp = {};
+        }
+        if (result.phone && currentConfigs.whatsapp.phone !== result.phone) {
+          currentConfigs.whatsapp.phone = result.phone;
+          updated = true;
+        }
+        if (updated) {
+          db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run('studio_platform_configs', JSON.stringify(currentConfigs));
+        }
+
+        const connectedRow = db.prepare("SELECT value FROM settings WHERE key = 'studio_connected_platforms'").get() as any;
+        const connected = connectedRow?.value ? JSON.parse(connectedRow.value) : {};
+        if (!connected.whatsapp) {
+          connected.whatsapp = true;
+          db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run('studio_connected_platforms', JSON.stringify(connected));
+        }
+      } catch (saveErr) {}
+    }
+
     res.json(result);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -1674,6 +1700,56 @@ apiRouter.get("/public/proxy-image", async (req: any, res: any) => {
   } catch (err) {
     console.error("[API] Proxy image error:", err);
     res.status(500).json({ error: "Failed to proxy image" });
+  }
+});
+
+apiRouter.get("/media/whatsapp-proxy", async (req: any, res: any) => {
+  const rawUrl = req.query.url;
+  if (!rawUrl || typeof rawUrl !== 'string') {
+    return res.status(400).json({ error: "Missing url parameter" });
+  }
+
+  try {
+    let serverUrl = '';
+    let apiKey = '';
+    if (db.open) {
+      const configRow = db.prepare("SELECT value FROM settings WHERE key = 'studio_platform_configs'").get() as any;
+      if (configRow?.value) {
+        try {
+          const parsed = JSON.parse(configRow.value);
+          serverUrl = parsed.whatsapp?.serverUrl || '';
+          apiKey = parsed.whatsapp?.apiKey || '';
+        } catch {}
+      }
+    }
+
+    let fetchUrl = rawUrl;
+    if (serverUrl && (rawUrl.includes('localhost') || rawUrl.includes('127.0.0.1') || rawUrl.startsWith('/api/files/'))) {
+      const cleanServer = serverUrl.replace(/\/+$/, '');
+      const pathPart = rawUrl.replace(/^https?:\/\/[^/]+/, '');
+      fetchUrl = `${cleanServer}${pathPart.startsWith('/') ? '' : '/'}${pathPart}`;
+    }
+
+    const headers: Record<string, string> = {};
+    if (apiKey) {
+      headers['X-Api-Key'] = apiKey;
+      headers['Authorization'] = `Bearer ${apiKey}`;
+    }
+
+    const upstream = await axios.get(fetchUrl, {
+      headers,
+      responseType: 'stream',
+      timeout: 15000
+    });
+
+    if (upstream.headers['content-type']) {
+      res.setHeader('Content-Type', upstream.headers['content-type']);
+    }
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    upstream.data.pipe(res);
+  } catch (err: any) {
+    console.error("[API] WhatsApp media proxy error:", err.message);
+    res.status(502).json({ error: "Failed to stream WhatsApp media" });
   }
 });
 

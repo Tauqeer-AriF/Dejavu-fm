@@ -124,4 +124,74 @@ export class WhatsappService {
 
     return response.data;
   }
+
+  /**
+   * Send a media reply using WhatsApp Business Cloud API.
+   */
+  public static async sendMediaReply(
+    phoneNumberId: string,
+    recipientPhone: string,
+    media: {
+      buffer: Buffer;
+      mimeType: string;
+      filename: string;
+      mediaType: 'image' | 'audio' | 'video';
+    },
+    caption: string,
+    accessToken: string
+  ): Promise<any> {
+    if (!accessToken) {
+      throw new Error('WhatsApp access token is not configured.');
+    }
+
+    // 1. Upload media buffer to Meta WhatsApp Cloud media endpoint
+    const form = new FormData();
+    const blob = new Blob([media.buffer], { type: media.mimeType });
+    form.append('file', blob, media.filename);
+    form.append('type', media.mimeType);
+    form.append('messaging_product', 'whatsapp');
+
+    const uploadRes = await axios.post(
+      `https://graph.facebook.com/v18.0/${phoneNumberId}/media`,
+      form,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        },
+        timeout: 30000
+      }
+    );
+
+    const mediaId = uploadRes.data?.id;
+    if (!mediaId) {
+      throw new Error('Could not upload media to WhatsApp Cloud API.');
+    }
+
+    // 2. Send media message
+    const typeKey = media.mediaType === 'audio' ? 'audio' : media.mediaType === 'video' ? 'video' : 'image';
+    const payload: any = {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: recipientPhone,
+      type: typeKey,
+      [typeKey]: {
+        id: mediaId,
+        ...(caption && typeKey !== 'audio' ? { caption } : {})
+      }
+    };
+
+    const response = await axios.post(
+      `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
+      payload,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 20000
+      }
+    );
+
+    return response.data;
+  }
 }

@@ -98,4 +98,43 @@ export class MessengerService {
 
     return response.data;
   }
+
+  /**
+   * Send a media reply using Facebook Messenger Send API.
+   */
+  public static async sendMediaReply(
+    recipientId: string,
+    mediaUrl: string,
+    mediaType: 'image' | 'video' | 'audio',
+    accessToken: string
+  ): Promise<any> {
+    if (!accessToken) {
+      throw new Error('Facebook Page Access Token is not configured.');
+    }
+
+    const url = `https://graph.facebook.com/v18.0/me/messages`;
+    const payload = {
+      recipient: {
+        id: recipientId
+      },
+      message: {
+        attachment: {
+          type: mediaType === 'video' ? 'video' : mediaType === 'audio' ? 'audio' : 'image',
+          payload: {
+            url: mediaUrl,
+            is_reusable: true
+          }
+        }
+      }
+    };
+
+    const response = await axios.post(url, payload, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    return response.data;
+  }
 }

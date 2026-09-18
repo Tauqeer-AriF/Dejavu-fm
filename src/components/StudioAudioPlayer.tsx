@@ -24,27 +24,45 @@ export const StudioAudioPlayer: React.FC<StudioAudioPlayerProps> = ({
   const [playbackRate, setPlaybackRate] = useState(1);
   const [hasError, setHasError] = useState(false);
 
+  // Normalize source URL
+  const normalizedSrc = useMemo(() => {
+    if (!src || typeof src !== 'string') return '';
+    const clean = src.trim();
+    if (!clean) return '';
+    if (clean.startsWith('data:') || clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('/')) {
+      return clean;
+    }
+    return `/uploads/${clean}`;
+  }, [src]);
+
   // Generate a deterministic waveform height pattern based on src URL string hash
   const barCount = compact ? 20 : 32;
   const waveformBars = useMemo(() => {
     let hash = 0;
-    for (let i = 0; i < src.length; i++) {
-      hash = (hash << 5) - hash + src.charCodeAt(i);
+    const targetStr = normalizedSrc || title;
+    for (let i = 0; i < targetStr.length; i++) {
+      hash = (hash << 5) - hash + targetStr.charCodeAt(i);
       hash |= 0;
     }
     const bars: number[] = [];
     for (let i = 0; i < barCount; i++) {
       const pseudoVal = Math.sin(hash + i * 0.75) * 0.5 + 0.5; // range 0 to 1
-      // normalize to minimum 0.25 height up to 1.0
       const barHeight = 0.25 + pseudoVal * 0.75;
       bars.push(barHeight);
     }
     return bars;
-  }, [src, barCount]);
+  }, [normalizedSrc, title, barCount]);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+
+    if (!normalizedSrc) {
+      setHasError(true);
+      return;
+    }
+
+    setHasError(false);
 
     const handleLoadedMetadata = () => {
       if (audio.duration && !isNaN(audio.duration)) {
@@ -78,11 +96,14 @@ export const StudioAudioPlayer: React.FC<StudioAudioPlayerProps> = ({
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('error', handleError);
     };
-  }, [src]);
+  }, [normalizedSrc]);
 
   const togglePlay = () => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || !normalizedSrc) {
+      setHasError(true);
+      return;
+    }
 
     if (isPlaying) {
       audio.pause();
@@ -92,8 +113,9 @@ export const StudioAudioPlayer: React.FC<StudioAudioPlayerProps> = ({
         setIsPlaying(true);
         setHasError(false);
       }).catch((err) => {
-        console.error("Audio playback failed:", err);
+        console.warn("[StudioAudioPlayer] Audio playback could not start:", err?.message || err);
         setHasError(true);
+        setIsPlaying(false);
       });
     }
   };
@@ -167,7 +189,7 @@ export const StudioAudioPlayer: React.FC<StudioAudioPlayerProps> = ({
 
   return (
     <div className={`relative group/player rounded-2xl p-3 sm:p-3.5 transition-all duration-300 max-w-sm ${containerStyle} ${className}`}>
-      <audio ref={audioRef} src={src} preload="metadata" />
+      <audio ref={audioRef} src={normalizedSrc || undefined} preload="metadata" playsInline />
 
       {/* Header Info Bar */}
       <div className="flex items-center justify-between mb-2 text-[11px] font-medium tracking-wide">
@@ -270,23 +292,27 @@ export const StudioAudioPlayer: React.FC<StudioAudioPlayerProps> = ({
         </div>
 
         {/* Download / Open File */}
-        <a
-          href={src}
-          target="_blank"
-          rel="noopener noreferrer"
-          download
-          className="flex items-center gap-1 hover:underline opacity-70 hover:opacity-100 transition-opacity text-[10px]"
-          title="Download audio clip"
-        >
-          <Download className="w-3 h-3" />
-          <span>Save</span>
-        </a>
+        {normalizedSrc && (
+          <a
+            href={normalizedSrc}
+            target="_blank"
+            rel="noopener noreferrer"
+            download
+            className="flex items-center gap-1 hover:underline opacity-70 hover:opacity-100 transition-opacity text-[10px]"
+            title="Download audio clip"
+          >
+            <Download className="w-3 h-3" />
+            <span>Save</span>
+          </a>
+        )}
       </div>
 
       {hasError && (
         <div className="mt-1 text-[10px] text-red-400 flex items-center justify-between">
-          <span>Failed to load audio</span>
-          <a href={src} target="_blank" rel="noopener noreferrer" className="underline">Direct Link</a>
+          <span>Audio unavailable</span>
+          {normalizedSrc && (
+            <a href={normalizedSrc} target="_blank" rel="noopener noreferrer" className="underline">Direct Link</a>
+          )}
         </div>
       )}
     </div>

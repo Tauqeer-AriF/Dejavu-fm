@@ -1,5 +1,7 @@
 import axios from 'axios';
-import { db } from '../db.ts';
+import fs from 'fs';
+import path from 'path';
+import { db, getUploadsDir } from '../db.ts';
 
 export interface GatewaySessionStatus {
   status: 'CONNECTED' | 'SCAN_QR_CODE' | 'STARTING' | 'STOPPED' | 'FAILED' | 'OFFLINE';
@@ -29,6 +31,335 @@ export class WhatsappGatewayService {
   private static cachedIo: any = null;
 
   /**
+   * Helper to detect if a given string is or contains raw base64 image data
+   */
+  public static isBase64Image(str?: string | null): boolean {
+    if (!str || typeof str !== 'string') return false;
+    const trimmed = str.trim();
+    if (trimmed.startsWith('data:image/')) return true;
+    if (trimmed.startsWith('/9j/')) return true; // JPEG magic
+    if (trimmed.startsWith('iVBORw0KGgo')) return true; // PNG magic
+    if (trimmed.startsWith('R0lGOD')) return true; // GIF magic
+    if (trimmed.startsWith('UklGR')) return true; // WEBP magic
+    if (trimmed.length > 200 && !trimmed.includes(' ') && !trimmed.includes('\n') && /^[A-Za-z0-9+/=]+$/.test(trimmed)) {
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Helper to detect if a given string is or contains raw base64 audio data
+   */
+  public static isBase64Audio(str?: string | null): boolean {
+    if (!str || typeof str !== 'string') return false;
+    const trimmed = str.trim();
+    if (trimmed.startsWith('data:audio/')) return true;
+    if (trimmed.startsWith('T2dnUw')) return true; // OggS magic
+    if (trimmed.startsWith('SUQz')) return true;   // ID3 (mp3) magic
+    if (trimmed.startsWith('RIFF')) return true;   // RIFF (wav) magic
+    if (trimmed.startsWith('GkXfo')) return true;  // WebM magic
+    if (trimmed.length > 200 && !trimmed.includes(' ') && !trimmed.includes('\n') && /^[A-Za-z0-9+/=]+$/.test(trimmed)) {
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Retrieve active WhatsApp gateway configuration from database settings.
+   */
+  public static getGatewayConfig(): { serverUrl?: string; apiKey?: string; sessionName?: string; provider?: string } {
+    try {
+      if (!db.open) return {};
+      const configRow = db.prepare("SELECT value FROM settings WHERE key = 'studio_platform_configs'").get() as any;
+      if (!configRow || !configRow.value) return {};
+      const parsed = JSON.parse(configRow.value);
+      const wa = parsed.whatsapp || {};
+      return {
+        serverUrl: wa.serverUrl,
+        apiKey: wa.apiKey,
+        sessionName: wa.sessionName || 'default',
+        provider: wa.provider || 'waha'
+      };
+    } catch {
+      return {};
+    }
+  }
+
+  /**
+   * Synchronously decode and save a base64 image string into the /uploads folder.
+   */
+  public static saveBase64ImageLocally(base64Data: string, messageId: string = 'msg'): string | null {
+    try {
+      if (!base64Data) return null;
+      let clean = base64Data.trim();
+      let ext = 'jpeg';
+      if (clean.startsWith('data:')) {
+        const match = clean.match(/^data:image\/([a-zA-Z0-9+]+);base64,/);
+        if (match) {
+          ext = match[1] === 'jpeg' ? 'jpeg' : (match[1] === 'png' ? 'png' : match[1]);
+          clean = clean.slice(match[0].length);
+        }
+      } else if (clean.startsWith('iVBORw0KGgo')) {
+        ext = 'png';
+      }
+
+      const buf = Buffer.from(clean, 'base64');
+      if (!buf || buf.length === 0) return null;
+
+      const uploadsDir = getUploadsDir();
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+
+      const safeId = messageId.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 32);
+      const filename = `waha-img-${Date.now()}-${safeId}.${ext}`;
+      const filePath = path.join(uploadsDir, filename);
+      fs.writeFileSync(filePath, buf);
+      return `/uploads/${filename}`;
+    } catch (err) {
+      console.error('[WhatsApp Media] Failed to write base64 image locally:', err);
+      return null;
+    }
+  }
+
+  /**
+   * Synchronously decode and save a base64 audio string into the /uploads folder.
+   */
+  public static saveBase64AudioLocally(base64Data: string, messageId: string = 'audio'): string | null {
+    try {
+      if (!base64Data) return null;
+      let clean = base64Data.trim();
+      let ext = 'ogg';
+      if (clean.startsWith('data:')) {
+        const match = clean.match(/^data:audio\/([a-zA-Z0-9+.-]+);base64,/);
+        if (match) {
+          const rawExt = match[1].toLowerCase();
+          if (rawExt.includes('mp4') || rawExt.includes('m4a')) ext = 'm4a';
+          else if (rawExt.includes('mpeg') || rawExt.includes('mp3')) ext = 'mp3';
+          else if (rawExt.includes('wav')) ext = 'wav';
+          else if (rawExt.includes('webm')) ext = 'webm';
+          else if (rawExt.includes('aac')) ext = 'aac';
+          else ext = 'ogg';
+          clean = clean.slice(match[0].length);
+        }
+      }
+
+      const buf = Buffer.from(clean, 'base64');
+      if (!buf || buf.length === 0) return null;
+
+      const uploadsDir = getUploadsDir();
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+
+      const safeId = messageId.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 32);
+      const filename = `waha-audio-${Date.now()}-${safeId}.${ext}`;
+      const filePath = path.join(uploadsDir, filename);
+      fs.writeFileSync(filePath, buf);
+      return `/uploads/${filename}`;
+    } catch (err) {
+      console.error('[WhatsApp Media] Failed to write base64 audio locally:', err);
+      return null;
+    }
+  }
+
+  /**
+   * Download and save remote media from WAHA into local uploads directory.
+   */
+  public static async saveRemoteMediaLocally(
+    mediaUrl: string,
+    serverUrl?: string,
+    apiKey?: string,
+    fallbackBase64?: string,
+    messageId: string = 'msg',
+    mimetype?: string
+  ): Promise<string | null> {
+    const uploadsDir = getUploadsDir();
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    // 1. If fallback base64 or mediaUrl itself is base64, save immediately
+    if (this.isBase64Image(mediaUrl)) {
+      const local = this.saveBase64ImageLocally(mediaUrl, messageId);
+      if (local) return local;
+    }
+    if (fallbackBase64 && this.isBase64Image(fallbackBase64)) {
+      const local = this.saveBase64ImageLocally(fallbackBase64, messageId);
+      if (local) return local;
+    }
+
+    if (!mediaUrl) return null;
+
+    // 2. Rewrite WAHA internal container URL to accessible serverUrl
+    let fetchUrl = mediaUrl;
+    if (serverUrl && (mediaUrl.includes('localhost') || mediaUrl.includes('127.0.0.1') || mediaUrl.startsWith('/api/files/'))) {
+      const cleanServer = serverUrl.replace(/\/+$/, '');
+      const pathPart = mediaUrl.replace(/^https?:\/\/[^/]+/, '');
+      fetchUrl = `${cleanServer}${pathPart.startsWith('/') ? '' : '/'}${pathPart}`;
+    }
+
+    // 3. Download high-res binary
+    try {
+      const res = await axios.get(fetchUrl, {
+        headers: this.getHeaders(apiKey),
+        responseType: 'arraybuffer',
+        timeout: 10000
+      });
+
+      let ext = 'jpeg';
+      const cType = String(res.headers['content-type'] || mimetype || '').toLowerCase();
+      if (cType.includes('png')) ext = 'png';
+      else if (cType.includes('webp')) ext = 'webp';
+      else if (cType.includes('gif')) ext = 'gif';
+      else if (cType.includes('ogg') || cType.includes('opus') || cType.includes('oga')) ext = 'ogg';
+      else if (cType.includes('mpeg') || cType.includes('mp3')) ext = 'mp3';
+      else if (cType.includes('mp4')) ext = 'mp4';
+      else if (cType.includes('wav')) ext = 'wav';
+      else if (cType.includes('audio')) ext = 'ogg';
+      else if (fetchUrl.includes('.oga') || fetchUrl.includes('.ogg')) ext = 'ogg';
+      else if (fetchUrl.includes('.mp3')) ext = 'mp3';
+      else if (fetchUrl.includes('.jpeg') || fetchUrl.includes('.jpg')) ext = 'jpeg';
+      else if (fetchUrl.includes('.png')) ext = 'png';
+
+      const safeId = messageId.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 32);
+      const filename = `waha-file-${Date.now()}-${safeId}.${ext}`;
+      const filePath = path.join(uploadsDir, filename);
+      fs.writeFileSync(filePath, Buffer.from(res.data));
+      return `/uploads/${filename}`;
+    } catch (err: any) {
+      if (fallbackBase64 && this.isBase64Image(fallbackBase64)) {
+        return this.saveBase64ImageLocally(fallbackBase64, messageId);
+      }
+      return null;
+    }
+  }
+
+  /**
+   * Reconcile any WhatsApp voice messages that lack a valid local audio file.
+   */
+  public static async reconcileMissingAudio(serverUrl?: string, apiKey?: string): Promise<void> {
+    try {
+      if (!db.open) return;
+      const rows = db.prepare(`
+        SELECT id, sender, text, audioUrl, audioName 
+        FROM private_messages 
+        WHERE platform = 'whatsapp' 
+          AND (audioUrl IS NULL OR audioUrl = '' OR audioUrl = 'placeholder') 
+          AND (text = 'Voice Message' OR text = 'Voice note' OR audioName IS NOT NULL)
+      `).all() as any[];
+
+      if (!rows || rows.length === 0) return;
+
+      const config = this.getGatewayConfig();
+      const sUrl = serverUrl || config.serverUrl;
+      const key = apiKey || config.apiKey;
+      if (!sUrl) return;
+
+      const cleanServer = sUrl.replace(/\/+$/, '');
+
+      for (const row of rows) {
+        for (const ext of ['oga', 'ogg', 'mp3']) {
+          const testUrl = `${cleanServer}/api/files/default/${row.id}.${ext}`;
+          try {
+            const res = await axios.get(testUrl, {
+              headers: this.getHeaders(key),
+              responseType: 'arraybuffer',
+              timeout: 4000
+            });
+            if (res.data && res.data.length > 0) {
+              const uploadsDir = getUploadsDir();
+              const safeId = row.id.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 32);
+              const filename = `waha-audio-${Date.now()}-${safeId}.${ext === 'mp3' ? 'mp3' : 'ogg'}`;
+              fs.writeFileSync(path.join(uploadsDir, filename), Buffer.from(res.data));
+              const localUrl = `/uploads/${filename}`;
+              db.prepare("UPDATE private_messages SET audioUrl = ?, audioName = 'Voice Note' WHERE id = ?").run(localUrl, row.id);
+              console.log(`[WhatsApp Media Reconcile] Successfully recovered voice note for message ${row.id} -> ${localUrl}`);
+              break;
+            }
+          } catch {}
+        }
+      }
+    } catch {}
+  }
+
+  /**
+   * Migrate any legacy messages that had raw base64 or media attachment fallbacks stored as text.
+   */
+  public static cleanupLegacyBase64Messages(): void {
+    try {
+      if (!db.open) return;
+      const uploadsDir = getUploadsDir();
+
+      // 1. Base64 strings
+      const base64Rows = db.prepare("SELECT id, text, imageUrl FROM private_messages WHERE text LIKE '%/9j/%' OR text LIKE 'data:image%'").all() as any[];
+      if (base64Rows && base64Rows.length > 0) {
+        for (const r of base64Rows) {
+          const local = this.saveBase64ImageLocally(r.text, r.id);
+          if (local) {
+            db.prepare("UPDATE private_messages SET imageUrl = ?, text = 'Shared an image' WHERE id = ?").run(local, r.id);
+          }
+        }
+      }
+
+      // 2. Media attachment and link fallbacks
+      const mediaAttachmentRows = db.prepare(`
+        SELECT id, text, imageUrl, audioUrl, videoUrl 
+        FROM private_messages 
+        WHERE text LIKE '%[Media attachment:%' 
+           OR text LIKE '%Attachment from DejavuFM Studio%' 
+           OR text LIKE '%Photo from DejavuFM Studio%'
+           OR (text LIKE '%/uploads/%' AND imageUrl IS NULL AND audioUrl IS NULL AND videoUrl IS NULL)
+      `).all() as any[];
+
+      if (mediaAttachmentRows && mediaAttachmentRows.length > 0) {
+        for (const r of mediaAttachmentRows) {
+          const text = r.text || '';
+          let matchedUrl: string | null = null;
+          let matchedType: 'image' | 'audio' | 'video' = 'image';
+
+          const match = text.match(/\[Media attachment:\s*([^\]]+)\]/i);
+          if (match) {
+            const rawName = match[1].trim();
+            const cleanName = path.basename(rawName);
+            const baseNoExt = path.parse(cleanName).name;
+            let finalName = cleanName;
+            try {
+              const files = fs.readdirSync(uploadsDir);
+              const found = files.find(f => f.startsWith(baseNoExt));
+              if (found) finalName = found;
+            } catch {}
+            matchedUrl = `/uploads/${finalName}`;
+            if (finalName.endsWith('.ogg') || finalName.endsWith('.oga') || finalName.endsWith('.mp3')) {
+              matchedType = 'audio';
+            }
+          } else {
+            const urlMatch = text.match(/(?:https?:\/\/[^\s]+)?(\/uploads\/[^\s)]+)/i);
+            if (urlMatch) {
+              matchedUrl = urlMatch[1];
+              if (matchedUrl.endsWith('.ogg') || matchedUrl.endsWith('.oga') || matchedUrl.endsWith('.mp3')) {
+                matchedType = 'audio';
+              }
+            }
+          }
+
+          if (matchedUrl) {
+            if (matchedType === 'image') {
+              db.prepare("UPDATE private_messages SET imageUrl = ?, imageName = 'Attachment', text = NULL WHERE id = ?").run(matchedUrl, r.id);
+            } else if (matchedType === 'audio') {
+              db.prepare("UPDATE private_messages SET audioUrl = ?, audioName = 'Voice Note', text = 'Voice Note' WHERE id = ?").run(matchedUrl, r.id);
+            }
+          }
+        }
+      }
+
+      this.reconcileMissingAudio().catch(() => {});
+    } catch (err) {
+      console.error('[WhatsApp Media Reconcile Error]', err);
+    }
+  }
+
+  /**
    * Initialize background WhatsApp sync worker.
    */
   public static initialize(io: any): void {
@@ -39,6 +370,7 @@ export class WhatsappGatewayService {
     }
 
     console.log('[WhatsApp Gateway] Initializing continuous WhatsApp message sync...');
+    this.cleanupLegacyBase64Messages();
 
     // Run first sync immediately after 2 seconds
     setTimeout(() => {
@@ -209,6 +541,15 @@ export class WhatsappGatewayService {
         for (const m of messagesToProcess) {
           const parsed = this.parseSingleMessage(m, chatName, rawChatId, contactNameMap);
           if (parsed) {
+            if ((parsed.messageType === 'image' || parsed.messageType === 'audio' || parsed.messageType === 'video') && parsed.mediaUrl && !parsed.mediaUrl.startsWith('/uploads/')) {
+              try {
+                const fallback = m._data?.body || m.body || m.media?.data;
+                const local = await this.saveRemoteMediaLocally(parsed.mediaUrl, serverUrl, apiKey, fallback, parsed.messageId, m.media?.mimetype || m.mimetype);
+                if (local) {
+                  parsed.mediaUrl = local;
+                }
+              } catch {}
+            }
             messagesToIngest.push(parsed);
           }
         }
@@ -266,29 +607,6 @@ export class WhatsappGatewayService {
       }
     }
 
-    let text = m.body || m.text || m._data?.body || '';
-    let messageType: GatewayParsedMessage['messageType'] = 'text';
-    let mediaUrl: string | undefined;
-
-    if (m.hasMedia || m.media || m._data?.hasMedia) {
-      const media = m.media || m._data?.media || {};
-      mediaUrl = media.url || undefined;
-      const mime = (media.mimetype || m.mimetype || m.type || '').toLowerCase();
-
-      if (mime.startsWith('image') || m.type === 'image') {
-        messageType = 'image';
-        text = text || '[WhatsApp Image]';
-      } else if (mime.startsWith('audio') || m.type === 'audio' || m.type === 'ptt') {
-        messageType = 'audio';
-        text = text || '[WhatsApp Voice Note]';
-      } else if (mime.startsWith('video') || m.type === 'video') {
-        messageType = 'video';
-        text = text || '[WhatsApp Video]';
-      }
-    }
-
-    if (!text && !mediaUrl) return null;
-
     const rawTimestamp = m.timestamp || m.t || m._data?.t || Date.now();
     const timestamp = typeof rawTimestamp === 'number'
       ? (rawTimestamp > 1e11 ? rawTimestamp : rawTimestamp * 1000)
@@ -296,6 +614,69 @@ export class WhatsappGatewayService {
 
     const rawId = m.id?._serialized || m.id?.id || (typeof m.id === 'string' ? m.id : null);
     const messageId = rawId || `waha-sync-${timestamp}-${Math.random().toString(36).slice(2, 7)}`;
+
+    const bodyIsBase64 = this.isBase64Image(m.body);
+    const dataBodyIsBase64 = this.isBase64Image(m._data?.body);
+    const bodyIsBase64Audio = this.isBase64Audio(m.body);
+    const dataBodyIsBase64Audio = this.isBase64Audio(m._data?.body);
+    const mime = (m.media?.mimetype || m.mimetype || m._data?.mimetype || m.type || '').toLowerCase();
+
+    const isImage = (m.type === 'image') || 
+                    mime.startsWith('image') ||
+                    bodyIsBase64 || dataBodyIsBase64;
+    const isAudio = (m.type === 'audio' || m.type === 'ptt') ||
+                    mime.startsWith('audio') ||
+                    bodyIsBase64Audio || dataBodyIsBase64Audio;
+    const isVideo = (m.type === 'video') ||
+                    mime.startsWith('video');
+
+    let text = '';
+    let messageType: GatewayParsedMessage['messageType'] = 'text';
+    let mediaUrl: string | undefined;
+
+    if (isImage) {
+      messageType = 'image';
+      const caption = m.caption || m._data?.caption || '';
+      text = caption || (!bodyIsBase64 && m.body ? m.body : '') || 'Shared an image';
+
+      const base64Candidate = dataBodyIsBase64 ? m._data?.body : (bodyIsBase64 ? m.body : (m.media?.data || undefined));
+      const rawMediaUrl = m.media?.url || m.url || undefined;
+
+      // Save base64 locally if available
+      if (base64Candidate) {
+        const local = this.saveBase64ImageLocally(base64Candidate, messageId);
+        if (local) mediaUrl = local;
+      }
+
+      if (!mediaUrl && rawMediaUrl) {
+        mediaUrl = rawMediaUrl;
+      }
+    } else if (isAudio) {
+      messageType = 'audio';
+      text = m.caption || 'Voice Message';
+      
+      const audioBase64 = dataBodyIsBase64Audio
+        ? m._data?.body
+        : (bodyIsBase64Audio ? m.body : (m.media?.data || m._data?.body || undefined));
+      const rawMediaUrl = m.media?.url || m.url || undefined;
+
+      if (audioBase64) {
+        const local = this.saveBase64AudioLocally(audioBase64, messageId);
+        if (local) mediaUrl = local;
+      }
+
+      if (!mediaUrl && rawMediaUrl) {
+        mediaUrl = rawMediaUrl;
+      }
+    } else if (isVideo) {
+      messageType = 'video';
+      text = m.caption || 'Video';
+      mediaUrl = m.media?.url || m.url || undefined;
+    } else {
+      text = m.body || m.text || '';
+    }
+
+    if (!text && !mediaUrl) return null;
 
     return {
       platform: 'whatsapp',
@@ -676,25 +1057,46 @@ export class WhatsappGatewayService {
         raw: data
       };
     } catch (err: any) {
-      // 2. Fallback: try GET /api/sessions (list all sessions)
+      // If 404 / Session not found, the gateway server is ONLINE, but the session is not created/started yet
+      if (
+        err.response?.status === 404 ||
+        err.response?.data?.message === 'Session not found' ||
+        (typeof err.response?.data?.error === 'string' && err.response?.data?.error?.includes('does not exist'))
+      ) {
+        return {
+          status: 'STOPPED',
+          connected: false,
+          sessionName,
+          error: `Session "${sessionName}" is not started yet. Click "Pair Phone / QR" to initialize it.`
+        };
+      }
+
+      // 2. Fallback: try GET /api/sessions?all=true (list all sessions including stopped ones)
       try {
-        const listRes = await axios.get(`${base}/api/sessions`, {
+        const listRes = await axios.get(`${base}/api/sessions?all=true`, {
           headers,
           timeout: 6000
         });
 
         if (Array.isArray(listRes.data)) {
-          const match = listRes.data.find((s: any) => s.name === sessionName) || listRes.data[0];
+          const match = listRes.data.find((s: any) => s.name === sessionName);
           if (match) {
             const rawStatus = (match.status || '').toUpperCase();
             const isWorking = rawStatus === 'WORKING' || rawStatus === 'CONNECTED';
             return {
-              status: isWorking ? 'CONNECTED' : (rawStatus === 'SCAN_QR_CODE' ? 'SCAN_QR_CODE' : (rawStatus === 'FAILED' ? 'FAILED' : 'STARTING')),
+              status: isWorking ? 'CONNECTED' : (rawStatus === 'SCAN_QR_CODE' ? 'SCAN_QR_CODE' : (rawStatus === 'FAILED' ? 'FAILED' : (rawStatus === 'STARTING' ? 'STARTING' : 'STOPPED'))),
               connected: isWorking,
               sessionName: match.name || sessionName,
               raw: match
             };
           }
+          // Server responded with sessions list, so server is online, session just doesn't exist yet
+          return {
+            status: 'STOPPED',
+            connected: false,
+            sessionName,
+            error: `Session "${sessionName}" does not exist yet. Click "Pair Phone / QR" to create it.`
+          };
         }
       } catch (fallbackErr) {}
 
@@ -734,50 +1136,85 @@ export class WhatsappGatewayService {
 
   /**
    * Fetch QR code for authentication.
-   * Automatically starts or restarts the session if stopped/failed and polls until QR is ready.
+   * Automatically creates, starts or waits for the session until QR is ready.
    */
   public static async getQrCode(
     serverUrl: string,
     apiKey?: string,
     sessionName: string = 'default'
-  ): Promise<{ qr: string | null; type: 'image' | 'raw'; error?: string }> {
+  ): Promise<{ qr: string | null; type: 'image' | 'raw'; error?: string; status?: string }> {
     const base = this.normalizeUrl(serverUrl);
     if (!base) return { qr: null, type: 'raw', error: 'Gateway URL is missing.' };
 
     const headers = this.getHeaders(apiKey);
 
     // Step 1: Check session status first
+    let currentStatus = 'STOPPED';
     try {
       const statusCheck = await this.checkStatus(serverUrl, apiKey, sessionName);
       if (statusCheck.connected) {
         return {
           qr: null,
           type: 'raw',
-          error: 'WhatsApp is already connected and linked! No QR pairing required.'
+          error: 'WhatsApp is already connected and linked! No QR pairing required.',
+          status: 'CONNECTED'
         };
       }
-
-      // If session is failed or stopped, initiate a fresh start/restart
-      if (statusCheck.status === 'FAILED' || statusCheck.status === 'STOPPED') {
-        try {
-          await this.startSession(serverUrl, apiKey, sessionName);
-        } catch (startErr) {
-          console.warn('[WhatsApp Gateway] Auto-start session notice:', startErr);
-        }
-      }
+      currentStatus = statusCheck.status;
     } catch (checkErr) {
       console.warn('[WhatsApp Gateway] Status pre-check error:', checkErr);
     }
 
+    // Step 2: If session is stopped, uninitialized, or needs recovery, start it
+    if (currentStatus === 'STOPPED' || currentStatus === 'FAILED' || currentStatus === 'OFFLINE') {
+      try {
+        console.log(`[WhatsApp Gateway] Initializing session "${sessionName}" (current state: ${currentStatus})...`);
+        await this.startSession(serverUrl, apiKey, sessionName);
+        currentStatus = 'STARTING';
+      } catch (startErr: any) {
+        console.warn('[WhatsApp Gateway] Session startup notice:', startErr.message);
+      }
+    }
+
+    // Step 3: If session is STARTING, wait/poll until it reaches SCAN_QR_CODE or CONNECTED
+    // WAHA launches Chromium browser in the container; this can take 5-20 seconds.
+    if (currentStatus === 'STARTING') {
+      console.log(`[WhatsApp Gateway] Session "${sessionName}" is STARTING. Polling until SCAN_QR_CODE is ready...`);
+      const maxWaitSec = 25;
+      for (let s = 1; s <= maxWaitSec; s++) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        try {
+          const sCheck = await this.checkStatus(serverUrl, apiKey, sessionName);
+          if (sCheck.connected) {
+            return {
+              qr: null,
+              type: 'raw',
+              error: 'WhatsApp is already connected and linked! No QR pairing required.',
+              status: 'CONNECTED'
+            };
+          }
+          if (sCheck.status === 'SCAN_QR_CODE') {
+            currentStatus = 'SCAN_QR_CODE';
+            break;
+          }
+        } catch {}
+      }
+    }
+
+    // Step 4: Now fetch the QR code directly
+    // Endpoints in order of speed and reliability:
+    // 1. WAHA direct image endpoint: /api/{session}/auth/qr?format=image (fastest PNG direct stream)
+    // 2. WAHA direct raw endpoint: /api/{session}/auth/qr?format=raw
+    // 3. WAHA generic /api/{session}/auth/qr
+    // 4. Evolution API: /instance/connect/{session}
     const endpoints = [
+      `${base}/api/${encodeURIComponent(sessionName)}/auth/qr?format=image`,
+      `${base}/api/${encodeURIComponent(sessionName)}/auth/qr?format=raw`,
       `${base}/api/${encodeURIComponent(sessionName)}/auth/qr`,
-      `${base}/api/default/auth/qr`,
-      `${base}/api/sessions/${encodeURIComponent(sessionName)}/auth/qr`,
       `${base}/instance/connect/${encodeURIComponent(sessionName)}`
     ];
 
-    // Step 2: Poll for QR code with retry loop (giving WAHA time to start browser & generate QR)
-    const maxRetries = 6;
+    const maxRetries = 5;
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       for (const ep of endpoints) {
         try {
@@ -787,66 +1224,62 @@ export class WhatsappGatewayService {
               Accept: 'image/png, image/*, application/json, text/plain, */*'
             },
             responseType: 'arraybuffer',
-            timeout: 7000
+            timeout: 8000
           });
 
           const contentType = String(res.headers['content-type'] || '').toLowerCase();
 
-          // If binary image
+          // If binary image (e.g. PNG from format=image)
           if (contentType.includes('image/') || Buffer.isBuffer(res.data)) {
-            const b64 = Buffer.from(res.data).toString('base64');
+            // Guard: check if it's actually an error JSON encoded in the buffer
             try {
               const text = Buffer.from(res.data).toString('utf8');
               const parsed = JSON.parse(text);
-              if (parsed.data || parsed.qr || parsed.code || parsed.base64) {
-                const rawCode = parsed.data || parsed.qr || parsed.code || parsed.base64;
-                if (typeof rawCode === 'string' && rawCode.startsWith('data:image')) {
-                  return { qr: rawCode, type: 'image' };
+              const qrVal = parsed.value || parsed.data || parsed.qr || parsed.code || parsed.base64;
+              if (qrVal) {
+                if (typeof qrVal === 'string' && qrVal.startsWith('data:image')) {
+                  return { qr: qrVal, type: 'image', status: 'SCAN_QR_CODE' };
                 }
-                return { qr: rawCode, type: 'raw' };
+                return { qr: qrVal, type: 'raw', status: 'SCAN_QR_CODE' };
               }
             } catch {
-              // It is indeed raw image binary bytes
-              return { qr: `data:${contentType || 'image/png'};base64,${b64}`, type: 'image' };
+              // Not JSON -> verified valid PNG image binary
+              const b64 = Buffer.from(res.data).toString('base64');
+              const mime = contentType.includes('image/') ? contentType.split(';')[0].trim() : 'image/png';
+              return { qr: `data:${mime};base64,${b64}`, type: 'image', status: 'SCAN_QR_CODE' };
             }
           }
 
           const text = Buffer.from(res.data).toString('utf8');
           try {
             const parsed = JSON.parse(text);
-            const qrVal = parsed.data || parsed.qr || parsed.code || parsed.base64;
+            const qrVal = parsed.value || parsed.data || parsed.qr || parsed.code || parsed.base64;
             if (qrVal) {
               if (typeof qrVal === 'string' && qrVal.startsWith('data:image')) {
-                return { qr: qrVal, type: 'image' };
+                return { qr: qrVal, type: 'image', status: 'SCAN_QR_CODE' };
               }
-              return { qr: qrVal, type: 'raw' };
+              return { qr: qrVal, type: 'raw', status: 'SCAN_QR_CODE' };
             }
           } catch {
-            if (text && text.length > 10) {
-              return { qr: text, type: 'raw' };
+            if (text && text.length > 10 && !text.includes('error') && !text.includes('Session')) {
+              return { qr: text, type: 'raw', status: 'SCAN_QR_CODE' };
             }
           }
         } catch (reqErr: any) {
-          const status = reqErr.response?.status;
-          // If 422 / 400 (Session status is not as expected / FAILED), try triggering a restart on first failure
-          if (status === 422 && attempt === 1) {
-            try {
-              await axios.post(`${base}/api/sessions/${encodeURIComponent(sessionName)}/restart`, {}, { headers, timeout: 6000 }).catch(() => {});
-            } catch {}
-          }
+          // Keep polling; do not send restart commands during startup
         }
       }
 
-      // If not last attempt, wait 1.2 seconds before polling next iteration
       if (attempt < maxRetries) {
-        await new Promise((resolve) => setTimeout(resolve, 1200));
+        await new Promise((resolve) => setTimeout(resolve, 1500));
       }
     }
 
     return {
       qr: null,
       type: 'raw',
-      error: 'WhatsApp session is initializing or generating QR code. Please click "Pair Phone / QR" again in a few seconds.'
+      error: 'WhatsApp session is still initializing on the gateway. Please click "Pair Phone / QR" again in a few moments.',
+      status: 'STARTING'
     };
   }
 
@@ -857,52 +1290,89 @@ export class WhatsappGatewayService {
     serverUrl: string,
     apiKey?: string,
     sessionName: string = 'default'
-  ): Promise<{ success: boolean; message: string }> {
+  ): Promise<{ success: boolean; message: string; status?: string }> {
     const base = this.normalizeUrl(serverUrl);
     if (!base) throw new Error('Gateway URL is required.');
 
     const headers = this.getHeaders(apiKey);
 
-    // Try 1: WAHA Restart session
+    // Step 1: Check if session exists in WAHA: GET /api/sessions/{session}
+    let sessionExists = false;
+    let currentStatus = 'STOPPED';
     try {
-      const res = await axios.post(
-        `${base}/api/sessions/${encodeURIComponent(sessionName)}/restart`,
-        {},
-        { headers, timeout: 10000 }
-      );
-      return { success: true, message: `Session "${sessionName}" restarted.` };
-    } catch (err: any) {
-      // Try 2: WAHA Start session
+      const checkRes = await axios.get(`${base}/api/sessions/${encodeURIComponent(sessionName)}`, { headers, timeout: 6000 });
+      sessionExists = true;
+      currentStatus = (checkRes.data?.status || 'STOPPED').toUpperCase();
+    } catch (checkErr: any) {
+      if (checkErr.response?.status === 404 || checkErr.response?.data?.message === 'Session not found') {
+        sessionExists = false;
+      }
+    }
+
+    // Step 2: If session does not exist on WAHA, create it via POST /api/sessions
+    if (!sessionExists) {
       try {
         await axios.post(
-          `${base}/api/sessions/${encodeURIComponent(sessionName)}/start`,
-          {},
+          `${base}/api/sessions`,
+          { name: sessionName },
           { headers, timeout: 10000 }
         );
-        return { success: true, message: `Session "${sessionName}" started.` };
-      } catch (err2: any) {
-        // Try 3: WAHA generic start
+        sessionExists = true;
+      } catch (createErr: any) {
+        // If already created concurrently, continue
+      }
+    }
+
+    // Step 3: Check if already connected or ready
+    if (currentStatus === 'WORKING' || currentStatus === 'CONNECTED') {
+      return { success: true, message: `Session "${sessionName}" is already connected.`, status: 'CONNECTED' };
+    }
+    if (currentStatus === 'SCAN_QR_CODE') {
+      return { success: true, message: `Session "${sessionName}" is waiting for QR code scan.`, status: 'SCAN_QR_CODE' };
+    }
+
+    // Step 4: If session state requires recovery, trigger restart or clean reset
+    if (currentStatus === 'FAILED') {
+      try {
+        const restartRes = await axios.post(
+          `${base}/api/sessions/${encodeURIComponent(sessionName)}/restart`,
+          {},
+          { headers, timeout: 12000 }
+        );
+        return { success: true, message: `Session "${sessionName}" restarted.`, status: restartRes.data?.status || 'STARTING' };
+      } catch (restartErr: any) {
+        // Fallback: clean stop followed by start
         try {
-          await axios.post(
-            `${base}/api/sessions/start`,
-            { name: sessionName },
-            { headers, timeout: 10000 }
-          );
-          return { success: true, message: `Session "${sessionName}" started.` };
-        } catch (err3: any) {
-          // Try 4: WAHA create session
+          await axios.post(`${base}/api/sessions/${encodeURIComponent(sessionName)}/stop`, {}, { headers, timeout: 8000 }).catch(() => {});
+          const startRes = await axios.post(`${base}/api/sessions/${encodeURIComponent(sessionName)}/start`, {}, { headers, timeout: 12000 });
+          return { success: true, message: `Session "${sessionName}" recovered.`, status: startRes.data?.status || 'STARTING' };
+        } catch (recoverErr: any) {
           try {
-            await axios.post(
-              `${base}/api/sessions`,
-              { name: sessionName },
-              { headers, timeout: 10000 }
-            );
-            return { success: true, message: `Session "${sessionName}" created and started.` };
-          } catch (err4: any) {
-            throw new Error(err4.response?.data?.message || err4.message || 'Failed to start session on gateway.');
-          }
+            await axios.delete(`${base}/api/sessions/${encodeURIComponent(sessionName)}`, { headers, timeout: 8000 }).catch(() => {});
+            await axios.post(`${base}/api/sessions`, { name: sessionName }, { headers, timeout: 8000 });
+            const freshStart = await axios.post(`${base}/api/sessions/${encodeURIComponent(sessionName)}/start`, {}, { headers, timeout: 12000 });
+            return { success: true, message: `Session "${sessionName}" cleanly recreated.`, status: freshStart.data?.status || 'STARTING' };
+          } catch (freshErr) {}
         }
       }
+    }
+
+    // Step 5: Start the session: POST /api/sessions/{session}/start
+    try {
+      const startRes = await axios.post(
+        `${base}/api/sessions/${encodeURIComponent(sessionName)}/start`,
+        {},
+        { headers, timeout: 12000 }
+      );
+      return { success: true, message: `Session "${sessionName}" started.`, status: startRes.data?.status || 'STARTING' };
+    } catch (startErr: any) {
+      // Fallback: Evolution API or generic start
+      try {
+        await axios.post(`${base}/instance/create`, { instanceName: sessionName }, { headers, timeout: 10000 });
+        return { success: true, message: `Instance "${sessionName}" initialized.`, status: 'STARTING' };
+      } catch {}
+
+      throw new Error(startErr.response?.data?.message || startErr.message || 'Failed to start session on gateway.');
     }
   }
 
@@ -978,6 +1448,9 @@ export class WhatsappGatewayService {
       }
     }
 
+    const config = this.getGatewayConfig();
+    const isEvolution = config.provider === 'evolution';
+
     let lastError: any = null;
 
     // Method 1: WAHA standard POST /api/sendText with candidate fallback
@@ -1005,21 +1478,23 @@ export class WhatsappGatewayService {
       }
     }
 
-    // Method 2: Evolution API POST /message/sendText/{instance}
-    for (const targetJid of candidates) {
-      try {
-        const cleanNumber = targetJid.replace('@c.us', '').replace('@s.whatsapp.net', '').replace('@lid', '');
-        const response2 = await axios.post(
-          `${base}/message/sendText/${encodeURIComponent(sessionName)}`,
-          {
-            number: cleanNumber,
-            text
-          },
-          { headers, timeout: 15000 }
-        );
-        return response2.data;
-      } catch (err2: any) {
-        lastError = err2;
+    // Method 2: Evolution API POST /message/sendText/{instance} (Only if configured for Evolution)
+    if (isEvolution) {
+      for (const targetJid of candidates) {
+        try {
+          const cleanNumber = targetJid.replace('@c.us', '').replace('@s.whatsapp.net', '').replace('@lid', '');
+          const response2 = await axios.post(
+            `${base}/message/sendText/${encodeURIComponent(sessionName)}`,
+            {
+              number: cleanNumber,
+              text
+            },
+            { headers, timeout: 15000 }
+          );
+          return response2.data;
+        } catch (err2: any) {
+          lastError = err2;
+        }
       }
     }
 
@@ -1033,6 +1508,188 @@ export class WhatsappGatewayService {
     throw new Error(
       lastErrMsg ||
       'Failed to dispatch WhatsApp message via Gateway.'
+    );
+  }
+
+  /**
+   * Helper to derive the full accessible public media URL for an attachment.
+   */
+  public static getPublicMediaUrl(media: { filename?: string; dataUrl?: string; remoteUrl?: string; mediaType?: string }): string {
+    const rawFilename = media.filename || '';
+    const cleanFilename = path.basename(rawFilename.split('?')[0]);
+    const uploadsDir = getUploadsDir();
+
+    let actualFile = cleanFilename;
+    if (cleanFilename) {
+      if (!fs.existsSync(path.join(uploadsDir, cleanFilename))) {
+        const baseNameNoExt = path.parse(cleanFilename).name;
+        try {
+          const files = fs.readdirSync(uploadsDir);
+          const match = files.find(f => f.startsWith(baseNameNoExt));
+          if (match) {
+            actualFile = match;
+          }
+        } catch {}
+      }
+    }
+
+    const appUrl = (process.env.APP_URL || process.env.PUBLIC_URL || '').replace(/\/+$/, '');
+    if (appUrl && actualFile) {
+      return `${appUrl}/uploads/${actualFile}`;
+    }
+    return `/uploads/${actualFile}`;
+  }
+
+  /**
+   * Send a media reply (image, audio, video, document) from the studio DJ to the listener.
+   */
+  public static async sendMediaMessage(
+    serverUrl: string,
+    apiKey: string | undefined,
+    sessionName: string = 'default',
+    to: string,
+    media: {
+      dataUrl: string;
+      base64: string;
+      mimeType: string;
+      filename: string;
+      mediaType: 'image' | 'audio' | 'video' | 'file';
+      remoteUrl?: string;
+    },
+    caption?: string
+  ): Promise<any> {
+    const base = this.normalizeUrl(serverUrl);
+    if (!base) throw new Error('WhatsApp Gateway Server URL is missing.');
+
+    const headers = this.getHeaders(apiKey);
+    const resolvedChatId = await this.resolveRecipientChatId(serverUrl, apiKey, sessionName, to);
+
+    if (!resolvedChatId) {
+      throw new Error(`Invalid WhatsApp recipient: "${to}". Could not determine a valid phone number or WhatsApp ID.`);
+    }
+
+    const config = this.getGatewayConfig();
+    const isEvolution = config.provider === 'evolution';
+
+    const candidates: string[] = [];
+    if (resolvedChatId.includes('@')) {
+      candidates.push(resolvedChatId);
+      if (resolvedChatId.endsWith('@c.us')) {
+        candidates.push(resolvedChatId.replace('@c.us', '@lid'));
+      } else if (resolvedChatId.endsWith('@lid')) {
+        candidates.push(resolvedChatId.replace('@lid', '@c.us'));
+      }
+    } else {
+      const digits = resolvedChatId.replace(/\D/g, '');
+      if (digits.length >= 14) {
+        candidates.push(`${digits}@lid`, `${digits}@c.us`);
+      } else {
+        candidates.push(`${digits}@c.us`, `${digits}@lid`);
+      }
+    }
+
+    let lastError: any = null;
+
+    // Build standard WAHA file payload without data: URI in 'url'
+    const filePayload: any = {
+      mimetype: media.mimeType,
+      filename: media.filename
+    };
+    if (media.base64) {
+      filePayload.data = media.base64;
+    } else if (media.dataUrl && !media.dataUrl.startsWith('data:')) {
+      filePayload.url = media.dataUrl;
+    }
+
+    // Method 1: WAHA specific endpoints (/api/sendImage, /api/sendVoice, /api/sendVideo) or generic /api/sendFile
+    for (const targetJid of candidates) {
+      const endpoints: string[] = [];
+      if (media.mediaType === 'image') {
+        endpoints.push(`${base}/api/sendImage`, `${base}/api/sendFile`);
+      } else if (media.mediaType === 'audio') {
+        endpoints.push(`${base}/api/sendVoice`, `${base}/api/sendFile`);
+      } else if (media.mediaType === 'video') {
+        endpoints.push(`${base}/api/sendVideo`, `${base}/api/sendFile`);
+      } else {
+        endpoints.push(`${base}/api/sendFile`);
+      }
+
+      for (const endpoint of endpoints) {
+        try {
+          const payload: any = {
+            session: sessionName,
+            chatId: targetJid,
+            file: filePayload
+          };
+          if (caption && !endpoint.endsWith('/sendVoice')) {
+            payload.caption = caption;
+          }
+
+          const response = await axios.post(endpoint, payload, { headers, timeout: 30000 });
+          return response.data;
+        } catch (err: any) {
+          lastError = err;
+          const errData = err.response?.data;
+          const errMsg = errData?.exception?.message || errData?.message || errData?.error || err.message;
+          if (typeof errMsg === 'string' && (errMsg.includes('No LID') || errMsg.includes('not found') || errMsg.includes('invalid jid'))) {
+            break;
+          }
+        }
+      }
+    }
+
+    // Method 2: Evolution API POST /message/sendMedia/{instance} (Only if configured for Evolution)
+    if (isEvolution) {
+      for (const targetJid of candidates) {
+        try {
+          const cleanNumber = targetJid.replace('@c.us', '').replace('@s.whatsapp.net', '').replace('@lid', '');
+          const evoMediaType = media.mediaType === 'audio' ? 'audio' : media.mediaType === 'video' ? 'video' : 'image';
+          const response2 = await axios.post(
+            `${base}/message/sendMedia/${encodeURIComponent(sessionName)}`,
+            {
+              number: cleanNumber,
+              mediatype: evoMediaType,
+              mimetype: media.mimeType,
+              caption: caption || undefined,
+              media: media.base64,
+              fileName: media.filename
+            },
+            { headers, timeout: 30000 }
+          );
+          return response2.data;
+        } catch (err2: any) {
+          lastError = err2;
+        }
+      }
+    }
+
+    // Method 3: Direct Public Media URL Fallback for WAHA if media getter throws on @lid
+    if (!isEvolution) {
+      for (const targetJid of candidates) {
+        try {
+          const publicUrl = this.getPublicMediaUrl(media);
+          let mediaLabel = '📸 Photo';
+          if (media.mediaType === 'audio') mediaLabel = '🎙️ Voice Note';
+          else if (media.mediaType === 'video') mediaLabel = '🎬 Video';
+          else if (media.mediaType === 'file') mediaLabel = '📁 File';
+
+          const fallbackText = caption
+            ? `${caption}\n\n${mediaLabel} from DejavuFM Studio:\n${publicUrl}`
+            : `${mediaLabel} from DejavuFM Studio:\n${publicUrl}`;
+          const textResult = await this.sendTextMessage(serverUrl, apiKey, sessionName, targetJid, fallbackText);
+          console.log(`[WhatsApp Gateway Media Fallback] Delivered media notification via public link to ${targetJid}: ${publicUrl}`);
+          return textResult;
+        } catch {}
+      }
+    }
+
+    const lastErrData = lastError?.response?.data;
+    const lastErrMsg = lastErrData?.exception?.message || lastErrData?.message || lastErrData?.error || lastError?.message;
+
+    console.error(`[WhatsApp Gateway Media Error] Failed to send media: ${lastErrMsg}`);
+    throw new Error(
+      lastErrMsg ||
+      'Failed to dispatch WhatsApp media message via Gateway.'
     );
   }
 
@@ -1061,25 +1718,63 @@ export class WhatsappGatewayService {
         ? (isLid ? notifyName : `${notifyName} (+${cleanPhone})`)
         : (isLid ? 'WhatsApp Listener' : `+${cleanPhone}`);
 
+      const bodyIsBase64 = this.isBase64Image(p.body);
+      const dataBodyIsBase64 = this.isBase64Image(p._data?.body);
+      const mime = (p.media?.mimetype || p.mimetype || p._data?.mimetype || p.type || '').toLowerCase();
+
+      const isImage = (p.type === 'image') || 
+                      mime.startsWith('image') ||
+                      bodyIsBase64 || dataBodyIsBase64;
+      const isAudio = (p.type === 'audio' || p.type === 'ptt') ||
+                      mime.startsWith('audio');
+      const isVideo = (p.type === 'video') ||
+                      mime.startsWith('video');
+
       let messageType: GatewayParsedMessage['messageType'] = 'text';
-      let text = p.body || '';
+      let text = '';
       let mediaUrl: string | undefined;
 
-      if (p.hasMedia || p.media) {
-        const media = p.media || {};
-        mediaUrl = media.url || undefined;
-        const mime = (media.mimetype || '').toLowerCase();
+      const messageId = p.id?._serialized || p.id || `waha-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-        if (mime.startsWith('image/')) {
-          messageType = 'image';
-          text = text || '[WhatsApp Image]';
-        } else if (mime.startsWith('audio/')) {
-          messageType = 'audio';
-          text = text || '[WhatsApp Audio Message]';
-        } else if (mime.startsWith('video/')) {
-          messageType = 'video';
-          text = text || '[WhatsApp Video]';
+      if (isImage) {
+        messageType = 'image';
+        const caption = p.caption || p._data?.caption || '';
+        text = caption || (!bodyIsBase64 && p.body ? p.body : '') || 'Shared an image';
+
+        const base64Candidate = dataBodyIsBase64 ? p._data?.body : (bodyIsBase64 ? p.body : (p.media?.data || undefined));
+        const rawMediaUrl = p.media?.url || p.url || undefined;
+
+        if (base64Candidate) {
+          const local = this.saveBase64ImageLocally(base64Candidate, messageId);
+          if (local) mediaUrl = local;
         }
+
+        if (!mediaUrl && rawMediaUrl) {
+          mediaUrl = rawMediaUrl;
+        }
+      } else if (isAudio) {
+        messageType = 'audio';
+        text = p.caption || 'Voice Message';
+        
+        const audioBase64 = this.isBase64Audio(p._data?.body)
+          ? p._data?.body
+          : (this.isBase64Audio(p.body) ? p.body : (p.media?.data || undefined));
+        const rawMediaUrl = p.media?.url || p.url || undefined;
+
+        if (audioBase64) {
+          const local = this.saveBase64AudioLocally(audioBase64, messageId);
+          if (local) mediaUrl = local;
+        }
+
+        if (!mediaUrl && rawMediaUrl) {
+          mediaUrl = rawMediaUrl;
+        }
+      } else if (isVideo) {
+        messageType = 'video';
+        text = p.caption || 'Video';
+        mediaUrl = p.media?.url || p.url || undefined;
+      } else {
+        text = p.body || '';
       }
 
       if (text || mediaUrl) {
@@ -1091,7 +1786,7 @@ export class WhatsappGatewayService {
           messageType,
           mediaUrl,
           timestamp: p.timestamp ? (p.timestamp > 1e11 ? p.timestamp : p.timestamp * 1000) : Date.now(),
-          messageId: p.id?._serialized || p.id || `waha-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          messageId,
           fromMe: false
         });
       }
