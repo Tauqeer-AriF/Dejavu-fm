@@ -244,6 +244,38 @@ export function AdminMetaIntegrations() {
     }));
   }, []);
 
+  // Auto-poll gateway status when QR code is visible so it automatically detects when user pairs their phone
+  useEffect(() => {
+    let intervalId: any = null;
+    if (qrCodeData?.qr && gatewayStatus !== 'CONNECTED') {
+      intervalId = setInterval(async () => {
+        const wa = platformConfigs.whatsapp || {};
+        if (!wa.serverUrl) return;
+        try {
+          const query = new URLSearchParams({
+            serverUrl: wa.serverUrl,
+            apiKey: wa.apiKey || '',
+            sessionName: wa.sessionName || 'default'
+          });
+          const res = await fetchAdmin(`/api/admin/whatsapp-gateway/status?${query.toString()}`);
+          const data = await res.json();
+          if (data.connected || data.status === 'CONNECTED' || data.status === 'WORKING') {
+            setGatewayStatus('CONNECTED');
+            setQrCodeData(null);
+            if (data.phone) setGatewayPhone(data.phone);
+            toast.success(`🎉 WhatsApp Connected! Phone linked: +${data.phone || 'Ready'}`);
+            queryClient.invalidateQueries({ queryKey: ["studioSettings"] });
+          }
+        } catch (e) {
+          // ignore background polling network errors
+        }
+      }, 3500);
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [qrCodeData, gatewayStatus, platformConfigs.whatsapp]);
+
   // --- WhatsApp Web Gateway Actions (WAHA / Evolution API) ---
   const handleCheckGatewayStatus = async () => {
     const wa = platformConfigs.whatsapp || {};
@@ -265,14 +297,15 @@ export function AdminMetaIntegrations() {
         if (data.phone) setGatewayPhone(data.phone);
         if (data.connected) {
           toast.success(`WhatsApp Connected! Phone linked: +${data.phone || 'Ready'}`);
+          setQrCodeData(null);
         } else if (data.status === 'SCAN_QR_CODE') {
-          toast.info("Gateway is waiting for QR code scan. Loading QR...");
+          toast.info("Gateway is ready for QR pairing. Fetching QR code...");
           handleFetchGatewayQr();
         } else if (data.status === 'STARTING') {
           toast.info("Session is initializing on WAHA. Loading QR code now...");
           handleFetchGatewayQr();
         } else if (data.status === 'STOPPED') {
-          toast.warning("Session was stopped. Starting session and fetching QR...");
+          toast.warning("Session was stopped. Initializing session and generating QR...");
           handleFetchGatewayQr();
         } else {
           toast.warning(`Gateway status: ${data.status}`);
@@ -311,7 +344,14 @@ export function AdminMetaIntegrations() {
       } else {
         if (data.error && data.error.includes('already connected')) {
           setGatewayStatus('CONNECTED');
+          setQrCodeData(null);
           toast.success(data.error);
+        } else if (data.status === 'STARTING') {
+          setGatewayStatus('STARTING');
+          toast.info("Chromium browser is starting on the gateway. Checking for QR code in 4 seconds...");
+          setTimeout(() => {
+            handleFetchGatewayQr();
+          }, 4000);
         } else {
           toast.error(data.error || "No QR code available. Check if phone is already linked.");
         }
@@ -1032,13 +1072,34 @@ export function AdminMetaIntegrations() {
                             disabled={isLoadingQr}
                             className="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm hover:shadow active:scale-95 disabled:opacity-60"
                           >
-                            <QrCode className="w-3.5 h-3.5" />
-                            {isLoadingQr ? 'Loading QR...' : 'Pair Phone / QR'}
+                            {isLoadingQr ? (
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <QrCode className="w-3.5 h-3.5" />
+                            )}
+                            {isLoadingQr ? 'Initializing & Loading QR...' : 'Pair Phone / QR'}
                           </button>
                         )}
                       </div>
                     </div>
                   </div>
+
+                  {/* Starting Gateway Browser Status Notice */}
+                  {gatewayStatus === 'STARTING' && !qrCodeData?.qr && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`p-3.5 rounded-xl border flex items-center gap-3 text-xs ${
+                        isLightMode ? 'bg-amber-50/80 border-amber-200 text-amber-900' : 'bg-amber-950/30 border-amber-800/40 text-amber-300'
+                      }`}
+                    >
+                      <RefreshCw className="w-4 h-4 animate-spin text-amber-500 shrink-0" />
+                      <div>
+                        <span className="font-semibold block">Browser engine is starting up on gateway...</span>
+                        <span className="text-[11px] opacity-85">WAHA is launching its internal Chromium session. Your QR code will appear automatically in a few seconds.</span>
+                      </div>
+                    </motion.div>
+                  )}
 
                   {/* QR Code Modal / Drawer Display if active */}
                   {qrCodeData?.qr && gatewayStatus !== 'CONNECTED' && (
@@ -1049,12 +1110,16 @@ export function AdminMetaIntegrations() {
                         isLightMode ? 'bg-emerald-50/50 border-emerald-200' : 'bg-emerald-950/20 border-emerald-800/40'
                       }`}
                     >
-                      <div className="bg-white p-3.5 rounded-2xl shadow-md border border-zinc-200 shrink-0">
+                      <div className="bg-white p-3.5 rounded-2xl shadow-md border border-zinc-200 shrink-0 flex flex-col items-center">
                         {qrCodeData.type === 'image' && qrCodeData.qr.startsWith('data:image') ? (
                           <img src={qrCodeData.qr} alt="WhatsApp Pairing QR" className="w-44 h-44 object-contain" />
                         ) : (
                           <QRCodeSVG value={qrCodeData.qr} size={176} level="M" />
                         )}
+                        <div className="mt-2.5 flex items-center gap-1.5 text-[10px] font-medium text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          <span>Listening for phone scan...</span>
+                        </div>
                       </div>
 
                       <div className="space-y-3 text-left">
@@ -1075,7 +1140,7 @@ export function AdminMetaIntegrations() {
                           <button
                             type="button"
                             onClick={handleCheckGatewayStatus}
-                            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm"
+                            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm active:scale-95"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             I Scanned It (Verify)
@@ -1083,9 +1148,11 @@ export function AdminMetaIntegrations() {
                           <button
                             type="button"
                             onClick={handleFetchGatewayQr}
-                            className="px-3 py-1.5 rounded-xl border text-xs font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
+                            disabled={isLoadingQr}
+                            className="px-3 py-1.5 rounded-xl border text-xs font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition active:scale-95 flex items-center gap-1.5"
                           >
-                            Refresh QR Code
+                            <RefreshCw className={`w-3 h-3 ${isLoadingQr ? 'animate-spin' : ''}`} />
+                            Refresh QR
                           </button>
                         </div>
                       </div>

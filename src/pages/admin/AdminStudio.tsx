@@ -36,8 +36,25 @@ interface UserThread {
   platform?: string;
 }
 
+const isBase64Image = (str?: string | null): boolean => {
+  if (!str || typeof str !== 'string') return false;
+  const trimmed = str.trim();
+  if (trimmed.startsWith('data:image/')) return true;
+  if (trimmed.startsWith('/9j/')) return true;
+  if (trimmed.startsWith('iVBORw0KGgo')) return true;
+  if (trimmed.startsWith('R0lGOD')) return true;
+  if (trimmed.startsWith('UklGR')) return true;
+  if (trimmed.length > 200 && !trimmed.includes(' ') && !trimmed.includes('\n') && /^[A-Za-z0-9+/=]+$/.test(trimmed)) {
+    return true;
+  }
+  return false;
+};
+
 const formatMediaUrl = (url?: string): string | undefined => {
   if (!url) return undefined;
+  if (url.includes('localhost:8080/api/files/') || url.includes('127.0.0.1:8080/api/files/') || url.startsWith('/api/files/')) {
+    return `/api/media/whatsapp-proxy?url=${encodeURIComponent(url)}`;
+  }
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('/')) {
     return url;
   }
@@ -47,19 +64,45 @@ const formatMediaUrl = (url?: string): string | undefined => {
 const extractAudioUrl = (item: any): string | undefined => {
   if (!item) return undefined;
   const raw = item.audioUrl || item.audio_url || item.audio || item.audioName || item.replyAudioUrl || item.reply_audio_url || (item.mediaType === 'audio' ? item.mediaUrl : undefined);
-  return formatMediaUrl(raw);
+  if (raw && typeof raw === 'string' && raw.trim() !== 'placeholder') return formatMediaUrl(raw);
+  if (typeof item.text === 'string') {
+    const audioMatch = item.text.match(/(https?:\/\/[^\s)]+)?(\/uploads\/[^\s)]+\.(ogg|oga|mp3|wav|m4a|aac))/i);
+    if (audioMatch) return formatMediaUrl(audioMatch[2] || audioMatch[0]);
+  }
+  return undefined;
 };
 
 const extractImageUrl = (item: any): string | undefined => {
   if (!item) return undefined;
   const raw = item.imageUrl || item.image_url || item.image || item.imageName || item.replyImageUrl || item.reply_image_url || (item.mediaType === 'image' ? item.mediaUrl : undefined);
-  return formatMediaUrl(raw);
+  if (raw && typeof raw === 'string' && raw.trim() !== 'placeholder') return formatMediaUrl(raw);
+  if (item.text && isBase64Image(item.text)) {
+    const trimmed = item.text.trim();
+    return trimmed.startsWith('data:') ? trimmed : `data:image/jpeg;base64,${trimmed}`;
+  }
+  if (typeof item.text === 'string') {
+    const mediaAttachmentMatch = item.text.match(/\[Media attachment:\s*([^\]]+)\]/i);
+    if (mediaAttachmentMatch) {
+      const filename = mediaAttachmentMatch[1].trim();
+      return formatMediaUrl(filename.startsWith('/uploads/') ? filename : `/uploads/${filename}`);
+    }
+    const imgMatch = item.text.match(/(https?:\/\/[^\s)]+)?(\/uploads\/[^\s)]+\.(jpg|jpeg|png|webp|gif|svg|bmp))/i);
+    if (imgMatch) {
+      return formatMediaUrl(imgMatch[2] || imgMatch[0]);
+    }
+  }
+  return undefined;
 };
 
 const extractVideoUrl = (item: any): string | undefined => {
   if (!item) return undefined;
   const raw = item.videoUrl || item.video_url || item.video || item.videoName || item.replyVideoUrl || item.reply_video_url || (item.mediaType === 'video' ? item.mediaUrl : undefined);
-  return formatMediaUrl(raw);
+  if (raw && typeof raw === 'string' && raw.trim() !== 'placeholder') return formatMediaUrl(raw);
+  if (typeof item.text === 'string') {
+    const videoMatch = item.text.match(/(https?:\/\/[^\s)]+)?(\/uploads\/[^\s)]+\.(mp4|webm|mov|mkv))/i);
+    if (videoMatch) return formatMediaUrl(videoMatch[2] || videoMatch[0]);
+  }
+  return undefined;
 };
 
 const normalizeMsgText = (t?: string) => (t || '').replace(/^@[^\s]+\s+/, '').trim();
@@ -79,12 +122,21 @@ const isSameMessage = (msgA: Message, msgB: Message) => {
   const isSameUser = userA === userB || 
     (userA.includes('studio') && userB.includes('studio'));
 
-  if (isSameUser && (textA === textB || normA === normB || (normA && normB && (normA.includes(normB) || normB.includes(normA))))) {
-    return Math.abs(msgA.timestamp - msgB.timestamp) < 90000;
+  const timeDiff = Math.abs(msgA.timestamp - msgB.timestamp);
+  if (timeDiff >= 90000) return false;
+
+  const hasMediaA = Boolean(msgA.imageUrl || msgA.audioUrl || msgA.videoUrl);
+  const hasMediaB = Boolean(msgB.imageUrl || msgB.audioUrl || msgB.videoUrl);
+
+  const textMatches = (normA && normB && (normA === normB || normA.includes(normB) || normB.includes(normA))) || 
+    (!normA && !normB && (hasMediaA || hasMediaB));
+
+  if (isSameUser && (textMatches || (hasMediaA && hasMediaB))) {
+    return true;
   }
 
-  if ((isTempA || isTempB) && (textA === textB || normA === normB)) {
-    return Math.abs(msgA.timestamp - msgB.timestamp) < 90000;
+  if ((isTempA || isTempB) && (textMatches || (hasMediaA && hasMediaB))) {
+    return true;
   }
 
   return false;
@@ -4359,7 +4411,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                             const lastMsg = thread.messages.slice(-1)[0];
                             if (!lastMsg) return 'No messages';
                             if (lastMsg.audioUrl) return '🎵 Audio clip';
-                            if (lastMsg.imageUrl) return '📷 Image attachment';
+                            if (lastMsg.imageUrl || isBase64Image(lastMsg.text)) return '📷 Image attachment';
                             if (lastMsg.videoUrl) return '🎥 Video attachment';
                             return replaceTextEmojis(lastMsg.text) || 'Attachment';
                           })()}
@@ -4624,19 +4676,64 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                             }`}
                             style={isAdminReply ? { background: `linear-gradient(135deg, ${primaryColor || '#7C3AED'}, ${secondaryColor || '#4F46E5'})` } : undefined}
                           >
-                            {msg.text && (msg.text !== "Shared an audio clip" || !msg.audioUrl) && (msg.text !== "Shared an image" || !msg.imageUrl) && (msg.text !== "Shared a video clip" || !msg.videoUrl) && (
-                              <p className="whitespace-pre-wrap break-words select-text">{parseEmojisAndEmotes(msg.text)}</p>
-                            )}
+                            {(() => {
+                              const displayImg = extractImageUrl(msg);
+                              const hasAudio = !!(msg.audioUrl && typeof msg.audioUrl === 'string' && msg.audioUrl.trim().length > 0);
+                              const isGenericAudioText = hasAudio && (
+                                msg.text === "Voice Message" ||
+                                msg.text === "Voice note" ||
+                                msg.text === "Voice Note" ||
+                                msg.text === "Shared an audio clip" ||
+                                msg.text === "Voice/Media message" ||
+                                msg.text === "[Voice Note]"
+                              );
+                              const isGenericImageText = !!displayImg && (
+                                msg.text === "Shared an image" ||
+                                msg.text === "WhatsApp Image" ||
+                                msg.text === "[WhatsApp Image]" ||
+                                (typeof msg.text === 'string' && (
+                                  msg.text.trim().startsWith('[Media attachment:') ||
+                                  msg.text.trim().startsWith('📸 Photo from DejavuFM Studio:') ||
+                                  msg.text.trim().startsWith('📸 Attachment from DejavuFM Studio:') ||
+                                  msg.text.trim().startsWith('📸 /uploads/') ||
+                                  msg.text.trim().startsWith('/uploads/')
+                                ))
+                              );
+                              const isGenericVideoText = !!msg.videoUrl && (
+                                msg.text === "Shared a video clip" ||
+                                msg.text === "Video" ||
+                                msg.text === "Video Message"
+                              );
+                              const shouldHideText = isGenericAudioText || isGenericImageText || isGenericVideoText;
+
+                              // Clean out any trailing [Media attachment: ...] or public link if there is a caption
+                              let cleanText = msg.text || '';
+                              if (displayImg && cleanText) {
+                                cleanText = cleanText
+                                  .replace(/\[Media attachment:[^\]]+\]/gi, '')
+                                  .replace(/📸 (?:Photo|Attachment) from DejavuFM Studio:\s*https?:\/\/[^\s]+/gi, '')
+                                  .replace(/https?:\/\/[^\s]+\/uploads\/[^\s]+/gi, '')
+                                  .trim();
+                              }
+
+                              return (
+                                <>
+                                  {cleanText && !isBase64Image(cleanText) && !shouldHideText && (
+                                    <p className="whitespace-pre-wrap break-words select-text">{parseEmojisAndEmotes(cleanText)}</p>
+                                  )}
+                                  
+                                  {displayImg && (
+                                    <div className={`mt-2.5 rounded-xl overflow-hidden border max-w-sm ${
+                                      isStudioLight ? 'bg-slate-100 border-slate-200/80 shadow-3xs' : 'border-white/5 bg-black/40 shadow-xl'
+                                    }`}>
+                                      <img src={displayImg} referrerPolicy="no-referrer" className="w-full h-auto max-h-60 object-contain hover:scale-102 transition-transform duration-300" alt="Attachment" />
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
                             
-                            {msg.imageUrl && (
-                              <div className={`mt-2.5 rounded-xl overflow-hidden border max-w-sm ${
-                                isStudioLight ? 'bg-slate-100 border-slate-200/80 shadow-3xs' : 'border-white/5 bg-black/40 shadow-xl'
-                              }`}>
-                                <img src={msg.imageUrl} referrerPolicy="no-referrer" className="w-full h-auto max-h-60 object-contain hover:scale-102 transition-transform duration-300" alt="Attachment" />
-                              </div>
-                            )}
-                            
-                            {msg.audioUrl && (
+                            {msg.audioUrl && typeof msg.audioUrl === 'string' && msg.audioUrl.trim().length > 0 && (
                               <div className="mt-2.5">
                                 <StudioAudioPlayer
                                   src={msg.audioUrl}
