@@ -1598,7 +1598,11 @@ async function startServer() {
            });
          }
           if (msg.platform && ['whatsapp', 'instagram', 'facebook'].includes(msg.platform)) {
-            MetaService.sendPlatformReply(msg.platform, msg.recipient, msg.text).then(() => {
+            MetaService.sendPlatformReply(msg.platform, msg.recipient, msg.text, {
+              imageUrl: msg.imageUrl,
+              audioUrl: msg.audioUrl,
+              videoUrl: msg.videoUrl
+            }).then(() => {
               console.log(`[Meta Reply Dispatcher] Dispatched ${msg.platform} reply to ${msg.recipient} successfully`);
             }).catch((err: any) => {
               console.error(`[Meta Reply Dispatcher] Error sending ${msg.platform} reply:`, err.message);
