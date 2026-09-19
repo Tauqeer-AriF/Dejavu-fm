@@ -2,13 +2,14 @@ import { ChatMessage } from "../types";
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { io, Socket } from 'socket.io-client';
-import { Send, User, LogOut, Loader2, X, MessageSquare, Users, ShieldAlert, WifiOff, Smile, Search, Paperclip, Music, Mic, Square, Trash2, ArrowLeft, Eye, EyeOff, Volume2, VolumeX, Video, Disc, Crown, Sparkles, Trophy } from 'lucide-react';
+import { Send, User, LogOut, Loader2, X, MessageSquare, Users, ShieldAlert, WifiOff, Smile, Search, Paperclip, Music, Mic, Square, Trash2, ArrowLeft, Eye, EyeOff, Volume2, VolumeX, Video, Disc, Crown, Sparkles, Trophy, Maximize2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useModal } from '../context/ModalContext';
 import { useLogo } from '../hooks/useLogo';
 import { playUINotificationSound } from '../lib/soundHelper';
 import { StudioAudioPlayer } from "./StudioAudioPlayer";
 import { MessageReactions } from "./chat/MessageReactions";
+import { MediaLightbox, LightboxMediaItem } from "./chat/MediaLightbox";
 
 
 const EMOJI_CATEGORIES = [
@@ -127,9 +128,11 @@ const authenticatedFetch = (input: RequestInfo | URL, init?: RequestInit): Promi
   });
 };
 
-const renderLevelBadge = (level?: number, levelTitle?: string, showGamificationLevels: boolean = true, isLightMode: boolean = false) => {
+const renderLevelBadge = (level?: number, levelTitle?: string, showGamificationLevels: boolean = true, isLightMode: boolean = false, isExempt: boolean = false) => {
+  if (isExempt) return null;
   if (!showGamificationLevels) return null;
   if (!level || level < 1) return null;
+  if (levelTitle && (levelTitle.toLowerCase().includes('staff') || levelTitle.toLowerCase().includes('admin') || levelTitle.toLowerCase().includes('dj'))) return null;
   
   let bgClasses = isLightMode 
     ? 'bg-neon-blue/10 border-neon-blue/30 text-neon-blue' 
@@ -214,12 +217,141 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
   const [showAdminClearToggle, setShowAdminClearToggle] = useState(false);
   const [isConnected, setIsConnected] = useState<boolean>(true);
   const [targetBlockStatus, setTargetBlockStatus] = useState<{ isBlocked: boolean; isBlockedBy: boolean; restricted: boolean } | null>(null);
+  const [staffAndDjs, setStaffAndDjs] = useState<Set<string>>(() => {
+    return new Set<string>([
+      'admin', 'dejavufm studio', 'dejavu studio', 'studio', 'wayne', 'ces', 'owner', 'superadmin', 'system'
+    ]);
+  });
+
+  useEffect(() => {
+    const fetchStaffAndDjs = async () => {
+      try {
+        const res = await authenticatedFetch('/api/public/staff-djs');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.staffAndDjs && Array.isArray(data.staffAndDjs)) {
+            setStaffAndDjs(new Set(data.staffAndDjs.map((s: string) => s.toLowerCase())));
+          }
+        }
+      } catch (e) {}
+    };
+    fetchStaffAndDjs();
+  }, []);
+
+  const isUserStaffOrDj = (username?: string, userOrMsg?: any) => {
+    if (userOrMsg) {
+      if (userOrMsg.isStaff || userOrMsg.isAdmin || userOrMsg.isDj) return true;
+      if (userOrMsg.role === 'admin' || userOrMsg.role === 'dj' || userOrMsg.role === 'owner' || userOrMsg.role === 'staff' || userOrMsg.role === 'presenter') return true;
+    }
+    const clean = (username || userOrMsg?.user || userOrMsg?.username || '').trim().toLowerCase();
+    if (!clean) return false;
+    if (staffAndDjs.has(clean)) return true;
+    if (['admin', 'dejavufm studio', 'dejavu studio', 'studio', 'wayne', 'ces', 'owner', 'superadmin', 'system'].includes(clean)) return true;
+    
+    if (loggedInUser && clean === loggedInUser.toLowerCase() && isAdmin) return true;
+
+    const onlineMatch = onlineUsers.find(u => (u.username && u.username.toLowerCase() === clean) || (u.name && u.name.toLowerCase() === clean));
+    if (onlineMatch && (onlineMatch.isStaff || onlineMatch.role === 'admin' || onlineMatch.role === 'dj' || onlineMatch.role === 'owner')) {
+      return true;
+    }
+
+    return false;
+  };
 
   const isDmRestricted = useMemo(() => {
     if (chatTab !== 'private' || !activeDmUser) return false;
     const isLocalBlocked = blockedUsers.some(u => u.toLowerCase() === activeDmUser.toLowerCase());
     return isLocalBlocked || !!targetBlockStatus?.restricted;
   }, [chatTab, activeDmUser, blockedUsers, targetBlockStatus]);
+
+  // Media Lightbox State & Gallery
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [customLightboxItems, setCustomLightboxItems] = useState<LightboxMediaItem[] | null>(null);
+
+  const activeMediaGallery = useMemo<LightboxMediaItem[]>(() => {
+    let sourceMsgs: ChatMessage[] = [];
+    if (chatTab === 'public') {
+      sourceMsgs = messages;
+    } else if (chatTab === 'private' && activeDmUser) {
+      sourceMsgs = privateMessages.filter(m => {
+        if (isAdmin) {
+          return m.user === activeDmUser || m.recipient === activeDmUser;
+        }
+        return (m.user === loggedInUser && m.recipient === activeDmUser) ||
+               (m.user === activeDmUser && m.recipient === loggedInUser);
+      });
+    }
+
+    const items: LightboxMediaItem[] = [];
+    sourceMsgs.forEach(msg => {
+      const isImg = !!msg.imageUrl;
+      const isVid = !!msg.videoUrl;
+      const avatar = msg.avatar_url || (msg.user ? `https://api.dicebear.com/7.x/bottts/svg?seed=${msg.user}` : undefined);
+      if (isImg && msg.imageUrl) {
+        items.push({
+          id: `img-${msg.id}`,
+          type: 'image',
+          url: msg.imageUrl,
+          title: msg.imageName || (msg.text && msg.text !== 'Shared an image' && msg.text !== 'WhatsApp Image' ? msg.text : undefined),
+          caption: msg.text && msg.text !== 'Shared an image' && msg.text !== 'WhatsApp Image' ? msg.text : undefined,
+          sender: msg.user,
+          avatar,
+          timestamp: msg.timestamp,
+          platform: 'Chat',
+        });
+      }
+      if (isVid && msg.videoUrl) {
+        items.push({
+          id: `vid-${msg.id}`,
+          type: 'video',
+          url: msg.videoUrl,
+          title: msg.videoName || (msg.text && msg.text !== 'Shared a video clip' && msg.text !== 'Video' && msg.text !== 'Video Message' ? msg.text : undefined),
+          caption: msg.text && msg.text !== 'Shared a video clip' && msg.text !== 'Video' && msg.text !== 'Video Message' ? msg.text : undefined,
+          sender: msg.user,
+          avatar,
+          timestamp: msg.timestamp,
+          platform: 'Chat',
+        });
+      }
+    });
+    return items;
+  }, [messages, privateMessages, chatTab, activeDmUser, isAdmin, loggedInUser]);
+
+  const openLightboxForMedia = (url: string, type: 'image' | 'video', meta?: Partial<LightboxMediaItem>) => {
+    // Immediately pause all playing video/audio on the page so it doesn't double-play with lightbox
+    try {
+      document.querySelectorAll('video, audio').forEach((el) => {
+        if (el instanceof HTMLMediaElement && !el.paused) {
+          el.pause();
+        }
+      });
+    } catch {
+      // ignore
+    }
+
+    const foundIdx = activeMediaGallery.findIndex(item => item.url === url);
+    if (foundIdx !== -1) {
+      setCustomLightboxItems(null);
+      setLightboxIndex(foundIdx);
+      setLightboxOpen(true);
+    } else {
+      const singleItem: LightboxMediaItem = {
+        id: `media-${Date.now()}`,
+        type,
+        url,
+        title: meta?.title,
+        caption: meta?.caption,
+        sender: meta?.sender,
+        avatar: meta?.avatar,
+        timestamp: meta?.timestamp,
+        platform: meta?.platform || 'Chat',
+      };
+      setCustomLightboxItems([singleItem]);
+      setLightboxIndex(0);
+      setLightboxOpen(true);
+    }
+  };
 
   const [drafts, setDrafts] = useState<Record<string, string>>(() => {
     try {
@@ -599,6 +731,29 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
   const [mentionSearch, setMentionSearch] = useState('');
   const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
+
+  const knownUsernames = useMemo(() => {
+    const set = new Set<string>();
+    if (loggedInUser) set.add(loggedInUser);
+    allUsers.forEach(u => {
+      if (u.username) set.add(u.username);
+    });
+    onlineUsers.forEach(u => {
+      if (u.username) set.add(u.username);
+      if (u.name) set.add(u.name);
+    });
+    messages.forEach(m => {
+      if (m.user && !m.isSystem) set.add(m.user);
+    });
+    privateMessages.forEach(m => {
+      if (m.user && !m.isSystem) set.add(m.user);
+      if (m.recipient && !m.isSystem) set.add(m.recipient);
+    });
+
+    return Array.from(set)
+      .filter(name => typeof name === 'string' && name.trim().length > 0)
+      .sort((a, b) => b.length - a.length);
+  }, [loggedInUser, allUsers, onlineUsers, messages, privateMessages]);
 
   const filteredUsers = useMemo(() => {
     if (!mentionSearch) return allUsers;
@@ -1450,12 +1605,54 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
 
   const renderMessageText = (text: string | undefined | null) => {
     if (!text) return null;
-    const parts = text.split(/(@[a-zA-Z0-9_.-]+)/g);
+
+    const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const knownPatterns = knownUsernames.map(u => escapeRegex(u));
+    
+    let mentionRegex: RegExp;
+    if (knownPatterns.length > 0) {
+      const knownGroup = knownPatterns.join('|');
+      mentionRegex = new RegExp(`(@(?:${knownGroup}))(?=[\\s,;:!?]|$|:)|(@[^:\\n\\r]+)(?=:)|(@[a-zA-Z0-9_.-]+)`, 'gi');
+    } else {
+      mentionRegex = new RegExp(`(@[^:\\n\\r]+)(?=:)|(@[a-zA-Z0-9_.-]+)`, 'gi');
+    }
+
+    const parts: { text: string; isMention: boolean; username: string }[] = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = mentionRegex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push({
+          text: text.substring(lastIndex, match.index),
+          isMention: false,
+          username: '',
+        });
+      }
+
+      const matchedStr = match[0];
+      const rawUsername = matchedStr.startsWith('@') ? matchedStr.substring(1) : matchedStr;
+      parts.push({
+        text: matchedStr,
+        isMention: true,
+        username: rawUsername.trim(),
+      });
+      lastIndex = mentionRegex.lastIndex;
+    }
+
+    if (lastIndex < text.length) {
+      parts.push({
+        text: text.substring(lastIndex),
+        isMention: false,
+        username: '',
+      });
+    }
+
     return (
       <>
         {parts.map((part, index) => {
-          if (part.startsWith('@')) {
-            const username = part.substring(1);
+          if (part.isMention) {
+            const username = part.username;
             const canDm = loggedInUser && username.toLowerCase() !== loggedInUser.toLowerCase();
             return (
               <button
@@ -1468,16 +1665,16 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                   }
                 }}
                 disabled={!canDm}
-                className={`inline-block px-1.5 py-0.5 rounded bg-neon-purple/20 text-neon-purple font-black uppercase text-[10px] tracking-widest align-middle border border-neon-purple/30 mx-0.5 transition-all ${
+                className={`inline-flex items-center px-1.5 py-0.5 rounded bg-neon-purple/20 text-neon-purple font-black uppercase text-[10px] tracking-widest align-middle border border-neon-purple/30 mx-0.5 transition-all ${
                   canDm ? 'hover:bg-neon-purple hover:text-white hover:scale-105 active:scale-95 cursor-pointer' : ''
                 }`}
                 title={canDm ? `Message @${username}` : undefined}
               >
-                {part}
+                @{username}
               </button>
             );
           }
-          return <span key={index}>{part}</span>;
+          return <span key={index}>{part.text}</span>;
         })}
       </>
     );
@@ -2109,13 +2306,42 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                         )}
                         <div className="flex-1 min-w-0">
                           {!msg.isSystem && (
-                            <div className="flex items-baseline justify-between mb-1">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-black text-neon-blue text-xs uppercase tracking-widest">
-                                  {msg.user.includes('@') ? msg.user.split('@')[0] : msg.user}
+                            <div className="mb-1">
+                              <div className="flex items-baseline justify-between">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-black text-neon-blue text-xs uppercase tracking-widest">
+                                    {msg.user.includes('@') ? msg.user.split('@')[0] : msg.user}
+                                  </span>
+                                  {!isUserStaffOrDj(msg.user, msg) && renderLevelBadge(msg.level, msg.levelTitle, showGamificationLevels, isLightMode)}
+                                  {!showGamificationLevels && loggedInUser && msg.user !== loggedInUser && (
+                                    <>
+                                      <button 
+                                        onClick={() => {
+                                          setActiveDmUser(msg.user);
+                                          setChatTab('private');
+                                        }}
+                                        className="text-[8px] bg-neon-purple/20 text-neon-purple/80 hover:bg-neon-purple hover:text-white px-1.5 py-0.5 rounded border border-neon-purple/30 font-black uppercase tracking-tighter cursor-pointer transition-all"
+                                        title="Send Private Message"
+                                      >
+                                        Message
+                                      </button>
+                                      <button 
+                                        onClick={() => handleBlockUser(msg.user)}
+                                        className="text-[8px] bg-red-500/10 text-red-500/60 hover:text-red-500 px-1.5 py-0.5 rounded border border-red-500/20 font-black uppercase tracking-tighter cursor-pointer transition-all"
+                                        title="Block User"
+                                      >
+                                        Block
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                                <span className={`text-[9px] font-bold uppercase ${isLightMode ? 'text-black/30' : 'text-white/20'}`}>
+                                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </span>
-                                {renderLevelBadge(msg.level, msg.levelTitle, showGamificationLevels, isLightMode)}
-                                {loggedInUser && msg.user !== loggedInUser && (
+                              </div>
+
+                              {showGamificationLevels && loggedInUser && msg.user !== loggedInUser && (
+                                <div className="flex items-center gap-1.5 mt-1">
                                   <button 
                                     onClick={() => {
                                       setActiveDmUser(msg.user);
@@ -2126,8 +2352,6 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                   >
                                     Message
                                   </button>
-                                )}
-                                {loggedInUser && msg.user !== loggedInUser && (
                                   <button 
                                     onClick={() => handleBlockUser(msg.user)}
                                     className="text-[8px] bg-red-500/10 text-red-500/60 hover:text-red-500 px-1.5 py-0.5 rounded border border-red-500/20 font-black uppercase tracking-tighter cursor-pointer transition-all"
@@ -2135,11 +2359,8 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                   >
                                     Block
                                   </button>
-                                )}
-                              </div>
-                              <span className={`text-[9px] font-bold uppercase ${isLightMode ? 'text-black/30' : 'text-white/20'}`}>
-                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
+                                </div>
+                              )}
                             </div>
                           )}
                           {msg.isSystem ? (
@@ -2204,16 +2425,39 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                   </div>
                                 </div>
                                 {msg.imageUrl && (
-                                  <div className="relative max-w-full rounded-lg overflow-hidden border border-neon-pink/20 bg-black/40">
+                                  <div 
+                                    onClick={() => openLightboxForMedia(msg.imageUrl!, 'image', {
+                                      title: msg.imageName,
+                                      sender: msg.user || "System Broadcast",
+                                      timestamp: msg.timestamp,
+                                      caption: msg.text && msg.text !== "Shared an image" ? msg.text : undefined,
+                                    })}
+                                    className="relative max-w-full rounded-lg overflow-hidden border border-neon-pink/30 bg-black/40 cursor-pointer group/media transition-all hover:border-neon-pink/60"
+                                    title="Click to view full screen"
+                                  >
                                     <img 
                                       src={msg.imageUrl} 
                                       alt={msg.imageName || "Attached Image"} 
-                                      className="max-h-60 object-contain mx-auto" 
+                                      className="max-h-60 object-contain mx-auto group-hover/media:scale-102 transition-transform duration-300" 
+                                      referrerPolicy="no-referrer"
                                     />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/media:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                                      <span
+                                        className="px-3 py-1.5 rounded-xl text-[11px] font-mono font-bold flex items-center gap-1.5 shadow-2xl border backdrop-blur-md transition-all"
+                                        style={{
+                                          backgroundColor: isLightMode ? '#ffffff' : 'rgba(15, 23, 42, 0.9)',
+                                          borderColor: isLightMode ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)',
+                                          color: isLightMode ? '#0f172a' : '#ffffff',
+                                        }}
+                                      >
+                                        <Maximize2 className="w-3.5 h-3.5" style={{ color: isLightMode ? '#7c3aed' : '#c084fc' }} />
+                                        <span style={{ color: isLightMode ? '#0f172a' : '#ffffff' }}>Full Screen</span>
+                                      </span>
+                                    </div>
                                   </div>
                                 )}
                                 {msg.videoUrl && (
-                                  <div className="relative max-w-full rounded-lg overflow-hidden border border-neon-pink/20 bg-black/40">
+                                  <div className="relative max-w-full rounded-lg overflow-hidden border border-neon-pink/20 bg-black/40 group/media">
                                     <video 
                                       src={msg.videoUrl} 
                                       controls
@@ -2222,10 +2466,29 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                       className="max-h-60 w-full object-contain mx-auto bg-black" 
                                     />
                                     {msg.videoName && (
-                                      <div className="absolute top-2 left-2 bg-black/60 px-2 py-1 rounded text-[10px] text-white/70 max-w-[90%] truncate backdrop-blur-md">
+                                      <div className="absolute top-2 left-2 bg-black/60 px-2 py-1 rounded text-[10px] text-white/70 max-w-[70%] truncate backdrop-blur-md">
                                         {msg.videoName}
                                       </div>
                                     )}
+                                    <button
+                                      type="button"
+                                      onClick={() => openLightboxForMedia(msg.videoUrl!, 'video', {
+                                        title: msg.videoName,
+                                        sender: msg.user || "System Broadcast",
+                                        timestamp: msg.timestamp,
+                                        caption: msg.text && msg.text !== "Shared a video clip" && msg.text !== "Video" ? msg.text : undefined,
+                                      })}
+                                      title="Open in Full Screen Lightbox"
+                                      className="absolute top-2 right-2 px-2.5 py-1.5 rounded-xl backdrop-blur-md opacity-0 group-hover/media:opacity-100 transition-all cursor-pointer flex items-center gap-1.5 text-[10px] font-mono font-bold shadow-lg hover:scale-105 active:scale-95 border"
+                                      style={{
+                                        backgroundColor: isLightMode ? '#ffffff' : 'rgba(15, 23, 42, 0.9)',
+                                        borderColor: isLightMode ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)',
+                                        color: isLightMode ? '#0f172a' : '#ffffff',
+                                      }}
+                                    >
+                                      <Maximize2 className="w-3 h-3" style={{ color: isLightMode ? '#7c3aed' : '#c084fc' }} />
+                                      <span style={{ color: isLightMode ? '#0f172a' : '#ffffff' }}>Full Screen</span>
+                                    </button>
                                   </div>
                                 )}
                                 {msg.audioUrl && typeof msg.audioUrl === 'string' && msg.audioUrl.trim().length > 0 && (
@@ -2248,7 +2511,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                             )
                         ) : (
                           <div className={`relative rounded-2xl rounded-tl-none p-3 border transition-all ${
-                            loggedInUser && msg.text && new RegExp(`@${loggedInUser}\\b`, 'i').test(msg.text)
+                            loggedInUser && msg.text && new RegExp(`@${loggedInUser.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=[\\s,;:!?]|$|:)`, 'i').test(msg.text)
                               ? (isLightMode ? 'bg-neon-purple/5 border-neon-purple/40 shadow-[0_0_12px_rgba(176,38,255,0.15)] animate-pulse' : 'bg-neon-purple/10 border-neon-purple/50 shadow-[0_0_15px_rgba(176,38,255,0.25)]')
                               : (isLightMode ? 'bg-black/5 border-black/5 group-hover:border-black/10' : 'bg-white/5 border-white/5 group-hover:border-white/10')
                           }`}>
@@ -2281,16 +2544,39 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                               <p className={`text-sm break-words leading-relaxed ${isLightMode ? 'text-black/80' : 'text-white/80'}`}>{renderMessageText(msg.text)}</p>
                             )}
                             {msg.imageUrl && (
-                              <div className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
+                              <div 
+                                onClick={() => openLightboxForMedia(msg.imageUrl!, 'image', {
+                                  title: msg.imageName,
+                                  sender: msg.user,
+                                  timestamp: msg.timestamp,
+                                  caption: msg.text && msg.text !== "Shared an image" && msg.text !== "WhatsApp Image" ? msg.text : undefined,
+                                })}
+                                className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40 cursor-pointer group/media transition-all hover:border-white/30"
+                                title="Click to view full screen"
+                              >
                                 <img 
                                   src={msg.imageUrl} 
                                   alt={msg.imageName || "Attached Image"} 
-                                  className="max-h-60 object-contain mx-auto" 
+                                  className="max-h-60 object-contain mx-auto group-hover/media:scale-102 transition-transform duration-300" 
+                                  referrerPolicy="no-referrer"
                                 />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/media:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                                  <span
+                                    className="px-3 py-1.5 rounded-xl text-[11px] font-mono font-bold flex items-center gap-1.5 shadow-2xl border backdrop-blur-md transition-all"
+                                    style={{
+                                      backgroundColor: isLightMode ? '#ffffff' : 'rgba(15, 23, 42, 0.9)',
+                                      borderColor: isLightMode ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)',
+                                      color: isLightMode ? '#0f172a' : '#ffffff',
+                                    }}
+                                  >
+                                    <Maximize2 className="w-3.5 h-3.5" style={{ color: isLightMode ? '#7c3aed' : '#c084fc' }} />
+                                    <span style={{ color: isLightMode ? '#0f172a' : '#ffffff' }}>Full Screen</span>
+                                  </span>
+                                </div>
                               </div>
                             )}
                             {msg.videoUrl && (
-                              <div className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
+                              <div className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40 group/media">
                                 <video 
                                   src={msg.videoUrl} 
                                   controls
@@ -2299,10 +2585,29 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                   className="max-h-60 w-full object-contain mx-auto bg-black" 
                                 />
                                 {msg.videoName && (
-                                  <div className="absolute top-2 left-2 bg-black/60 px-2 py-1 rounded text-[10px] text-white/70 max-w-[90%] truncate backdrop-blur-md">
+                                  <div className="absolute top-2 left-2 bg-black/60 px-2 py-1 rounded text-[10px] text-white/70 max-w-[70%] truncate backdrop-blur-md">
                                     {msg.videoName}
                                   </div>
                                 )}
+                                <button
+                                  type="button"
+                                  onClick={() => openLightboxForMedia(msg.videoUrl!, 'video', {
+                                    title: msg.videoName,
+                                    sender: msg.user,
+                                    timestamp: msg.timestamp,
+                                    caption: msg.text && msg.text !== "Shared a video clip" && msg.text !== "Video" && msg.text !== "Video Message" ? msg.text : undefined,
+                                  })}
+                                  title="Open in Full Screen Lightbox"
+                                  className="absolute top-2 right-2 px-2.5 py-1.5 rounded-xl backdrop-blur-md opacity-0 group-hover/media:opacity-100 transition-all cursor-pointer flex items-center gap-1.5 text-[10px] font-mono font-bold shadow-lg hover:scale-105 active:scale-95 border"
+                                  style={{
+                                    backgroundColor: isLightMode ? '#ffffff' : 'rgba(15, 23, 42, 0.9)',
+                                    borderColor: isLightMode ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)',
+                                    color: isLightMode ? '#0f172a' : '#ffffff',
+                                  }}
+                                >
+                                  <Maximize2 className="w-3 h-3" style={{ color: isLightMode ? '#7c3aed' : '#c084fc' }} />
+                                  <span style={{ color: isLightMode ? '#0f172a' : '#ffffff' }}>Full Screen</span>
+                                </button>
                               </div>
                             )}
                             {msg.audioUrl && typeof msg.audioUrl === 'string' && msg.audioUrl.trim().length > 0 && (
@@ -2397,7 +2702,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                             <div className="flex items-baseline justify-between mb-1">
                               <span className="font-black text-neon-blue text-xs uppercase tracking-widest flex items-center gap-1.5 flex-wrap">
                                 {msg.user.includes('@') ? msg.user.split('@')[0] : msg.user}
-                                {renderLevelBadge(msg.level, msg.levelTitle, showGamificationLevels, isLightMode)}
+                                {!isUserStaffOrDj(msg.user, msg) && renderLevelBadge(msg.level, msg.levelTitle, showGamificationLevels, isLightMode)}
                                 {isAdmin && msg.recipient && (
                                   <span className="text-[9px] text-white/30 font-bold lowercase flex items-center gap-1">
                                     to
@@ -2412,7 +2717,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                               </span>
                             </div>
                             <div className={`relative rounded-2xl rounded-tl-none p-3 border transition-all ${
-                              loggedInUser && msg.text && new RegExp(`@${loggedInUser}\\b`, 'i').test(msg.text)
+                              loggedInUser && msg.text && new RegExp(`@${loggedInUser.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=[\\s,;:!?]|$|:)`, 'i').test(msg.text)
                                 ? (isLightMode ? 'bg-neon-purple/5 border-neon-purple/40 shadow-[0_0_12px_rgba(176,38,255,0.15)] animate-pulse' : 'bg-neon-purple/10 border-neon-purple/50 shadow-[0_0_15px_rgba(176,38,255,0.25)]')
                                 : (isLightMode ? 'bg-black/5 border-black/5 group-hover:border-black/10' : 'bg-white/5 border-white/5 group-hover:border-white/10')
                             }`}>
@@ -2445,16 +2750,39 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                 <p className={`text-sm break-words leading-relaxed ${isLightMode ? 'text-black/80' : 'text-white/80'}`}>{renderMessageText(msg.text)}</p>
                               )}
                               {msg.imageUrl && (
-                                <div className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
+                                <div 
+                                  onClick={() => openLightboxForMedia(msg.imageUrl!, 'image', {
+                                    title: msg.imageName,
+                                    sender: msg.user,
+                                    timestamp: msg.timestamp,
+                                    caption: msg.text && msg.text !== "Shared an image" && msg.text !== "WhatsApp Image" ? msg.text : undefined,
+                                  })}
+                                  className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40 cursor-pointer group/media transition-all hover:border-white/30"
+                                  title="Click to view full screen"
+                                >
                                   <img 
                                     src={msg.imageUrl} 
                                     alt={msg.imageName || "Attached Image"} 
-                                    className="max-h-60 object-contain mx-auto" 
+                                    className="max-h-60 object-contain mx-auto group-hover/media:scale-102 transition-transform duration-300" 
+                                    referrerPolicy="no-referrer"
                                   />
+                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/media:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                                    <span
+                                      className="px-3 py-1.5 rounded-xl text-[11px] font-mono font-bold flex items-center gap-1.5 shadow-2xl border backdrop-blur-md transition-all"
+                                      style={{
+                                        backgroundColor: isLightMode ? '#ffffff' : 'rgba(15, 23, 42, 0.9)',
+                                        borderColor: isLightMode ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)',
+                                        color: isLightMode ? '#0f172a' : '#ffffff',
+                                      }}
+                                    >
+                                      <Maximize2 className="w-3.5 h-3.5" style={{ color: isLightMode ? '#7c3aed' : '#c084fc' }} />
+                                      <span style={{ color: isLightMode ? '#0f172a' : '#ffffff' }}>Full Screen</span>
+                                    </span>
+                                  </div>
                                 </div>
                               )}
                               {msg.videoUrl && (
-                                <div className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40">
+                                <div className="relative mt-2 max-w-full rounded-lg overflow-hidden border border-white/10 bg-black/40 group/media">
                                   <video 
                                     src={msg.videoUrl} 
                                     controls
@@ -2463,10 +2791,29 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                     className="max-h-60 w-full object-contain mx-auto bg-black" 
                                   />
                                   {msg.videoName && (
-                                    <div className="absolute top-2 left-2 bg-black/60 px-2 py-1 rounded text-[10px] text-white/70 max-w-[90%] truncate backdrop-blur-md">
+                                    <div className="absolute top-2 left-2 bg-black/60 px-2 py-1 rounded text-[10px] text-white/70 max-w-[70%] truncate backdrop-blur-md">
                                       {msg.videoName}
                                     </div>
                                   )}
+                                  <button
+                                    type="button"
+                                    onClick={() => openLightboxForMedia(msg.videoUrl!, 'video', {
+                                      title: msg.videoName,
+                                      sender: msg.user,
+                                      timestamp: msg.timestamp,
+                                      caption: msg.text && msg.text !== "Shared a video clip" && msg.text !== "Video" && msg.text !== "Video Message" ? msg.text : undefined,
+                                    })}
+                                    title="Open in Full Screen Lightbox"
+                                    className="absolute top-2 right-2 px-2.5 py-1.5 rounded-xl backdrop-blur-md opacity-0 group-hover/media:opacity-100 transition-all cursor-pointer flex items-center gap-1.5 text-[10px] font-mono font-bold shadow-lg hover:scale-105 active:scale-95 border"
+                                    style={{
+                                      backgroundColor: isLightMode ? '#ffffff' : 'rgba(15, 23, 42, 0.9)',
+                                      borderColor: isLightMode ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)',
+                                      color: isLightMode ? '#0f172a' : '#ffffff',
+                                    }}
+                                  >
+                                    <Maximize2 className="w-3 h-3" style={{ color: isLightMode ? '#7c3aed' : '#c084fc' }} />
+                                    <span style={{ color: isLightMode ? '#0f172a' : '#ffffff' }}>Full Screen</span>
+                                  </button>
                                 </div>
                               )}
                               {msg.audioUrl && typeof msg.audioUrl === 'string' && msg.audioUrl.trim().length > 0 && (
@@ -2683,7 +3030,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                     <span className={`text-xs font-black uppercase tracking-widest truncate ${isLightMode ? 'text-black' : 'text-white'}`}>
                                       {user.username.includes('@') ? user.username.split('@')[0] : user.username}
                                     </span>
-                                    {renderLevelBadge(user.level, user.levelTitle, showGamificationLevels, isLightMode)}
+                                    {!isUserStaffOrDj(user.username, user) && renderLevelBadge(user.level, user.levelTitle, showGamificationLevels, isLightMode)}
                                     {isSelf && (
                                       <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[7px] font-mono font-black uppercase tracking-wider bg-white/10 text-white/60">
                                         You
@@ -2695,7 +3042,7 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                                       </span>
                                     )}
                                   </div>
-                                  {showGamificationLevels && user.level && (
+                                  {showGamificationLevels && user.level && !isUserStaffOrDj(user.username, user) && (
                                     <div className={`text-[10px] font-medium tracking-wide truncate ${isLightMode ? 'text-black/50' : 'text-white/40'}`}>
                                       Level {user.level}
                                     </div>
@@ -2857,9 +3204,14 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
                     ref={fileInputRef} 
                     className="hidden" 
                     accept="image/*,audio/*,video/*" 
-                    onChange={e => {
-                      const file = e.target.files?.[0];
-                      if (file) handleFileSelection(file);
+                    multiple
+                    onChange={async e => {
+                      const files = Array.from(e.target.files || []) as File[];
+                      if (files.length > 0) {
+                        for (const file of files) {
+                          await handleFileSelection(file);
+                        }
+                      }
                     }} 
                   />
 
@@ -3427,6 +3779,16 @@ export function ChatSidebar({ isOpen = true, onClose = () => {}, embedded = fals
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Fullscreen Media Lightbox for Chatroom (Images & Videos) */}
+      <MediaLightbox
+        isOpen={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+        items={customLightboxItems || activeMediaGallery}
+        initialIndex={lightboxIndex}
+        title={chatTab === 'public' ? 'Public Chatroom Media' : (activeDmUser ? `@${activeDmUser.split('@')[0]} Media Gallery` : 'Chat Media')}
+        isLightMode={isLightMode}
+      />
     </>
   );
 }

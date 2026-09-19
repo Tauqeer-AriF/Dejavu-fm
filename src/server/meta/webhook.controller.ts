@@ -340,6 +340,23 @@ export class WebhookController {
 
     setImmediate(async () => {
       try {
+        // Ensure WhatsApp pipeline is actively connected before processing incoming webhook events
+        let isConnected = false;
+        try {
+          if (db.open) {
+            const connectedRow = db.prepare("SELECT value FROM settings WHERE key = 'studio_connected_platforms'").get() as any;
+            if (connectedRow && connectedRow.value) {
+              const parsed = JSON.parse(connectedRow.value);
+              isConnected = Boolean(parsed.whatsapp);
+            }
+          }
+        } catch {}
+
+        if (!isConnected) {
+          console.log('[WhatsApp Gateway Webhook] Ignored incoming event: WhatsApp platform is disconnected in Studio.');
+          return;
+        }
+
         const messages = WhatsappGatewayService.parseWebhookPayload(payload);
         if (messages.length === 0) {
           return;

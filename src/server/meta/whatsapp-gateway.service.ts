@@ -394,6 +394,21 @@ export class WhatsappGatewayService {
 
     try {
       this.isSyncing = true;
+
+      // Ensure WhatsApp is explicitly connected/enabled in the Studio before syncing
+      let isConnected = false;
+      try {
+        const connectedRow = db.prepare("SELECT value FROM settings WHERE key = 'studio_connected_platforms'").get() as any;
+        if (connectedRow && connectedRow.value) {
+          const parsed = JSON.parse(connectedRow.value);
+          isConnected = Boolean(parsed.whatsapp);
+        }
+      } catch {}
+
+      if (!isConnected) {
+        return { syncedCount: 0, chatsCount: 0 };
+      }
+
       const configRow = db.prepare("SELECT value FROM settings WHERE key = 'studio_platform_configs'").get() as any;
       if (!configRow || !configRow.value) {
         return { syncedCount: 0, chatsCount: 0 };
@@ -1861,5 +1876,52 @@ export class WhatsappGatewayService {
     }
 
     return messages;
+  }
+
+  /**
+   * Clears all stored WhatsApp messages and associated media from the database.
+   */
+  public static clearAllWhatsappMessages(io?: any): { deletedCount: number } {
+    try {
+      if (!db.open) return { deletedCount: 0 };
+
+      // Find files to clean up
+      const files = db.prepare(`
+        SELECT imageUrl, audioUrl, videoUrl FROM private_messages 
+        WHERE platform = 'whatsapp' 
+           OR sender LIKE '%@c.us%' OR sender LIKE '%@lid%' OR sender LIKE '%@s.whatsapp.net%' OR sender LIKE '%@g.us%'
+           OR recipient LIKE '%@c.us%' OR recipient LIKE '%@lid%' OR recipient LIKE '%@s.whatsapp.net%' OR recipient LIKE '%@g.us%'
+      `).all() as any[];
+
+      for (const row of files) {
+        for (const field of [row.imageUrl, row.audioUrl, row.videoUrl]) {
+          if (field && typeof field === 'string' && field.startsWith('/uploads/')) {
+            try {
+              const fullPath = path.join(getUploadsDir(), path.basename(field));
+              if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+            } catch {}
+          }
+        }
+      }
+
+      const res = db.prepare(`
+        DELETE FROM private_messages 
+        WHERE platform = 'whatsapp' 
+           OR sender LIKE '%@c.us%' OR sender LIKE '%@lid%' OR sender LIKE '%@s.whatsapp.net%' OR sender LIKE '%@g.us%'
+           OR recipient LIKE '%@c.us%' OR recipient LIKE '%@lid%' OR recipient LIKE '%@s.whatsapp.net%' OR recipient LIKE '%@g.us%'
+      `).run();
+
+      const activeIo = io || this.cachedIo;
+      if (activeIo) {
+        activeIo.emit('whatsapp_messages_cleared');
+        activeIo.emit('messagesCleared', { isPrivate: true, platform: 'whatsapp' });
+      }
+
+      console.log(`[WhatsApp Gateway] Cleared ${res.changes} WhatsApp messages from database.`);
+      return { deletedCount: Number(res.changes) };
+    } catch (err: any) {
+      console.error('[WhatsApp Gateway] Error clearing WhatsApp messages:', err);
+      return { deletedCount: 0 };
+    }
   }
 }

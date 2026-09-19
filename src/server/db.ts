@@ -363,6 +363,12 @@ export function initDb() {
       imageUrl TEXT,
       audioUrl TEXT,
       videoUrl TEXT,
+      reply_text TEXT,
+      replied_by TEXT,
+      replied_at DATETIME,
+      replyImageUrl TEXT,
+      replyAudioUrl TEXT,
+      replyVideoUrl TEXT,
       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -577,6 +583,12 @@ export function initDb() {
   runMigration('user_password_plain_field', "ALTER TABLE users ADD COLUMN password_plain TEXT DEFAULT NULL;");
   runMigration('admin_email_field', "ALTER TABLE admins ADD COLUMN email TEXT;");
   runMigration('shoutout_reply_media_fields_v1', "ALTER TABLE shoutouts ADD COLUMN replyImageUrl TEXT; ALTER TABLE shoutouts ADD COLUMN replyAudioUrl TEXT; ALTER TABLE shoutouts ADD COLUMN replyVideoUrl TEXT;");
+  try { db.exec("ALTER TABLE shoutouts ADD COLUMN reply_text TEXT;"); } catch (e) {}
+  try { db.exec("ALTER TABLE shoutouts ADD COLUMN replied_by TEXT;"); } catch (e) {}
+  try { db.exec("ALTER TABLE shoutouts ADD COLUMN replied_at DATETIME;"); } catch (e) {}
+  try { db.exec("ALTER TABLE shoutouts ADD COLUMN replyImageUrl TEXT;"); } catch (e) {}
+  try { db.exec("ALTER TABLE shoutouts ADD COLUMN replyAudioUrl TEXT;"); } catch (e) {}
+  try { db.exec("ALTER TABLE shoutouts ADD COLUMN replyVideoUrl TEXT;"); } catch (e) {}
   runMigration('private_messages_table', "CREATE TABLE IF NOT EXISTS private_messages (id TEXT PRIMARY KEY, sender TEXT NOT NULL, recipient TEXT NOT NULL, text TEXT, imageUrl TEXT, imageName TEXT, audioUrl TEXT, audioName TEXT, timestamp INTEGER NOT NULL); CREATE INDEX IF NOT EXISTS idx_private_messages_participants ON private_messages(sender, recipient);");
   runMigration('private_messages_video_fields', "ALTER TABLE private_messages ADD COLUMN videoUrl TEXT; ALTER TABLE private_messages ADD COLUMN videoName TEXT;");
   runMigration('private_messages_platform_v1', "ALTER TABLE private_messages ADD COLUMN platform TEXT;");

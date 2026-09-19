@@ -24,7 +24,7 @@ import { eventsRouter } from "./events.routes.ts";
 import { greetingRouter } from "./greeting.routes.ts";
 import { aiStudioRouter } from "./ai-studio/ai-studio.routes.ts";
 import { emailRouter } from "./email/email.routes.ts";
-import { ensureUserGamification, awardXP, calculateLevelProgression } from "./gamification.service.ts";
+import { ensureUserGamification, awardXP, calculateLevelProgression, isStaffOrAdmin } from "./gamification.service.ts";
 import { toggleMessageReaction, getReactionsForMessage } from "./reactions.service.ts";
 import { WhatsappGatewayService } from "./meta/whatsapp-gateway.service.ts";
 import { WebhookController } from "./meta/webhook.controller.ts";
@@ -375,6 +375,16 @@ apiRouter.post("/admin/whatsapp-gateway/sync", authMiddleware, authorizeRole(['a
   }
 });
 
+apiRouter.post("/admin/whatsapp-gateway/clear-messages", authMiddleware, authorizeRole(['admin', 'dj']), async (req, res) => {
+  try {
+    const io = req.app.get('io');
+    const result = WhatsappGatewayService.clearAllWhatsappMessages(io);
+    res.json({ success: true, ...result });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Direct Webhook listener endpoints for WhatsApp Gateway
 apiRouter.post("/webhooks/whatsapp-gateway", WebhookController.processGatewayWebhook);
 apiRouter.get("/webhooks/whatsapp-gateway", (req, res) => res.json({ status: 'active', message: 'WhatsApp Gateway Webhook is listening' }));
@@ -643,6 +653,40 @@ apiRouter.get("/public/popups", (req, res) => {
 apiRouter.get("/public/djs", (req, res) => {
   const djs = db.prepare("SELECT * FROM djs").all();
   res.json(djs);
+});
+
+apiRouter.get("/public/staff-djs", (req, res) => {
+  try {
+    const list = new Set<string>();
+    list.add('admin');
+    list.add('dejavufm studio');
+    list.add('dejavu studio');
+    list.add('studio');
+    list.add('wayne');
+    list.add('ces');
+
+    if (db.open) {
+      const admins = db.prepare("SELECT username FROM admins").all() as { username: string }[];
+      admins.forEach(a => {
+        if (a.username) list.add(a.username.trim().toLowerCase());
+      });
+
+      const djs = db.prepare("SELECT name, slug FROM djs").all() as { name: string; slug: string }[];
+      djs.forEach(d => {
+        if (d.name) list.add(d.name.trim().toLowerCase());
+        if (d.slug) list.add(d.slug.trim().toLowerCase());
+      });
+
+      const users = db.prepare("SELECT username FROM users WHERE is_admin = 1 OR is_dj = 1 OR role IN ('admin', 'dj', 'staff', 'owner', 'presenter')").all() as { username: string }[];
+      users.forEach(u => {
+        if (u.username) list.add(u.username.trim().toLowerCase());
+      });
+    }
+
+    res.json({ staffAndDjs: Array.from(list) });
+  } catch (err) {
+    res.json({ staffAndDjs: ['admin', 'dejavufm studio', 'dejavu studio', 'studio', 'wayne'] });
+  }
 });
 
 apiRouter.get("/public/schedule", (req, res) => {
@@ -3832,17 +3876,35 @@ apiRouter.get("/admin/chat-room-settings", authMiddleware, authorizeRole('admin'
   const auditCount = db.prepare("SELECT COUNT(*) as count FROM audit_logs").get() as { count: number };
   const analyticsCount = db.prepare("SELECT COUNT(*) as count FROM analytics_events").get() as { count: number };
 
+  let roomImageCount = 0;
+  let roomAudioCount = 0;
+  let roomVideoCount = 0;
+  try {
+    const roomMedia = db.prepare(`
+      SELECT 
+        COUNT(CASE WHEN image_url IS NOT NULL AND image_url != '' THEN 1 END) as images,
+        COUNT(CASE WHEN audio_url IS NOT NULL AND audio_url != '' THEN 1 END) as audios,
+        COUNT(CASE WHEN video_url IS NOT NULL AND video_url != '' THEN 1 END) as videos
+      FROM room_messages
+    `).get() as any;
+    if (roomMedia) {
+      roomImageCount = roomMedia.images || 0;
+      roomAudioCount = roomMedia.audios || 0;
+      roomVideoCount = roomMedia.videos || 0;
+    }
+  } catch {}
+
   const mediaCounts = db.prepare(`
     SELECT 
-      (SELECT COUNT(*) FROM public_messages WHERE imageUrl IS NOT NULL) + 
-      (SELECT COUNT(*) FROM private_messages WHERE imageUrl IS NOT NULL) +
-      (SELECT COUNT(*) FROM shoutouts WHERE imageUrl IS NOT NULL OR replyImageUrl IS NOT NULL) as images,
-      (SELECT COUNT(*) FROM public_messages WHERE audioUrl IS NOT NULL) + 
-      (SELECT COUNT(*) FROM private_messages WHERE audioUrl IS NOT NULL) +
-      (SELECT COUNT(*) FROM shoutouts WHERE audioUrl IS NOT NULL OR replyAudioUrl IS NOT NULL) as audios,
-      (SELECT COUNT(*) FROM public_messages WHERE videoUrl IS NOT NULL) + 
-      (SELECT COUNT(*) FROM private_messages WHERE videoUrl IS NOT NULL) +
-      (SELECT COUNT(*) FROM shoutouts WHERE videoUrl IS NOT NULL OR replyVideoUrl IS NOT NULL) as videos
+      (SELECT COUNT(*) FROM public_messages WHERE imageUrl IS NOT NULL AND imageUrl != '') + 
+      (SELECT COUNT(*) FROM private_messages WHERE imageUrl IS NOT NULL AND imageUrl != '') +
+      (SELECT COUNT(*) FROM shoutouts WHERE (imageUrl IS NOT NULL AND imageUrl != '') OR (replyImageUrl IS NOT NULL AND replyImageUrl != '')) as images,
+      (SELECT COUNT(*) FROM public_messages WHERE audioUrl IS NOT NULL AND audioUrl != '') + 
+      (SELECT COUNT(*) FROM private_messages WHERE audioUrl IS NOT NULL AND audioUrl != '') +
+      (SELECT COUNT(*) FROM shoutouts WHERE (audioUrl IS NOT NULL AND audioUrl != '') OR (replyAudioUrl IS NOT NULL AND replyAudioUrl != '')) as audios,
+      (SELECT COUNT(*) FROM public_messages WHERE videoUrl IS NOT NULL AND videoUrl != '') + 
+      (SELECT COUNT(*) FROM private_messages WHERE videoUrl IS NOT NULL AND videoUrl != '') +
+      (SELECT COUNT(*) FROM shoutouts WHERE (videoUrl IS NOT NULL AND videoUrl != '') OR (replyVideoUrl IS NOT NULL AND replyVideoUrl != '')) as videos
   `).get() as { images: number; audios: number; videos: number };
 
   // Fetch recent purge history (ordered newest first)
@@ -3878,9 +3940,9 @@ apiRouter.get("/admin/chat-room-settings", authMiddleware, authorizeRole('admin'
     publicMessages: publicCount?.count || 0,
     privateMessages: privateCount?.count || 0,
     shoutoutCount: shoutoutCount?.count || 0,
-    imageCount: mediaCounts?.images || 0,
-    audioCount: mediaCounts?.audios || 0,
-    videoCount: mediaCounts?.videos || 0,
+    imageCount: (mediaCounts?.images || 0) + roomImageCount,
+    audioCount: (mediaCounts?.audios || 0) + roomAudioCount,
+    videoCount: (mediaCounts?.videos || 0) + roomVideoCount,
     
     // Historical data prune settings
     dataPruneEnabled: settings.data_prune_enabled !== '0', // enabled by default
@@ -3956,21 +4018,40 @@ apiRouter.post("/admin/chat-room-settings/prune-data", authMiddleware, authorize
 });
 
 apiRouter.delete("/admin/chat-room-settings/data", authMiddleware, authorizeRole('admin'), (req, res) => {
-  const clearChatRoomData = req.app.get('clearChatRoomData') as ((reason?: string) => { publicDeleted: number; privateDeleted: number; shoutoutsDeleted: number; clearedAt?: string }) | undefined;
+  const clearChatRoomData = req.app.get('clearChatRoomData') as ((reason?: string) => {
+    publicDeleted: number;
+    privateDeleted: number;
+    shoutoutsDeleted: number;
+    roomDeleted?: number;
+    mediaDeleted?: number;
+    clearedAt?: string;
+  }) | undefined;
 
-  let result = { publicDeleted: 0, privateDeleted: 0, shoutoutsDeleted: 0, clearedAt: new Date().toISOString() };
+  let result = { publicDeleted: 0, privateDeleted: 0, shoutoutsDeleted: 0, roomDeleted: 0, mediaDeleted: 0, clearedAt: new Date().toISOString() };
   if (clearChatRoomData) {
     const clearResult = clearChatRoomData("manual");
     result = {
       publicDeleted: clearResult.publicDeleted,
       privateDeleted: clearResult.privateDeleted,
       shoutoutsDeleted: clearResult.shoutoutsDeleted,
+      roomDeleted: clearResult.roomDeleted || 0,
+      mediaDeleted: clearResult.mediaDeleted || 0,
       clearedAt: clearResult.clearedAt || result.clearedAt
     };
   } else {
     const publicInfo = db.prepare("DELETE FROM public_messages").run();
     const privateInfo = db.prepare("DELETE FROM private_messages").run();
     const shoutoutInfo = db.prepare("DELETE FROM shoutouts").run();
+    let roomChanges = 0;
+    try {
+      const roomInfo = db.prepare("DELETE FROM room_messages").run();
+      roomChanges = roomInfo.changes;
+    } catch (e) {}
+
+    try {
+      db.pragma('wal_checkpoint(TRUNCATE)');
+    } catch (e) {}
+
     db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
       .run("chat_auto_delete_last_run", result.clearedAt);
 
@@ -3979,10 +4060,11 @@ apiRouter.delete("/admin/chat-room-settings/data", authMiddleware, authorizeRole
       io.emit('messagesCleared', { isPrivate: false, allChatData: true, reason: "manual", clearedAt: result.clearedAt });
       io.emit('messagesCleared', { isPrivate: true, allChatData: true, reason: "manual", clearedAt: result.clearedAt });
       io.emit('shoutouts_cleared');
+      io.emit('whatsapp_messages_cleared');
       io.emit('chatCountsUpdated', { publicMessages: 0, privateMessages: 0, shoutoutCount: 0, imageCount: 0, audioCount: 0, videoCount: 0 });
     }
 
-    result = { publicDeleted: publicInfo.changes, privateDeleted: privateInfo.changes, shoutoutsDeleted: shoutoutInfo.changes, clearedAt: result.clearedAt };
+    result = { publicDeleted: publicInfo.changes, privateDeleted: privateInfo.changes, shoutoutsDeleted: shoutoutInfo.changes, roomDeleted: roomChanges, mediaDeleted: 0, clearedAt: result.clearedAt };
   }
 
   logAction(req, 'PURGE', 'chat_room_data', null, result);
@@ -4357,7 +4439,7 @@ export function getActivePresenceList(io: any) {
             const adminRow = db.prepare("SELECT role, email, photo_url FROM admins WHERE LOWER(username) = ?").get(key) as any;
             if (adminRow) {
               if (adminRow.role === 'owner') {
-                presenceUserMetaCache.set(key, { isStaff: false, role: 'owner', email: '', avatarUrl: '', level: 1, levelTitle: '', isOwner: true, timestamp: now });
+                presenceUserMetaCache.set(key, { isStaff: false, role: 'owner', email: '', avatarUrl: '', level: 0, levelTitle: '', isOwner: true, timestamp: now });
                 continue;
               }
               isStaff = true;
@@ -4365,21 +4447,42 @@ export function getActivePresenceList(io: any) {
               email = adminRow.email || '';
               avatarUrl = adminRow.photo_url || '';
             } else {
-              const userRow = db.prepare("SELECT source FROM users WHERE LOWER(username) = ?").get(key) as any;
-              if (userRow) {
-                role = 'chat_user';
+              const djRow = db.prepare("SELECT id, name, photo_url FROM djs WHERE LOWER(name) = ? OR LOWER(slug) = ?").get(key, key) as any;
+              if (djRow) {
+                isStaff = true;
+                role = 'dj';
+                avatarUrl = djRow.photo_url || '';
+              } else {
+                const userRow = db.prepare("SELECT source, role, is_admin, is_dj FROM users WHERE LOWER(username) = ?").get(key) as any;
+                if (userRow) {
+                  if (userRow.is_admin || userRow.role === 'admin') {
+                    isStaff = true;
+                    role = 'admin';
+                  } else if (userRow.is_dj || userRow.role === 'dj') {
+                    isStaff = true;
+                    role = 'dj';
+                  } else {
+                    role = 'chat_user';
+                  }
+                }
               }
             }
           } catch {}
 
-          try {
-            const gamRow = db.prepare("SELECT total_xp FROM user_gamification WHERE LOWER(username) = ?").get(key) as any;
-            if (gamRow && gamRow.total_xp !== undefined) {
-              const prog = calculateLevelProgression(gamRow.total_xp || 0);
-              level = prog.currentLevel;
-              levelTitle = prog.levelTitle;
-            }
-          } catch {}
+          if (isStaff || isStaffOrAdmin(key) || ['admin', 'dejavufm studio', 'dejavu studio', 'studio', 'wayne', 'ces'].includes(key)) {
+            level = 0;
+            levelTitle = '';
+            isStaff = true;
+          } else {
+            try {
+              const gamRow = db.prepare("SELECT total_xp FROM user_gamification WHERE LOWER(username) = ?").get(key) as any;
+              if (gamRow && gamRow.total_xp !== undefined) {
+                const prog = calculateLevelProgression(gamRow.total_xp || 0);
+                level = prog.currentLevel;
+                levelTitle = prog.levelTitle;
+              }
+            } catch {}
+          }
         }
 
         if (!avatarUrl) {

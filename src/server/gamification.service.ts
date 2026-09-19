@@ -127,9 +127,23 @@ export function isStaffOrAdmin(username: string): boolean {
   if (!username) return false;
   try {
     const clean = username.trim().toLowerCase();
-    const admin = db.prepare('SELECT username, role FROM admins WHERE LOWER(username) = ?').get(clean) as any;
-    if (admin) {
+    if (['admin', 'dejavufm studio', 'dejavu studio', 'studio', 'wayne', 'ces', 'owner', 'superadmin', 'system'].includes(clean)) {
       return true;
+    }
+
+    if (db.open) {
+      const admin = db.prepare('SELECT username, role FROM admins WHERE LOWER(username) = ?').get(clean) as any;
+      if (admin) {
+        return true;
+      }
+      const dj = db.prepare('SELECT id, name, slug FROM djs WHERE LOWER(name) = ? OR LOWER(slug) = ?').get(clean, clean) as any;
+      if (dj) {
+        return true;
+      }
+      const user = db.prepare('SELECT role, is_admin, is_dj FROM users WHERE LOWER(username) = ?').get(clean) as any;
+      if (user && (user.is_admin || user.is_dj || user.role === 'admin' || user.role === 'dj')) {
+        return true;
+      }
     }
   } catch (err) {
     // Ignore error
@@ -140,10 +154,11 @@ export function isStaffOrAdmin(username: string): boolean {
 // Purge any staff/admin records from gamification tables
 export function purgeStaffFromGamification(): void {
   try {
-    db.prepare('DELETE FROM user_gamification WHERE LOWER(username) IN (SELECT LOWER(username) FROM admins)').run();
-    db.prepare('DELETE FROM xp_transactions WHERE LOWER(username) IN (SELECT LOWER(username) FROM admins)').run();
-    db.prepare('DELETE FROM user_badges WHERE LOWER(username) IN (SELECT LOWER(username) FROM admins)').run();
-    db.prepare('DELETE FROM user_dj_listening WHERE LOWER(username) IN (SELECT LOWER(username) FROM admins)').run();
+    if (!db.open) return;
+    db.prepare('DELETE FROM user_gamification WHERE LOWER(username) IN (SELECT LOWER(username) FROM admins) OR LOWER(username) IN (SELECT LOWER(name) FROM djs) OR LOWER(username) IN (SELECT LOWER(slug) FROM djs) OR LOWER(username) IN (\'admin\', \'dejavufm studio\', \'dejavu studio\', \'studio\', \'wayne\')').run();
+    db.prepare('DELETE FROM xp_transactions WHERE LOWER(username) IN (SELECT LOWER(username) FROM admins) OR LOWER(username) IN (SELECT LOWER(name) FROM djs) OR LOWER(username) IN (SELECT LOWER(slug) FROM djs) OR LOWER(username) IN (\'admin\', \'dejavufm studio\', \'dejavu studio\', \'studio\', \'wayne\')').run();
+    db.prepare('DELETE FROM user_badges WHERE LOWER(username) IN (SELECT LOWER(username) FROM admins) OR LOWER(username) IN (SELECT LOWER(name) FROM djs) OR LOWER(username) IN (SELECT LOWER(slug) FROM djs) OR LOWER(username) IN (\'admin\', \'dejavufm studio\', \'dejavu studio\', \'studio\', \'wayne\')').run();
+    db.prepare('DELETE FROM user_dj_listening WHERE LOWER(username) IN (SELECT LOWER(username) FROM admins) OR LOWER(username) IN (SELECT LOWER(name) FROM djs) OR LOWER(username) IN (SELECT LOWER(slug) FROM djs) OR LOWER(username) IN (\'admin\', \'dejavufm studio\', \'dejavu studio\', \'studio\', \'wayne\')').run();
   } catch (e) {}
 }
 
