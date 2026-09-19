@@ -80,6 +80,36 @@ export function AdminEmail() {
   const [isPresetDropdownOpen, setIsPresetDropdownOpen] = useState(false);
   const presetDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Navigation Tabs Scroll Control
+  const tabScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkTabScroll = () => {
+    if (tabScrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = tabScrollRef.current;
+      setCanScrollLeft(scrollLeft > 5);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 5);
+    }
+  };
+
+  useEffect(() => {
+    checkTabScroll();
+    const timer = setTimeout(checkTabScroll, 100);
+    window.addEventListener("resize", checkTabScroll);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("resize", checkTabScroll);
+    };
+  }, [activeTab]);
+
+  const scrollTabs = (direction: 'left' | 'right') => {
+    if (tabScrollRef.current) {
+      const amount = direction === 'left' ? -220 : 220;
+      tabScrollRef.current.scrollBy({ left: amount, behavior: 'smooth' });
+    }
+  };
+
   // Close preset dropdown on click outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -480,33 +510,84 @@ export function AdminEmail() {
       </div>
 
       {/* Navigation Tabs */}
-      <div className={`flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-3 mb-6 border-b no-scrollbar scroll-smooth ${isLightMode ? 'border-slate-200' : 'border-white/10'}`}>
-        {[
-          { id: 'settings', label: 'SMTP Setup', icon: Sliders },
-          { id: 'templates', label: 'Email Templates', icon: FileText },
-          { id: 'triggers', label: 'System Triggers', icon: Zap },
-          { id: 'broadcast', label: 'Broadcast Newsletter', icon: Send },
-          { id: 'logs', label: 'Dispatch History Logs', icon: History }
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-bold text-[11px] sm:text-xs uppercase tracking-wider transition-all whitespace-nowrap shrink-0 ${
-                isActive
-                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-                  : isLightMode
-                  ? 'bg-slate-200/60 text-slate-700 hover:bg-slate-200'
-                  : 'bg-white/5 text-slate-300 hover:bg-white/10'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
+      <div className={`relative mb-6 p-1.5 rounded-2xl border flex items-center gap-1.5 transition-all ${
+        isLightMode 
+          ? 'bg-slate-100/80 border-slate-200/80 shadow-2xs' 
+          : 'bg-[#0b0d19] border-white/10 shadow-inner'
+      }`}>
+        {/* Scroll Left Button - Inline */}
+        {canScrollLeft && (
+          <button
+            type="button"
+            onClick={() => scrollTabs('left')}
+            className={`p-2 rounded-xl border transition-all shrink-0 cursor-pointer ${
+              isLightMode
+                ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700 shadow-2xs'
+                : 'bg-white/10 hover:bg-white/15 border-white/10 text-slate-200'
+            }`}
+            title="Scroll tabs left"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+        )}
+
+        <div
+          ref={tabScrollRef}
+          onScroll={checkTabScroll}
+          onWheel={(e) => {
+            if (e.deltaY !== 0 && tabScrollRef.current) {
+              tabScrollRef.current.scrollLeft += e.deltaY;
+            }
+          }}
+          className="flex-1 flex items-center gap-1.5 overflow-x-auto max-w-full no-scrollbar scroll-smooth touch-pan-x select-none py-0.5 min-w-0"
+        >
+          {[
+            { id: 'settings', label: 'SMTP Setup', icon: Sliders },
+            { id: 'templates', label: 'Email Templates', icon: FileText },
+            { id: 'triggers', label: 'System Triggers', icon: Zap },
+            { id: 'broadcast', label: 'Broadcast Newsletter', icon: Send },
+            { id: 'logs', label: 'Dispatch History Logs', icon: History }
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  setActiveTab(tab.id as any);
+                  setTimeout(checkTabScroll, 100);
+                }}
+                className={`flex items-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+                  isActive
+                    ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                    : isLightMode
+                    ? 'bg-transparent text-slate-600 hover:bg-white hover:text-slate-900'
+                    : 'bg-transparent text-slate-400 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Scroll Right Button - Inline */}
+        {canScrollRight && (
+          <button
+            type="button"
+            onClick={() => scrollTabs('right')}
+            className={`p-2 rounded-xl border transition-all shrink-0 cursor-pointer ${
+              isLightMode
+                ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700 shadow-2xs'
+                : 'bg-white/10 hover:bg-white/15 border-white/10 text-slate-200'
+            }`}
+            title="Scroll tabs right"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* TAB 1: SMTP SETTINGS */}
