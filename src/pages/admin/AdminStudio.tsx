@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
-import { LogOut, Send, Paperclip, X, Maximize, Mic, MessageSquare, Search, ArrowLeft, Image as ImageIcon, Music, Video, Volume2, VolumeX, Ban, Trash2, Eraser, ShieldAlert, MailX, PlusCircle, Square, Pin, CheckSquare, MailOpen, Mail, Trash, Eye, EyeOff, Settings, Link2, Globe, RefreshCw, Download, Phone, Facebook, Instagram, Twitch, Activity, CheckCircle, AlertTriangle, Camera, Check, Sun, Moon, Megaphone, Share2, Radio, Clock, Timer, Inbox, MoreVertical, Menu, Type } from "lucide-react";
+import { LogOut, Send, Paperclip, X, Maximize, Maximize2, Mic, MessageSquare, Search, ArrowLeft, Image as ImageIcon, Music, Video, Volume2, VolumeX, Ban, Trash2, Eraser, ShieldAlert, MailX, PlusCircle, Square, Pin, CheckSquare, MailOpen, Mail, Trash, Eye, EyeOff, Settings, Link2, Globe, RefreshCw, Download, Phone, Facebook, Instagram, Twitch, Activity, CheckCircle, AlertTriangle, Camera, Check, Sun, Moon, Megaphone, Share2, Radio, Clock, Timer, Inbox, MoreVertical, Menu, Type } from "lucide-react";
 import { toast } from "sonner";
 import { fetchAdmin } from "./adminApi";
 import { useModal } from "../../context/ModalContext";
@@ -11,6 +11,7 @@ import { playUINotificationSound } from "../../lib/soundHelper";
 import { MediaPickerModal } from "./MediaPickerModal";
 import { StudioAudioPlayer } from "../../components/StudioAudioPlayer";
 import { MessageReactions } from "../../components/chat/MessageReactions";
+import { StudioMediaLightbox, LightboxMediaItem } from "../../components/admin/StudioMediaLightbox";
 
 interface Message {
   id: string;
@@ -105,38 +106,40 @@ const extractVideoUrl = (item: any): string | undefined => {
   return undefined;
 };
 
-const normalizeMsgText = (t?: string) => (t || '').replace(/^@[^\s]+\s+/, '').trim();
+const normalizeMsgText = (t?: string) => (t || '').replace(/^@[^:\n\r]+:\s*|^@[^\s]+\s+/, '').trim();
 
 const isSameMessage = (msgA: Message, msgB: Message) => {
   if (msgA.id === msgB.id) return true;
+
   const isTempA = msgA.id.startsWith('reply-') || msgA.id.startsWith('temp-');
   const isTempB = msgB.id.startsWith('reply-') || msgB.id.startsWith('temp-');
 
-  const textA = (msgA.text || '').trim();
-  const textB = (msgB.text || '').trim();
-  const normA = normalizeMsgText(textA);
-  const normB = normalizeMsgText(textB);
+  // If both are permanent messages with distinct IDs, they are different messages
+  if (!isTempA && !isTempB) {
+    return false;
+  }
 
+  // Temporary message matching (replacing optimistic local message with permanent server message)
   const userA = (msgA.user || '').toLowerCase();
   const userB = (msgB.user || '').toLowerCase();
-  const isSameUser = userA === userB || 
-    (userA.includes('studio') && userB.includes('studio'));
+  const isSameUser = userA === userB || (userA.includes('studio') && userB.includes('studio'));
+
+  if (!isSameUser) return false;
 
   const timeDiff = Math.abs(msgA.timestamp - msgB.timestamp);
   if (timeDiff >= 90000) return false;
 
-  const hasMediaA = Boolean(msgA.imageUrl || msgA.audioUrl || msgA.videoUrl);
-  const hasMediaB = Boolean(msgB.imageUrl || msgB.audioUrl || msgB.videoUrl);
+  const urlA = msgA.imageUrl || msgA.audioUrl || msgA.videoUrl;
+  const urlB = msgB.imageUrl || msgB.audioUrl || msgB.videoUrl;
 
-  const textMatches = (normA && normB && (normA === normB || normA.includes(normB) || normB.includes(normA))) || 
-    (!normA && !normB && (hasMediaA || hasMediaB));
-
-  if (isSameUser && (textMatches || (hasMediaA && hasMediaB))) {
-    return true;
+  if (urlA && urlB) {
+    return urlA === urlB;
   }
 
-  if ((isTempA || isTempB) && (textMatches || (hasMediaA && hasMediaB))) {
-    return true;
+  const normA = normalizeMsgText(msgA.text);
+  const normB = normalizeMsgText(msgB.text);
+  if (normA && normB) {
+    return normA === normB;
   }
 
   return false;
@@ -236,7 +239,7 @@ const getThreadSource = (thread: UserThread): string => {
   return 'public_chat';
 };
 
-const PlatformBadge = ({ platform, thread }: { platform?: string; thread?: UserThread }) => {
+const PlatformBadge = ({ platform, thread, isStudioLight }: { platform?: string; thread?: UserThread; isStudioLight?: boolean }) => {
   let source = platform;
   if (!source && thread) {
     source = getThreadSource(thread);
@@ -244,21 +247,53 @@ const PlatformBadge = ({ platform, thread }: { platform?: string; thread?: UserT
   if (!source) return null;
   
   const config: Record<string, { label: string; color: string; bg: string }> = {
-    whatsapp: { label: 'WhatsApp', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
-    instagram: { label: 'Instagram', color: 'text-pink-400', bg: 'bg-pink-500/10 border-pink-500/20' },
-    facebook: { label: 'Facebook', color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
-    twitch: { label: 'Twitch', color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
-    tiktok: { label: 'TikTok', color: 'text-cyan-400', bg: 'bg-cyan-500/10 border-cyan-500/20' },
-    public_chat: { label: 'Chat Room', color: 'text-neon-blue', bg: 'bg-neon-blue/10 border-neon-blue/20' },
-    private_dm: { label: 'Private DM', color: 'text-neon-purple', bg: 'bg-neon-purple/10 border-neon-purple/20' },
-    shoutout: { label: 'Shout-out', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
+    whatsapp: { 
+      label: 'WhatsApp', 
+      color: isStudioLight ? 'text-emerald-700' : 'text-emerald-400', 
+      bg: isStudioLight ? 'bg-emerald-50 border-emerald-200/80' : 'bg-emerald-500/10 border-emerald-500/20' 
+    },
+    instagram: { 
+      label: 'Instagram', 
+      color: isStudioLight ? 'text-pink-700' : 'text-pink-400', 
+      bg: isStudioLight ? 'bg-pink-50 border-pink-200/80' : 'bg-pink-500/10 border-pink-500/20' 
+    },
+    facebook: { 
+      label: 'Facebook', 
+      color: isStudioLight ? 'text-blue-700' : 'text-blue-400', 
+      bg: isStudioLight ? 'bg-blue-50 border-blue-200/80' : 'bg-blue-500/10 border-blue-500/20' 
+    },
+    twitch: { 
+      label: 'Twitch', 
+      color: isStudioLight ? 'text-purple-700' : 'text-purple-400', 
+      bg: isStudioLight ? 'bg-purple-50 border-purple-200/80' : 'bg-purple-500/10 border-purple-500/20' 
+    },
+    tiktok: { 
+      label: 'TikTok', 
+      color: isStudioLight ? 'text-cyan-700' : 'text-cyan-400', 
+      bg: isStudioLight ? 'bg-cyan-50 border-cyan-200/80' : 'bg-cyan-500/10 border-cyan-500/20' 
+    },
+    public_chat: { 
+      label: 'Chat Room', 
+      color: isStudioLight ? 'text-sky-700' : 'text-sky-300', 
+      bg: isStudioLight ? 'bg-sky-50 border-sky-200/80' : 'bg-sky-500/10 border-sky-500/20' 
+    },
+    private_dm: { 
+      label: 'Private DM', 
+      color: isStudioLight ? 'text-purple-700' : 'text-purple-300', 
+      bg: isStudioLight ? 'bg-purple-50 border-purple-200/80' : 'bg-purple-500/10 border-purple-500/20' 
+    },
+    shoutout: { 
+      label: 'Shout-out', 
+      color: isStudioLight ? 'text-amber-700' : 'text-amber-400', 
+      bg: isStudioLight ? 'bg-amber-50 border-amber-200/80' : 'bg-amber-500/10 border-amber-500/20' 
+    },
   };
 
   const item = config[source.toLowerCase()];
   if (!item) return null;
 
   return (
-    <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-mono font-bold uppercase tracking-wider border ${item.bg} ${item.color}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider border shrink-0 whitespace-nowrap ${item.bg} ${item.color}`}>
       {item.label}
     </span>
   );
@@ -443,7 +478,8 @@ const playNotificationSound = (soundEnabled: boolean) => {
 
 const getThreadUserAndKey = (
   msg: { user: string; text?: string; recipient?: string },
-  currentAdmin: string | null
+  currentAdmin: string | null,
+  knownUsers?: string[] | Set<string>
 ) => {
   const isAdminUser = (username: string) => {
     if (!username) return false;
@@ -469,17 +505,41 @@ const getThreadUserAndKey = (
   if (isAdminUser(msg.user)) {
     // If sent by admin, try to parse the @recipient username
     if (msg.text) {
-      const match = msg.text.match(/^@([a-zA-Z0-9_\-]+)/);
-      if (match) {
-        const targetUser = match[1];
+      // Handle "REPLY to @user" pattern from shoutout broadcasts
+      const shoutoutMatch = msg.text.match(/^REPLY to @([^\n\r]+)/);
+      if (shoutoutMatch) {
+        let targetUser = shoutoutMatch[1].trim();
+        targetUser = targetUser.replace(/:$/, '').trim();
         return { user: targetUser, key: targetUser.toLowerCase() };
       }
 
-      // Handle "REPLY to @user" pattern from shoutout broadcasts
-      const shoutoutMatch = msg.text.match(/^REPLY to @([a-zA-Z0-9_\-\.@]+)/);
-      if (shoutoutMatch) {
-        const targetUser = shoutoutMatch[1];
-        return { user: targetUser, key: targetUser.toLowerCase() };
+      // Check if text starts with @
+      const atMatch = msg.text.match(/^@([^\n\r]+)/);
+      if (atMatch) {
+        const rawMention = atMatch[1].trim();
+
+        // If known users are provided, match the longest matching username first (handles spaces like "new user")
+        if (knownUsers) {
+          const userList = Array.isArray(knownUsers) ? knownUsers : Array.from(knownUsers);
+          const sorted = [...userList].filter(Boolean).sort((a, b) => b.length - a.length);
+          for (const u of sorted) {
+            if (rawMention.toLowerCase().startsWith(u.toLowerCase())) {
+              const remaining = rawMention.slice(u.length);
+              if (!remaining || /^[\s:]/.test(remaining)) {
+                return { user: u, key: u.toLowerCase() };
+              }
+            }
+          }
+        }
+
+        // Check if there's a colon e.g. "@new user: [message]" or "@new user:"
+        if (rawMention.includes(':')) {
+          const target = rawMention.split(':')[0].trim();
+          if (target) return { user: target, key: target.toLowerCase() };
+        }
+
+        // If the mention is standalone or no space separator (e.g. "@new user")
+        return { user: rawMention, key: rawMention.toLowerCase() };
       }
     }
     // If it doesn't start with @username, we ignore/skip creating a separate "DejavuFM Studio" thread
@@ -614,10 +674,6 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   }, []);
 
   const [threads, setThreads] = useState<Record<string, UserThread>>({});
-
-  const totalUnreadCount = useMemo(() => {
-    return Object.values(threads).reduce((acc: number, t: UserThread) => acc + (t.unreadCount || 0), 0);
-  }, [threads]);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const selectedUserRef = useRef<string | null>(null);
   const [messageLimit, setMessageLimit] = useState(50);
@@ -647,6 +703,9 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   const shoutoutHistoryReceivedRef = useRef(false);
   const [replyText, setReplyText] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [customLightboxItems, setCustomLightboxItems] = useState<LightboxMediaItem[] | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarFilter, setSidebarFilter] = useState<string>('all');
@@ -727,6 +786,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   const [isSavingAutoDelete, setIsSavingAutoDelete] = useState(false);
   const [customValInput, setCustomValInput] = useState('24');
   const [customUnitInput, setCustomUnitInput] = useState<'hours' | 'days'>('hours');
+  const [chatMediaCounts, setChatMediaCounts] = useState({ images: 0, audios: 0, videos: 0 });
   const [isMobileSettingsOpen, setIsMobileSettingsOpen] = useState(false);
 
   const componentMountedTime = useRef(Date.now()).current;
@@ -758,6 +818,13 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         }
         if (data && data.lastRun) {
           setAutoDeleteLastRun(data.lastRun);
+        }
+        if (data) {
+          setChatMediaCounts({
+            images: Number(data.imageCount) || 0,
+            audios: Number(data.audioCount) || 0,
+            videos: Number(data.videoCount) || 0
+          });
         }
       })
       .catch(err => console.error("Failed to load chat retention settings:", err));
@@ -997,6 +1064,15 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       };
     }
   });
+
+  const totalUnreadCount = useMemo(() => {
+    return Object.values(threads).filter((t: UserThread) => {
+      const source = getThreadSource(t);
+      const externalPlatforms = ['whatsapp', 'instagram', 'facebook', 'twitch', 'tiktok'];
+      if (externalPlatforms.includes(source) && !connectedPlatforms[source]) return false;
+      return true;
+    }).reduce((acc: number, t: UserThread) => acc + (t.unreadCount || 0), 0);
+  }, [threads, connectedPlatforms]);
 
   const [platformConfigs, setPlatformConfigs] = useState<Record<string, Record<string, string>>>(() => {
     try {
@@ -1342,7 +1418,8 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   };
 
   const addMessageToThread = (message: Message) => {
-    const threadInfo = getThreadUserAndKey(message, adminUsername);
+    const knownUsers = (Object.values(threads) as UserThread[]).map(t => t.user);
+    const threadInfo = getThreadUserAndKey(message, adminUsername, knownUsers);
     if (!threadInfo) return;
 
     const { user, key: userKey } = threadInfo;
@@ -1411,8 +1488,13 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
       setThreads(prev => {
         const nextThreads = { ...prev };
+        const knownHistoryUsers = history
+          .map(m => m.user)
+          .filter(u => u && !isSenderAdminMsg(u));
+        const allKnownUsers = Array.from(new Set([...knownHistoryUsers, ...(Object.values(prev) as UserThread[]).map(t => t.user)]));
+
         history.forEach(msg => {
-          const threadInfo = getThreadUserAndKey(msg, adminUsername);
+          const threadInfo = getThreadUserAndKey(msg, adminUsername, allKnownUsers);
           if (!threadInfo) return;
 
           const { user, key: userKey } = threadInfo;
@@ -1479,8 +1561,13 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
       setThreads(prev => {
         const nextThreads = { ...prev };
+        const knownHistoryUsers = history
+          .map(m => m.user)
+          .filter(u => u && !isSenderAdminMsg(u));
+        const allKnownUsers = Array.from(new Set([...knownHistoryUsers, ...(Object.values(prev) as UserThread[]).map(t => t.user)]));
+
         history.forEach(msg => {
-          const threadInfo = getThreadUserAndKey(msg, adminUsername);
+          const threadInfo = getThreadUserAndKey(msg, adminUsername, allKnownUsers);
           if (!threadInfo) return;
 
           const { user, key: userKey } = threadInfo;
@@ -1692,7 +1779,13 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         Object.entries(prev).forEach(([key, threadVal]) => {
           const thread = threadVal as UserThread;
           let filtered = thread.messages;
-          if (payload.isPrivate) {
+
+          if (payload.platform === 'whatsapp') {
+            if (getThreadSource(thread) === 'whatsapp' || thread.platform === 'whatsapp') {
+              return; // omit entire thread
+            }
+            filtered = thread.messages.filter(msg => msg.platform !== 'whatsapp');
+          } else if (payload.isPrivate) {
             if (payload.recipient) {
               const rLower = payload.recipient.toLowerCase();
               const sLower = payload.sender?.toLowerCase();
@@ -1732,6 +1825,34 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
         return nextThreads;
       });
+    };
+
+    const handleWhatsappMessagesCleared = () => {
+      setThreads(prev => {
+        const nextThreads: Record<string, UserThread> = {};
+        Object.entries(prev).forEach(([key, threadVal]) => {
+          const thread = threadVal as UserThread;
+          if (getThreadSource(thread) === 'whatsapp' || thread.platform === 'whatsapp') {
+            return;
+          }
+          const filtered = thread.messages.filter(msg => msg.platform !== 'whatsapp');
+          if (filtered.length > 0) {
+            nextThreads[key] = {
+              ...thread,
+              messages: filtered,
+              lastMessageTimestamp: filtered[filtered.length - 1].timestamp,
+            };
+          }
+        });
+        try {
+          localStorage.setItem('dejavu_studio_threads', JSON.stringify(nextThreads));
+        } catch {}
+        return nextThreads;
+      });
+
+      if (selectedUserRef.current) {
+        setSelectedUser(null);
+      }
     };
 
     const handleUserThreadCleared = ({ username }: { username: string }) => {
@@ -1923,6 +2044,16 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       });
     };
 
+    const handleChatCountsUpdated = (counts: any) => {
+      if (counts) {
+        setChatMediaCounts({
+          images: Number(counts.imageCount) || 0,
+          audios: Number(counts.audioCount) || 0,
+          videos: Number(counts.videoCount) || 0
+        });
+      }
+    };
+
     socket.on('chatHistory', handleChatHistory);
     socket.on('privateHistory', handlePrivateHistory);
     socket.on('shoutoutHistory', handleShoutoutHistory);
@@ -1931,6 +2062,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     socket.on('new_shoutout', handleNewShoutout);
     socket.on('shoutouts_cleared', handleShoutoutsCleared);
     socket.on('messagesCleared', handleMessagesCleared);
+    socket.on('whatsapp_messages_cleared', handleWhatsappMessagesCleared);
     socket.on('userThreadCleared', handleUserThreadCleared);
     socket.on('bulkUserThreadsCleared', handleBulkUserThreadsCleared);
     socket.on('messageDeleted', handleMessageDeleted);
@@ -1938,6 +2070,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     socket.on('shoutoutReply', handleShoutoutReply);
     socket.on('platform_broadcast', handlePlatformBroadcast);
     socket.on('messageReactionUpdated', handleMessageReactionUpdated);
+    socket.on('chatCountsUpdated', handleChatCountsUpdated);
 
     if (adminUsername) {
       socket.emit('registerUser', adminUsername);
@@ -1952,6 +2085,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       socket.off('new_shoutout', handleNewShoutout);
       socket.off('shoutouts_cleared', handleShoutoutsCleared);
       socket.off('messagesCleared', handleMessagesCleared);
+      socket.off('whatsapp_messages_cleared', handleWhatsappMessagesCleared);
       socket.off('userThreadCleared', handleUserThreadCleared);
       socket.off('bulkUserThreadsCleared', handleBulkUserThreadsCleared);
       socket.off('messageDeleted', handleMessageDeleted);
@@ -1959,6 +2093,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       socket.off('shoutoutReply', handleShoutoutReply);
       socket.off('platform_broadcast', handlePlatformBroadcast);
       socket.off('messageReactionUpdated', handleMessageReactionUpdated);
+      socket.off('chatCountsUpdated', handleChatCountsUpdated);
     };
   }, [adminUsername]);
 
@@ -2255,29 +2390,39 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
   const handleClearAllChatsAndShoutouts = async () => {
     const confirmed = await showConfirm({
-      title: "Clear All Chats, DMs & Shoutouts",
-      message: "Are you sure you want to permanently delete ALL public chat room messages, private listener DMs, and live studio shoutouts? This cannot be undone.",
+      title: "Purge All Chats, DMs, Shoutouts & Media",
+      message: "Are you sure you want to permanently delete ALL public chat room messages, private listener DMs, live studio shoutouts, and all attached media files (images, audio clips, voice notes, videos)? This will remove them completely from database and disk storage. This cannot be undone.",
       style: "danger",
-      confirmText: "Clear All Data"
+      confirmText: "Purge All Data & Media"
     });
 
     if (confirmed && adminUsername) {
-      // 1. Clear Public Chat Room
-      socketRef.current?.emit('clearAllMessages', {
-        user: adminUsername,
-        isPrivate: false
-      });
-      // 2. Clear Private DMs
-      socketRef.current?.emit('clearAllMessages', {
-        user: adminUsername,
-        isPrivate: true
-      });
-      // 3. Clear Shoutouts
-      socketRef.current?.emit('clearAllShoutouts', {
-        user: adminUsername
-      });
-      
-      toast.success("All chats, private DMs, and shoutouts are being cleared...");
+      try {
+        const res = await fetchAdmin('/api/admin/chat-room-settings/data', {
+          method: 'DELETE'
+        });
+        const data = await res.json();
+        if (data.success) {
+          toast.success(`Purged ${data.publicDeleted || 0} public, ${data.privateDeleted || 0} private, ${data.shoutoutsDeleted || 0} shoutouts, and ${data.mediaDeleted || 0} media files from disk.`);
+        } else {
+          toast.success("All chats, private DMs, shoutouts, and media files have been purged.");
+        }
+      } catch (e) {
+        // Fallback to socket events if API call errors
+        socketRef.current?.emit('clearAllMessages', {
+          user: adminUsername,
+          isPrivate: false
+        });
+        socketRef.current?.emit('clearAllMessages', {
+          user: adminUsername,
+          isPrivate: true
+        });
+        socketRef.current?.emit('clearAllShoutouts', {
+          user: adminUsername
+        });
+        toast.success("All chats, private DMs, and shoutouts are being cleared...");
+      }
+      setChatMediaCounts({ images: 0, audios: 0, videos: 0 });
     }
   };
 
@@ -2394,6 +2539,44 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       });
       // The 'messagesCleared' socket event will handle the UI update.
       toast.success("Clearing all private messages...");
+    }
+  };
+
+  const handleClearAllWhatsappMessages = async () => {
+    const confirmed = await showConfirm({
+      title: "Purge Stored WhatsApp Messages",
+      message: "Are you sure you want to permanently delete all stored WhatsApp messages and attachments from the database? This cannot be undone.",
+      style: "danger",
+      confirmText: "Purge WhatsApp Data"
+    });
+
+    if (confirmed) {
+      try {
+        const res = await fetchAdmin('/api/admin/whatsapp-gateway/clear-messages', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to clear WhatsApp messages');
+
+        setThreads(prev => {
+          const next = { ...prev };
+          Object.keys(next).forEach(k => {
+            if (getThreadSource(next[k]) === 'whatsapp' || next[k].platform === 'whatsapp') {
+              delete next[k];
+            }
+          });
+          try {
+            localStorage.setItem('dejavu_studio_threads', JSON.stringify(next));
+          } catch {}
+          return next;
+        });
+
+        if (selectedUser && threads[selectedUser.toLowerCase()] && getThreadSource(threads[selectedUser.toLowerCase()]) === 'whatsapp') {
+          setSelectedUser(null);
+        }
+
+        toast.success(`Purged ${data.deletedCount ?? 0} WhatsApp messages from database.`);
+      } catch (err: any) {
+        toast.error(err.message || "Failed to clear WhatsApp messages.");
+      }
     }
   };
 
@@ -2672,9 +2855,18 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
   };
 
   const sortedThreads = useMemo(() => {
-    let filtered = Object.values(threads).filter((thread: UserThread) => 
-      thread.user.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    let filtered = Object.values(threads).filter((thread: UserThread) => {
+      if (!thread.user.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+
+      // Filter out external platform threads if that platform is currently disconnected
+      const source = getThreadSource(thread);
+      const externalPlatforms = ['whatsapp', 'instagram', 'facebook', 'twitch', 'tiktok'];
+      if (externalPlatforms.includes(source) && !connectedPlatforms[source]) {
+        return false;
+      }
+
+      return true;
+    });
     
     // Apply sidebar tab filters
     if (sidebarFilter === 'unread') {
@@ -2693,7 +2885,27 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
       if (aIsPinned !== bIsPinned) return aIsPinned ? -1 : 1;
       return b.lastMessageTimestamp - a.lastMessageTimestamp;
     });
-  }, [threads, searchQuery, pinnedThreads, sidebarFilter]);
+  }, [threads, searchQuery, pinnedThreads, sidebarFilter, connectedPlatforms]);
+
+  // If active sidebar filter is an external platform that became disconnected, reset to 'all'
+  useEffect(() => {
+    const externalPlatforms = ['whatsapp', 'instagram', 'facebook', 'twitch', 'tiktok'];
+    if (externalPlatforms.includes(sidebarFilter) && !connectedPlatforms[sidebarFilter]) {
+      setSidebarFilter('all');
+    }
+  }, [connectedPlatforms, sidebarFilter]);
+
+  // If selected conversation belongs to a disconnected platform, deselect it
+  useEffect(() => {
+    if (selectedUser && threads[selectedUser.toLowerCase()]) {
+      const thread = threads[selectedUser.toLowerCase()];
+      const source = getThreadSource(thread);
+      const externalPlatforms = ['whatsapp', 'instagram', 'facebook', 'twitch', 'tiktok'];
+      if (externalPlatforms.includes(source) && !connectedPlatforms[source]) {
+        setSelectedUser(null);
+      }
+    }
+  }, [connectedPlatforms, selectedUser, threads]);
 
   const currentThread = selectedUser ? threads[selectedUser.toLowerCase()] : null;
   const isTwitchChat = currentThread ? (getThreadSource(currentThread) === 'twitch') : false;
@@ -3064,20 +3276,37 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                       </div>
                     </div>
                     
-                    <button
-                      onClick={() => handleTogglePlatform(platform.id)}
-                      className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider font-mono transition-all duration-200 border cursor-pointer hover:scale-105 active:scale-95 ${
-                        isConnected
-                          ? (isStudioLight 
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
-                              : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/15')
-                          : (isStudioLight 
-                              ? 'bg-slate-50 text-slate-600 border-slate-200/80 hover:bg-slate-100' 
-                              : 'bg-white/[0.02] text-white/50 border-white/5 hover:bg-white/[0.05]')
-                      }`}
-                    >
-                      {isConnected ? 'Disconnect' : 'Connect'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {platform.id === 'whatsapp' && (
+                        <button
+                          type="button"
+                          onClick={() => handleClearAllWhatsappMessages()}
+                          title="Purge all stored WhatsApp message history from database"
+                          className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider font-mono transition-all duration-200 border cursor-pointer hover:scale-105 active:scale-95 flex items-center gap-1.5 ${
+                            isStudioLight
+                              ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                              : 'bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20'
+                          }`}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>Purge Data</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleTogglePlatform(platform.id)}
+                        className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider font-mono transition-all duration-200 border cursor-pointer hover:scale-105 active:scale-95 ${
+                          isConnected
+                            ? (isStudioLight 
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
+                                : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/15')
+                            : (isStudioLight 
+                                ? 'bg-slate-50 text-slate-600 border-slate-200/80 hover:bg-slate-100' 
+                                : 'bg-white/[0.02] text-white/50 border-white/5 hover:bg-white/[0.05]')
+                        }`}
+                      >
+                        {isConnected ? 'Disconnect' : 'Connect'}
+                      </button>
+                    </div>
                   </div>
 
                   <p className={`text-[11px] leading-relaxed ${
@@ -3384,8 +3613,17 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                   <p className={`text-[11px] leading-relaxed ${
                     isStudioLight ? 'text-slate-500' : 'text-slate-400/80'
                   }`}>
-                    Automatically delete old public messages, private DMs, and live shoutouts to prevent disk leaks and maintain peak operational performance.
+                    Automatically delete old public messages, private DMs, and live shoutouts, as well as all attached media files (images, audio notes, videos) to prevent disk leaks and maintain peak operational performance.
                   </p>
+                  <div className={`mt-2 flex flex-wrap items-center gap-2 text-[10px] font-mono rounded-lg px-2.5 py-1.5 border ${
+                    isStudioLight ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+                  }`}>
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span>Media Purge Included: Disk assets (uploads & voice notes) are automatically pruned on each cycle.</span>
+                    <span className="opacity-60 ml-auto">
+                      ({chatMediaCounts.images} img • {chatMediaCounts.audios} audio • {chatMediaCounts.videos} vid)
+                    </span>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -3520,9 +3758,9 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
               }`}>
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                  <span className={`text-[11px] font-extrabold font-mono uppercase tracking-wider ${isStudioLight ? 'text-red-900' : 'text-red-400'}`}>Manual Full Database Wipe</span>
+                  <span className={`text-[11px] font-extrabold font-mono uppercase tracking-wider ${isStudioLight ? 'text-red-900' : 'text-red-400'}`}>Manual Full Database & Media Wipe</span>
                 </div>
-                <p className={`text-[11px] leading-relaxed ${isStudioLight ? 'text-slate-500' : 'text-white/40'}`}>Permanently purge and delete all public chat room messages, private listener DMs, and live studio shoutouts recorded in the system immediately.</p>
+                <p className={`text-[11px] leading-relaxed ${isStudioLight ? 'text-slate-500' : 'text-white/40'}`}>Permanently purge and delete all public chat room messages, private listener DMs, live studio shoutouts, and all attached media files (images, audio notes, videos) from database and disk storage immediately.</p>
                 <button
                   onClick={handleClearAllChatsAndShoutouts}
                   className={`w-full px-3 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider font-mono transition-all duration-150 border cursor-pointer hover:scale-[1.01] active:scale-[0.99] ${
@@ -3531,7 +3769,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                       : 'bg-red-600/10 hover:bg-red-600/20 border-red-500/20 text-red-400 hover:border-red-500/40 hover:text-white'
                   }`}
                 >
-                  Clear All Chats, DMs & Shoutouts Now
+                  Purge All Chats, DMs, Shoutouts & Media Now
                 </button>
               </div>
             </div>
@@ -3765,6 +4003,85 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
     if (!hasMoreMessages) return sortedMessages;
     return sortedMessages.slice(sortedMessages.length - messageLimit);
   }, [sortedMessages, messageLimit, hasMoreMessages]);
+
+  const activeMediaGallery = useMemo<LightboxMediaItem[]>(() => {
+    if (!sortedMessages || sortedMessages.length === 0) return [];
+    const items: LightboxMediaItem[] = [];
+    sortedMessages.forEach((msg) => {
+      const imgUrl = extractImageUrl(msg);
+      if (imgUrl) {
+        let cleanCaption = msg.text || '';
+        if (cleanCaption) {
+          cleanCaption = cleanCaption
+            .replace(/\[Media attachment:[^\]]+\]/gi, '')
+            .replace(/📸 (?:Photo|Attachment) from DejavuFM Studio:\s*https?:\/\/[^\s]+/gi, '')
+            .replace(/https?:\/\/[^\s]+\/uploads\/[^\s]+/gi, '')
+            .trim();
+        }
+        items.push({
+          id: `img-${msg.id}`,
+          type: 'image',
+          url: imgUrl,
+          thumbnailUrl: imgUrl,
+          title: (msg as any).imageName || 'Image Attachment',
+          caption: cleanCaption && !isBase64Image(cleanCaption) ? cleanCaption : undefined,
+          sender: msg.user,
+          avatar: msg.avatar,
+          timestamp: msg.timestamp,
+          platform: msg.platform
+        });
+      }
+      if (msg.videoUrl) {
+        items.push({
+          id: `vid-${msg.id}`,
+          type: 'video',
+          url: msg.videoUrl,
+          title: (msg as any).videoName || 'Video Attachment',
+          caption: msg.text && msg.text !== 'Shared a video clip' && msg.text !== 'Video' ? msg.text : undefined,
+          sender: msg.user,
+          avatar: msg.avatar,
+          timestamp: msg.timestamp,
+          platform: msg.platform
+        });
+      }
+    });
+    return items;
+  }, [sortedMessages]);
+
+  const openLightboxForMedia = (mediaUrl: string, type: 'image' | 'video' = 'image', fallbackDetails?: Partial<LightboxMediaItem>) => {
+    // Immediately pause all playing video/audio on the page so it doesn't double-play with lightbox
+    try {
+      document.querySelectorAll('video, audio').forEach((el) => {
+        if (el instanceof HTMLMediaElement && !el.paused) {
+          el.pause();
+        }
+      });
+    } catch {
+      // ignore
+    }
+
+    const gallery = activeMediaGallery;
+    const idx = gallery.findIndex(item => item.url === mediaUrl || item.url.includes(mediaUrl) || mediaUrl.includes(item.url));
+    if (idx !== -1) {
+      setCustomLightboxItems(null);
+      setLightboxIndex(idx);
+    } else {
+      setCustomLightboxItems([{
+        id: `standalone-${Date.now()}`,
+        type,
+        url: mediaUrl,
+        thumbnailUrl: mediaUrl,
+        title: fallbackDetails?.title || (type === 'image' ? 'Image Attachment' : 'Video Attachment'),
+        caption: fallbackDetails?.caption,
+        sender: fallbackDetails?.sender,
+        avatar: fallbackDetails?.avatar,
+        timestamp: fallbackDetails?.timestamp,
+        platform: fallbackDetails?.platform,
+      }]);
+      setLightboxIndex(0);
+    }
+    setLightboxOpen(true);
+  };
 
   if (isInitialLoading) {
     return (
@@ -4170,17 +4487,24 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
               className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none shrink-0 select-none cursor-grab active:cursor-grabbing [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
             >
               {(() => {
+                const activeThreads = Object.values(threads).filter((t: UserThread) => {
+                  const source = getThreadSource(t);
+                  const externalPlatforms = ['whatsapp', 'instagram', 'facebook', 'twitch', 'tiktok'];
+                  if (externalPlatforms.includes(source) && !connectedPlatforms[source]) return false;
+                  return true;
+                });
+
                 const filterTabs = [
-                  { id: 'all', label: 'All', count: Object.keys(threads).length },
-                  { id: 'unread', label: 'Unread', count: Object.values(threads).filter((t: any) => t.unreadCount > 0).length },
-                  { id: 'pinned', label: 'Pinned', count: Object.values(threads).filter((t: any) => pinnedThreads.includes(t.user.toLowerCase())).length },
-                  { id: 'chat', label: 'Chat Room', count: Object.values(threads).filter((t: any) => getThreadSource(t) === 'public_chat').length },
-                  { id: 'shoutout', label: 'Shoutouts', count: Object.values(threads).filter((t: any) => getThreadSource(t) === 'shoutout').length },
-                  { id: 'twitch', label: 'Twitch', count: Object.values(threads).filter((t: any) => getThreadSource(t) === 'twitch').length },
-                  { id: 'whatsapp', label: 'WhatsApp', count: Object.values(threads).filter((t: any) => getThreadSource(t) === 'whatsapp').length },
-                  { id: 'instagram', label: 'Instagram', count: Object.values(threads).filter((t: any) => getThreadSource(t) === 'instagram').length },
-                  { id: 'facebook', label: 'Facebook', count: Object.values(threads).filter((t: any) => getThreadSource(t) === 'facebook').length },
-                  { id: 'tiktok', label: 'TikTok', count: Object.values(threads).filter((t: any) => getThreadSource(t) === 'tiktok').length },
+                  { id: 'all', label: 'All', count: activeThreads.length },
+                  { id: 'unread', label: 'Unread', count: activeThreads.filter((t: any) => t.unreadCount > 0).length },
+                  { id: 'pinned', label: 'Pinned', count: activeThreads.filter((t: any) => pinnedThreads.includes(t.user.toLowerCase())).length },
+                  { id: 'chat', label: 'Chat Room', count: activeThreads.filter((t: any) => getThreadSource(t) === 'public_chat').length },
+                  { id: 'shoutout', label: 'Shoutouts', count: activeThreads.filter((t: any) => getThreadSource(t) === 'shoutout').length },
+                  ...(connectedPlatforms.whatsapp ? [{ id: 'whatsapp', label: 'WhatsApp', count: activeThreads.filter((t: any) => getThreadSource(t) === 'whatsapp').length }] : []),
+                  ...(connectedPlatforms.instagram ? [{ id: 'instagram', label: 'Instagram', count: activeThreads.filter((t: any) => getThreadSource(t) === 'instagram').length }] : []),
+                  ...(connectedPlatforms.facebook ? [{ id: 'facebook', label: 'Facebook', count: activeThreads.filter((t: any) => getThreadSource(t) === 'facebook').length }] : []),
+                  ...(connectedPlatforms.twitch ? [{ id: 'twitch', label: 'Twitch', count: activeThreads.filter((t: any) => getThreadSource(t) === 'twitch').length }] : []),
+                  ...(connectedPlatforms.tiktok ? [{ id: 'tiktok', label: 'TikTok', count: activeThreads.filter((t: any) => getThreadSource(t) === 'tiktok').length }] : []),
                 ];
  
                 return filterTabs.map(tab => {
@@ -4523,13 +4847,13 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         } ${selectedUser ? 'flex' : 'hidden md:flex'}`}>
           {currentThread ? (
             <>
-              <header className={`flex items-center justify-between gap-4 p-5 sm:px-8 border-b shrink-0 transition-colors ${
+              <header className={`flex items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b shrink-0 transition-colors min-h-[60px] ${
                 isStudioLight 
                   ? 'bg-white border-slate-200/80 shadow-2xs' 
                   : 'bg-[#090B15] border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.15)]'
               }`}>
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <button onClick={() => setSelectedUser(null)} className={`md:hidden p-2 -ml-2 rounded-xl transition-all shrink-0 cursor-pointer ${
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <button onClick={() => setSelectedUser(null)} className={`md:hidden p-1.5 -ml-1 rounded-lg transition-all shrink-0 cursor-pointer ${
                     isStudioLight ? 'text-slate-500 hover:text-slate-800 hover:bg-slate-100' : 'text-white/50 hover:text-white hover:bg-white/5'
                   }`}>
                     <ArrowLeft className="w-5 h-5" />
@@ -4538,7 +4862,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                     <img 
                       src={currentThread.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${currentThread.user}`} 
                       alt={currentThread.user} 
-                      className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl object-cover border ${
+                      className={`w-10 h-10 rounded-xl object-cover border ${
                         isStudioLight ? 'bg-slate-100 border-slate-200/80' : 'bg-white/5 border-white/5'
                       }`} 
                     />
@@ -4549,34 +4873,55 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                       }`}></span>
                     </span>
                   </div>
-                  <div className="min-w-0 flex flex-col gap-0.5">
-                    <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                      <h3 className={`font-extrabold text-sm sm:text-base truncate tracking-tight ${
+                  <div className="min-w-0 flex flex-col justify-center gap-0.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <h3 className={`font-bold text-sm sm:text-base truncate tracking-tight ${
                         isStudioLight ? 'text-slate-900' : 'text-slate-100'
                       }`}>{currentThread.user}</h3>
-                      <div className="shrink-0">
-                        <PlatformBadge platform={currentThread.platform} thread={currentThread} />
-                      </div>
+                      <span className="hidden sm:inline-flex">
+                        <PlatformBadge platform={currentThread.platform} thread={currentThread} isStudioLight={isStudioLight} />
+                      </span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-[10px] font-mono font-medium">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      <span className={`${isStudioLight ? 'text-slate-400' : 'text-white/30'} truncate`}>
-                        <span className="inline sm:hidden">Live Session</span>
-                        <span className="hidden sm:inline">Connection initialized • Live Session Active</span>
+                    <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-mono font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                      <span className={`${isStudioLight ? 'text-slate-500' : 'text-white/40'} truncate`}>
+                        Live Session Active
                       </span>
                     </div>
                   </div>
                 </div>
                 
                 <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                  {activeMediaGallery.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomLightboxItems(null);
+                        setLightboxIndex(0);
+                        setLightboxOpen(true);
+                      }}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border cursor-pointer ${
+                        isStudioLight 
+                          ? 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200/80 shadow-2xs' 
+                          : 'bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border-blue-500/20'
+                      }`}
+                      title={`View all ${activeMediaGallery.length} media attachments in full screen lightbox`}
+                    >
+                      <Maximize2 className="w-3.5 h-3.5 text-blue-500" />
+                      <span className="hidden sm:inline">Media</span>
+                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                        isStudioLight ? 'bg-blue-100 text-blue-700' : 'bg-blue-500/20 text-blue-300'
+                      }`}>{activeMediaGallery.length}</span>
+                    </button>
+                  )}
                   {isAdmin && currentThread.user !== adminUsername && (
                     <>
                       <button
                         onClick={() => handleClearConversation(currentThread.user)}
-                        className={`flex items-center gap-1.5 px-2.5 py-2 sm:px-3 sm:py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider font-mono transition-all duration-200 border cursor-pointer ${
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border cursor-pointer ${
                           isStudioLight 
-                            ? 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200/60 shadow-2xs' 
-                            : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border-amber-500/10 hover:border-amber-500/25'
+                            ? 'bg-slate-50 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 text-slate-600 border-slate-200/80 shadow-2xs' 
+                            : 'bg-white/5 hover:bg-amber-500/10 hover:text-amber-400 hover:border-amber-500/30 text-slate-400 border-white/5'
                         }`}
                         title={`Clear all messages from ${currentThread.user}`}
                       >
@@ -4585,10 +4930,10 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                       </button>
                       <button
                         onClick={() => handleBanUser(currentThread.user)}
-                        className={`flex items-center gap-1.5 px-2.5 py-2 sm:px-3 sm:py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider font-mono transition-all duration-200 border cursor-pointer ${
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border cursor-pointer ${
                           isStudioLight 
-                            ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200/60 shadow-2xs' 
-                            : 'bg-red-500/10 hover:bg-red-500/20 text-red-500 border-red-500/10 hover:border-red-500/25'
+                            ? 'bg-slate-50 hover:bg-red-50 hover:text-red-700 hover:border-red-200 text-slate-600 border-slate-200/80 shadow-2xs' 
+                            : 'bg-white/5 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 text-slate-400 border-white/5'
                         }`}
                         title={`Permanently ban ${currentThread.user}`}
                       >
@@ -4723,10 +5068,32 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                                   )}
                                   
                                   {displayImg && (
-                                    <div className={`mt-2.5 rounded-xl overflow-hidden border max-w-sm ${
-                                      isStudioLight ? 'bg-slate-100 border-slate-200/80 shadow-3xs' : 'border-white/5 bg-black/40 shadow-xl'
-                                    }`}>
-                                      <img src={displayImg} referrerPolicy="no-referrer" className="w-full h-auto max-h-60 object-contain hover:scale-102 transition-transform duration-300" alt="Attachment" />
+                                    <div 
+                                      onClick={() => openLightboxForMedia(displayImg, 'image', {
+                                        sender: msg.user,
+                                        avatar: msg.avatar,
+                                        timestamp: msg.timestamp,
+                                        platform: msg.platform,
+                                      })}
+                                      className={`mt-2.5 rounded-xl overflow-hidden border max-w-sm relative group/media cursor-pointer transition-all ${
+                                        isStudioLight ? 'bg-slate-100 border-slate-200/80 shadow-3xs hover:border-blue-400/60' : 'border-white/5 bg-black/40 shadow-xl hover:border-white/30'
+                                      }`}
+                                      title="Click to view full screen"
+                                    >
+                                      <img src={displayImg} referrerPolicy="no-referrer" className="w-full h-auto max-h-60 object-contain group-hover/media:scale-102 transition-transform duration-300" alt="Attachment" />
+                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/media:opacity-100 transition-opacity duration-200 flex items-center justify-center pointer-events-none">
+                                        <span
+                                          className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 shadow-2xl border backdrop-blur-md transition-all"
+                                          style={{
+                                            backgroundColor: isStudioLight ? '#ffffff' : 'rgba(15, 23, 42, 0.9)',
+                                            borderColor: isStudioLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)',
+                                            color: isStudioLight ? '#0f172a' : '#ffffff',
+                                          }}
+                                        >
+                                          <Maximize2 className="w-3.5 h-3.5" style={{ color: isStudioLight ? '#2563eb' : '#60a5fa' }} />
+                                          <span style={{ color: isStudioLight ? '#0f172a' : '#ffffff' }}>View Full Screen</span>
+                                        </span>
+                                      </div>
                                     </div>
                                   )}
                                 </>
@@ -4744,10 +5111,30 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                             )}
                             
                             {msg.videoUrl && (
-                              <div className={`mt-2.5 rounded-xl overflow-hidden border max-w-sm ${
-                                isStudioLight ? 'bg-slate-100 border-slate-200/80' : 'border-white/5 bg-black/40 shadow-xl'
+                              <div className={`mt-2.5 rounded-xl overflow-hidden border max-w-sm relative group/media ${
+                                isStudioLight ? 'bg-slate-100 border-slate-200/80 shadow-3xs' : 'border-white/5 bg-black/40 shadow-xl'
                               }`}>
                                 <video src={msg.videoUrl} controls className="w-full h-auto max-h-60" />
+                                <button
+                                  type="button"
+                                  onClick={() => openLightboxForMedia(msg.videoUrl!, 'video', {
+                                    sender: msg.user,
+                                    avatar: msg.avatar,
+                                    timestamp: msg.timestamp,
+                                    platform: msg.platform,
+                                    caption: msg.text && msg.text !== 'Shared a video clip' && msg.text !== 'Video' ? msg.text : undefined,
+                                  })}
+                                  title="Open in Fullscreen Lightbox"
+                                  className="absolute top-2 right-2 px-2.5 py-1.5 rounded-xl backdrop-blur-md opacity-0 group-hover/media:opacity-100 transition-all duration-200 cursor-pointer flex items-center gap-1.5 text-[10px] font-mono font-bold shadow-lg hover:scale-105 active:scale-95 border"
+                                  style={{
+                                    backgroundColor: isStudioLight ? '#ffffff' : 'rgba(15, 23, 42, 0.9)',
+                                    borderColor: isStudioLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)',
+                                    color: isStudioLight ? '#0f172a' : '#ffffff',
+                                  }}
+                                >
+                                  <Maximize2 className="w-3 h-3" style={{ color: isStudioLight ? '#e11d48' : '#fb7185' }} />
+                                  <span style={{ color: isStudioLight ? '#0f172a' : '#ffffff' }}>Full Screen</span>
+                                </button>
                               </div>
                             )}
 
@@ -4771,7 +5158,7 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
                               {msg.text && (
                                 <button
                                   onClick={() => {
-                                    const cleanText = msg.text.replace(/^@\w+\s/, "");
+                                    const cleanText = msg.text.replace(/^@[^:\n\r]+:\s*|^@[^\s]+\s*/, "");
                                     setReplyText(cleanText);
                                     toast.success("Loaded message into reply input");
                                   }}
@@ -5079,40 +5466,44 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
         <div
           onTouchStart={handleBarTouchStart}
           onTouchEnd={handleBarTouchEnd}
-          className={`md:hidden fixed bottom-5 left-4 right-4 z-40 px-4 py-2.5 rounded-2xl flex items-center justify-around select-none border transition-colors duration-200 ${
+          className={`md:hidden fixed bottom-5 left-4 right-4 max-w-[400px] mx-auto z-40 px-5 py-2 rounded-full flex items-center justify-between select-none border transition-all duration-300 transform-gpu ${
             isStudioLight
-              ? 'bg-white/95 backdrop-blur-2xl border-slate-200 shadow-[0_12px_40px_rgba(0,0,0,0.15)]'
-              : 'bg-[#0D0F1D]/95 backdrop-blur-2xl border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.85)]'
+              ? 'bg-white/90 backdrop-blur-3xl border-slate-200/90 shadow-[0_14px_36px_rgba(0,0,0,0.1),0_2px_10px_rgba(0,0,0,0.04)]'
+              : 'bg-[#0B0D1B]/90 backdrop-blur-3xl border-white/12 shadow-[0_16px_48px_rgba(0,0,0,0.8),0_0_24px_rgba(168,85,247,0.12)] ring-1 ring-white/10'
           }`}
         >
           <motion.button
             onClick={() => navigateToTab('chats')}
-            whileTap={{ scale: 0.92 }}
-            className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 !overflow-visible ${
+            whileTap={{ scale: 0.88 }}
+            className={`relative flex items-center justify-center w-11 h-11 rounded-full transition-colors duration-200 !overflow-visible ${
               activeTab === 'chats' 
-                ? 'text-neon-purple' 
+                ? (isStudioLight ? 'text-purple-700' : 'text-neon-purple') 
                 : (isStudioLight ? 'text-slate-400 hover:text-slate-700' : 'text-white/40 hover:text-white/80')
             }`}
           >
             {activeTab === 'chats' && (
               <motion.div
                 layoutId="activeTabGlow"
-                className={`absolute inset-0 rounded-full ${isStudioLight ? 'bg-neon-purple/10' : 'bg-white/5'}`}
-                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                className={`absolute inset-0 rounded-full border ${
+                  isStudioLight 
+                    ? 'bg-purple-100/90 border-purple-200/80 shadow-xs' 
+                    : 'bg-gradient-to-r from-neon-purple/20 to-neon-blue/20 border-neon-purple/35 shadow-[0_0_15px_rgba(168,85,247,0.25)]'
+                }`}
+                transition={{ type: "spring", stiffness: 400, damping: 28 }}
               />
             )}
             <motion.div
-              animate={{ scale: activeTab === 'chats' ? 1.15 : 1 }}
-              transition={{ type: "spring", stiffness: 400, damping: 17 }}
-              className="relative z-10"
+              animate={{ scale: activeTab === 'chats' ? 1.1 : 1 }}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              className="relative z-10 flex flex-col items-center justify-center gap-0.5"
             >
               <div className="relative">
-                <MessageSquare className="w-6 h-6" />
+                <MessageSquare className="w-5 h-5" />
                 {totalUnreadCount > 0 && (
                   <span 
-                    className={`absolute -top-1.5 -right-1.5 flex h-4.5 min-w-[18px] items-center justify-center rounded-full px-1 text-[9px] font-bold font-sans leading-none border shadow-xs ${
+                    className={`absolute -top-1.5 -right-2 flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[8px] font-bold font-sans leading-none border shadow-xs ${
                       isStudioLight
-                        ? 'bg-neon-purple/10 text-neon-purple border-neon-purple/20'
+                        ? 'bg-purple-600 text-white border-purple-300'
                         : 'text-white force-text-white border-white/40'
                     }`}
                     style={isStudioLight ? undefined : { background: 'linear-gradient(135deg, var(--color-neon-purple), var(--color-neon-blue))' }}
@@ -5126,8 +5517,8 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
           <motion.button
             onClick={() => navigateToTab('connections')}
-            whileTap={{ scale: 0.92 }}
-            className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 !overflow-visible ${
+            whileTap={{ scale: 0.88 }}
+            className={`relative flex items-center justify-center w-11 h-11 rounded-full transition-colors duration-200 !overflow-visible ${
               activeTab === 'connections' 
                 ? (isStudioLight ? 'text-cyan-700' : 'text-neon-blue') 
                 : (isStudioLight ? 'text-slate-400 hover:text-slate-700' : 'text-white/40 hover:text-white/80')
@@ -5136,17 +5527,21 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             {activeTab === 'connections' && (
               <motion.div
                 layoutId="activeTabGlow"
-                className={`absolute inset-0 rounded-full ${isStudioLight ? 'bg-cyan-100' : 'bg-white/5'}`}
-                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                className={`absolute inset-0 rounded-full border ${
+                  isStudioLight 
+                    ? 'bg-cyan-100/90 border-cyan-200/80 shadow-xs' 
+                    : 'bg-gradient-to-r from-neon-blue/20 to-cyan-500/20 border-neon-blue/35 shadow-[0_0_15px_rgba(0,242,254,0.25)]'
+                }`}
+                transition={{ type: "spring", stiffness: 400, damping: 28 }}
               />
             )}
             <motion.div
-              animate={{ scale: activeTab === 'connections' ? 1.15 : 1 }}
-              transition={{ type: "spring", stiffness: 400, damping: 17 }}
-              className="relative z-10"
+              animate={{ scale: activeTab === 'connections' ? 1.1 : 1 }}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              className="relative z-10 flex flex-col items-center justify-center gap-0.5"
             >
               <div className="relative">
-                <Link2 className="w-6 h-6" />
+                <Link2 className="w-5 h-5" />
                 {Object.values(connectedPlatforms).filter(Boolean).length > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 )}
@@ -5156,58 +5551,66 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
 
           <motion.button
             onClick={() => navigateToTab('broadcast')}
-            whileTap={{ scale: 0.92 }}
-            className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 !overflow-visible ${
+            whileTap={{ scale: 0.88 }}
+            className={`relative flex items-center justify-center w-11 h-11 rounded-full transition-colors duration-200 !overflow-visible ${
               activeTab === 'broadcast' 
-                ? (isStudioLight ? 'text-blue-700' : 'text-neon-blue') 
+                ? (isStudioLight ? 'text-blue-700' : 'text-sky-400') 
                 : (isStudioLight ? 'text-slate-400 hover:text-slate-700' : 'text-white/40 hover:text-white/80')
             }`}
           >
             {activeTab === 'broadcast' && (
               <motion.div
                 layoutId="activeTabGlow"
-                className={`absolute inset-0 rounded-full ${isStudioLight ? 'bg-blue-100' : 'bg-white/5'}`}
-                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                className={`absolute inset-0 rounded-full border ${
+                  isStudioLight 
+                    ? 'bg-blue-100/90 border-blue-200/80 shadow-xs' 
+                    : 'bg-gradient-to-r from-blue-500/20 to-sky-500/20 border-sky-400/35 shadow-[0_0_15px_rgba(56,189,248,0.25)]'
+                }`}
+                transition={{ type: "spring", stiffness: 400, damping: 28 }}
               />
             )}
             <motion.div
-              animate={{ scale: activeTab === 'broadcast' ? 1.15 : 1 }}
-              transition={{ type: "spring", stiffness: 400, damping: 17 }}
-              className="relative z-10"
+              animate={{ scale: activeTab === 'broadcast' ? 1.1 : 1 }}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              className="relative z-10 flex flex-col items-center justify-center gap-0.5"
             >
-              <Radio className="w-6 h-6" />
+              <Radio className="w-5 h-5" />
             </motion.div>
           </motion.button>
 
           <motion.button
             onClick={() => navigateToTab('profile')}
-            whileTap={{ scale: 0.92 }}
-            className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 !overflow-visible ${
+            whileTap={{ scale: 0.88 }}
+            className={`relative flex items-center justify-center w-11 h-11 rounded-full transition-colors duration-200 !overflow-visible ${
               activeTab === 'profile' 
-                ? 'text-neon-purple' 
+                ? (isStudioLight ? 'text-purple-700' : 'text-neon-purple') 
                 : (isStudioLight ? 'text-slate-400 hover:text-slate-700' : 'text-white/40 hover:text-white/80')
             }`}
           >
             {activeTab === 'profile' && (
               <motion.div
                 layoutId="activeTabGlow"
-                className={`absolute inset-0 rounded-full ${isStudioLight ? 'bg-neon-purple/10' : 'bg-white/5'}`}
-                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                className={`absolute inset-0 rounded-full border ${
+                  isStudioLight 
+                    ? 'bg-purple-100/90 border-purple-200/80 shadow-xs' 
+                    : 'bg-gradient-to-r from-neon-purple/20 to-pink-500/20 border-neon-purple/35 shadow-[0_0_15px_rgba(168,85,247,0.25)]'
+                }`}
+                transition={{ type: "spring", stiffness: 400, damping: 28 }}
               />
             )}
             <motion.div
-              animate={{ scale: activeTab === 'profile' ? 1.15 : 1 }}
-              transition={{ type: "spring", stiffness: 400, damping: 17 }}
-              className="relative z-10"
+              animate={{ scale: activeTab === 'profile' ? 1.1 : 1 }}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              className="relative z-10 flex flex-col items-center justify-center gap-0.5"
             >
-              <Camera className="w-6 h-6" />
+              <Camera className="w-5 h-5" />
             </motion.div>
           </motion.button>
 
           <motion.button
             onClick={() => navigateToTab('settings')}
-            whileTap={{ scale: 0.92 }}
-            className={`relative flex items-center justify-center p-2.5 rounded-full transition-colors duration-200 !overflow-visible ${
+            whileTap={{ scale: 0.88 }}
+            className={`relative flex items-center justify-center w-11 h-11 rounded-full transition-colors duration-200 !overflow-visible ${
               activeTab === 'settings' 
                 ? (isStudioLight ? 'text-amber-700' : 'text-amber-400') 
                 : (isStudioLight ? 'text-slate-400 hover:text-slate-700' : 'text-white/40 hover:text-white/80')
@@ -5216,16 +5619,20 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
             {activeTab === 'settings' && (
               <motion.div
                 layoutId="activeTabGlow"
-                className={`absolute inset-0 rounded-full ${isStudioLight ? 'bg-amber-100' : 'bg-white/5'}`}
-                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                className={`absolute inset-0 rounded-full border ${
+                  isStudioLight 
+                    ? 'bg-amber-100/90 border-amber-200/80 shadow-xs' 
+                    : 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-amber-400/35 shadow-[0_0_15px_rgba(251,191,36,0.25)]'
+                }`}
+                transition={{ type: "spring", stiffness: 400, damping: 28 }}
               />
             )}
             <motion.div
-              animate={{ scale: activeTab === 'settings' ? 1.15 : 1 }}
-              transition={{ type: "spring", stiffness: 400, damping: 17 }}
-              className="relative z-10"
+              animate={{ scale: activeTab === 'settings' ? 1.1 : 1 }}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              className="relative z-10 flex flex-col items-center justify-center gap-0.5"
             >
-              <Settings className="w-6 h-6" />
+              <Settings className="w-5 h-5" />
             </motion.div>
           </motion.button>
         </div>
@@ -5381,6 +5788,18 @@ export function AdminStudio({ onLogout }: { onLogout: () => void }) {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Media Fullscreen Lightbox */}
+      <StudioMediaLightbox
+        isOpen={lightboxOpen}
+        onClose={() => {
+          setLightboxOpen(false);
+          setCustomLightboxItems(null);
+        }}
+        mediaItems={customLightboxItems || activeMediaGallery}
+        initialIndex={lightboxIndex}
+        isLightMode={studioTheme === 'light'}
+      />
       </div>
     </div>
   );

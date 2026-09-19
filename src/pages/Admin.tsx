@@ -150,7 +150,8 @@ export default function Admin() {
 
   const getThreadUserAndKey = (
     msg: { user: string; text?: string; recipient?: string },
-    currentAdmin: string | null
+    currentAdmin: string | null,
+    knownUsers?: string[] | Set<string>
   ) => {
     const isAdminUser = (username: string) => {
       if (!username) return false;
@@ -170,15 +171,32 @@ export default function Admin() {
 
     if (isAdminUser(msg.user)) {
       if (msg.text) {
-        const match = msg.text.match(/^@([a-zA-Z0-9_\-]+)/);
-        if (match) {
-          const targetUser = match[1];
+        const shoutoutMatch = msg.text.match(/^REPLY to @([^\n\r]+)/);
+        if (shoutoutMatch) {
+          let targetUser = shoutoutMatch[1].trim().replace(/:$/, '').trim();
           return { user: targetUser, key: targetUser.toLowerCase() };
         }
-        const shoutoutMatch = msg.text.match(/^REPLY to @([a-zA-Z0-9_\-\.@]+)/);
-        if (shoutoutMatch) {
-          const targetUser = shoutoutMatch[1];
-          return { user: targetUser, key: targetUser.toLowerCase() };
+
+        const atMatch = msg.text.match(/^@([^\n\r]+)/);
+        if (atMatch) {
+          const rawMention = atMatch[1].trim();
+          if (knownUsers) {
+            const userList = Array.isArray(knownUsers) ? knownUsers : Array.from(knownUsers);
+            const sorted = [...userList].filter(Boolean).sort((a, b) => b.length - a.length);
+            for (const u of sorted) {
+              if (rawMention.toLowerCase().startsWith(u.toLowerCase())) {
+                const remaining = rawMention.slice(u.length);
+                if (!remaining || /^[\s:]/.test(remaining)) {
+                  return { user: u, key: u.toLowerCase() };
+                }
+              }
+            }
+          }
+          if (rawMention.includes(':')) {
+            const target = rawMention.split(':')[0].trim();
+            if (target) return { user: target, key: target.toLowerCase() };
+          }
+          return { user: rawMention, key: rawMention.toLowerCase() };
         }
       }
       return null;
@@ -252,13 +270,21 @@ export default function Admin() {
       // Start with a clean set of threads from the database history to avoid restoring deleted chats
       let currentThreads: Record<string, any> = {};
 
+      const knownPrivateUsers = privateHistory
+        .map((m: any) => m.sender || m.user)
+        .filter((u: any) => u && u.toLowerCase() !== "dejavufm studio" && (!adminUsername || u.toLowerCase() !== adminUsername.toLowerCase()));
+      const knownShoutoutUsers = shoutoutHistory
+        .map((s: any) => s.listener_name || s.user)
+        .filter(Boolean);
+      const allKnownBgUsers = Array.from(new Set([...knownPrivateUsers, ...knownShoutoutUsers]));
+
       // Process privateHistory
       privateHistory.forEach((msg: any) => {
         const threadInfo = getThreadUserAndKey({
           user: msg.sender || msg.user,
           text: msg.text,
           recipient: msg.recipient
-        }, adminUsername);
+        }, adminUsername, allKnownBgUsers);
         if (!threadInfo) return;
 
         const { user, key: userKey } = threadInfo;
@@ -309,7 +335,7 @@ export default function Admin() {
         const threadInfo = getThreadUserAndKey({
           user: shoutout.listener_name || shoutout.user || 'Shoutout',
           text: shoutout.message || '',
-        }, adminUsername);
+        }, adminUsername, allKnownBgUsers);
         if (!threadInfo) return;
 
         const { user, key: userKey } = threadInfo;

@@ -32,14 +32,17 @@ import {
   Terminal,
   ArrowRight,
   Server,
-  HelpCircle
+  HelpCircle,
+  Trash2
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import { useLogo } from "../../hooks/useLogo";
+import { useModal } from "../../context/ModalContext";
 
 export function AdminMetaIntegrations() {
   const { isLightMode } = useLogo();
+  const { showConfirm } = useModal();
   const queryClient = useQueryClient();
 
   // Load overall studio settings
@@ -382,6 +385,26 @@ export function AdminMetaIntegrations() {
       setGatewayPhone(null);
     } catch (err: any) {
       toast.error(err.message || "Failed to disconnect session.");
+    }
+  };
+
+  const handleClearWhatsappMessages = async () => {
+    const confirmed = await showConfirm({
+      title: "Purge Stored WhatsApp Messages",
+      message: "Are you sure you want to permanently delete all stored WhatsApp messages and attachments from the database? This cannot be undone.",
+      style: "danger",
+      confirmText: "Purge WhatsApp Data"
+    });
+
+    if (confirmed) {
+      try {
+        const res = await fetchAdmin('/api/admin/whatsapp-gateway/clear-messages', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to clear WhatsApp messages');
+        toast.success(`Purged ${data.deletedCount ?? 0} WhatsApp messages from database.`);
+      } catch (err: any) {
+        toast.error(err.message || "Failed to clear WhatsApp messages.");
+      }
     }
   };
 
