@@ -12,7 +12,7 @@ import { TwitchService } from "./src/server/twitch.service.ts";
 import { TikTokService } from "./src/server/tiktok.service.ts";
 import { tiktokRouter } from "./src/server/tiktok.routes.ts";
 import { initDb, db, backupDatabase, getUploadsDir, pruneHistoricalData } from "./src/server/db.ts";
-import { awardXP, calculateLevelProgression } from "./src/server/gamification.service.ts";
+import { awardXP, calculateLevelProgression, isStaffOrAdmin } from "./src/server/gamification.service.ts";
 import { getReactionsForMessagesBulk, toggleMessageReaction, deleteMessageReactions, clearAllMessageReactions } from "./src/server/reactions.service.ts";
 import { setSocketIOInstance } from "./src/server/ai-studio/job-queue.service.ts";
 import { initScheduleListenerWorker } from "./src/server/ai-studio/schedule-listener.service.ts";
@@ -685,11 +685,13 @@ async function startServer() {
         } catch {}
 
         try {
-          const gamRow = db.prepare("SELECT total_xp FROM user_gamification WHERE LOWER(username) = ?").get(m.sender.toLowerCase()) as any;
-          if (gamRow && gamRow.total_xp !== undefined) {
-            const prog = calculateLevelProgression(gamRow.total_xp || 0);
-            level = prog.currentLevel;
-            levelTitle = prog.levelTitle;
+          if (!isStaffOrAdmin(m.sender)) {
+            const gamRow = db.prepare("SELECT total_xp FROM user_gamification WHERE LOWER(username) = ?").get(m.sender.toLowerCase()) as any;
+            if (gamRow && gamRow.total_xp !== undefined) {
+              const prog = calculateLevelProgression(gamRow.total_xp || 0);
+              level = prog.currentLevel;
+              levelTitle = prog.levelTitle;
+            }
           }
         } catch {}
 
@@ -715,26 +717,44 @@ async function startServer() {
     const privateCount = db.prepare("SELECT COUNT(*) as count FROM private_messages").get() as { count: number };
     const shoutoutCount = db.prepare("SELECT COUNT(*) as count FROM shoutouts").get() as { count: number };
 
+    let roomImageCount = 0;
+    let roomAudioCount = 0;
+    let roomVideoCount = 0;
+    try {
+      const roomMedia = db.prepare(`
+        SELECT 
+          COUNT(CASE WHEN image_url IS NOT NULL AND image_url != '' THEN 1 END) as images,
+          COUNT(CASE WHEN audio_url IS NOT NULL AND audio_url != '' THEN 1 END) as audios,
+          COUNT(CASE WHEN video_url IS NOT NULL AND video_url != '' THEN 1 END) as videos
+        FROM room_messages
+      `).get() as any;
+      if (roomMedia) {
+        roomImageCount = roomMedia.images || 0;
+        roomAudioCount = roomMedia.audios || 0;
+        roomVideoCount = roomMedia.videos || 0;
+      }
+    } catch {}
+
     const mediaCounts = db.prepare(`
       SELECT 
-        (SELECT COUNT(*) FROM public_messages WHERE imageUrl IS NOT NULL) + 
-        (SELECT COUNT(*) FROM private_messages WHERE imageUrl IS NOT NULL) +
-        (SELECT COUNT(*) FROM shoutouts WHERE imageUrl IS NOT NULL OR replyImageUrl IS NOT NULL) as images,
-        (SELECT COUNT(*) FROM public_messages WHERE audioUrl IS NOT NULL) + 
-        (SELECT COUNT(*) FROM private_messages WHERE audioUrl IS NOT NULL) +
-        (SELECT COUNT(*) FROM shoutouts WHERE audioUrl IS NOT NULL OR replyAudioUrl IS NOT NULL) as audios,
-        (SELECT COUNT(*) FROM public_messages WHERE videoUrl IS NOT NULL) + 
-        (SELECT COUNT(*) FROM private_messages WHERE videoUrl IS NOT NULL) +
-        (SELECT COUNT(*) FROM shoutouts WHERE videoUrl IS NOT NULL OR replyVideoUrl IS NOT NULL) as videos
+        (SELECT COUNT(*) FROM public_messages WHERE imageUrl IS NOT NULL AND imageUrl != '') + 
+        (SELECT COUNT(*) FROM private_messages WHERE imageUrl IS NOT NULL AND imageUrl != '') +
+        (SELECT COUNT(*) FROM shoutouts WHERE (imageUrl IS NOT NULL AND imageUrl != '') OR (replyImageUrl IS NOT NULL AND replyImageUrl != '')) as images,
+        (SELECT COUNT(*) FROM public_messages WHERE audioUrl IS NOT NULL AND audioUrl != '') + 
+        (SELECT COUNT(*) FROM private_messages WHERE audioUrl IS NOT NULL AND audioUrl != '') +
+        (SELECT COUNT(*) FROM shoutouts WHERE (audioUrl IS NOT NULL AND audioUrl != '') OR (replyAudioUrl IS NOT NULL AND replyAudioUrl != '')) as audios,
+        (SELECT COUNT(*) FROM public_messages WHERE videoUrl IS NOT NULL AND videoUrl != '') + 
+        (SELECT COUNT(*) FROM private_messages WHERE videoUrl IS NOT NULL AND videoUrl != '') +
+        (SELECT COUNT(*) FROM shoutouts WHERE (videoUrl IS NOT NULL AND videoUrl != '') OR (replyVideoUrl IS NOT NULL AND replyVideoUrl != '')) as videos
     `).get() as { images: number; audios: number; videos: number };
 
     return {
       publicMessages: publicCount?.count || 0,
       privateMessages: privateCount?.count || 0,
       shoutoutCount: shoutoutCount?.count || 0,
-      imageCount: mediaCounts?.images || 0,
-      audioCount: mediaCounts?.audios || 0,
-      videoCount: mediaCounts?.videos || 0
+      imageCount: (mediaCounts?.images || 0) + roomImageCount,
+      audioCount: (mediaCounts?.audios || 0) + roomAudioCount,
+      videoCount: (mediaCounts?.videos || 0) + roomVideoCount
     };
   };
 
@@ -742,29 +762,90 @@ async function startServer() {
     io.emit('chatCountsUpdated', getChatRoomCounts());
   };
 
-  const deleteMessageFiles = (messages: any[]) => {
+  const deleteMessageFiles = (messages: any[]): number => {
+    let deletedCount = 0;
     try {
       const uploadsDir = getUploadsDir();
+      if (!fs.existsSync(uploadsDir)) return 0;
+
+      const mediaKeys = [
+        'imageUrl', 'audioUrl', 'videoUrl',
+        'replyImageUrl', 'replyAudioUrl', 'replyVideoUrl',
+        'image_url', 'audio_url', 'video_url'
+      ];
+
+      const urlRegex = /(?:\/uploads\/|uploads\/)([a-zA-Z0-9_\-\.%]+\.[a-zA-Z0-9]+)/gi;
+
       messages.forEach(msg => {
-        ['imageUrl', 'audioUrl', 'videoUrl'].forEach(key => {
-          const url = msg[key];
-          if (typeof url === 'string') {
-            let filename = '';
-            if (url.includes('/uploads/')) {
-              filename = url.split('/uploads/').pop() || '';
-            } else if (!url.startsWith('http') && !url.startsWith('https') && url.trim() !== '') {
-              filename = url;
+        if (!msg) return;
+
+        const candidateUrls = new Set<string>();
+
+        // 1. Direct media fields
+        mediaKeys.forEach(key => {
+          const val = msg[key];
+          if (typeof val === 'string' && val.trim()) {
+            candidateUrls.add(val.trim());
+          }
+        });
+
+        // 2. Scan text/message/reply strings for embedded upload paths
+        ['text', 'message', 'reply', 'reply_text'].forEach(field => {
+          const content = msg[field];
+          if (typeof content === 'string' && content.includes('uploads/')) {
+            let match;
+            const regex = new RegExp(urlRegex.source, 'gi');
+            while ((match = regex.exec(content)) !== null) {
+              if (match[1]) {
+                candidateUrls.add(match[1]);
+              }
             }
-            if (filename) {
-              filename = filename.split('?')[0].split('#')[0];
+          }
+        });
+
+        candidateUrls.forEach(url => {
+          let filename = '';
+          if (url.includes('/uploads/')) {
+            filename = url.split('/uploads/').pop() || '';
+          } else if (url.includes('uploads/')) {
+            filename = url.split('uploads/').pop() || '';
+          } else if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('data:') && url.trim() !== '') {
+            filename = url;
+          }
+
+          if (filename) {
+            filename = filename.split('?')[0].split('#')[0];
+            try {
+              filename = decodeURIComponent(filename);
+            } catch (e) {}
+            filename = path.basename(filename);
+
+            if (filename && filename !== '.' && filename !== '..') {
               const filePath = path.join(uploadsDir, filename);
               try {
                 if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
                   fs.unlinkSync(filePath);
-                  console.log(`[Media Delete] Deleted media file: ${filePath}`);
+                  deletedCount++;
+                  console.log(`[Media Delete] Deleted chat media file: ${filePath}`);
                 }
               } catch (err) {
                 console.error(`[Media Delete] Failed to delete file: ${filePath}`, err);
+              }
+
+              // Also check for sharp optimized variant or original variant if applicable
+              if (filename.startsWith('opt-upl-')) {
+                const baseId = filename.replace(/^opt-upl-/, '').split('.')[0];
+                try {
+                  const related = fs.readdirSync(uploadsDir).filter(f => f.startsWith(`upl-${baseId}.`));
+                  related.forEach(rf => {
+                    const rPath = path.join(uploadsDir, rf);
+                    if (fs.existsSync(rPath) && fs.statSync(rPath).isFile()) {
+                      fs.unlinkSync(rPath);
+                      deletedCount++;
+                      console.log(`[Media Delete] Deleted related original file: ${rPath}`);
+                    }
+                  });
+                } catch {}
               }
             }
           }
@@ -773,55 +854,173 @@ async function startServer() {
     } catch (e) {
       console.error("[Media Cleanup] Error in deleteMessageFiles helper:", e);
     }
+    return deletedCount;
+  };
+
+  /**
+   * Scans uploadsDir for any orphaned chat-generated attachments (upl-*, opt-upl-*, waha-audio-*, etc.)
+   * that are no longer referenced in persistent non-chat tables (djs, blogs, features, ads, users, admins, settings)
+   * or active chat tables, guaranteeing complete cleanup of chat media.
+   */
+  const cleanupOrphanedChatUploads = (): number => {
+    let deleted = 0;
+    try {
+      const uploadsDir = getUploadsDir();
+      if (!fs.existsSync(uploadsDir)) return 0;
+
+      const chatPrefixes = ['upl-', 'opt-upl-', 'waha-audio-', 'whatsapp-', 'recording-', 'chat-', 'shoutout-', 'voice-'];
+      const entries = fs.readdirSync(uploadsDir, { withFileTypes: true });
+
+      for (const entry of entries) {
+        if (!entry.isFile()) continue;
+        const name = entry.name;
+        const isChatFile = chatPrefixes.some(p => name.startsWith(p));
+        if (!isChatFile) continue;
+
+        const pattern = `%${name}%`;
+
+        // Check persistent non-chat tables
+        const dj = db.prepare("SELECT 1 FROM djs WHERE image_url LIKE ? LIMIT 1").get(pattern);
+        if (dj) continue;
+        const blog = db.prepare("SELECT 1 FROM blogs WHERE image_url LIKE ? LIMIT 1").get(pattern);
+        if (blog) continue;
+        const feat = db.prepare("SELECT 1 FROM features WHERE image_url LIKE ? LIMIT 1").get(pattern);
+        if (feat) continue;
+        const ad = db.prepare("SELECT 1 FROM advertisements WHERE image_url LIKE ? LIMIT 1").get(pattern);
+        if (ad) continue;
+        const usr = db.prepare("SELECT 1 FROM users WHERE avatar_url LIKE ? LIMIT 1").get(pattern);
+        if (usr) continue;
+        const adm = db.prepare("SELECT 1 FROM admins WHERE photo_url LIKE ? LIMIT 1").get(pattern);
+        if (adm) continue;
+        const stg = db.prepare("SELECT 1 FROM settings WHERE value LIKE ? LIMIT 1").get(pattern);
+        if (stg) continue;
+
+        // Check if referenced in chat tables
+        const pub = db.prepare("SELECT 1 FROM public_messages WHERE imageUrl LIKE ? OR audioUrl LIKE ? OR videoUrl LIKE ? OR text LIKE ? LIMIT 1").get(pattern, pattern, pattern, pattern);
+        if (pub) continue;
+        const priv = db.prepare("SELECT 1 FROM private_messages WHERE imageUrl LIKE ? OR audioUrl LIKE ? OR videoUrl LIKE ? OR text LIKE ? LIMIT 1").get(pattern, pattern, pattern, pattern);
+        if (priv) continue;
+        const shout = db.prepare("SELECT 1 FROM shoutouts WHERE imageUrl LIKE ? OR audioUrl LIKE ? OR videoUrl LIKE ? OR replyImageUrl LIKE ? OR replyAudioUrl LIKE ? OR replyVideoUrl LIKE ? OR message LIKE ? OR reply_text LIKE ? LIMIT 1").get(pattern, pattern, pattern, pattern, pattern, pattern, pattern, pattern);
+        if (shout) continue;
+        try {
+          const room = db.prepare("SELECT 1 FROM room_messages WHERE image_url LIKE ? OR audio_url LIKE ? OR video_url LIKE ? OR text LIKE ? LIMIT 1").get(pattern, pattern, pattern, pattern);
+          if (room) continue;
+        } catch {}
+
+        try {
+          const fullPath = path.join(uploadsDir, name);
+          if (fs.existsSync(fullPath)) {
+            fs.unlinkSync(fullPath);
+            deleted++;
+            console.log(`[Media Delete] Purged orphaned chat upload: ${fullPath}`);
+          }
+        } catch (e) {}
+      }
+    } catch (err) {
+      console.error("[Media Cleanup] Error in cleanupOrphanedChatUploads:", err);
+    }
+    return deleted;
   };
 
   const clearAllChatRoomData = (reason = "manual") => {
-    if (!db.open) return { publicDeleted: 0, privateDeleted: 0, shoutoutsDeleted: 0 };
+    if (!db.open) return { publicDeleted: 0, privateDeleted: 0, shoutoutsDeleted: 0, roomDeleted: 0, mediaDeleted: 0 };
 
+    let totalMediaDeleted = 0;
+    const allMessageIds: string[] = [];
+
+    // 1. Gather all messages with media and tombstone IDs
     try {
-      const publicMsgs = db.prepare("SELECT imageUrl, audioUrl, videoUrl FROM public_messages WHERE imageUrl IS NOT NULL OR audioUrl IS NOT NULL OR videoUrl IS NOT NULL").all() as any[];
-      deleteMessageFiles(publicMsgs);
+      const publicMsgs = db.prepare("SELECT id, text, imageUrl, audioUrl, videoUrl FROM public_messages").all() as any[];
+      publicMsgs.forEach(m => { if (m.id) allMessageIds.push(String(m.id)); });
+      totalMediaDeleted += deleteMessageFiles(publicMsgs);
     } catch (err) {
       console.error("[Media Cleanup] Failed to cleanup public_messages files:", err);
     }
 
     try {
-      const privateMsgs = db.prepare("SELECT imageUrl, audioUrl, videoUrl FROM private_messages WHERE imageUrl IS NOT NULL OR audioUrl IS NOT NULL OR videoUrl IS NOT NULL").all() as any[];
-      deleteMessageFiles(privateMsgs);
+      const privateMsgs = db.prepare("SELECT id, text, imageUrl, audioUrl, videoUrl FROM private_messages").all() as any[];
+      privateMsgs.forEach(m => { if (m.id) allMessageIds.push(String(m.id)); });
+      totalMediaDeleted += deleteMessageFiles(privateMsgs);
     } catch (err) {
       console.error("[Media Cleanup] Failed to cleanup private_messages files:", err);
     }
 
     try {
-      const shoutoutMsgs = db.prepare("SELECT imageUrl, audioUrl, videoUrl, replyImageUrl, replyAudioUrl, replyVideoUrl FROM shoutouts WHERE imageUrl IS NOT NULL OR audioUrl IS NOT NULL OR videoUrl IS NOT NULL OR replyImageUrl IS NOT NULL OR replyAudioUrl IS NOT NULL OR replyVideoUrl IS NOT NULL").all() as any[];
-      // Need to handle both normal and reply media for shoutouts
-      const normalizedShoutoutMsgs = shoutoutMsgs.flatMap(s => [
-        { imageUrl: s.imageUrl, audioUrl: s.audioUrl, videoUrl: s.videoUrl },
-        { imageUrl: s.replyImageUrl, audioUrl: s.replyAudioUrl, videoUrl: s.replyVideoUrl }
-      ]);
-      deleteMessageFiles(normalizedShoutoutMsgs);
+      const shoutoutMsgs = db.prepare("SELECT id, message, reply_text, imageUrl, audioUrl, videoUrl, replyImageUrl, replyAudioUrl, replyVideoUrl FROM shoutouts").all() as any[];
+      shoutoutMsgs.forEach(s => { if (s.id) allMessageIds.push(String(s.id)); });
+      totalMediaDeleted += deleteMessageFiles(shoutoutMsgs);
     } catch (err) {
       console.error("[Media Cleanup] Failed to cleanup shoutout files:", err);
     }
 
+    let roomCount = 0;
+    try {
+      const roomMsgs = db.prepare("SELECT id, text, image_url, audio_url, video_url FROM room_messages").all() as any[];
+      roomMsgs.forEach(r => { if (r.id) allMessageIds.push(String(r.id)); });
+      totalMediaDeleted += deleteMessageFiles(roomMsgs);
+    } catch (err) {
+      console.error("[Media Cleanup] Failed to cleanup room_messages files:", err);
+    }
+
+    // Record tombstones for all deleted IDs so gateways don't re-ingest them
+    try {
+      const now = Date.now();
+      const insertTombstone = db.prepare("INSERT OR REPLACE INTO deleted_message_tombstones (id, deleted_at) VALUES (?, ?)");
+      const insertMany = db.transaction((ids: string[]) => {
+        for (const id of ids) {
+          insertTombstone.run(id, now);
+        }
+      });
+      insertMany(allMessageIds);
+    } catch (e) {
+      console.error("[Tombstone] Failed to record deleted message tombstones:", e);
+    }
+
+    // 2. Delete all records from database tables
     const publicInfo = db.prepare("DELETE FROM public_messages").run();
     const privateInfo = db.prepare("DELETE FROM private_messages").run();
     const shoutoutInfo = db.prepare("DELETE FROM shoutouts").run();
+    try {
+      const roomInfo = db.prepare("DELETE FROM room_messages").run();
+      roomCount = roomInfo.changes;
+    } catch (e) {}
+
     clearAllMessageReactions();
     chatHistory = [];
+
+    // 3. Clean up any remaining orphaned chat uploads
+    try {
+      totalMediaDeleted += cleanupOrphanedChatUploads();
+    } catch (err) {
+      console.error("[Media Cleanup] Failed to cleanup orphaned chat uploads:", err);
+    }
+
+    // 4. Compact database file and truncate WAL to reclaim database disk space
+    try {
+      db.pragma('wal_checkpoint(TRUNCATE)');
+    } catch (e) {}
 
     const clearedAt = new Date().toISOString();
     db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
       .run("chat_auto_delete_last_run", clearedAt);
 
+    // 5. Broadcast to all connected clients
     io.emit('messagesCleared', { isPrivate: false, allChatData: true, reason, clearedAt });
     io.emit('messagesCleared', { isPrivate: true, allChatData: true, reason, clearedAt });
     io.emit('shoutouts_cleared');
+    io.emit('whatsapp_messages_cleared');
     emitChatRoomCounts();
 
-    console.log(`[Chat Retention] Cleared chat room data (${reason}). Public: ${publicInfo.changes}, Private: ${privateInfo.changes}, Shoutouts: ${shoutoutInfo.changes}`);
+    console.log(`[Chat Retention] Purged workspace chat & media data (${reason}). Public: ${publicInfo.changes}, Private: ${privateInfo.changes}, Shoutouts: ${shoutoutInfo.changes}, Room: ${roomCount}, Media Files Deleted: ${totalMediaDeleted}`);
 
-    return { publicDeleted: publicInfo.changes, privateDeleted: privateInfo.changes, shoutoutsDeleted: shoutoutInfo.changes, clearedAt };
+    return {
+      publicDeleted: publicInfo.changes,
+      privateDeleted: privateInfo.changes,
+      shoutoutsDeleted: shoutoutInfo.changes,
+      roomDeleted: roomCount,
+      mediaDeleted: totalMediaDeleted,
+      clearedAt
+    };
   };
 
   app.set('clearChatRoomData', clearAllChatRoomData);
@@ -858,7 +1057,10 @@ async function startServer() {
       console.error("Failed to query user avatar for chat:", err);
     }
 
-    if (!level && msg.user && db.open) {
+    if (isStaffOrAdmin(msg.user)) {
+      level = undefined;
+      levelTitle = undefined;
+    } else if (!level && msg.user && db.open) {
       try {
         const gamRow = db.prepare("SELECT total_xp FROM user_gamification WHERE LOWER(username) = ?").get(msg.user.toLowerCase()) as any;
         if (gamRow && gamRow.total_xp !== undefined) {
@@ -1310,12 +1512,20 @@ async function startServer() {
         }
 
         try {
+          const shoutout = db.prepare("SELECT id, message, reply_text, imageUrl, audioUrl, videoUrl, replyImageUrl, replyAudioUrl, replyVideoUrl FROM shoutouts WHERE id = ?").get(payload.id) as any;
+          if (shoutout) {
+            deleteMessageFiles([shoutout]);
+          }
+        } catch (e) {}
+
+        try {
           db.prepare("INSERT OR REPLACE INTO deleted_message_tombstones (id, deleted_at) VALUES (?, ?)").run(String(payload.id), Date.now());
         } catch (e) {}
 
         db.prepare("DELETE FROM shoutouts WHERE id = ?").run(payload.id);
         io.emit('shoutoutDeleted', { id: payload.id });
-        console.log(`[Delete Shoutout] Shoutout ${payload.id} deleted by ${payload.user}`);
+        emitChatRoomCounts();
+        console.log(`[Delete Shoutout] Shoutout ${payload.id} and media deleted by ${payload.user}`);
       } catch (err) {
         console.error("Failed to delete shoutout:", err);
       }
@@ -1331,7 +1541,8 @@ async function startServer() {
         }
 
         try {
-          const shoutouts = db.prepare("SELECT id FROM shoutouts").all() as any[];
+          const shoutouts = db.prepare("SELECT id, message, reply_text, imageUrl, audioUrl, videoUrl, replyImageUrl, replyAudioUrl, replyVideoUrl FROM shoutouts").all() as any[];
+          deleteMessageFiles(shoutouts);
           shoutouts.forEach(s => {
             try {
               db.prepare("INSERT OR REPLACE INTO deleted_message_tombstones (id, deleted_at) VALUES (?, ?)").run(String(s.id), Date.now());
@@ -1340,8 +1551,14 @@ async function startServer() {
         } catch (e) {}
 
         db.prepare("DELETE FROM shoutouts").run();
+        try {
+          cleanupOrphanedChatUploads();
+          db.pragma('wal_checkpoint(TRUNCATE)');
+        } catch (e) {}
+
         io.emit('shoutouts_cleared');
-        console.log(`[Clear Shoutouts] All shoutouts cleared by admin ${payload.user}`);
+        emitChatRoomCounts();
+        console.log(`[Clear Shoutouts] All shoutouts and media cleared by admin ${payload.user}`);
       } catch (err) {
         console.error("Failed to clear shoutouts:", err);
       }
@@ -1579,7 +1796,10 @@ async function startServer() {
 
          let pmLevel = msg.level;
          let pmLevelTitle = msg.levelTitle;
-         if (!pmLevel && msg.user && db.open) {
+         if (isStaffOrAdmin(msg.user)) {
+           pmLevel = undefined;
+           pmLevelTitle = undefined;
+         } else if (!pmLevel && msg.user && db.open) {
            try {
              const gamRow = db.prepare("SELECT total_xp FROM user_gamification WHERE LOWER(username) = ?").get(msg.user.toLowerCase()) as any;
              if (gamRow && gamRow.total_xp !== undefined) {
