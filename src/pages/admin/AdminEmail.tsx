@@ -411,14 +411,14 @@ export function AdminEmail() {
   return (
     <div className={`p-3 sm:p-6 md:p-8 min-h-screen ${isLightMode ? 'bg-slate-50 text-slate-900' : 'bg-[#0A0C16] text-white'}`}>
       {/* Header Bar */}
-      <div className={`flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 sm:mb-8 border-b pb-6 ${isLightMode ? 'border-slate-200' : 'border-white/10'}`}>
-        <div>
+      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8 border-b pb-6 ${isLightMode ? 'border-slate-200' : 'border-white/10'}`}>
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2.5 sm:gap-3">
             <div className="p-2 sm:p-2.5 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-500 text-white shadow-lg shadow-purple-500/20 shrink-0">
               <Mail className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-wider font-display">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-wider font-display truncate">
                 Centralised Email Suite
               </h1>
               <p className={`text-xs sm:text-sm font-medium ${isLightMode ? 'text-slate-500' : 'text-slate-400'}`}>
@@ -429,8 +429,8 @@ export function AdminEmail() {
         </div>
 
         {/* Live Status Badge & Sync Action */}
-        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
-          <div className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-2xl border font-bold text-xs shadow-sm ${
+        <div className="flex items-center justify-end gap-2.5 sm:gap-3 shrink-0 ml-auto sm:ml-0">
+          <div className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-2xl border font-bold text-xs shadow-sm shrink-0 ${
             stats?.status === 'connected'
               ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600'
               : stats?.status === 'error'
@@ -440,7 +440,7 @@ export function AdminEmail() {
             <span className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full shrink-0 ${
               stats?.status === 'connected' ? 'bg-emerald-500 animate-ping' : stats?.status === 'error' ? 'bg-rose-500' : 'bg-amber-500'
             }`} />
-            <span className="uppercase tracking-wider text-[11px] sm:text-xs">
+            <span className="uppercase tracking-wider text-[11px] sm:text-xs whitespace-nowrap">
               {stats?.status === 'connected' ? 'SMTP Online' : stats?.status === 'error' ? 'SMTP Error' : 'Unconfigured'}
             </span>
           </div>
@@ -450,7 +450,7 @@ export function AdminEmail() {
             whileTap={{ scale: 0.97 }}
             onClick={handleRefreshAll}
             disabled={isAnyFetching}
-            className={`flex-1 sm:flex-initial px-3.5 py-2 rounded-2xl border font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-sm ${
+            className={`px-3.5 py-2 rounded-2xl border font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-sm shrink-0 ${
               isAnyFetching
                 ? 'opacity-80 bg-purple-500/10 border-purple-500/30 text-purple-600 cursor-wait'
                 : isLightMode
